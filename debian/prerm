@@ -1,0 +1,13 @@
+#!/bin/sh
+set -e
+
+PACKAGER="dx-stream"
+
+SRC_DIR="/usr/share/${PACKAGER}/src" 
+
+echo "Removing installed libraries and source files..."
+
+$SRC_DIR/build.sh --uninstall
+
+
+exit 0

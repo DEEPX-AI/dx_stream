@@ -1,0 +1,11 @@
+{
+    "preprocess_id": 2,
+    "resize_width": 224,
+    "resize_height": 224,
+    "keep_ratio": false,
+    "pad_value": 114,
+    "secondary_mode": true,
+    "target_class_id": -1,
+    "min_object_width": 10,
+    "min_object_height": 10
+}

@@ -1,0 +1,14 @@
+#!/bin/sh
+set -e
+
+PACKAGER="dx-stream"
+MAIN_DIR="/usr/share/${PACKAGER}"
+
+case "$1" in
+    purge)
+        echo "Cleaning up remaining files for $PACKAGER..."
+        rm -rf "$MAIN_DIR"
+        ;;
+esac
+
+exit 0

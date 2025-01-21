@@ -1,0 +1,7 @@
+{
+    "preprocess_id": 2,
+    "secondary_mode": false,
+    "model_path" : "./dx_stream/samples/models/DeepLabV3PlusMobileNetV2_2.dxnn",
+    "library_file_path": "/usr/share/dx-stream/lib/libpostprocess_deeplabv3plusmobilenetv2_2.so",
+    "function_name": "PostProcess"
+}

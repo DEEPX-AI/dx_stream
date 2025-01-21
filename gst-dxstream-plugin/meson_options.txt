@@ -1,0 +1,2 @@
+option('dxrt_dir', type : 'string', value : '/usr/local', description : 'Path to DXRT installation')
+option('opencv_dir', type : 'string', value : '/usr/local', description : 'Path to OpenCV installation')

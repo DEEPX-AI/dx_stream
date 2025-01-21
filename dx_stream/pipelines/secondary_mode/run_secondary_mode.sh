@@ -1,0 +1,31 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+SRC_DIR=$(dirname "$(dirname "$SCRIPT_DIR")")
+
+INPUT_VIDEO_PATH_LIST=(
+    "$SRC_DIR/samples/videos/dance-group.mov"
+    "$SRC_DIR/samples/videos/dance-group2.mov"
+    "$SRC_DIR/samples/videos/dance-solo.mov"
+    "$SRC_DIR/samples/videos/snowboard.mp4"
+)
+
+for INPUT_VIDEO_PATH in "${INPUT_VIDEO_PATH_LIST[@]}"; do
+    gst-launch-1.0 urisourcebin uri=file://$INPUT_VIDEO_PATH ! decodebin ! \
+                    dxpreprocess config-file-path=$SRC_DIR/configs/Object_Detection/YOLOV5S_3/preprocess_config.json ! queue ! \
+                    dxinfer config-file-path=$SRC_DIR/configs/Object_Detection/YOLOV5S_3/inference_config.json ! queue ! \
+                    dxtracker config-file-path=$SRC_DIR/configs/tracker_config.json ! queue ! \
+                    tee name=t \
+                    t. ! queue ! \
+                    dxpreprocess config-file-path=$SRC_DIR/configs/Re-Identification/OSNet/preprocess_config.json ! queue ! \
+                    dxinfer config-file-path=$SRC_DIR/configs/Re-Identification/OSNet/inference_config.json ! queue ! \
+                    gather.sink_0 \
+                    t. ! queue ! \
+                    dxpreprocess config-file-path=$SRC_DIR/configs/Face_Detection/SCRFD/preprocess_config.json ! queue ! \
+                    dxinfer config-file-path=$SRC_DIR/configs/Face_Detection/SCRFD/inference_config.json ! queue ! \
+                    gather.sink_1 \
+                    dxgather name=gather ! queue ! \
+                    dxosd ! queue ! \
+                    fpsdisplaysink sync=true
+done

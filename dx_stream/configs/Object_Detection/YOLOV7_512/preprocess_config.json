@@ -1,0 +1,7 @@
+{
+    "preprocess_id": 1,
+    "resize_width": 512,
+    "resize_height": 512,
+    "keep_ratio": true,
+    "interval": 0
+}

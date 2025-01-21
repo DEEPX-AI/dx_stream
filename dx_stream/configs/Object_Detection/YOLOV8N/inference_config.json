@@ -1,0 +1,6 @@
+{
+    "preprocess_id": 1,
+    "model_path" : "./dx_stream/samples/models/YoloV8N.dxnn",
+    "library_file_path": "/usr/share/dx-stream/lib/libpostprocess_yolo.so",
+    "function_name": "YOLOV8N"
+}

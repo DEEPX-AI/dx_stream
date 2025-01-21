@@ -1,0 +1,19 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+SRC_DIR=$(dirname "$(dirname "$(dirname "$SCRIPT_DIR")")")
+
+INPUT_VIDEO_PATH_LIST=(
+    "$SRC_DIR/samples/videos/blackbox-city-road.mp4"
+    "$SRC_DIR/samples/videos/blackbox-city-road2.mov"
+    "$SRC_DIR/samples/videos/dance-solo.mov"
+)
+
+for INPUT_VIDEO_PATH in "${INPUT_VIDEO_PATH_LIST[@]}"; do
+    gst-launch-1.0 urisourcebin uri=file://$INPUT_VIDEO_PATH ! decodebin ! \
+                    dxpreprocess config-file-path=$SRC_DIR/configs/Segmentation/DeepLabV3PlusMobileNetV2_2/preprocess_config.json ! queue ! \
+                    dxinfer config-file-path=$SRC_DIR/configs/Segmentation/DeepLabV3PlusMobileNetV2_2/inference_config.json ! queue ! \
+                    dxosd ! queue ! \
+                    fpsdisplaysink sync=false
+done

@@ -1,0 +1,20 @@
+{
+    "cfgSection": {
+        "library_file_path": "/usr/local/lib/libdx_msgconvl.so",
+        "message_interval": 1,
+        "include_frame": true
+    },
+
+    "infoSection": {
+        "customId": 999
+    },
+    
+    "__comment_out__": "for using this section, remove underscope in __filterSection__",
+    "__filterSection__": {
+        "object": {
+            "include" : ["person", "bus"]
+        }
+    }    
+}
+
+

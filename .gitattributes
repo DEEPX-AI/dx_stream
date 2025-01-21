@@ -1,0 +1,7 @@
+.vscode/       export-ignore
+.gitignore     export-ignore
+setup_dxnn_assets.sh      export-ignore
+debian     export-ignore
+.gitattributes     export-ignore
+docs     export-ignore
+README.md     export-ignore

@@ -1,0 +1,12 @@
+{
+    "preprocess_id": 3,
+    "resize_width": 128,
+    "resize_height": 256,
+    "keep_ratio": false,
+    "pad_value": 114,
+    "secondary_mode": true,
+    "target_class_id": 0,
+    "min_object_width": 50,
+    "min_object_height": 50,
+    "interval": 5
+}

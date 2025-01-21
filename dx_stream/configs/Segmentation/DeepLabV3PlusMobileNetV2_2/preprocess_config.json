@@ -1,0 +1,7 @@
+{
+    "preprocess_id": 2,
+    "resize_width": 640,
+    "resize_height": 640,
+    "keep_ratio": false,
+    "secondary_mode": false
+}

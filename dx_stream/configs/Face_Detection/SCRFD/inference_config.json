@@ -1,0 +1,7 @@
+{
+    "preprocess_id": 4,
+    "model_path" : "./dx_stream/samples/models/SCRFD500M_1.dxnn",
+    "secondary_mode": true,
+    "library_file_path": "/usr/share/dx-stream/lib/libpostprocess_scrfd.so",
+    "function_name": "PostProcess"
+}

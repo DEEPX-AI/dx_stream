@@ -1,0 +1,13 @@
+{
+    "tracker_name": "OC_SORT",
+    "params": {
+        "det_thresh": 0.5,
+        "max_age": 30,
+        "min_hits": 3,
+        "iou_threshold": 0.3,
+        "delta_t": 3,
+        "asso_func": "iou",
+        "inertia": 0.2,
+        "use_byte": false
+    }
+}

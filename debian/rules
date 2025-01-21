@@ -1,0 +1,26 @@
+#!/usr/bin/make -f
+#export DH_VERBOSE=1
+
+ROOTDIR := $(CURDIR)
+MAINZIPFILE := $(CURDIR)/source.zip
+
+PACKAGER := dx-stream
+
+%:
+	dh $@
+
+build:
+	rm -rf $(MAINZIPFILE)
+	echo "ROOTDIR: $(ROOTDIR)"
+	git archive -o $(MAINZIPFILE) HEAD;
+	ls -al
+
+install:
+#	dh install
+	mkdir -p debian/$(PACKAGER)/usr/share/$(PACKAGER)
+	cp $(MAINZIPFILE) debian/$(PACKAGER)/usr/share/$(PACKAGER)/
+	rm -rf $(MAINZIPFILE)
+
+clean:
+	dh clean
+	rm -rf $(MAINZIPFILE)
