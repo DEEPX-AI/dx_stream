@@ -11,7 +11,6 @@ function help()
 {
     echo "./install.sh"
     echo "    --help            show this help"
-    echo "    --arch            target CPU architecture : [ x86_64, aarch64, riscv64 ]"
 }
 
 function compare_version()
@@ -142,10 +141,6 @@ function install_dx_stream_dep() {
 while (( $# )); do
     case "$1" in
         --help) help; exit 0;;
-        --arch)
-            shift
-            target_arch=$1
-            shift;;
         *)       echo "Invalid argument : " $1 ; help; exit 1;;
     esac
 done

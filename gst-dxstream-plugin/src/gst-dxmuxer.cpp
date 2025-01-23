@@ -309,18 +309,26 @@ void push_buffers(GstDxMuxer *self) {
                     gst_pad_get_current_caps(self->_sinkpads[stream_id]);
             }
             GstBuffer *outbuf = gst_buffer_copy_deep(self->_buffers[stream_id]);
-            DXFrameMeta *frame_meta = dx_create_frame_meta(outbuf);
+            DXFrameMeta *frame_meta = (DXFrameMeta *)gst_buffer_get_meta(
+                outbuf, DX_FRAME_META_API_TYPE);
+            if (!frame_meta) {
+                DXFrameMeta *frame_meta = dx_create_frame_meta(outbuf);
 
-            GstStructure *s = gst_caps_get_structure(self->_caps[stream_id], 0);
-            frame_meta->_name = gst_structure_get_name(s);
-            frame_meta->_format = gst_structure_get_string(s, "format");
-            gst_structure_get_int(s, "width", &frame_meta->_width);
-            gst_structure_get_int(s, "height", &frame_meta->_height);
-            gint num, denom;
-            gst_structure_get_fraction(s, "framerate", &num, &denom);
-            frame_meta->_frame_rate = (gfloat)num / (gfloat)denom;
-            frame_meta->_stream_id = stream_id;
-            frame_meta->_buf = outbuf;
+                GstStructure *s =
+                    gst_caps_get_structure(self->_caps[stream_id], 0);
+                frame_meta->_name = gst_structure_get_name(s);
+                frame_meta->_format = gst_structure_get_string(s, "format");
+                gst_structure_get_int(s, "width", &frame_meta->_width);
+                gst_structure_get_int(s, "height", &frame_meta->_height);
+                gint num, denom;
+                gst_structure_get_fraction(s, "framerate", &num, &denom);
+                frame_meta->_frame_rate = (gfloat)num / (gfloat)denom;
+                frame_meta->_stream_id = stream_id;
+                frame_meta->_buf = outbuf;
+            } else {
+                frame_meta->_stream_id = stream_id;
+                frame_meta->_buf = outbuf;
+            }
 
             GST_BUFFER_PTS(outbuf) = *self->_pts;
             GstFlowReturn ret = gst_pad_push(self->_srcpad, outbuf);

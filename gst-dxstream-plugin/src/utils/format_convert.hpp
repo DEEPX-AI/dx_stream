@@ -4,10 +4,17 @@
 #include <libyuv.h>
 #include <opencv2/opencv.hpp>
 
-cv::Mat convert_color(DXFrameMeta *frame_meta, gchar *format = "RGB");
-void SurfaceToOrigin(DXFrameMeta *frame_meta);
-void set_surface(DXFrameMeta *frame_meta);
+uint8_t *Resize(uint8_t *src, int src_width, int src_height, int dst_width,
+                int dst_height, const gchar *format);
+uint8_t *Resize(GstBuffer *buf, int src_width, int src_height, int dst_width,
+                int dst_height, const gchar *format);
+uint8_t *CvtColor(uint8_t *src, int width, int height, const gchar *src_format,
+                  const gchar *dst_format);
+uint8_t *CvtColor(GstBuffer *buf, int width, int height,
+                  const gchar *src_format, const gchar *dst_format);
+uint8_t *Crop(GstBuffer *buf, int src_width, int src_height, int crop_x,
+              int crop_y, int crop_width, int crop_height, const gchar *format);
 
-void I420ToRGBA(GstBuffer *buffer, uint8_t *dst, int width, int height);
-void RGBToRGBA(GstBuffer *buffer, uint8_t *dst, int width, int height);
-void NV12ToRGBA(GstBuffer *buffer, uint8_t *dst, int width, int height);
+void SurfaceToOrigin(DXFrameMeta *frame_meta, uint8_t *surface);
+void RGB24toNV12(DXFrameMeta *frame_meta, uint8_t *surface);
+void RGB24toI420(DXFrameMeta *frame_meta, uint8_t *surface);
