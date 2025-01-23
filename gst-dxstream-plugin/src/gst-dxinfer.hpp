@@ -63,6 +63,9 @@ typedef struct _GstDxInfer {
 
     guint _buffer_cnt;
 
+    std::chrono::time_point<std::chrono::high_resolution_clock> _start_time;
+    guint _frame_count_for_fps;
+
 } GstDxInfer;
 
 G_END_DECLS

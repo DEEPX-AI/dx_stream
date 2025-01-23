@@ -24,16 +24,14 @@ if [ "$ACTION" = "build" ]; then
     fi
     DX_RT_TAR_PATH="$2"
     
-    cp "$DX_RT_TAR_PATH" "./$TAR_FILE"
     if [ ! -f "$DX_RT_TAR_PATH" ]; then
         echo "Error: Specified path '$DX_RT_TAR_PATH' does not exist."
         exit 1
     fi
-
+    echo "FILE PATH: $DX_RT_TAR_PATH"
     # Extract file name and copy to the current directory
     RT_FILE=$(basename "$DX_RT_TAR_PATH")
-    echo "FILE PATH: $TAR_FILE"
-    cp "$DX_RT_TAR_PATH" "./$TAR_FILE"
+    cp "$DX_RT_TAR_PATH" "./$RT_FILE"
 fi
 
 IMAGE_TAR_PATH=""
@@ -70,7 +68,6 @@ case $ACTION in
         # Run 'Docker build'
         export DOCKER_BUILDKIT=1
         sudo docker build $DXSTREAM_BUILD_OPTIONS
-        rm -f "./$TAR_FILE"
         ;;
     load)
         if [ ! -f "$IMAGE_TAR_PATH" ]; then

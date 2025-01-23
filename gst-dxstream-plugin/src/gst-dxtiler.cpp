@@ -1,6 +1,7 @@
 #include "gst-dxtiler.hpp"
 #include "gst-dxmeta.hpp"
 #include "utils.hpp"
+#include "utils/format_convert.hpp"
 #include <cmath>
 #include <json-glib/json-glib.h>
 #include <libyuv.h>
@@ -342,9 +343,14 @@ static GstFlowReturn gst_dxtiler_chain(GstPad *pad, GstObject *parent,
         newHeight = newWidth / ratioSrc;
     }
 
-    cv::Mat resizeFrame;
-    cv::resize(frame_meta->_rgb_surface, resizeFrame,
-               cv::Size(newWidth, newHeight), 0, 0, cv::INTER_LINEAR);
+    uint8_t *resized_frame =
+        Resize(frame_meta->_buf, frame_meta->_width, frame_meta->_height,
+               newWidth, newHeight, frame_meta->_format);
+    uint8_t *convert_frame = CvtColor(resized_frame, newWidth, newHeight,
+                                      frame_meta->_format, "RGB");
+    free(resized_frame);
+
+    cv::Mat resizeFrame = cv::Mat(newHeight, newWidth, CV_8UC3, convert_frame);
 
     int top = (int)round((self->_height - newHeight) / 2.0);
     int bottom = self->_height - newHeight - top;
@@ -357,7 +363,7 @@ static GstFlowReturn gst_dxtiler_chain(GstPad *pad, GstObject *parent,
     cv::Mat bgrxFrame(self->_height, self->_width, CV_8UC4);
     libyuv::RAWToARGB(resizeFrame.data, resizeFrame.step, bgrxFrame.data,
                       bgrxFrame.step, self->_width, self->_height);
-
+    free(convert_frame);
     int row = frame_meta->_stream_id / self->_cols;
     int col = frame_meta->_stream_id % self->_cols;
     int offset = (row * self->_height * stride) + (col * self->_width * 4);

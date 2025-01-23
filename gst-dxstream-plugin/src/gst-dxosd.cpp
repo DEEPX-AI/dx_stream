@@ -340,12 +340,20 @@ void draw_object_meta(cv::Mat &img, DXObjectMeta *obj_meta) {
 
 void draw(DXFrameMeta *frame_meta) {
     unsigned int object_length = g_list_length(frame_meta->_object_meta_list);
+
+    uint8_t *convert_frame =
+        CvtColor(frame_meta->_buf, frame_meta->_width, frame_meta->_height,
+                 frame_meta->_format, "RGB");
+    cv::Mat surface = cv::Mat(frame_meta->_height, frame_meta->_width, CV_8UC3,
+                              convert_frame);
     for (int i = 0; i < object_length; i++) {
         DXObjectMeta *obj_meta =
             (DXObjectMeta *)g_list_nth_data(frame_meta->_object_meta_list, i);
-        draw_object_meta(frame_meta->_rgb_surface, obj_meta);
+        draw_object_meta(surface, obj_meta);
     }
-    SurfaceToOrigin(frame_meta);
+    SurfaceToOrigin(frame_meta, convert_frame);
+    surface.release();
+    free(convert_frame);
 }
 
 static GstFlowReturn gst_dxosd_transform_ip(GstBaseTransform *trans,

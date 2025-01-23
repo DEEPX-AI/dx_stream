@@ -15,7 +15,6 @@ G_BEGIN_DECLS
 typedef struct _DXObjectMeta {
     GstMeta _meta;
     gint _meta_id;
-    gint _stream_id;
 
     // body
     gint _track_id;

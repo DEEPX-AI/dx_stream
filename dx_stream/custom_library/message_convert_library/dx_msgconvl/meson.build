@@ -5,15 +5,17 @@ gst_dep = dependency('gstreamer-1.0', version : '>=1.14',
 opencv_dep = dependency('opencv4', required: true)
 json_glib_dep = dependency('json-glib-1.0', version : '>= 1.0')
 
-dx_stream_inc = [include_directories('/usr/local/include/dx_stream')]
+dx_stream_dep = declare_dependency(
+    include_directories : include_directories('/usr/local/include/dx_stream'),
+    link_args : ['-L/usr/local/lib', '-lgstdxstream'],
+)
 
 dx_msgconvl_lib = shared_library('dx_msgconvl', 
     [
     'dx_msgconvl.cpp',
     'dx_msgconvl_priv.cpp'
     ],
-    include_directories: [dx_stream_inc],
-    dependencies : [gst_dep, opencv_dep, json_glib_dep],
+    dependencies : [gst_dep, opencv_dep, json_glib_dep, dx_stream_dep],
     install: true,
     install_dir: '/usr/local/lib'
 )
