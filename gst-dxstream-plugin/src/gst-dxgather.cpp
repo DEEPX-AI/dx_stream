@@ -194,10 +194,6 @@ static void gst_dxgather_release_pad(GstElement *element, GstPad *pad) {
 }
 
 void merge_object_meta(DXObjectMeta *obj_meta0, const DXObjectMeta *obj_meta1) {
-    if (obj_meta0->_stream_id == -1 && obj_meta1->_stream_id != -1) {
-        obj_meta0->_stream_id = obj_meta1->_stream_id;
-    }
-
     if (obj_meta0->_track_id == -1 && obj_meta1->_track_id != -1) {
         obj_meta0->_track_id = obj_meta1->_track_id;
     }
@@ -275,7 +271,6 @@ void copy_object_meta(DXObjectMeta *dest_object_meta,
     }
 
     dest_object_meta->_meta_id = src_object_meta->_meta_id;
-    dest_object_meta->_stream_id = src_object_meta->_stream_id;
 
     dest_object_meta->_track_id = src_object_meta->_track_id;
     dest_object_meta->_label = src_object_meta->_label;

@@ -260,33 +260,47 @@ static GstStateChangeReturn dxinfer_change_state(GstElement *element,
                 std::make_shared<dxrt::InferenceEngine>(self->_model_path);
             std::function<int(std::vector<std::shared_ptr<dxrt::Tensor>>,
                               void *)>
-                postProcCallBack =
-                    [&](std::vector<shared_ptr<dxrt::Tensor>> outputs,
-                        void *arg) {
-                        CallbackInput *callback_input =
-                            static_cast<CallbackInput *>(arg);
+                postProcCallBack = [&](std::vector<shared_ptr<dxrt::Tensor>>
+                                           outputs,
+                                       void *arg) {
+                    CallbackInput *callback_input =
+                        static_cast<CallbackInput *>(arg);
 
-                        GstBuffer *buf = callback_input->frame_meta->_buf;
-                        GstPad *srcpad = callback_input->self->_srcpad;
+                    GstBuffer *buf = callback_input->frame_meta->_buf;
+                    GstPad *srcpad = callback_input->self->_srcpad;
 
-                        callback_input->self->_postproc_function(
-                            outputs, callback_input->frame_meta,
-                            callback_input->object_meta);
+                    callback_input->self->_postproc_function(
+                        outputs, callback_input->frame_meta,
+                        callback_input->object_meta);
 
-                        callback_input->self->_pool.deallocate(
-                            outputs.front()->data());
-                        if (!callback_input->self->_secondary_mode) {
-                            std::unique_lock<std::mutex> lock(
-                                callback_input->self->_push_lock);
-                            if (callback_input->self->_push_running) {
-                                callback_input->self->_push_queue.push_back(
-                                    buf);
-                            }
+                    callback_input->self->_pool.deallocate(
+                        outputs.front()->data());
+                    if (!callback_input->self->_secondary_mode) {
+                        std::unique_lock<std::mutex> lock(
+                            callback_input->self->_push_lock);
+                        if (callback_input->self->_push_running) {
+                            callback_input->self->_push_queue.push_back(buf);
                         }
-                        callback_input->self->_push_cv.notify_one();
-                        delete callback_input;
-                        return 0;
-                    };
+                    }
+                    callback_input->self->_push_cv.notify_one();
+
+                    callback_input->self->_frame_count_for_fps++;
+                    if (callback_input->self->_frame_count_for_fps % 100 == 0) {
+                        auto end = std::chrono::high_resolution_clock::now();
+                        auto frameDuration = std::chrono::duration_cast<
+                            std::chrono::microseconds>(
+                            end - callback_input->self->_start_time);
+                        double frameTimeSec = frameDuration.count() / 1000000.0;
+                        double fps = 100.0 / frameTimeSec;
+
+                        g_print("[DXInfer]\tFPS : %f \n", fps);
+                        callback_input->self->_start_time =
+                            std::chrono::high_resolution_clock::now();
+                        callback_input->self->_frame_count_for_fps = 0;
+                    }
+                    delete callback_input;
+                    return 0;
+                };
             self->_ie->RegisterCallBack(postProcCallBack);
         }
         if (self->_ie != nullptr) {
@@ -325,8 +339,11 @@ static GstStateChangeReturn dxinfer_change_state(GstElement *element,
             }
         }
     } break;
-    case GST_STATE_CHANGE_PAUSED_TO_PLAYING:
+    case GST_STATE_CHANGE_PAUSED_TO_PLAYING: {
+        self->_start_time = std::chrono::high_resolution_clock::now();
+        self->_frame_count_for_fps = 0;
         break;
+    }
     case GST_STATE_CHANGE_PLAYING_TO_PAUSED:
         break;
     case GST_STATE_CHANGE_PAUSED_TO_READY: {
@@ -597,7 +614,7 @@ gint64 calculate_average(GQueue *queue) {
 static gpointer push_thread_func(GstDxInfer *self) {
     while (self->_push_running) {
         if (self->_push_queue.empty()) {
-            g_usleep(1000);
+            g_usleep(100);
             continue;
         }
         GstBuffer *push_buf = nullptr;
@@ -628,7 +645,7 @@ static gpointer inference_thread_func(GstDxInfer *self) {
     while (self->_running) {
         if (self->_buffer_queue.empty()) {
             self->_cv.notify_one();
-            g_usleep(1000);
+            g_usleep(100);
             continue;
         }
 
@@ -701,13 +718,14 @@ static gpointer inference_thread_func(GstDxInfer *self) {
 static GstFlowReturn gst_dxinfer_chain(GstPad *pad, GstObject *parent,
                                        GstBuffer *buf) {
     GstDxInfer *self = GST_DXINFER(parent);
+    DXFrameMeta *frame_meta =
+        (DXFrameMeta *)gst_buffer_get_meta(buf, DX_FRAME_META_API_TYPE);
+    if (!frame_meta) {
+        GST_ERROR_OBJECT(self, "[DXInfer] No DXFrameMeta in GstBuffer \n");
+        gst_buffer_unref(buf);
+        return GST_FLOW_ERROR;
+    }
     if (self->_secondary_mode) {
-        DXFrameMeta *frame_meta =
-            (DXFrameMeta *)gst_buffer_get_meta(buf, DX_FRAME_META_API_TYPE);
-        if (!frame_meta) {
-            GST_ERROR_OBJECT(self, "[DXInfer] No DXFrameMeta in GstBuffer \n");
-            gst_buffer_unref(buf);
-        }
         inference_async(self, frame_meta);
         GstFlowReturn ret = gst_pad_push(self->_srcpad, buf);
         if (ret != GST_FLOW_OK) {

@@ -514,7 +514,6 @@ void YOLOPostProcess(std::vector<shared_ptr<dxrt::Tensor>> network_output,
         y2 = std::min((float)origin_h, std::max((float)0.0, y2));
 
         DXObjectMeta *object_meta = dx_create_object_meta(frame_meta->_buf);
-        object_meta->_stream_id = frame_meta->_stream_id;
         object_meta->_confidence = ret.score;
         object_meta->_label = ret.label;
         object_meta->_label_name = g_string_new(ret.labelname.c_str());

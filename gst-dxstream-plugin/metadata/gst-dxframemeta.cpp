@@ -56,9 +56,6 @@ static gboolean dx_frame_meta_init(GstMeta *meta, gpointer params,
     dx_meta->_roi[2] = -1;
     dx_meta->_roi[3] = -1;
 
-    new (&dx_meta->_rgb_surface) cv::Mat();
-    dx_meta->_surface_pool = nullptr;
-
     return TRUE;
 }
 
@@ -94,12 +91,6 @@ static void dx_frame_meta_free(GstMeta *meta, GstBuffer *buffer) {
     dx_meta->_input_memory_pool.clear();
     dx_meta->_input_tensor.clear();
     dx_meta->_input_object_tensor.clear();
-
-    if (dx_meta->_surface_pool != NULL) {
-        dx_meta->_surface_pool->deallocate(
-            static_cast<void *>(dx_meta->_rgb_surface.data));
-        dx_meta->_surface_pool = nullptr;
-    }
 }
 
 void dx_frame_meta_copy(GstBuffer *src_buffer, DXFrameMeta *src_frame_meta,
@@ -119,15 +110,6 @@ void dx_frame_meta_copy(GstBuffer *src_buffer, DXFrameMeta *src_frame_meta,
     dst_frame_meta->_roi[2] = src_frame_meta->_roi[2];
     dst_frame_meta->_roi[3] = src_frame_meta->_roi[3];
 
-    dst_frame_meta->_surface_pool = src_frame_meta->_surface_pool;
-    if (dst_frame_meta->_surface_pool != NULL) {
-        dst_frame_meta->_rgb_surface =
-            cv::Mat(dst_frame_meta->_height, dst_frame_meta->_width, CV_8UC3,
-                    dst_frame_meta->_surface_pool->allocate());
-        memcpy(dst_frame_meta->_rgb_surface.data,
-               src_frame_meta->_rgb_surface.data,
-               dst_frame_meta->_surface_pool->get_block_size());
-    }
     dst_frame_meta->_input_memory_pool.clear();
     for (auto &pool : src_frame_meta->_input_memory_pool) {
         dst_frame_meta->_input_memory_pool[pool.first] = pool.second;

@@ -1,7 +1,9 @@
 #include "gst-dxpreprocess.hpp"
 #include "format_convert.hpp"
 #include "utils.hpp"
+#include <chrono>
 #include <dlfcn.h>
+#include <iostream>
 #include <json-glib/json-glib.h>
 #include <libyuv.h>
 
@@ -455,12 +457,6 @@ static void dxpreprocess_dispose(GObject *object) {
     self->_track_cnt.clear();
     self->_pool.deinitialize();
 
-    for (std::map<int, MemoryPool>::iterator it = self->_surface_pool.begin();
-         it != self->_surface_pool.end(); ++it) {
-        it->second.deinitialize();
-    }
-    self->_surface_pool.clear();
-
     G_OBJECT_CLASS(parent_class)->dispose(object);
 }
 
@@ -468,12 +464,6 @@ static void dxpreprocess_finalize(GObject *object) {
     GstDxPreprocess *self = GST_DXPREPROCESS(object);
 
     self->_pool.deinitialize();
-
-    for (std::map<int, MemoryPool>::iterator it = self->_surface_pool.begin();
-         it != self->_surface_pool.end(); ++it) {
-        it->second.deinitialize();
-    }
-    self->_surface_pool.clear();
 
     G_OBJECT_CLASS(parent_class)->finalize(object);
 }
@@ -613,6 +603,9 @@ static void gst_dxpreprocess_init(GstDxPreprocess *self) {
     self->_interval = 0;
     self->_cnt = 0;
 
+    self->_acc_fps = 0;
+    self->_frame_count_for_fps = 0;
+
     self->_roi[0] = -1;
     self->_roi[1] = -1;
     self->_roi[2] = -1;
@@ -624,14 +617,6 @@ static void gst_dxpreprocess_init(GstDxPreprocess *self) {
     self->_throttling_delay = 0;
 
     self->_pool_size = 1;
-    // self->_align_factor =
-    //     (64 - ((self->_resize_width * self->_input_channel) % 64)) % 64;
-    // // self->_pool.initialize(
-    // //     self->_resize_height *
-    // //         (self->_resize_width * self->_input_channel +
-    // self->_align_factor),
-    // //     self->_pool_size);
-    new (&self->_surface_pool) std::map<int, MemoryPool *>();
 }
 
 static gboolean gst_dxpreprocess_start(GstBaseTransform *trans) {
@@ -650,8 +635,8 @@ static gboolean gst_dxpreprocess_start(GstBaseTransform *trans) {
             self->_library_handle = NULL;
         }
 
-        self->_process_function =
-            (void (*)(cv::Mat, dxs::DXNetworkInput &, DXObjectMeta *))func_ptr;
+        self->_process_function = (void (*)(DXFrameMeta *, DXObjectMeta *,
+                                            dxs::DXNetworkInput &))func_ptr;
     }
 
     self->_align_factor =
@@ -672,14 +657,18 @@ static gboolean gst_dxpreprocess_stop(GstBaseTransform *trans) {
     return TRUE;
 }
 
-void preprocess_image(GstDxPreprocess *self, cv::Mat *src,
-                      dxs::DXNetworkInput &input_tensor, int align_factor) {
+void preprocess_image(GstDxPreprocess *self, DXFrameMeta *frame_meta,
+                      cv::Rect *roi, dxs::DXNetworkInput &input_tensor,
+                      int align_factor) {
     cv::Mat resizedFrame(self->_resize_height, self->_resize_width, CV_8UC3);
     if (self->_keep_ratio) {
         float dw, dh;
         uint16_t top, bottom, left, right;
         float ratioDest = (float)resizedFrame.cols / resizedFrame.rows;
-        float ratioSrc = (float)src->cols / src->rows;
+        float ratioSrc = (float)frame_meta->_width / frame_meta->_height;
+        if (roi) {
+            ratioSrc = (float)roi->width / roi->height;
+        }
         int newWidth, newHeight;
         if (ratioSrc < ratioDest) {
             newHeight = resizedFrame.rows;
@@ -688,9 +677,24 @@ void preprocess_image(GstDxPreprocess *self, cv::Mat *src,
             newWidth = resizedFrame.cols;
             newHeight = newWidth / ratioSrc;
         }
-        cv::Mat temp = cv::Mat(newHeight, newWidth, CV_8UC3);
-        cv::resize(*src, temp, cv::Size(newWidth, newHeight), 0, 0,
-                   cv::INTER_LINEAR);
+        uint8_t *resized_frame = nullptr;
+        if (roi) {
+            uint8_t *crop_frame = Crop(
+                frame_meta->_buf, frame_meta->_width, frame_meta->_height,
+                roi->x, roi->y, roi->width, roi->height, frame_meta->_format);
+            resized_frame = Resize(crop_frame, roi->width, roi->height,
+                                   newWidth, newHeight, frame_meta->_format);
+            free(crop_frame);
+        } else {
+            resized_frame = Resize(frame_meta->_buf, frame_meta->_width,
+                                   frame_meta->_height, newWidth, newHeight,
+                                   frame_meta->_format);
+        }
+        uint8_t *convert_frame =
+            CvtColor(resized_frame, newWidth, newHeight, frame_meta->_format,
+                     self->_color_format);
+        free(resized_frame);
+        cv::Mat temp = cv::Mat(newHeight, newWidth, CV_8UC3, convert_frame);
         dw = (resizedFrame.cols - temp.cols) / 2.0;
         dh = (resizedFrame.rows - temp.rows) / 2.0;
         top = (uint16_t)round(dh - 0.1);
@@ -701,10 +705,11 @@ void preprocess_image(GstDxPreprocess *self, cv::Mat *src,
             temp, resizedFrame, top, bottom, left, right, cv::BORDER_CONSTANT,
             cv::Scalar(self->_pad_value, self->_pad_value, self->_pad_value));
         temp.release();
+        free(convert_frame);
     } else {
-        cv::resize(*src, resizedFrame,
-                   cv::Size(self->_resize_width, self->_resize_height), 0, 0,
-                   cv::INTER_LINEAR);
+        uint8_t *resized_frame = Resize(
+            frame_meta->_buf, frame_meta->_width, frame_meta->_height,
+            self->_resize_width, self->_resize_height, frame_meta->_format);
     }
     for (int y = 0; y < self->_resize_height; y++) {
         memcpy(
@@ -774,27 +779,6 @@ void preproc(GstDxPreprocess *self, DXFrameMeta *frame_meta) {
     frame_meta->_input_memory_pool[self->_preprocess_id] =
         (MemoryPool *)&self->_pool;
 
-    if (frame_meta->_surface_pool == nullptr) {
-        if (self->_surface_pool.find(frame_meta->_stream_id) ==
-            self->_surface_pool.end()) {
-            self->_surface_pool[frame_meta->_stream_id] = MemoryPool();
-            self->_surface_pool[frame_meta->_stream_id].initialize(
-                sizeof(uint8_t) * frame_meta->_width * frame_meta->_height * 3,
-                self->_pool_size);
-        }
-
-        frame_meta->_surface_pool =
-            (MemoryPool *)&self->_surface_pool[frame_meta->_stream_id];
-    }
-    if (frame_meta->_rgb_surface.data == nullptr) {
-        frame_meta->_rgb_surface =
-            cv::Mat(frame_meta->_height, frame_meta->_width, CV_8UC3,
-                    frame_meta->_surface_pool->allocate());
-        set_surface(frame_meta);
-    }
-
-    cv::Mat originFrame = convert_color(frame_meta, self->_color_format);
-
     if (self->_roi[0] != -1) {
         frame_meta->_roi[0] = std::max(self->_roi[0], 0);
         frame_meta->_roi[1] = std::max(self->_roi[1], 0);
@@ -822,6 +806,13 @@ void preproc(GstDxPreprocess *self, DXFrameMeta *frame_meta) {
 
             if (frame_meta->_roi[0] != -1 &&
                 !check_object_roi(object_meta->_box, frame_meta->_roi)) {
+                continue;
+            }
+
+            if (object_meta->_box[2] - object_meta->_box[0] <
+                    self->_min_object_width ||
+                object_meta->_box[3] - object_meta->_box[1] <
+                    self->_min_object_height) {
                 continue;
             }
 
@@ -856,12 +847,6 @@ void preproc(GstDxPreprocess *self, DXFrameMeta *frame_meta) {
                 cv::Point(
                     std::min(int(object_meta->_box[2]), frame_meta->_width),
                     std::min(int(object_meta->_box[3]), frame_meta->_height)));
-            if (crop_region.width < self->_min_object_width ||
-                crop_region.height < self->_min_object_height) {
-                continue;
-            }
-
-            cv::Mat crop_img = originFrame(crop_region);
 
             frame_meta->_input_object_tensor[self->_preprocess_id]
                                             [(void *)object_meta] =
@@ -870,16 +855,15 @@ void preproc(GstDxPreprocess *self, DXFrameMeta *frame_meta) {
 
             if (self->_process_function == NULL) {
                 preprocess_image(
-                    self, &crop_img,
+                    self, frame_meta, &crop_region,
                     frame_meta->_input_object_tensor[self->_preprocess_id]
                                                     [(void *)object_meta],
                     self->_align_factor);
             } else {
                 self->_process_function(
-                    originFrame,
+                    frame_meta, object_meta,
                     frame_meta->_input_object_tensor[self->_preprocess_id]
-                                                    [(void *)object_meta],
-                    object_meta);
+                                                    [(void *)object_meta]);
             }
         }
         if (self->_cnt < self->_interval) {
@@ -891,32 +875,27 @@ void preproc(GstDxPreprocess *self, DXFrameMeta *frame_meta) {
     } else {
         frame_meta->_input_tensor[self->_preprocess_id] = dxs::DXNetworkInput(
             self->_pool.get_block_size(), self->_pool.allocate());
-        if (frame_meta->_roi[0] != -1) {
-            cv::Rect roi(cv::Point(frame_meta->_roi[0], frame_meta->_roi[1]),
-                         cv::Point(frame_meta->_roi[2], frame_meta->_roi[3]));
-            cv::Mat RoIFrame = originFrame(roi);
 
-            if (self->_process_function == NULL) {
+        if (self->_process_function == NULL) {
+            if (frame_meta->_roi[0] != -1) {
+                cv::Rect roi(
+                    cv::Point(frame_meta->_roi[0], frame_meta->_roi[1]),
+                    cv::Point(frame_meta->_roi[2], frame_meta->_roi[3]));
+
                 preprocess_image(
-                    self, &RoIFrame,
+                    self, frame_meta, &roi,
                     frame_meta->_input_tensor[self->_preprocess_id],
                     self->_align_factor);
             } else {
-                self->_process_function(
-                    RoIFrame, frame_meta->_input_tensor[self->_preprocess_id],
-                    nullptr);
+                preprocess_image(
+                    self, frame_meta, NULL,
+                    frame_meta->_input_tensor[self->_preprocess_id],
+                    self->_align_factor);
             }
         } else {
-            if (self->_process_function == NULL) {
-                preprocess_image(
-                    self, &originFrame,
-                    frame_meta->_input_tensor[self->_preprocess_id],
-                    self->_align_factor);
-            } else {
-                self->_process_function(
-                    originFrame,
-                    frame_meta->_input_tensor[self->_preprocess_id], nullptr);
-            }
+            self->_process_function(
+                frame_meta, nullptr,
+                frame_meta->_input_tensor[self->_preprocess_id]);
         }
     }
 }
@@ -954,6 +933,7 @@ static GstFlowReturn gst_dxpreprocess_transform_ip(GstBaseTransform *trans,
         }
     }
 
+    auto start = std::chrono::high_resolution_clock::now();
     DXFrameMeta *frame_meta =
         (DXFrameMeta *)gst_buffer_get_meta(buf, DX_FRAME_META_API_TYPE);
     if (!frame_meta) {
@@ -979,6 +959,20 @@ static GstFlowReturn gst_dxpreprocess_transform_ip(GstBaseTransform *trans,
     }
 
     preproc(self, frame_meta);
+
+    auto end = std::chrono::high_resolution_clock::now();
+    auto frameDuration =
+        std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    double frameTimeSec = frameDuration.count() / 1000000.0;
+    self->_acc_fps += 1.0 / frameTimeSec;
+    self->_frame_count_for_fps++;
+
+    if (self->_frame_count_for_fps % 100 == 0) {
+        g_print("[DxPreprocess]\tFPS : %f \n",
+                self->_acc_fps / self->_frame_count_for_fps);
+        self->_acc_fps = 0;
+        self->_frame_count_for_fps = 0;
+    }
 
     if (!self->_secondary_mode) {
         self->_cnt = 0;

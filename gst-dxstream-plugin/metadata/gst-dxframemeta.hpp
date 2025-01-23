@@ -26,16 +26,11 @@ struct _DXFrameMeta {
     gint _height;
     const gchar *_format;
     const gchar *_name;
-
-    cv::Mat _rgb_surface;
-
     gfloat _frame_rate;
 
     int _roi[4];
 
     GList *_object_meta_list;
-
-    MemoryPool *_surface_pool;
 
     std::map<int, MemoryPool *> _input_memory_pool;
 

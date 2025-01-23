@@ -18,7 +18,6 @@ struct _GstDxPreprocess {
     GstBaseTransform _parent_instance;
 
     MemoryPool _pool;
-    std::map<int, MemoryPool> _surface_pool;
 
     guint _pool_size;
     gchar *_config_file_path;
@@ -43,6 +42,8 @@ struct _GstDxPreprocess {
 
     guint _interval;
     guint _cnt;
+    guint _frame_count_for_fps;
+    double _acc_fps;
 
     GstClockTime _qos_timestamp;
     GstClockTimeDiff _qos_timediff;
@@ -51,7 +52,8 @@ struct _GstDxPreprocess {
     std::map<int, std::map<int, int>> _track_cnt;
 
     void *_library_handle;
-    void (*_process_function)(cv::Mat, dxs::DXNetworkInput &, DXObjectMeta *);
+    void (*_process_function)(DXFrameMeta *, DXObjectMeta *,
+                              dxs::DXNetworkInput &);
 };
 
 G_END_DECLS

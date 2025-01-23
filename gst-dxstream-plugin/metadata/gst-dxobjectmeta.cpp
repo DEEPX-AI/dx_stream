@@ -51,7 +51,6 @@ static gboolean dx_object_meta_init(GstMeta *meta, gpointer params,
     DXObjectMeta *dx_meta = (DXObjectMeta *)meta;
 
     dx_meta->_meta_id = generate_meta_id_uuid();
-    dx_meta->_stream_id = -1;
 
     // body
     dx_meta->_track_id = -1;
@@ -126,7 +125,6 @@ static gboolean dx_object_meta_transform(GstBuffer *dest, GstMeta *meta,
         (DXObjectMeta *)gst_buffer_add_meta(dest, DX_OBJECT_META_INFO, NULL);
 
     dest_object_meta->_meta_id = src_object_meta->_meta_id;
-    dest_object_meta->_stream_id = src_object_meta->_stream_id;
 
     dest_object_meta->_track_id = src_object_meta->_track_id;
     dest_object_meta->_label = src_object_meta->_label;
