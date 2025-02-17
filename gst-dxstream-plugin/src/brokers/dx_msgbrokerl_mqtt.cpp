@@ -119,7 +119,7 @@ static bool dxmsg_bal_is_valid_connInfo_mqtt(const char *conn_info,
 DxMsg_Bal_Handle_t dxmsg_bal_connect_mqtt(char *conn_info, char *cfg_path) {
     MqttClientInfo_t *pClient = g_new0(MqttClientInfo_t, 1);
     std::string host = "";
-    int port;
+    int port = 1883;
     int rc;
 
     GST_DEBUG_CATEGORY_INIT(broker, "broker", 0,

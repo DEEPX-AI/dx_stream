@@ -16,10 +16,10 @@ The inference pipeline in DX-Stream is composed of the following elements:
 - For custom preprocessing algorithms, a **Custom Pre-Process Library** can be built and integrated.
 - See the **dxpreprocess** section in the Elements documentation for details.
 
-**dxinfer**  
+**dxpostprocess**  
 
-- Uses the `input tensor` created by `dxpreprocess` and performs inference via **DX-RT**.
-- Refers to the `output tensor` created by `DX-RT` and executes the postprocessing algorithm defined in a custom library.
+- Uses the `input tensor` created by `dxpreprocess` and performs inference via dxinfer element (**DX-RT**).
+- Refers to the `output tensor` created by `dxinfer` and executes the postprocessing algorithm defined in a custom library.
 - Custom postprocessing is required for each model.
 - Examples for common vision tasks can be found in `/usr/share/dx-stream/src/dx_stream/custom_library`.
 
@@ -31,20 +31,22 @@ For models requiring additional preprocessing beyond the default functionality, 
 
 #### **Implementation Example**
 ```
-extern "C" void AlignFace(cv::Mat originFrame, DXNetworkInput &network_input,
-                          DXObjectMeta *object_meta) 
+extern "C" cv::Mat AlignFace(DXFrameMeta *frame_meta, DXObjectMeta *object_meta) 
 {
     // Preprocessing logic
 }
 ```
+- **DXFrameMeta**:
+
+  - You can access the original buffer through `frame_meta->_buf` and create an input image by copying the buffer.
 
 - **DXObjectMeta**:
+
   - In **Secondary Mode**, metadata for each object is passed to the preprocessing logic.
   - In **Primary Mode**, no metadata is passed (`nullptr`).
 
-- **DXNetworkInput**:
-  - The processed data must be written to the memory location provided by this type.
-  - Ensure that the image size processed by the custom library matches the size set in `GstDxPreprocess`.
+- **Return Type**:
+  - The return type is `cv::Mat`. The normalization of the input tensor is generally included in DXNN at compile time in DX-COM and processed by the NPU, so it is excluded from the preprocessing logic.
 
 #### **Library Integration**
 Build the custom library using a `meson.build` script:
@@ -99,7 +101,7 @@ The example shows three blobs with NHWC dimensions. Use this information to impl
 
 #### **Implementation Example**
 ```
-extern "C" void YOLOV5S_1(std::vector<shared_ptr<dxrt::Tensor>> network_output,
+extern "C" void YOLOV5S_1(std::vector<dxs::DXTensor> network_output,
                           DXFrameMeta *frame_meta, DXObjectMeta *object_meta)
 {
     // Convert output tensor to bounding box information
@@ -117,11 +119,6 @@ dx_stream_dep = declare_dependency(
     link_args : ['-L/usr/local/lib', '-lgstdxstream'],
 )
 
-dxrt_dep = declare_dependency(
-    include_directories : include_directories('/usr/local/include'),
-    link_args : ['-L/usr/local/lib', '-ldxrt'],
-)
-
 gst_dep = dependency('gstreamer-1.0', version : '>=1.14',
     required : true, fallback : ['gstreamer', 'gst_dep'])
 
@@ -135,7 +132,7 @@ yolo_postprocess_lib = shared_library('postprocess_yolo',
 )
 ```
 
-Specify the library path and function name in the JSON configuration file for `dxinfer`:
+Specify the library path and function name in the JSON configuration file for `dxpostprocess`:
 
 ```
 {

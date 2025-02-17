@@ -12,6 +12,7 @@ urisourcebin uri=file:///path/to/your/video_file ! decodebin ! mux.sink_3 \
 dxmuxer name=mux live-source=false ! \
 dxpreprocess config-file-path=/path/to/YOLOv7/preprocess_config.json ! \
 dxinfer config-file-path=/path/to/YOLOv7/infer_config.json ! \
+dxpostprocess config-file-path=/path/to/YOLOv7/postprocess_config.json ! \
 dxosd ! \
 dxtiler config-file-path=/path/to/tiler_config.json ! \
 fpsdisplaysink sync=false
@@ -34,6 +35,7 @@ fpsdisplaysink sync=false
 
 - **`dxpreprocess`**: Applies pre-processing according to the configuration file specified in the `config-file-path`.
 - **`dxinfer`**: Performs inference using the YOLOv7 model. The model configuration file path is specified in `config-file-path`.
+- **`dxpostprocess`**: Post-processes the model's output tensor to extract metadata. The configuration file path is specified in `config-file-path`.
 - **`dxosd`**: Visualizes the detection results, including bounding boxes, class labels, and confidence scores, by overlaying them on the video frames.
 - **`dxtiler`**: Arranges the frames from all input streams into a grid layout for display. The configuration file path is specified in `config-file-path`.
 - **`fpsdisplaysink`**: Displays the tiled video frames. The `sync=false` property ensures no frames are dropped.

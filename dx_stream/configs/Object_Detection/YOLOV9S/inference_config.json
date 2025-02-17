@@ -1,6 +1,5 @@
 {
     "preprocess_id": 1,
-    "model_path" : "./dx_stream/samples/models/yolov9s.dxnn",
-    "library_file_path": "/usr/share/dx-stream/lib/libpostprocess_yolo.so",
-    "function_name": "YOLOV9S"
+    "inference_id": 1,
+    "model_path" : "./dx_stream/samples/models/yolov9s.dxnn"
 }

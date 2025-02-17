@@ -12,6 +12,7 @@ urisourcebin uri=rtsp://[ip_address]:[port]/[stream_path] ! decodebin ! mux.sink
 dxmuxer name=mux live-source=true ! queue ! \
 dxpreprocess config-file-path=/path/to/YOLOv7/preprocess_config.json ! queue ! \
 dxinfer config-file-path=/path/to/YOLOv7/inference_config.json ! queue ! \
+dxpostprocess config-file-path=/path/to/YOLOv7/postprocess_config.json ! \
 dxosd ! queue ! \
 dxrate framerate=10 throttle=true ! \
 dxtiler config-file-path=/path/to/tiler_config.json ! queue ! \
@@ -45,6 +46,7 @@ fpsdisplaysink sync=true
 
 - **`dxpreprocess`**: Applies pre-processing according to the configuration file specified in the `config-file-path`.
 - **`dxinfer`**: Performs inference using the YOLOv7 model. The model configuration file path is specified in `config-file-path`.
+- **`dxpostprocess`**: Post-processes the model's output tensor to extract metadata. The configuration file path is specified in `config-file-path`.
 - **`dxosd`**: Visualizes the detection results, including bounding boxes, class labels, and confidence scores, by overlaying them on the video frames.
 - **`dxrate`**: Controls the frame rate. The `framerate` property is set to 10 FPS, and `throttle=true` enables NPU throttling to prevent unnecessary computations.
 - **`dxtiler`**: Arranges frames from all input streams into a tiled layout for display.

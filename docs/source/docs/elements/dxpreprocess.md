@@ -79,7 +79,7 @@ GObject
        +----GstObject
              +----GstElement
                    +----GstBaseTransform
-                         +----DxPreprocess
+                         +----GstDxPreprocess
 ```
 
 ---
@@ -122,5 +122,5 @@ GObject
 ---
 
 ### **Notes**
-- For custom preprocess logic, refer to the **Custom Pre-Process Library Documentation**.
+- For custom preprocess logic, refer to the [**Custom Pre-Process Library Documentation**](./../writing_your_own_application.md).
 - Properties can also be configured using JSON for user convenience.

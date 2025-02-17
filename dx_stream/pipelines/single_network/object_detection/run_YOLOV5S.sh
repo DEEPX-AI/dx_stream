@@ -23,6 +23,7 @@ for INPUT_VIDEO_PATH in "${INPUT_VIDEO_PATH_LIST[@]}"; do
     gst-launch-1.0 urisourcebin uri=file://$INPUT_VIDEO_PATH ! decodebin ! \
                     dxpreprocess config-file-path=$SRC_DIR/configs/Object_Detection/YOLOV5S_3/preprocess_config.json ! queue ! \
                     dxinfer config-file-path=$SRC_DIR/configs/Object_Detection/YOLOV5S_3/inference_config.json ! queue ! \
+                    dxpostprocess config-file-path=$SRC_DIR/configs/Object_Detection/YOLOV5S_3/postprocess_config.json ! queue ! \
                     dxosd ! queue ! \
                     fpsdisplaysink sync=false
 done

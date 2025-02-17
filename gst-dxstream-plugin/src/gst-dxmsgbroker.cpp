@@ -296,7 +296,6 @@ static gboolean gst_dxmsgbroker_stop(GstBaseSink *sink) {
 static GstFlowReturn gst_dxmsgbroker_render(GstBaseSink *sink,
                                             GstBuffer *buffer) {
     GstDxMsgMeta *meta;
-    guint64 frame_count = 0;
     GstDxMsgBroker *self = GST_DXMSGBROKER(sink);
 
     // GST_TRACE_OBJECT(self, "|JCP| render");

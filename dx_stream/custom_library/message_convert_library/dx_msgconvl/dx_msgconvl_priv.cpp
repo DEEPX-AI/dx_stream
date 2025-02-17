@@ -209,7 +209,7 @@ gchar *dxpayload_convert_to_json(DxMsgContext *context,
     json_object_set_array_member(jobj_root, "objects", jarray_objects);
 
     unsigned int object_length = g_list_length(frame_meta->_object_meta_list);
-    for (int i = 0; i < object_length; i++) {
+    for (size_t i = 0; i < object_length; i++) {
         DXObjectMeta *obj_meta =
             (DXObjectMeta *)g_list_nth_data(frame_meta->_object_meta_list, i);
 

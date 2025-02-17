@@ -9,6 +9,7 @@ urisourcebin uri=rtsp://[ip_address]:[port]/[stream_path] ! \
 decodebin ! \
 dxpreprocess config-file-path=/path/to/YOLOv7/preprocess_config.json ! \
 dxinfer config-file-path=/path/to/YOLOv7/infer_config.json ! \
+dxpostprocess config-file-path=/path/to/YOLOv7/postprocess_config.json ! \
 dxosd ! \
 fpsdisplaysink sync=true
 ```
@@ -27,6 +28,7 @@ fpsdisplaysink sync=true
 - **`decodebin`**: Decodes the video stream from the RTSP source.
 - **`dxpreprocess`**: Applies pre-processing according to the configuration file specified in the config-file-path.
 - **`dxinfer`**: Performs inference using the YOLOv7 model. The model configuration file path is specified in `config-file-path`.
+- **`dxpostprocess`**: Post-processes the model's output tensor to extract metadata. The configuration file path is specified in `config-file-path`.
 - **`dxosd`**: Visualizes the detection results, including bounding boxes, class labels, and confidence scores, by overlaying them on the video frames.
 - **`fpsdisplaysink`**: Displays the video frames with synchronization (`sync=true`) to match the real-time playback timing.
 
@@ -49,7 +51,7 @@ fpsdisplaysink sync=true
 
 **Custom Models**
 
-- You can adapt this pipeline to other object detection models or tasks by updating the `config-file-path` properties for `dxpreprocess` and `dxinfer` to point to the appropriate configuration files.
+- You can adapt this pipeline to other object detection models or tasks by updating the `config-file-path` properties for `dxpreprocess`, `dxinfer` and `postprocess` to point to the appropriate configuration files.
 
 **Sink Element Options**
 

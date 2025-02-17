@@ -1,5 +1,4 @@
 #include "dxcommon.hpp"
-#include "dxrt/dxrt_api.h"
 #include "gst-dxmeta.hpp"
 #include <cmath>
 #include <numeric>
@@ -39,24 +38,23 @@ std::vector<float> getSoftmax(float *data, int size) {
     return result;
 }
 
-void Classification(std::vector<shared_ptr<dxrt::Tensor>> outputs,
-                    DXFrameMeta *frame_meta, DXObjectMeta *object_meta,
-                    classificationParams &params) {
+void Classification(std::vector<dxs::DXTensor> outputs, DXFrameMeta *frame_meta,
+                    DXObjectMeta *object_meta, classificationParams &params) {
 
     if (params.needArgmax) {
         std::vector<float> scores =
-            getSoftmax((float *)outputs.front()->data(), params.numClasses);
+            getSoftmax((float *)outputs[0]._data, params.numClasses);
         object_meta->_label = getArgmax(scores.data(), params.numClasses);
     } else {
-        object_meta->_label = *(uint16_t *)outputs.front()->data();
+        object_meta->_label = *(uint16_t *)outputs[0]._data;
     }
     object_meta->_label_name =
         g_string_new(params.classNames[object_meta->_label].c_str());
 }
 
-extern "C" void
-PostProcess(std::vector<shared_ptr<dxrt::Tensor>> network_output,
-            DXFrameMeta *frame_meta, DXObjectMeta *object_meta) {
+extern "C" void PostProcess(std::vector<dxs::DXTensor> network_output,
+                            DXFrameMeta *frame_meta,
+                            DXObjectMeta *object_meta) {
 
     classificationParams params = {
         .needArgmax = false,

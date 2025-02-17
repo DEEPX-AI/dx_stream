@@ -145,22 +145,24 @@ static void gst_dxmsgconv_class_init(GstDxMsgConvClass *klass) {
 
     g_object_class_install_property(
         gobject_class, PROP_LIBRARY_FILE_PATH,
-        g_param_spec_string("library-file-path", "Library File Path",
-                            "Path to the custom message converter library. Required.",
-                            NULL, G_PARAM_READWRITE));
+        g_param_spec_string(
+            "library-file-path", "Library File Path",
+            "Path to the custom message converter library. Required.", NULL,
+            G_PARAM_READWRITE));
 
     g_object_class_install_property(
         gobject_class, PROP_MESSAGE_INTERVAL,
-        g_param_spec_int("message-interval", "Message Interval",
-                         "Frame interval at which message is converted (optional).", 1,
-                         10000, 1, G_PARAM_READWRITE));
+        g_param_spec_int(
+            "message-interval", "Message Interval",
+            "Frame interval at which message is converted (optional).", 1,
+            10000, 1, G_PARAM_READWRITE));
 
     g_object_class_install_property(
         gobject_class, PROP_INCLUDE_FRAME,
         g_param_spec_boolean(
             "include-frame", "Include Frame",
-            "Flag whether to include frame data in the message. (optional).", FALSE,
-            G_PARAM_READWRITE));
+            "Flag whether to include frame data in the message. (optional).",
+            FALSE, G_PARAM_READWRITE));
 
     gst_element_class_add_pad_template(
         GST_ELEMENT_CLASS(klass),
@@ -267,7 +269,7 @@ void convert(GstDxMsgConv *self, DXFrameMeta *frame_meta, GstBuffer *buf) {
         // GST_INFO_OBJECT(self, "|JSON-Conv(%p)| %s", payload,
         //                 (gchar *)payload->_data);
 
-        GstDxMsgMeta *dxmsg_meta = gst_buffer_add_dxmsg_meta(buf, payload);
+        gst_buffer_add_dxmsg_meta(buf, payload);
         /* currently use gst_dxmsg_meta_free instead of this */
         // self->_release_payload_function(self->_context, payload);
 
@@ -280,8 +282,6 @@ void convert(GstDxMsgConv *self, DXFrameMeta *frame_meta, GstBuffer *buf) {
 static GstFlowReturn gst_dxmsgconv_transform_ip(GstBaseTransform *trans,
                                                 GstBuffer *buf) {
     GstDxMsgConv *self = GST_DXMSGCONV(trans);
-
-    const gchar *media_type = get_buffer_meta_type(GST_ELEMENT(trans));
 
     self->_seq_id++;
 

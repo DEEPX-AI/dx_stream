@@ -1,7 +1,7 @@
 
 The following pipeline demonstrates how to process a video file using the YOLOv7 model for object detection, visualize the results, convert metadata into a message format, and publish the messages to a broker server:
 
-![](./../../resources/msgconv_msgbroker.png)
+![](./../../resources/pipeline_msgconv_msgbroker.png)
 
 ```bash
 gst-launch-1.0 \
@@ -133,17 +133,33 @@ The server application, which receives data from the MQTT, KAFKA pipeline to log
 
     Runs an MQTT server that logs the messages received.
 
+    ```
+    python3 /usr/share/dx-stream/bin/mqtt_sub_example.py -p <PORT> -n <HOSTNAME> -t <TOPIC>
+    ```
+
 - mqtt_sub_example_frame.py
 
     Displays frames included in the messages using OpenCV.
     (Note: The include_frame option in the DxMsgConv config JSON must be set to true for this feature to work.)
 
+    ```
+    python3 /usr/share/dx-stream/bin/mqtt_sub_example_frame.py -p <PORT> -n <HOSTNAME> -t <TOPIC>
+    ```
+
 - kafka_consume_example.py (kafka_consume_example)
 
-    Runs an KAFKA server that logs the messages received.
+    Runs an KAFKA server that logs the messages received. ([install & run Apache Kafka server](./broker_kafka.md))
+
+    ```
+    python3 /usr/share/dx-stream/bin/kafka_consume_example.py <HOSTNAME> <TOPIC>
+    ```
 
 - kafka_consume_example_frame.py
 
     Displays frames included in the messages using OpenCV.
     (Note: The include_frame option in the DxMsgConv config JSON must be set to true for this feature to work.)
+
+    ```
+    python3 /usr/share/dx-stream/bin/kafka_consume_example_frame.py <HOSTNAME> <TOPIC>
+    ```
 

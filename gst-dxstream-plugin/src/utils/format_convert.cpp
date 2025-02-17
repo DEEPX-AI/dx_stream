@@ -313,7 +313,7 @@ uint8_t *CvtColor(GstBuffer *buf, int width, int height,
             memcpy(dst, src, width * height * 3);
         } else if (g_strcmp0(dst_format, "BGR") == 0) {
             dst = (uint8_t *)malloc(width * height * 3);
-            int result =
+            result =
                 libyuv::RAWToRGB24(src, stride, dst, stride, width, height);
         } else {
             g_printerr("Not support color format \n");
@@ -335,12 +335,11 @@ uint8_t *CvtColor(GstBuffer *buf, int width, int height,
         }
         if (g_strcmp0(dst_format, "RGB") == 0) {
             dst = (uint8_t *)malloc(width * height * 3);
-            int result =
-                libyuv::I420ToRAW(src_y, strideY, src_u, strideU, src_v,
-                                  strideV, dst, width * 3, width, height);
+            result = libyuv::I420ToRAW(src_y, strideY, src_u, strideU, src_v,
+                                       strideV, dst, width * 3, width, height);
         } else if (g_strcmp0(dst_format, "BGR") == 0) {
             dst = (uint8_t *)malloc(width * height * 3);
-            int result =
+            result =
                 libyuv::I420ToRGB24(src_y, strideY, src_u, strideU, src_v,
                                     strideV, dst, width * 3, width, height);
         } else {
@@ -359,12 +358,12 @@ uint8_t *CvtColor(GstBuffer *buf, int width, int height,
         }
         if (g_strcmp0(dst_format, "RGB") == 0) {
             dst = (uint8_t *)malloc(width * height * 3);
-            int result = libyuv::NV12ToRAW(src_y, strideY, src_uv, strideUV,
-                                           dst, width * 3, width, height);
+            result = libyuv::NV12ToRAW(src_y, strideY, src_uv, strideUV, dst,
+                                       width * 3, width, height);
         } else if (g_strcmp0(dst_format, "BGR") == 0) {
             dst = (uint8_t *)malloc(width * height * 3);
-            int result = libyuv::NV12ToRGB24(src_y, strideY, src_uv, strideUV,
-                                             dst, width * 3, width, height);
+            result = libyuv::NV12ToRGB24(src_y, strideY, src_uv, strideUV, dst,
+                                         width * 3, width, height);
         } else {
             g_printerr("Not support color format \n");
         }
@@ -385,27 +384,29 @@ uint8_t *CvtColor(uint8_t *src, int width, int height, const gchar *src_format,
                   const gchar *dst_format) {
 
     uint8_t *dst = nullptr;
+    int ret = 1;
     if (g_strcmp0(src_format, "RGB") == 0) {
         if (g_strcmp0(dst_format, "RGB") == 0) {
             dst = (uint8_t *)malloc(width * height * 3);
             memcpy(dst, src, width * height * 3);
+            ret = true;
         } else if (g_strcmp0(dst_format, "BGR") == 0) {
             dst = (uint8_t *)malloc(width * height * 3);
-            int result = libyuv::RAWToRGB24(src, width * 3, dst, width * 3,
-                                            width, height);
+            ret = libyuv::RAWToRGB24(src, width * 3, dst, width * 3, width,
+                                     height);
         } else {
             g_printerr("Not support color format \n");
         }
     } else if (g_strcmp0(src_format, "I420") == 0) {
         if (g_strcmp0(dst_format, "RGB") == 0) {
             dst = (uint8_t *)malloc(width * height * 3);
-            int result = libyuv::I420ToRAW(
-                src, width, src + width * height, width / 2,
-                (src + width * height) + (width / 2) * (height / 2), width / 2,
-                dst, width * 3, width, height);
+            ret = libyuv::I420ToRAW(src, width, src + width * height, width / 2,
+                                    (src + width * height) +
+                                        (width / 2) * (height / 2),
+                                    width / 2, dst, width * 3, width, height);
         } else if (g_strcmp0(dst_format, "BGR") == 0) {
             dst = (uint8_t *)malloc(width * height * 3);
-            int result = libyuv::I420ToRGB24(
+            ret = libyuv::I420ToRGB24(
                 src, width, src + width * height, width / 2,
                 (src + width * height) + (width / 2) * (height / 2), width / 2,
                 dst, width * 3, width, height);
@@ -415,19 +416,20 @@ uint8_t *CvtColor(uint8_t *src, int width, int height, const gchar *src_format,
     } else if (g_strcmp0(src_format, "NV12") == 0) {
         if (g_strcmp0(dst_format, "RGB") == 0) {
             dst = (uint8_t *)malloc(width * height * 3);
-            int result =
-                libyuv::NV12ToRAW(src, width, src + width * height, width, dst,
-                                  width * 3, width, height);
+            ret = libyuv::NV12ToRAW(src, width, src + width * height, width,
+                                    dst, width * 3, width, height);
         } else if (g_strcmp0(dst_format, "BGR") == 0) {
             dst = (uint8_t *)malloc(width * height * 3);
-            int result =
-                libyuv::NV12ToRGB24(src, width, src + width * height, width,
-                                    dst, width * 3, width, height);
+            ret = libyuv::NV12ToRGB24(src, width, src + width * height, width,
+                                      dst, width * 3, width, height);
         } else {
             g_printerr("Not support color format \n");
         }
     } else {
         g_printerr("Not support color format \n");
+    }
+    if (ret != 0) {
+        g_printerr("Failed to Convert Color \n");
     }
     return dst;
 }

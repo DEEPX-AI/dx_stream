@@ -327,7 +327,6 @@ static GstFlowReturn gst_dxtiler_chain(GstPad *pad, GstObject *parent,
     }
 
     int totalWidth = self->_cols * self->_width;
-    int totalHeight = self->_rows * self->_height;
 
     int stride = totalWidth * 4;
 
@@ -372,7 +371,7 @@ static GstFlowReturn gst_dxtiler_chain(GstPad *pad, GstObject *parent,
         std::unique_lock<std::mutex> lock(self->_buffer_lock);
         GstMapInfo map_output;
         if (!gst_buffer_is_writable(self->_outbuffer)) {
-            gst_buffer_make_writable(self->_outbuffer);
+            buf = gst_buffer_make_writable(self->_outbuffer);
         }
         gst_buffer_map(self->_outbuffer, &map_output, GST_MAP_WRITE);
         copyMatToGstBuffer(bgrxFrame, map_output, offset, stride);

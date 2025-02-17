@@ -12,6 +12,10 @@ Rendering in GStreamer is generally performed using a sink element. If the speci
 
 - For CPU-based environments, ximagesink or xvimagesink can be used.
 - For GPU-based environments, glimagesink or similar elements are recommended.
+- Add videoconvert before display sink element
+    ```
+    $ gst-launch-1.0 ..... ! videoconvert ! autovideosink
+    ```
 
 ### Buffer Delays in Sink Element
 

@@ -210,7 +210,7 @@ static void parse_config(GstDxPreprocess *self) {
                 for (guint i = 0; i < length; i++) {
                     JsonNode *node = json_array_get_element(roi_array, i);
                     if (!JSON_NODE_HOLDS_VALUE(node) ||
-                        !json_node_get_value_type(node) == G_TYPE_INT) {
+                        json_node_get_value_type(node) != G_TYPE_INT) {
                         g_printerr(
                             "ROI array must contain only integer values.\n");
                         return;
@@ -405,7 +405,7 @@ static void dxpreprocess_get_property(GObject *object, guint property_id,
 
     case PROP_ROI: {
         GValue list = G_VALUE_INIT;
-        g_value_init(&list, G_TYPE_VALUE_ARRAY);
+        g_value_init(&list, G_TYPE_ARRAY);
 
         for (size_t i = 0; i < 4; i++) {
             GValue val = G_VALUE_INIT;
@@ -454,6 +454,8 @@ static void dxpreprocess_dispose(GObject *object) {
         dlclose(self->_library_handle);
         self->_library_handle = NULL;
     }
+    g_free(self->_color_format);
+
     self->_track_cnt.clear();
     self->_pool.deinitialize();
 
@@ -590,7 +592,7 @@ static void gst_dxpreprocess_class_init(GstDxPreprocessClass *klass) {
 static void gst_dxpreprocess_init(GstDxPreprocess *self) {
     self->_config_file_path = NULL;
     self->_preprocess_id = 0;
-    self->_color_format = "RGB";
+    self->_color_format = g_strdup("RGB");
     self->_resize_width = 0;
     self->_resize_height = 0;
     self->_input_channel = 3;
@@ -635,8 +637,8 @@ static gboolean gst_dxpreprocess_start(GstBaseTransform *trans) {
             self->_library_handle = NULL;
         }
 
-        self->_process_function = (void (*)(DXFrameMeta *, DXObjectMeta *,
-                                            dxs::DXNetworkInput &))func_ptr;
+        self->_process_function =
+            (cv::Mat(*)(DXFrameMeta *, DXObjectMeta *))func_ptr;
     }
 
     self->_align_factor =
@@ -657,10 +659,9 @@ static gboolean gst_dxpreprocess_stop(GstBaseTransform *trans) {
     return TRUE;
 }
 
-void preprocess_image(GstDxPreprocess *self, DXFrameMeta *frame_meta,
-                      cv::Rect *roi, dxs::DXNetworkInput &input_tensor,
-                      int align_factor) {
-    cv::Mat resizedFrame;
+cv::Mat preprocess_image(GstDxPreprocess *self, DXFrameMeta *frame_meta,
+                         cv::Rect *roi) {
+    cv::Mat resizedFrame(self->_resize_height, self->_resize_width, CV_8UC3);
     uint8_t *convert_frame = nullptr;
     uint8_t *resized_frame = nullptr;
     if (self->_keep_ratio) {
@@ -701,8 +702,8 @@ void preprocess_image(GstDxPreprocess *self, DXFrameMeta *frame_meta,
         bottom = (uint16_t)round(dh + 0.1);
         left = (uint16_t)round(dw - 0.1);
         right = (uint16_t)round(dw + 0.1);
-        resizedFrame =
-            cv::Mat(self->_resize_height, self->_resize_width, CV_8UC3);
+        // resizedFrame =
+        //     cv::Mat(self->_resize_height, self->_resize_width, CV_8UC3);
         cv::copyMakeBorder(
             temp, resizedFrame, top, bottom, left, right, cv::BORDER_CONSTANT,
             cv::Scalar(self->_pad_value, self->_pad_value, self->_pad_value));
@@ -714,19 +715,15 @@ void preprocess_image(GstDxPreprocess *self, DXFrameMeta *frame_meta,
         convert_frame =
             CvtColor(resized_frame, self->_resize_width, self->_resize_height,
                      frame_meta->_format, self->_color_format);
-        resizedFrame = cv::Mat(self->_resize_height, self->_resize_width,
-                               CV_8UC3, convert_frame);
+        // resizedFrame = cv::Mat(self->_resize_height, self->_resize_width,
+        //                        CV_8UC3, convert_frame);
+        memcpy(resizedFrame.data, convert_frame,
+               self->_resize_height * self->_resize_width * 3);
     }
-    for (int y = 0; y < self->_resize_height; y++) {
-        memcpy(
-            input_tensor._data +
-                y * (self->_resize_width * self->_input_channel + align_factor),
-            resizedFrame.data + y * self->_resize_width * self->_input_channel,
-            self->_resize_width * self->_input_channel);
-    }
-    resizedFrame.release();
+    // resizedFrame.release();
     free(resized_frame);
     free(convert_frame);
+    return resizedFrame;
 }
 
 bool check_object_roi(float *box, int *roi) {
@@ -777,16 +774,65 @@ static gboolean gst_dxpreprocess_src_event(GstBaseTransform *trans,
     return GST_BASE_TRANSFORM_CLASS(parent_class)->src_event(trans, event);
 }
 
-void preproc(GstDxPreprocess *self, DXFrameMeta *frame_meta) {
-    if (frame_meta->_input_memory_pool.find(self->_preprocess_id) !=
-        frame_meta->_input_memory_pool.end()) {
-        g_error("Preprocess ID %d already exists in the frame meta. check your "
-                "pipeline",
-                self->_preprocess_id);
+bool check_object(GstDxPreprocess *self, DXFrameMeta *frame_meta,
+                  DXObjectMeta *object_meta) {
+    if (self->_target_class_id != -1 &&
+        object_meta->_label != self->_target_class_id) {
+        return false;
     }
-    frame_meta->_input_memory_pool[self->_preprocess_id] =
-        (MemoryPool *)&self->_pool;
 
+    if (frame_meta->_roi[0] != -1 &&
+        !check_object_roi(object_meta->_box, frame_meta->_roi)) {
+        return false;
+    }
+
+    if (object_meta->_box[2] - object_meta->_box[0] < self->_min_object_width ||
+        object_meta->_box[3] - object_meta->_box[1] <
+            self->_min_object_height) {
+        return false;
+    }
+
+    if (object_meta->_track_id != -1) {
+        if (self->_track_cnt[frame_meta->_stream_id].count(
+                object_meta->_track_id) > 0) {
+            self->_track_cnt[frame_meta->_stream_id][object_meta->_track_id] +=
+                1;
+        } else {
+            self->_track_cnt[frame_meta->_stream_id][object_meta->_track_id] =
+                0;
+        }
+
+        if (self->_track_cnt[frame_meta->_stream_id][object_meta->_track_id] <
+            static_cast<int>(self->_interval)) {
+            return false;
+        }
+
+        self->_track_cnt[frame_meta->_stream_id][object_meta->_track_id] = 0;
+    } else {
+        // untracked
+        if (self->_cnt < self->_interval) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void add_dummy_data(GstDxPreprocess *self, void *src, void *dst) {
+    for (size_t y = 0; y < (size_t)self->_resize_height; y++) {
+        memcpy(static_cast<uint8_t *>(dst) +
+                   y * (static_cast<int>(self->_resize_width) *
+                            static_cast<int>(self->_input_channel) +
+                        self->_align_factor),
+               static_cast<uint8_t *>(src) +
+                   y * static_cast<int>(self->_resize_width) *
+                       static_cast<int>(self->_input_channel),
+               static_cast<int>(self->_resize_width) *
+                   static_cast<int>(self->_input_channel));
+    }
+}
+
+bool preproc(GstDxPreprocess *self, DXFrameMeta *frame_meta) {
+    bool processed = false;
     if (self->_roi[0] != -1) {
         frame_meta->_roi[0] = std::max(self->_roi[0], 0);
         frame_meta->_roi[1] = std::max(self->_roi[1], 0);
@@ -798,55 +844,26 @@ void preproc(GstDxPreprocess *self, DXFrameMeta *frame_meta) {
         self->_track_cnt[frame_meta->_stream_id] = std::map<int, int>();
     }
 
+    cv::Mat resized_frame;
+
     if (self->_secondary_mode) {
         int objects_size = g_list_length(frame_meta->_object_meta_list);
-        frame_meta->_input_object_tensor[self->_preprocess_id] =
-            std::map<void *, dxs::DXNetworkInput>();
-        frame_meta->_input_object_tensor[self->_preprocess_id].clear();
         for (int o = 0; o < objects_size; o++) {
             DXObjectMeta *object_meta = (DXObjectMeta *)g_list_nth_data(
                 frame_meta->_object_meta_list, o);
 
-            if (self->_target_class_id != -1 &&
-                object_meta->_label != self->_target_class_id) {
-                continue;
+            if (object_meta->_input_memory_pool.find(self->_preprocess_id) !=
+                object_meta->_input_memory_pool.end()) {
+                g_error("Preprocess ID %d already exists in the object meta. "
+                        "check your "
+                        "pipeline",
+                        self->_preprocess_id);
             }
+            object_meta->_input_memory_pool[self->_preprocess_id] =
+                (MemoryPool *)&self->_pool;
 
-            if (frame_meta->_roi[0] != -1 &&
-                !check_object_roi(object_meta->_box, frame_meta->_roi)) {
+            if (!check_object(self, frame_meta, object_meta)) {
                 continue;
-            }
-
-            if (object_meta->_box[2] - object_meta->_box[0] <
-                    self->_min_object_width ||
-                object_meta->_box[3] - object_meta->_box[1] <
-                    self->_min_object_height) {
-                continue;
-            }
-
-            if (object_meta->_track_id != -1) {
-                if (self->_track_cnt[frame_meta->_stream_id].count(
-                        object_meta->_track_id) > 0) {
-                    self->_track_cnt[frame_meta->_stream_id]
-                                    [object_meta->_track_id] += 1;
-                } else {
-                    self->_track_cnt[frame_meta->_stream_id]
-                                    [object_meta->_track_id] = 0;
-                }
-
-                if (self->_track_cnt[frame_meta->_stream_id]
-                                    [object_meta->_track_id] <
-                    self->_interval) {
-                    continue;
-                }
-
-                self->_track_cnt[frame_meta->_stream_id]
-                                [object_meta->_track_id] = 0;
-            } else {
-                // untracked
-                if (self->_cnt < self->_interval) {
-                    continue;
-                }
             }
 
             cv::Rect crop_region(
@@ -856,33 +873,42 @@ void preproc(GstDxPreprocess *self, DXFrameMeta *frame_meta) {
                     std::min(int(object_meta->_box[2]), frame_meta->_width),
                     std::min(int(object_meta->_box[3]), frame_meta->_height)));
 
-            frame_meta->_input_object_tensor[self->_preprocess_id]
-                                            [(void *)object_meta] =
-                dxs::DXNetworkInput(self->_pool.get_block_size(),
-                                    self->_pool.allocate());
-
             if (self->_process_function == NULL) {
-                preprocess_image(
-                    self, frame_meta, &crop_region,
-                    frame_meta->_input_object_tensor[self->_preprocess_id]
-                                                    [(void *)object_meta],
-                    self->_align_factor);
+                resized_frame =
+                    preprocess_image(self, frame_meta, &crop_region);
             } else {
-                self->_process_function(
-                    frame_meta, object_meta,
-                    frame_meta->_input_object_tensor[self->_preprocess_id]
-                                                    [(void *)object_meta]);
+                resized_frame =
+                    self->_process_function(frame_meta, object_meta);
             }
+            dxs::DXTensor new_tensor;
+            new_tensor._data = self->_pool.allocate();
+
+            add_dummy_data(self, resized_frame.data, new_tensor._data);
+
+            new_tensor._type = dxs::DataType::UINT8;
+            new_tensor._name = "input";
+            new_tensor._shape.push_back(self->_resize_height);
+            new_tensor._shape.push_back(self->_resize_width);
+            new_tensor._shape.push_back(self->_input_channel);
+            new_tensor._elemSize = 1;
+            object_meta->_input_tensor[self->_preprocess_id] = new_tensor;
+            processed = true;
         }
         if (self->_cnt < self->_interval) {
             self->_cnt += 1;
-            return;
         } else {
             self->_cnt = 0;
         }
     } else {
-        frame_meta->_input_tensor[self->_preprocess_id] = dxs::DXNetworkInput(
-            self->_pool.get_block_size(), self->_pool.allocate());
+        if (frame_meta->_input_memory_pool.find(self->_preprocess_id) !=
+            frame_meta->_input_memory_pool.end()) {
+            g_error(
+                "Preprocess ID %d already exists in the frame meta. check your "
+                "pipeline",
+                self->_preprocess_id);
+        }
+        frame_meta->_input_memory_pool[self->_preprocess_id] =
+            (MemoryPool *)&self->_pool;
 
         if (self->_process_function == NULL) {
             if (frame_meta->_roi[0] != -1) {
@@ -890,22 +916,28 @@ void preproc(GstDxPreprocess *self, DXFrameMeta *frame_meta) {
                     cv::Point(frame_meta->_roi[0], frame_meta->_roi[1]),
                     cv::Point(frame_meta->_roi[2], frame_meta->_roi[3]));
 
-                preprocess_image(
-                    self, frame_meta, &roi,
-                    frame_meta->_input_tensor[self->_preprocess_id],
-                    self->_align_factor);
+                resized_frame = preprocess_image(self, frame_meta, &roi);
             } else {
-                preprocess_image(
-                    self, frame_meta, NULL,
-                    frame_meta->_input_tensor[self->_preprocess_id],
-                    self->_align_factor);
+                resized_frame = preprocess_image(self, frame_meta, NULL);
             }
         } else {
-            self->_process_function(
-                frame_meta, nullptr,
-                frame_meta->_input_tensor[self->_preprocess_id]);
+            resized_frame = self->_process_function(frame_meta, nullptr);
         }
+        dxs::DXTensor new_tensor;
+        new_tensor._data = self->_pool.allocate();
+
+        add_dummy_data(self, resized_frame.data, new_tensor._data);
+
+        new_tensor._type = dxs::DataType::UINT8;
+        new_tensor._name = "input";
+        new_tensor._shape.push_back(self->_resize_height);
+        new_tensor._shape.push_back(self->_resize_width);
+        new_tensor._shape.push_back(self->_input_channel);
+        new_tensor._elemSize = 1;
+        frame_meta->_input_tensor[self->_preprocess_id] = new_tensor;
+        processed = true;
     }
+    return processed;
 }
 
 static GstFlowReturn gst_dxpreprocess_transform_ip(GstBaseTransform *trans,
@@ -917,7 +949,6 @@ static GstFlowReturn gst_dxpreprocess_transform_ip(GstBaseTransform *trans,
         return GST_FLOW_OK;
     }
 
-    gint64 start_time, end_time, latency;
     GstClockTime in_ts = GST_BUFFER_TIMESTAMP(buf); // nano second (10^-9)
 
     if (G_UNLIKELY(!GST_CLOCK_TIME_IS_VALID(in_ts))) {
@@ -935,7 +966,7 @@ static GstFlowReturn gst_dxpreprocess_transform_ip(GstBaseTransform *trans,
             earliest_time = self->_qos_timestamp + self->_qos_timediff;
         }
 
-        if (earliest_time > in_ts) {
+        if (static_cast<GstClockTime>(earliest_time) > in_ts) {
             // gst_buffer_unref(buf);
             return GST_BASE_TRANSFORM_FLOW_DROPPED;
         }
@@ -946,7 +977,7 @@ static GstFlowReturn gst_dxpreprocess_transform_ip(GstBaseTransform *trans,
         (DXFrameMeta *)gst_buffer_get_meta(buf, DX_FRAME_META_API_TYPE);
     if (!frame_meta) {
         if (!gst_buffer_is_writable(buf)) {
-            gst_buffer_make_writable(buf);
+            buf = gst_buffer_make_writable(buf);
         }
         frame_meta =
             (DXFrameMeta *)gst_buffer_add_meta(buf, DX_FRAME_META_INFO, NULL);
@@ -966,23 +997,26 @@ static GstFlowReturn gst_dxpreprocess_transform_ip(GstBaseTransform *trans,
         gst_caps_unref(caps);
     }
 
-    preproc(self, frame_meta);
+    bool processed = preproc(self, frame_meta);
 
     auto end = std::chrono::high_resolution_clock::now();
-    auto frameDuration =
-        std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-    double frameTimeSec = frameDuration.count() / 1000000.0;
-    self->_acc_fps += 1.0 / frameTimeSec;
-    self->_frame_count_for_fps++;
+    if (processed) {
+        auto frameDuration =
+            std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        double frameTimeSec = frameDuration.count() / 1000000.0;
+        self->_acc_fps += 1.0 / frameTimeSec;
+        self->_frame_count_for_fps++;
 
-    if (self->_frame_count_for_fps % 100 == 0) {
-        gchar *name = NULL;
-        g_object_get(G_OBJECT(self), "name", &name, NULL);
-        g_print("[%s]\tFPS : %f \n", name,
-                self->_acc_fps / self->_frame_count_for_fps);
-        self->_acc_fps = 0;
-        self->_frame_count_for_fps = 0;
-        g_free(name);
+        if (self->_frame_count_for_fps % 100 == 0 &&
+            self->_frame_count_for_fps != 0) {
+            gchar *name = NULL;
+            g_object_get(G_OBJECT(self), "name", &name, NULL);
+            g_print("[%s]\tFPS : %f \n", name,
+                    self->_acc_fps / self->_frame_count_for_fps);
+            self->_acc_fps = 0;
+            self->_frame_count_for_fps = 0;
+            g_free(name);
+        }
     }
 
     if (!self->_secondary_mode) {

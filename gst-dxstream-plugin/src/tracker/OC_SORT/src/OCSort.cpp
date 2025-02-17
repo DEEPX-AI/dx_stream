@@ -86,7 +86,7 @@ std::vector<Eigen::RowVectorXf> OCSort::update(Eigen::MatrixXf dets) {
     Eigen::MatrixXf velocities = Eigen::MatrixXf::Zero(trackers.size(), 2);
     Eigen::MatrixXf last_boxes = Eigen::MatrixXf::Zero(trackers.size(), 5);
     Eigen::MatrixXf k_observations = Eigen::MatrixXf::Zero(trackers.size(), 5);
-    for (int i = 0; i < trackers.size(); i++) {
+    for (size_t i = 0; i < (size_t)trackers.size(); i++) {
         velocities.row(i) = trackers[i].velocity;
         last_boxes.row(i) = trackers[i].last_observation;
         k_observations.row(i) =
@@ -125,10 +125,10 @@ std::vector<Eigen::RowVectorXf> OCSort::update(Eigen::MatrixXf dets) {
                 }
             }
             std::vector<int> rowsol, colsol;
-            float MIN_cost =
-                execLapjv(iou_matrix, rowsol, colsol, true, 0.01, true);
+            // float MIN_cost =
+            execLapjv(iou_matrix, rowsol, colsol, true, 0.01, true);
             std::vector<std::vector<int>> matched_indices;
-            for (int i = 0; i < rowsol.size(); i++) {
+            for (size_t i = 0; i < (size_t)rowsol.size(); i++) {
                 if (rowsol.at(i) >= 0) {
                     matched_indices.push_back(
                         {colsol.at(rowsol.at(i)), rowsol.at(i)});
@@ -181,10 +181,10 @@ std::vector<Eigen::RowVectorXf> OCSort::update(Eigen::MatrixXf dets) {
                 }
             }
             std::vector<int> rowsol, colsol;
-            float MIN_cost =
-                execLapjv(iou_matrix, rowsol, colsol, true, 0.01, true);
+            // float MIN_cost =
+            execLapjv(iou_matrix, rowsol, colsol, true, 0.01, true);
             std::vector<std::vector<int>> rematched_indices;
-            for (int i = 0; i < rowsol.size(); i++) {
+            for (size_t i = 0; i < (size_t)rowsol.size(); i++) {
                 if (rowsol.at(i) >= 0) {
                     rematched_indices.push_back(
                         {colsol.at(rowsol.at(i)), rowsol.at(i)});
@@ -236,7 +236,7 @@ std::vector<Eigen::RowVectorXf> OCSort::update(Eigen::MatrixXf dets) {
         KalmanBoxTracker trk = KalmanBoxTracker(tmp_bbox, cls_, idx_, delta_t);
         trackers.push_back(trk);
     }
-    int tmp_i = trackers.size();
+    // int tmp_i = trackers.size();
     for (int i = trackers.size() - 1; i >= 0; i--) {
         Eigen::Matrix<float, 1, 4> d;
         int last_observation_sum = trackers.at(i).last_observation.sum();

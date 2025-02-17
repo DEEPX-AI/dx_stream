@@ -17,7 +17,7 @@
 |---------------------------|-----------------|--------------------------------|
 | **M1 Accelerator**        | FW v1.6.0      | Firmware for the M1A accelerator. |
 | **NPU Driver**            | v1.3.1         | Includes PCIE v1.2.0 support. |
-| **DX-RT**                 | v2.6.2         | Runtime library for AI inference. |
+| **DX-RT**                 | v2.6.3         | Runtime library for AI inference. |
 
 - Ensure the NPU Driver and DX-RT must be installed
     NPU Driver Installation : TBD
@@ -60,28 +60,6 @@
 - Remove DX-Stream
     ```
     $ ./build.sh --uninstall
-    ```
-
-### Debian
-
-- Install Dependencies
-    ```
-    $ ./install.sh
-    ```
-
-- Install DX-Stream using the provided Debian package:
-    ```
-    $ sudo apt install ./dx-stream_vX.X.X_all.deb
-    ```
-
-- Verify the installation using:
-    ```
-    $ gst-inspect-1.0 dxstream
-    ```
-
-- Remove DX-Stream
-    ```
-    $ sudo apt purge dx-stream
     ```
 
 ### Using Docker

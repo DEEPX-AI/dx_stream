@@ -1,6 +1,7 @@
 ![](./../resources/overview.png)
 
 DX-Stream is a GStreamer Custom Plugin designed to simplify the development of Vision AI Applications using DEEPX's NPU in a GStreamer pipeline format.
+DX-Stream enables rapid and efficient development of Vision AI Applications by providing a modular, pipeline-based framework powered by DEEPX's NPU. The customizable preprocessing, inference, and postprocessing elements ensure flexibility for a variety of AI scenarios.
 
 ## Key Features
 **Pipeline Modularity**
@@ -12,6 +13,7 @@ DX-Stream is a GStreamer Custom Plugin designed to simplify the development of V
 - [**DxMuxer**](./elements/dxmuxer.md)
 - [**DxPreprocess**](./elements/dxpreprocess.md)
 - [**DxInfer**](./elements/dxinfer.md)
+- [**DxPostprocess**](./elements/dxpostprocess.md)
 - [**DxTracker**](./elements/dxtracker.md)
 - [**DxOsd**](./elements/dxosd.md)
 - [**DxRate**](./elements/dxrate.md)
@@ -22,11 +24,11 @@ DX-Stream is a GStreamer Custom Plugin designed to simplify the development of V
 
 **Inference Workflow**
 
-- The combination of `[DxPreprocess] -> [DxInfer]` forms the core of AI model inference.
+- The combination of `[DxPreprocess] -> [DxInfer] -> [DxPostprocess]` forms the core of AI model inference.
 
 **Custom Library Support**
 
-- **DxPreprocess** and **DxInfer** elements support custom libraries for applying various pre-processing and post-processing procedures tailored to different AI models.
+- **DxPreprocess** and **DxPostprocess** elements support custom libraries for applying various pre-processing and post-processing procedures tailored to different AI models.
 
 **Efficient AI Inference**
 
@@ -70,12 +72,19 @@ To follow this guide, you will need:
   (e.g., `dxstream_vX.X.X_amd64_ubuntu20.04.tar`)
 - **`dk` Command File**  
   (A utility file to simplify Docker operations for DX-Stream)
+    ```
+    Usage:
+    Build Images : ./dk build <DX_RT_TAR_PATH>
+    Load Images : ./dk load <image tar file>
+    Run Container : ./dk run
+    Remove Container & images : ./dk rmi
+    ```
 
 **Steps to Run**
 
 - Install Docker
 
-    Refer to **Section 2.3** for detailed instructions on installing Docker.
+    Refer to [Section 2](./installation.md) for detailed instructions on installing Docker.
 
 - Load Docker Image
 
@@ -113,6 +122,7 @@ To follow this guide, you will need:
     5: Multi-Channel RTSP
     6: Msgbroker (mqtt)
     7: Msgbroker (kafka)
+    8: secondary mode
     which AI demo do you want to run:(timeout:10s, default:0)
     ```
     Enter the number corresponding to the desired demo to run it.
@@ -121,11 +131,8 @@ To follow this guide, you will need:
 
 **Notes**
 
-- Each demo corresponds to a pipeline described in Section 5.
+- Each demo corresponds to a pipeline described in [Section 5](./pipelines/object_detection.md).
 
 - Ensure all prerequisites (e.g., Docker installation, DX-Stream image, and dk command file) are in place before proceeding.
 
 ---
-
-## Summary
-DX-Stream enables rapid and efficient development of Vision AI Applications by providing a modular, pipeline-based framework powered by DEEPX's NPU. The customizable preprocessing, inference, and postprocessing elements ensure flexibility for a variety of AI scenarios.

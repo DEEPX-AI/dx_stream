@@ -22,7 +22,7 @@ static GstPad *gst_dxrouter_request_pad(GstElement *element,
                                         GstPadTemplate *templ,
                                         const gchar *name, const GstCaps *caps);
 static void gst_dxrouter_release_pad(GstElement *element, GstPad *pad);
-static gboolean dxrouter_sink_set_caps(GstPad *pad, GstCaps *caps);
+
 static GstFlowReturn gst_dxrouter_chain_function(GstPad *pad, GstObject *parent,
                                                  GstBuffer *buffer);
 static gboolean dxrouter_sink_event(GstPad *pad, GstObject *parent,
@@ -74,8 +74,6 @@ static void gst_dxrouter_init(GstDxRouter *self) {
 // Handle sink pad events
 static gboolean dxrouter_sink_event(GstPad *pad, GstObject *parent,
                                     GstEvent *event) {
-    GstDxRouter *self = GST_DXROUTER(parent);
-
     gboolean res = TRUE;
     if (GST_EVENT_TYPE(event) == GST_EVENT_FLUSH_START ||
         GST_EVENT_TYPE(event) == GST_EVENT_FLUSH_STOP ||

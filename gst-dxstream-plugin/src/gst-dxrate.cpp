@@ -107,8 +107,6 @@ static GstStateChangeReturn dxrate_change_state(GstElement *element,
 }
 
 static void dxrate_dispose(GObject *object) {
-    GstDxRate *self = GST_DXRATE(object);
-
     G_OBJECT_CLASS(parent_class)->dispose(object);
 }
 
@@ -202,8 +200,6 @@ static GstFlowReturn gst_dxrate_push_buffer(GstDxRate *self, GstBuffer *outbuf,
     }
 
     GST_BUFFER_TIMESTAMP(outbuf) = push_ts - self->_segment.base;
-
-    GstClockTime out_ts = push_ts - self->_segment.base;
 
     res = gst_pad_push(GST_BASE_TRANSFORM_SRC_PAD(self), outbuf);
 

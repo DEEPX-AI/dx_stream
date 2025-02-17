@@ -9,12 +9,11 @@
 enum {
     PROP_0,
     PROP_PREPROC_ID,
+    PROP_INFER_ID,
     PROP_SECONDARY_MODE,
     PROP_MODEL_PATH,
     PROP_CONFIG_PATH,
     PROP_POOL_SIZE,
-    PROP_LIBRARY_FILE_PATH,
-    PROP_FUNCTION_NAME,
     N_PROPERTIES
 };
 
@@ -51,17 +50,6 @@ static void parse_config(GstDxInfer *self) {
             const gchar *model_path =
                 json_object_get_string_member(object, "model_path");
             g_object_set(self, "model-path", model_path, NULL);
-            if (json_object_has_member(object, "library_file_path")) {
-                const gchar *library_file_path =
-                    json_object_get_string_member(object, "library_file_path");
-                g_object_set(self, "library-file-path", library_file_path,
-                             NULL);
-            }
-            if (json_object_has_member(object, "function_name")) {
-                const gchar *function_name =
-                    json_object_get_string_member(object, "function_name");
-                g_object_set(self, "function-name", function_name, NULL);
-            }
             if (json_object_has_member(object, "preprocess_id")) {
                 gint int_value =
                     json_object_get_int_member(object, "preprocess_id");
@@ -72,6 +60,17 @@ static void parse_config(GstDxInfer *self) {
                             int_value);
                 }
                 self->_preproc_id = (guint)int_value;
+            }
+            if (json_object_has_member(object, "inference_id")) {
+                gint int_value =
+                    json_object_get_int_member(object, "inference_id");
+                if (int_value < 0) {
+                    g_error("Member inference_id has a negative value (%d) "
+                            "and cannot be "
+                            "converted to unsigned.",
+                            int_value);
+                }
+                self->_infer_id = (guint)int_value;
             }
             if (json_object_has_member(object, "secondary_mode")) {
                 self->_secondary_mode =
@@ -122,6 +121,10 @@ static void gst_dxinfer_set_property(GObject *object, guint property_id,
         self->_preproc_id = g_value_get_uint(value);
         break;
     }
+    case PROP_INFER_ID: {
+        self->_infer_id = g_value_get_uint(value);
+        break;
+    }
     case PROP_SECONDARY_MODE: {
         self->_secondary_mode = g_value_get_boolean(value);
         break;
@@ -130,18 +133,6 @@ static void gst_dxinfer_set_property(GObject *object, guint property_id,
         self->_pool_size = g_value_get_uint(value);
         break;
     }
-    case PROP_LIBRARY_FILE_PATH:
-        if (self->_library_file_path) {
-            g_free(self->_library_file_path);
-        }
-        self->_library_file_path = g_value_dup_string(value);
-        break;
-    case PROP_FUNCTION_NAME:
-        if (self->_function_name) {
-            g_free(self->_function_name);
-        }
-        self->_function_name = g_value_dup_string(value);
-        break;
     default:
         break;
     }
@@ -164,17 +155,14 @@ static void gst_dxinfer_get_property(GObject *object, guint property_id,
     case PROP_PREPROC_ID:
         g_value_set_uint(value, self->_preproc_id);
         break;
+    case PROP_INFER_ID:
+        g_value_set_uint(value, self->_infer_id);
+        break;
     case PROP_SECONDARY_MODE:
         g_value_set_boolean(value, self->_secondary_mode);
         break;
     case PROP_POOL_SIZE:
         g_value_set_uint(value, self->_pool_size);
-        break;
-    case PROP_LIBRARY_FILE_PATH:
-        g_value_set_string(value, self->_library_file_path);
-        break;
-    case PROP_FUNCTION_NAME:
-        g_value_set_string(value, self->_function_name);
         break;
     default:
         break;
@@ -191,18 +179,6 @@ static void dxinfer_dispose(GObject *object) {
         g_free(self->_model_path);
         self->_model_path = NULL;
     }
-    if (self->_library_file_path) {
-        g_free(self->_library_file_path);
-        self->_library_file_path = NULL;
-    }
-    if (self->_function_name) {
-        g_free(self->_function_name);
-        self->_function_name = NULL;
-    }
-    if (self->_library_handle) {
-        dlclose(self->_library_handle);
-        self->_library_handle = NULL;
-    }
 
     self->_pool.deinitialize();
 
@@ -215,12 +191,15 @@ static void dxinfer_finalize(GObject *object) {
     self->_pool.deinitialize();
     self->_ie.reset();
 
-    g_queue_free_full(self->_recent_latencies, g_free);
+    if (self->_recent_latencies) {
+        g_queue_free(self->_recent_latencies);
+        self->_recent_latencies = nullptr;
+    }
 
     G_OBJECT_CLASS(parent_class)->finalize(object);
 }
 
-typedef struct CallbackInput {
+struct CallbackInput {
     DXFrameMeta *frame_meta;
     DXObjectMeta *object_meta;
     GstDxInfer *self;
@@ -248,6 +227,23 @@ typedef struct CallbackInput {
     }
 };
 
+std::vector<dxs::DXTensor>
+convert_tensor(std::vector<shared_ptr<dxrt::Tensor>> src) {
+    std::vector<dxs::DXTensor> output;
+    for (size_t i = 0; i < src.size(); i++) {
+        dxs::DXTensor new_tensor;
+        new_tensor._name = src[i]->name();
+        new_tensor._shape = src[i]->shape();
+        new_tensor._type = static_cast<dxs::DataType>(src[i]->type());
+        new_tensor._data = src[i]->data();
+        new_tensor._phyAddr = src[i]->phy_addr();
+        new_tensor._elemSize = src[i]->elem_size();
+        output.push_back(new_tensor);
+    }
+
+    return output;
+}
+
 static GstStateChangeReturn dxinfer_change_state(GstElement *element,
                                                  GstStateChange transition) {
     GstDxInfer *self = GST_DXINFER(element);
@@ -266,22 +262,29 @@ static GstStateChangeReturn dxinfer_change_state(GstElement *element,
                     CallbackInput *callback_input =
                         static_cast<CallbackInput *>(arg);
 
-                    GstBuffer *buf = callback_input->frame_meta->_buf;
-                    GstPad *srcpad = callback_input->self->_srcpad;
+                    guint infer_id = callback_input->self->_infer_id;
+                    if (callback_input->self->_secondary_mode) {
+                        if (!callback_input->object_meta) {
+                            g_printerr("DXObjectMeta Not found in Inference "
+                                       "Callback \n");
+                        }
+                        // object
+                        callback_input->object_meta->_output_tensor[infer_id] =
+                            convert_tensor(outputs);
 
-                    callback_input->self->_postproc_function(
-                        outputs, callback_input->frame_meta,
-                        callback_input->object_meta);
+                    } else {
+                        // frame
+                        callback_input->frame_meta->_output_tensor[infer_id] =
+                            convert_tensor(outputs);
 
-                    callback_input->self->_pool.deallocate(
-                        outputs.front()->data());
-                    if (!callback_input->self->_secondary_mode) {
                         std::unique_lock<std::mutex> lock(
                             callback_input->self->_push_lock);
                         if (callback_input->self->_push_running) {
-                            callback_input->self->_push_queue.push_back(buf);
+                            callback_input->self->_push_queue.push_back(
+                                callback_input->frame_meta->_buf);
                         }
                     }
+
                     callback_input->self->_push_cv.notify_one();
 
                     callback_input->self->_frame_count_for_fps++;
@@ -309,22 +312,6 @@ static GstStateChangeReturn dxinfer_change_state(GstElement *element,
         if (self->_ie != nullptr) {
             self->_pool.deinitialize();
             self->_pool.initialize(self->_ie->output_size(), self->_pool_size);
-        }
-        if (!self->_library_handle && self->_library_file_path &&
-            self->_function_name) {
-            self->_library_handle = dlopen(self->_library_file_path, RTLD_LAZY);
-            if (!self->_library_handle) {
-                g_print("Error opening library: %s\n", dlerror());
-            }
-            void *func_ptr = dlsym(self->_library_handle, self->_function_name);
-            if (!func_ptr) {
-                g_print("Error finding function: %s\n", dlerror());
-                dlclose(self->_library_handle);
-                self->_library_handle = NULL;
-            }
-            self->_postproc_function =
-                (void (*)(std::vector<shared_ptr<dxrt::Tensor>>, DXFrameMeta *,
-                          DXObjectMeta *))func_ptr;
         }
     } break;
     case GST_STATE_CHANGE_READY_TO_PAUSED: {
@@ -399,6 +386,7 @@ static void gst_dxinfer_class_init(GstDxInferClass *klass) {
     gobject_class->set_property = gst_dxinfer_set_property;
     gobject_class->get_property = gst_dxinfer_get_property;
     gobject_class->dispose = dxinfer_dispose;
+    gobject_class->finalize = dxinfer_finalize;
 
     obj_properties[PROP_MODEL_PATH] =
         g_param_spec_string("model-path", "model file path",
@@ -412,6 +400,10 @@ static void gst_dxinfer_class_init(GstDxInferClass *klass) {
         "preprocess-id", "pre process id",
         "Specifies the ID of the input tensor to be used for inference.", 0,
         10000, 0, G_PARAM_READWRITE);
+    obj_properties[PROP_INFER_ID] = g_param_spec_uint(
+        "inference-id", "inference id",
+        "Specifies the ID of the output tensor to be used for inference.", 0,
+        10000, 0, G_PARAM_READWRITE);
     obj_properties[PROP_POOL_SIZE] =
         g_param_spec_uint("pool-size", "Output Tensor Memory Pool SIZE",
                           "Specifies the number of preallocated memory blocks "
@@ -421,15 +413,6 @@ static void gst_dxinfer_class_init(GstDxInferClass *klass) {
         "secondary-mode", "secondary mode",
         "Determines whether to operate in primary mode or secondary mode.",
         FALSE, G_PARAM_READWRITE);
-
-    obj_properties[PROP_LIBRARY_FILE_PATH] = g_param_spec_string(
-        "library-file-path", "Library File Path",
-        "Path to the custom postprocess library.", NULL, G_PARAM_READWRITE);
-
-    obj_properties[PROP_FUNCTION_NAME] = g_param_spec_string(
-        "function-name", "Function Name",
-        "Specifies which function in the custom postprocess library to use.",
-        NULL, G_PARAM_READWRITE);
 
     g_object_class_install_properties(gobject_class, N_PROPERTIES,
                                       obj_properties);
@@ -551,11 +534,6 @@ static void gst_dxinfer_init(GstDxInfer *self) {
     self->_ie = nullptr;
     self->_pool_size = 1;
 
-    self->_library_file_path = NULL;
-    self->_function_name = NULL;
-    self->_library_handle = NULL;
-    self->_postproc_function = NULL;
-
     self->_buffer_queue = std::queue<GstBuffer *>();
     self->_push_queue = std::vector<GstBuffer *>();
 
@@ -572,13 +550,16 @@ static void gst_dxinfer_init(GstDxInfer *self) {
 
 void inference_async(GstDxInfer *self, DXFrameMeta *frame_meta) {
     if (self->_secondary_mode) {
-        auto input = frame_meta->_input_object_tensor.find(self->_preproc_id);
-        if (input != frame_meta->_input_object_tensor.end()) {
-            for (auto iter = input->second.begin(); iter != input->second.end();
-                 ++iter) {
-                CallbackInput *callback_input = new CallbackInput(
-                    frame_meta, (DXObjectMeta *)iter->first, self);
-
+        int objects_size = g_list_length(frame_meta->_object_meta_list);
+        for (int o = 0; o < objects_size; o++) {
+            DXObjectMeta *object_meta = (DXObjectMeta *)g_list_nth_data(
+                frame_meta->_object_meta_list, o);
+            auto iter = object_meta->_input_tensor.find(self->_preproc_id);
+            if (iter != object_meta->_input_tensor.end()) {
+                CallbackInput *callback_input =
+                    new CallbackInput(frame_meta, object_meta, self);
+                object_meta->_output_memory_pool[self->_infer_id] =
+                    (MemoryPool *)&self->_pool;
                 self->_last_req_id = self->_ie->RunAsync(
                     iter->second._data, static_cast<void *>(callback_input),
                     self->_pool.allocate());
@@ -590,7 +571,8 @@ void inference_async(GstDxInfer *self, DXFrameMeta *frame_meta) {
         if (iter != frame_meta->_input_tensor.end()) {
             CallbackInput *callback_input =
                 new CallbackInput(frame_meta, nullptr, self);
-
+            frame_meta->_output_memory_pool[self->_infer_id] =
+                (MemoryPool *)&self->_pool;
             self->_last_req_id = self->_ie->RunAsync(
                 iter->second._data, static_cast<void *>(callback_input),
                 self->_pool.allocate());
@@ -672,7 +654,7 @@ static gpointer inference_thread_func(GstDxInfer *self) {
                 } else {
                     earliest_time = self->_qos_timestamp + self->_qos_timediff;
                 }
-                if (earliest_time > in_ts) {
+                if (static_cast<GstClockTime>(earliest_time) > in_ts) {
                     gst_buffer_unref(buf);
                     continue;
                 }
@@ -685,9 +667,9 @@ static gpointer inference_thread_func(GstDxInfer *self) {
                 GstClockTimeDiff delay =
                     MAX(self->_avg_latency * 1000, self->_throttling_delay);
                 if (self->_throttling_accum < delay) {
-                    GstClockTimeDiff duration = GST_BUFFER_DURATION(buf);
-                    gdouble avg_rate = gst_guint64_to_gdouble(duration) /
-                                       gst_guint64_to_gdouble(delay);
+                    // GstClockTimeDiff duration = GST_BUFFER_DURATION(buf);
+                    // gdouble avg_rate = gst_guint64_to_gdouble(duration) /
+                    //                    gst_guint64_to_gdouble(delay);
                     self->_prev_ts = in_ts;
                     gst_buffer_unref(buf);
                     continue;

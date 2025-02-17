@@ -346,7 +346,7 @@ void draw(DXFrameMeta *frame_meta) {
                  frame_meta->_format, "RGB");
     cv::Mat surface = cv::Mat(frame_meta->_height, frame_meta->_width, CV_8UC3,
                               convert_frame);
-    for (int i = 0; i < object_length; i++) {
+    for (size_t i = 0; i < (size_t)object_length; i++) {
         DXObjectMeta *obj_meta =
             (DXObjectMeta *)g_list_nth_data(frame_meta->_object_meta_list, i);
         draw_object_meta(surface, obj_meta);
