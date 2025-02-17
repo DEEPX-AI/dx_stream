@@ -9,6 +9,7 @@ urisourcebin uri=file:///path/to/your/video_file ! \
 decodebin ! \
 dxpreprocess config-file-path=/path/to/YOLOv7/preprocess_config.json ! \
 dxinfer config-file-path=/path/to/YOLOv7/infer_config.json ! \
+dxpostprocess config-file-path=/path/to/YOLOv7/postprocess_config.json ! \
 dxosd ! \
 fpsdisplaysink sync=false
 ```
@@ -27,6 +28,7 @@ fpsdisplaysink sync=false
 - **`decodebin`**: Decodes the input video stream.
 - **`dxpreprocess`**: Applies pre-processing according to the configuration file specified in the `config-file-path`.
 - **`dxinfer`**: Runs inference using the YOLOv7 model. The model configuration file path is specified in `config-file-path`.
+- **`dxpostprocess`**: Post-processes the model's output tensor to extract metadata. The configuration file path is specified in `config-file-path`.
 - **`dxosd`**: Draws object detection results (e.g., bounding boxes, class labels, etc.) on the video frames.
 - **`fpsdisplaysink`**: Displays the video frames along with the FPS (frames per second) information. The `sync=false` property ensures that all frames are displayed without being dropped.
 
@@ -44,7 +46,7 @@ fpsdisplaysink sync=false
 
     **Pose Estimation**: Human pose estimation tasks.
 
-- Update the `config-file-path` properties for `dxpreprocess` and `dxinfer` elements to point to the appropriate configuration files for your model.
+- Update the `config-file-path` properties for `dxpreprocess`, `dxinfer` and `dxpostprocess` elements to point to the appropriate configuration files for your model.
 
 **Pipeline Behavior**:
 

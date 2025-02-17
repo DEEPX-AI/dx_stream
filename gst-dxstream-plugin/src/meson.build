@@ -15,6 +15,7 @@ dxstream_sources = [
     'gst-dxmuxer.cpp',
     'gst-dxosd.cpp',
     'gst-dxpreprocess.cpp',
+    'gst-dxpostprocess.cpp',
     'gst-dxrate.cpp',
     'gst-dxtiler.cpp',
     'gst-dxtracker.cpp',

@@ -52,8 +52,7 @@ struct _GstDxPreprocess {
     std::map<int, std::map<int, int>> _track_cnt;
 
     void *_library_handle;
-    void (*_process_function)(DXFrameMeta *, DXObjectMeta *,
-                              dxs::DXNetworkInput &);
+    cv::Mat (*_process_function)(DXFrameMeta *, DXObjectMeta *);
 };
 
 G_END_DECLS

@@ -38,17 +38,6 @@ gint get_pad_index(GstPad *sinkpad) {
     return pad_index;
 }
 
-static gboolean forward_events(GstPad *pad, GstEvent **event,
-                               gpointer user_data) {
-    gboolean res = TRUE;
-    GstPad *srcpad = GST_PAD_CAST(user_data);
-
-    if (GST_EVENT_TYPE(*event) != GST_EVENT_EOS) {
-        res = gst_pad_push_event(srcpad, gst_event_ref(*event));
-    }
-    return res;
-}
-
 static void dxmuxer_set_property(GObject *object, guint property_id,
                                  const GValue *value, GParamSpec *pspec) {
     GstDxMuxer *self = GST_DXMUXER(object);
@@ -143,7 +132,6 @@ static gboolean gst_dxmuxer_sink_event(GstPad *pad, GstObject *parent,
             self->_eos_list[stream_id] = true;
             for (auto tmp = self->_eos_list.begin();
                  tmp != self->_eos_list.end(); tmp++) {
-                int stream_id = tmp->first;
                 if (!tmp->second) {
                     forward_event = FALSE;
                 }
@@ -209,7 +197,9 @@ static gboolean gst_dxmuxer_src_event(GstPad *pad, GstObject *parent,
 GstClockTime get_max_timestamp(std::map<int, _GstBuffer *> buffers) {
     GstClockTime max_timestamp = 0;
 
-    for (const auto &[stream_id, buffer] : buffers) {
+    for (const auto &pair : buffers) {
+        auto buffer = pair.second;
+
         GstClockTime pts = GST_BUFFER_TIMESTAMP(buffer);
 
         if (GST_CLOCK_TIME_IS_VALID(pts) && pts > max_timestamp) {
@@ -222,7 +212,9 @@ GstClockTime get_max_timestamp(std::map<int, _GstBuffer *> buffers) {
 GstClockTime get_min_timestamp(std::map<int, _GstBuffer *> buffers) {
     GstClockTime min_pts = std::numeric_limits<GstClockTime>::max();
 
-    for (const auto &[stream_id, buffer] : buffers) {
+    for (const auto &pair : buffers) {
+        auto buffer = pair.second;
+
         GstClockTime pts = GST_BUFFER_TIMESTAMP(buffer);
 
         if (GST_CLOCK_TIME_IS_VALID(pts) && pts < min_pts) {
@@ -234,7 +226,6 @@ GstClockTime get_min_timestamp(std::map<int, _GstBuffer *> buffers) {
 
 bool check_all_buffer_updated(std::map<int, _GstBuffer *> buffers) {
     for (auto tmp = buffers.begin(); tmp != buffers.end(); tmp++) {
-        int stream_id = tmp->first;
         GstBuffer *buf = tmp->second;
         if (buf == NULL) {
             return false;
@@ -253,7 +244,6 @@ void clear_pts(GstDxMuxer *self) {
 bool update_buffers_for_sync(GstDxMuxer *self) {
     bool push = true;
     for (auto &buffer_pair : self->_buffers) {
-        int stream_id = buffer_pair.first;
         GstBuffer *&buffer = buffer_pair.second;
         GstClockTime pts = GST_BUFFER_TIMESTAMP(buffer);
         if (!GST_CLOCK_TIME_IS_VALID(pts) && pts < *self->_pts) {
@@ -280,7 +270,7 @@ void push_buffers(GstDxMuxer *self) {
             earliest_time = self->_qos_timestamp + self->_qos_timediff;
         }
 
-        if (earliest_time > in_ts) {
+        if (static_cast<GstClockTime>(earliest_time) > in_ts) {
             for (auto &tmp : self->_buffers) {
                 int stream_id = tmp.first;
                 {
@@ -521,8 +511,9 @@ static GstPad *gst_dxmuxer_request_new_pad(GstElement *element,
                                            const gchar *name,
                                            const GstCaps *caps) {
     GstDxMuxer *self = GST_DXMUXER(element);
-    gchar *pad_name = name ? g_strdup(name)
-                           : g_strdup_printf("sink_%d", self->_sinkpads.size());
+    gchar *pad_name = name
+                          ? g_strdup(name)
+                          : g_strdup_printf("sink_%ld", self->_sinkpads.size());
 
     GstPad *sinkpad = gst_pad_new_from_template(templ, pad_name);
 

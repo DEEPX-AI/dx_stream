@@ -2,8 +2,10 @@
 #define DXOBJECTMETA_H
 
 #include "dxcommon.hpp"
+#include "memory_pool.hpp"
 #include <glib.h>
 #include <gst/gst.h>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -33,6 +35,12 @@ typedef struct _DXObjectMeta {
 
     // segmentation
     dxs::SegClsMap _seg_cls_map;
+
+    std::map<int, MemoryPool *> _input_memory_pool;
+    std::map<int, MemoryPool *> _output_memory_pool;
+
+    std::map<int, dxs::DXTensor> _input_tensor;
+    std::map<int, std::vector<dxs::DXTensor>> _output_tensor;
 
 } DXObjectMeta;
 

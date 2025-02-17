@@ -47,8 +47,7 @@ const GstMetaInfo *gst_dxmsg_meta_get_info(void) {
     return info;
 }
 
-GstDxMsgMeta *gst_buffer_add_dxmsg_meta(GstBuffer *buffer,
-                                        DxMsgPayload *payload) {
+void gst_buffer_add_dxmsg_meta(GstBuffer *buffer, DxMsgPayload *payload) {
     GstDxMsgMeta *dxmsg_meta =
         (GstDxMsgMeta *)gst_buffer_add_meta(buffer, GST_DXMSG_META_INFO, NULL);
 
@@ -64,5 +63,5 @@ GstDxMsgMeta *gst_buffer_add_dxmsg_meta(GstBuffer *buffer,
     // GST_INFO(
     //     "|JCP-M| gst_buffer_add_dxmsg_meta: payload=%p, payload->_data=%p\n",
     //     dxmsg_meta->_payload, ((DxMsgPayload *)dxmsg_meta->_payload)->_data);
-    return dxmsg_meta;
+    // return dxmsg_meta;
 }

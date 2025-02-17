@@ -43,18 +43,15 @@ static gboolean dx_frame_meta_init(GstMeta *meta, gpointer params,
     dx_meta->_width = -1;
     dx_meta->_height = -1;
 
-    new (&dx_meta->_input_tensor) std::map<int, dxs::DXNetworkInput>();
-    new (&dx_meta->_input_object_tensor)
-        std::map<int, std::map<void *, dxs::DXNetworkInput>>();
-    dx_meta->_input_tensor.clear();
-    dx_meta->_input_object_tensor.clear();
-
-    new (&dx_meta->_input_memory_pool) std::map<int, MemoryPool *>();
-
     dx_meta->_roi[0] = -1;
     dx_meta->_roi[1] = -1;
     dx_meta->_roi[2] = -1;
     dx_meta->_roi[3] = -1;
+
+    new (&dx_meta->_input_memory_pool) std::map<int, MemoryPool *>();
+    new (&dx_meta->_output_memory_pool) std::map<int, MemoryPool *>();
+    new (&dx_meta->_input_tensor) std::map<int, dxs::DXTensor>();
+    new (&dx_meta->_output_tensor) std::map<int, std::vector<dxs::DXTensor>>();
 
     return TRUE;
 }
@@ -69,28 +66,75 @@ static void dx_frame_meta_free(GstMeta *meta, GstBuffer *buffer) {
 
     for (auto &tmp : dx_meta->_input_memory_pool) {
         MemoryPool *pool = (MemoryPool *)tmp.second;
-        auto tensor_tmp = dx_meta->_input_tensor.find(tmp.first);
-        if (tensor_tmp != dx_meta->_input_tensor.end()) {
-            pool->deallocate(tensor_tmp->second._data);
-            tensor_tmp->second._data = nullptr;
+        int preproc_id = tmp.first;
+        auto tensor = dx_meta->_input_tensor.find(preproc_id);
+        if (tensor != dx_meta->_input_tensor.end()) {
+            pool->deallocate(tensor->second._data);
         }
-        auto object_tensor_tmp = dx_meta->_input_object_tensor.find(tmp.first);
-        if (object_tensor_tmp != dx_meta->_input_object_tensor.end()) {
-            std::map<void *, dxs::DXNetworkInput> &inner_map =
-                object_tensor_tmp->second;
-            for (auto &tensor : inner_map) {
-                pool->deallocate(tensor.second._data);
-                tensor.second._data = nullptr;
-            }
-        }
-    }
-    for (auto &outer_entry : dx_meta->_input_object_tensor) {
-        std::map<void *, dxs::DXNetworkInput> &inner_map = outer_entry.second;
-        inner_map.clear();
     }
     dx_meta->_input_memory_pool.clear();
     dx_meta->_input_tensor.clear();
-    dx_meta->_input_object_tensor.clear();
+
+    for (auto &tmp : dx_meta->_output_memory_pool) {
+        MemoryPool *pool = (MemoryPool *)tmp.second;
+        int preproc_id = tmp.first;
+        auto tensor = dx_meta->_output_tensor.find(preproc_id);
+        if (tensor != dx_meta->_output_tensor.end()) {
+            pool->deallocate(tensor->second[0]._data);
+        }
+    }
+    dx_meta->_output_memory_pool.clear();
+    dx_meta->_output_tensor.clear();
+}
+
+void copy_tensor(DXFrameMeta *src_meta, DXFrameMeta *dst_meta) {
+    // clear pool & tensor
+    dst_meta->_input_memory_pool.clear();
+    for (auto &pool : src_meta->_input_memory_pool) {
+        dst_meta->_input_memory_pool[pool.first] = pool.second;
+    }
+    dst_meta->_input_tensor.clear();
+
+    dst_meta->_output_memory_pool.clear();
+    for (auto &pool : src_meta->_output_memory_pool) {
+        dst_meta->_output_memory_pool[pool.first] = pool.second;
+    }
+    dst_meta->_output_tensor.clear();
+
+    // copy tensor
+    for (auto &input_tensor : src_meta->_input_tensor) {
+        dxs::DXTensor new_tensor;
+
+        new_tensor._name = input_tensor.second._name;
+        new_tensor._shape = input_tensor.second._shape;
+        new_tensor._type = input_tensor.second._type;
+        new_tensor._data =
+            dst_meta->_input_memory_pool[input_tensor.first]->allocate();
+        new_tensor._phyAddr = input_tensor.second._phyAddr;
+        new_tensor._elemSize = input_tensor.second._elemSize;
+
+        memcpy(
+            new_tensor._data, input_tensor.second._data,
+            dst_meta->_input_memory_pool[input_tensor.first]->get_block_size());
+    }
+
+    for (auto &temp : src_meta->_output_tensor) {
+        void *data = dst_meta->_output_memory_pool[temp.first]->allocate();
+        memcpy(data, src_meta->_output_tensor[temp.first][0]._data,
+               dst_meta->_output_memory_pool[temp.first]->get_block_size());
+        dst_meta->_output_tensor[temp.first] = std::vector<dxs::DXTensor>();
+        for (auto &tensor : temp.second) {
+            dxs::DXTensor new_tensor;
+            new_tensor._name = tensor._name;
+            new_tensor._shape = tensor._shape;
+            new_tensor._type = tensor._type;
+            new_tensor._data = static_cast<void *>(
+                static_cast<uint8_t *>(data) + tensor._phyAddr);
+            new_tensor._phyAddr = tensor._phyAddr;
+            new_tensor._elemSize = tensor._elemSize;
+            dst_meta->_output_tensor[temp.first].push_back(new_tensor);
+        }
+    }
 }
 
 void dx_frame_meta_copy(GstBuffer *src_buffer, DXFrameMeta *src_frame_meta,
@@ -110,51 +154,7 @@ void dx_frame_meta_copy(GstBuffer *src_buffer, DXFrameMeta *src_frame_meta,
     dst_frame_meta->_roi[2] = src_frame_meta->_roi[2];
     dst_frame_meta->_roi[3] = src_frame_meta->_roi[3];
 
-    dst_frame_meta->_input_memory_pool.clear();
-    for (auto &pool : src_frame_meta->_input_memory_pool) {
-        dst_frame_meta->_input_memory_pool[pool.first] = pool.second;
-    }
-
-    for (auto &outer_entry : dst_frame_meta->_input_object_tensor) {
-        std::map<void *, dxs::DXNetworkInput> &inner_map = outer_entry.second;
-        inner_map.clear();
-    }
-    dst_frame_meta->_input_tensor.clear();
-    dst_frame_meta->_input_object_tensor.clear();
-
-    for (auto &input_tensor : src_frame_meta->_input_tensor) {
-        dst_frame_meta->_input_tensor[input_tensor.first] = dxs::DXNetworkInput(
-            dst_frame_meta->_input_memory_pool[input_tensor.first]
-                ->get_block_size(),
-            dst_frame_meta->_input_memory_pool[input_tensor.first]->allocate());
-        memcpy(dst_frame_meta->_input_tensor[input_tensor.first]._data,
-               src_frame_meta->_input_tensor[input_tensor.first]._data,
-               dst_frame_meta->_input_memory_pool[input_tensor.first]
-                   ->get_block_size());
-    }
-    for (auto &input_object_tensor : src_frame_meta->_input_object_tensor) {
-        dst_frame_meta->_input_object_tensor[input_object_tensor.first] =
-            std::map<void *, dxs::DXNetworkInput>();
-        for (auto &tensor : input_object_tensor.second) {
-            dst_frame_meta
-                ->_input_object_tensor[input_object_tensor.first]
-                                      [tensor.first] = dxs::DXNetworkInput(
-                dst_frame_meta->_input_memory_pool[input_object_tensor.first]
-                    ->get_block_size(),
-                dst_frame_meta->_input_memory_pool[input_object_tensor.first]
-                    ->allocate());
-            memcpy(dst_frame_meta
-                       ->_input_object_tensor[input_object_tensor.first]
-                                             [tensor.first]
-                       ._data,
-                   src_frame_meta
-                       ->_input_object_tensor[input_object_tensor.first]
-                                             [tensor.first]
-                       ._data,
-                   dst_frame_meta->_input_memory_pool[input_object_tensor.first]
-                       ->get_block_size());
-        }
-    }
+    copy_tensor(src_frame_meta, dst_frame_meta);
 }
 
 static gboolean dx_frame_meta_transform(GstBuffer *dest, GstMeta *meta,

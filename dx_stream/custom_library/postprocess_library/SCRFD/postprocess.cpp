@@ -7,7 +7,6 @@
 #include <iostream>
 
 #include "dxcommon.hpp"
-#include "dxrt/dxrt_api.h"
 #include "gst-dxmeta.hpp"
 
 template <typename _T> struct Size_ {
@@ -166,12 +165,12 @@ void nms(std::vector<BBox> rawBoxes,
     sort(Result.begin(), Result.end(), compare);
 };
 
-extern "C" void SCRFDPostProcess(std::vector<shared_ptr<dxrt::Tensor>> outputs,
+extern "C" void SCRFDPostProcess(std::vector<dxs::DXTensor> outputs,
                                  DXFrameMeta *frame_meta,
                                  DXObjectMeta *object_meta,
                                  SCRFDParams params) {
     std::vector<std::vector<std::pair<float, int>>> ScoreIndices;
-    for (size_t i = 0; i < params.numClasses; i++) {
+    for (int i = 0; i < params.numClasses; i++) {
         std::vector<std::pair<float, int>> v;
         ScoreIndices.emplace_back(v);
     }
@@ -179,13 +178,13 @@ extern "C" void SCRFDPostProcess(std::vector<shared_ptr<dxrt::Tensor>> outputs,
     std::vector<BBox> rawBoxes;
     rawBoxes.clear();
 
-    int numBoxes = outputs.front()->shape()[0];
+    int numBoxes = outputs[0]._shape[0];
 
     int boxIdx = 0;
     for (int b_idx = 0; b_idx < numBoxes; b_idx++) {
-        uint8_t *raw_data = (uint8_t *)outputs.front()->data() + (b_idx * 64);
-        dxrt::DeviceFace_t *data =
-            static_cast<dxrt::DeviceFace_t *>((void *)raw_data);
+        uint8_t *raw_data = (uint8_t *)outputs[0]._data + (b_idx * 64);
+        dxs::DeviceFace_t *data =
+            static_cast<dxs::DeviceFace_t *>((void *)raw_data);
         int stride = params.layerStride[data->layer_idx];
 
         if (data->score >= params.scoreThreshold) {
@@ -265,9 +264,9 @@ extern "C" void SCRFDPostProcess(std::vector<shared_ptr<dxrt::Tensor>> outputs,
     }
 }
 
-extern "C" void
-PostProcess(std::vector<shared_ptr<dxrt::Tensor>> network_output,
-            DXFrameMeta *frame_meta, DXObjectMeta *object_meta) {
+extern "C" void PostProcess(std::vector<dxs::DXTensor> network_output,
+                            DXFrameMeta *frame_meta,
+                            DXObjectMeta *object_meta) {
 
     SCRFDParams params = {.classNames = {"face"},
                           .layerStride = {32, 16, 8}, /* layer re-ordering */

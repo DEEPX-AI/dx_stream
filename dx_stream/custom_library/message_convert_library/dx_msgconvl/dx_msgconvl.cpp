@@ -2,11 +2,9 @@
 
 extern "C" DxMsgContext *dxmsg_create_context(const gchar *file) {
     DxMsgContext *context = g_new0(DxMsgContext, 1);
-    bool ret = false;
 
     context->_priv_data = (void *)dxcontext_create_contextPriv();
-    ret = dxcontext_parse_json_config(file,
-                                      (DxMsgContextPriv *)context->_priv_data);
+    dxcontext_parse_json_config(file, (DxMsgContextPriv *)context->_priv_data);
 
     // GST_INFO("|JCP-M| create context=%p, context->_priv_data=%p\n", context,
     //          context->_priv_data);
@@ -26,10 +24,12 @@ extern "C" void dxmsg_delete_context(DxMsgContext *context) {
 extern "C" DxMsgPayload *dxmsg_convert_payload(DxMsgContext *context,
                                                DxMsgMetaInfo *meta_info) {
     DxMsgPayload *payload = g_new0(DxMsgPayload, 1);
-    gchar *json_data = nullptr;
+    gchar *json_data = dxpayload_convert_to_json(context, meta_info);
 
-    json_data = dxpayload_convert_to_json(context, meta_info);
-    g_return_val_if_fail(json_data != nullptr, nullptr);
+    if (json_data == nullptr) {
+        g_free(payload);
+        return nullptr;
+    }
 
     payload->_size = strlen(json_data);
     payload->_data = json_data;

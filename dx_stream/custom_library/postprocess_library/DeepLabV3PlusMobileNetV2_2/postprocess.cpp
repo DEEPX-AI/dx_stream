@@ -1,5 +1,4 @@
 #include "dxcommon.hpp"
-#include "dxrt/dxrt_api.h"
 #include "gst-dxmeta.hpp"
 #include <cmath>
 #include <numeric>
@@ -11,8 +10,8 @@ struct segmentationParams {
     int numClasses;
 };
 
-void Segmentation(std::vector<shared_ptr<dxrt::Tensor>> outputs,
-                  DXFrameMeta *frame_meta, segmentationParams &params) {
+void Segmentation(std::vector<dxs::DXTensor> outputs, DXFrameMeta *frame_meta,
+                  segmentationParams &params) {
 
     DXObjectMeta *object_meta = dx_create_object_meta(frame_meta->_buf);
 
@@ -26,10 +25,10 @@ void Segmentation(std::vector<shared_ptr<dxrt::Tensor>> outputs,
         for (int w = 0; w < params.input_width; w++) {
             if (params.needArgmax) {
 
-                float *input = (float *)outputs.front()->data();
+                float *input = (float *)outputs[0]._data;
 
                 int maxIdx = 0;
-                int align = outputs.front()->shape().back();
+                int align = outputs[0]._shape.back();
                 for (int c = 0; c < params.numClasses; c++) {
                     if (input[(params.input_width * h + w) * align + maxIdx] <
                         input[(params.input_width * h + w) * align + c]) {
@@ -42,7 +41,7 @@ void Segmentation(std::vector<shared_ptr<dxrt::Tensor>> outputs,
 
             } else {
 
-                uint16_t *input = (uint16_t *)outputs.front()->data();
+                uint16_t *input = (uint16_t *)outputs[0]._data;
 
                 int cls = input[params.input_width * h + w];
                 if (cls < params.numClasses) {
@@ -55,9 +54,9 @@ void Segmentation(std::vector<shared_ptr<dxrt::Tensor>> outputs,
     dx_add_object_meta_to_frame_meta(object_meta, frame_meta);
 }
 
-extern "C" void
-PostProcess(std::vector<shared_ptr<dxrt::Tensor>> network_output,
-            DXFrameMeta *frame_meta, DXObjectMeta *object_meta) {
+extern "C" void PostProcess(std::vector<dxs::DXTensor> network_output,
+                            DXFrameMeta *frame_meta,
+                            DXObjectMeta *object_meta) {
 
     segmentationParams params = {.needArgmax = true,
                                  .input_width = 640,

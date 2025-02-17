@@ -60,7 +60,7 @@ static void parse_config(GstDxTracker *self) {
                     } else if (value_type == G_TYPE_INT ||
                                value_type == G_TYPE_INT64) {
                         value_str =
-                            g_strdup_printf("%d", json_node_get_int(tmp_node));
+                            g_strdup_printf("%ld", json_node_get_int(tmp_node));
                     } else if (value_type == G_TYPE_FLOAT ||
                                value_type == G_TYPE_DOUBLE) {
                         value_str = g_strdup_printf(
@@ -143,6 +143,7 @@ static void dxtracker_dispose(GObject *object) {
         g_free(self->_config_file_path);
         self->_config_file_path = NULL;
     }
+    g_free(self->_tracker_name);
 
     G_OBJECT_CLASS(parent_class)->dispose(object);
 }
@@ -196,7 +197,7 @@ static void gst_dxtracker_class_init(GstDxTrackerClass *klass) {
 
 static void gst_dxtracker_init(GstDxTracker *self) {
     self->_config_file_path = NULL;
-    self->_tracker_name = "OC_SORT";
+    self->_tracker_name = g_strdup("OC_SORT");
     self->_first_frame_processed = FALSE;
     self->_params.clear();
     self->_trackers.clear();
@@ -219,8 +220,8 @@ Vector2Matrix(std::vector<std::vector<float>> data) {
     Eigen::Matrix<float, Eigen::Dynamic, 7> matrix(data.size(), data[0].size());
 
     // Iterate over the rows and columns of the data vector
-    for (int i = 0; i < data.size(); ++i) {
-        for (int j = 0; j < data[0].size(); ++j) {
+    for (size_t i = 0; i < (size_t)data.size(); ++i) {
+        for (size_t j = 0; j < (size_t)data[0].size(); ++j) {
             // Assign the value at position (i, j) of the matrix to the
             // corresponding value from the data vector
             matrix(i, j) = data[i][j];

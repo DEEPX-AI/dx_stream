@@ -1,5 +1,4 @@
 #include "dxcommon.hpp"
-#include "dxrt/dxrt_api.h"
 #include "gst-dxmeta.hpp"
 #include <algorithm>
 #include <cmath>
@@ -11,26 +10,26 @@
 #define sigmoid(x) (1 / (1 + std::exp(-x)))
 
 struct Decoded {
-    int label;
     std::string labelname;
-    float score;
-    float box[4];
     std::vector<float> kpts;
+    float box[4];
+    float score;
+    int label;
+
     ~Decoded(void);
     Decoded(void);
-    Decoded(unsigned int _label, std::string _labelname, float _score,
+    Decoded(std::string _labelname, float _score, unsigned int _label,
             float data1, float data2, float data3, float data4);
-    Decoded(unsigned int _label, std::string _labelname, float _score,
+    Decoded(std::string _labelname, float _score, unsigned int _label,
             float data1, float data2, float data3, float data4,
             float *keypoints, int numKeypoints);
 };
 
 Decoded::~Decoded(void) {}
 Decoded::Decoded(void) {}
-Decoded::Decoded(unsigned int _label, const std::string _labelname,
-                 float _score, float data1, float data2, float data3,
-                 float data4)
-    : label(_label), score(_score), labelname(_labelname) {
+Decoded::Decoded(std::string _labelname, float _score, unsigned int _label,
+                 float data1, float data2, float data3, float data4)
+    : labelname(_labelname), score(_score), label(_label) {
 
     box[0] = data1;
     box[1] = data2;
@@ -38,10 +37,10 @@ Decoded::Decoded(unsigned int _label, const std::string _labelname,
     box[3] = data4;
 }
 
-Decoded::Decoded(unsigned int _label, const std::string _labelname,
-                 float _score, float data1, float data2, float data3,
-                 float data4, float *keypoints, int numKeypoints)
-    : label(_label), score(_score), labelname(_labelname) {
+Decoded::Decoded(std::string _labelname, float _score, unsigned int _label,
+                 float data1, float data2, float data3, float data4,
+                 float *keypoints, int numKeypoints)
+    : labelname(_labelname), score(_score), label(_label) {
 
     box[0] = data1;
     box[1] = data2;
@@ -115,7 +114,7 @@ static bool scoreComapre(const std::pair<float, int> &a,
 };
 
 void FilterWithSort(
-    std::vector<shared_ptr<dxrt::Tensor>> outputs,
+    std::vector<dxs::DXTensor> outputs,
     std::vector<std::vector<std::pair<float, int>>> &ScoreIndices,
     std::vector<float> &Boxes, std::vector<float> &Keypoints, YoloParam param) {
 
@@ -126,19 +125,19 @@ void FilterWithSort(
         return;
     }
 
-    int numElements = outputs.front()->shape().front();
+    int numElements = outputs[0]._shape.front();
     if (numElements <= 0) {
         return;
     }
 
     if (outputs.size() == 1) {
-        if (outputs.front()->type() == dxrt::DataType::BBOX) {
+        if (outputs[0]._type == dxs::DataType::BBOX) {
 
-            dxrt::DeviceBoundingBox_t *dataSrc =
-                (dxrt::DeviceBoundingBox_t *)outputs.front()->data();
+            dxs::DeviceBoundingBox_t *dataSrc =
+                (dxs::DeviceBoundingBox_t *)outputs[0]._data;
 
             for (int i = 0; i < numElements; i++) {
-                dxrt::DeviceBoundingBox_t *data = dataSrc + i;
+                dxs::DeviceBoundingBox_t *data = dataSrc + i;
                 auto layer = param.layers[data->layer_idx];
                 int strideX = param.width / layer.numGridX;
                 int strideY = param.height / layer.numGridY;
@@ -176,13 +175,12 @@ void FilterWithSort(
 
                 boxIdx++;
             }
-        } else if (outputs.front()->type() == dxrt::DataType::POSE) {
+        } else if (outputs[0]._type == dxs::DataType::POSE) {
 
-            dxrt::DevicePose_t *dataSrc =
-                (dxrt::DevicePose_t *)outputs.front()->data();
+            dxs::DevicePose_t *dataSrc = (dxs::DevicePose_t *)outputs[0]._data;
 
             for (int i = 0; i < numElements; i++) {
-                dxrt::DevicePose_t *data = dataSrc + i;
+                dxs::DevicePose_t *data = dataSrc + i;
 
                 auto layer = param.layers[data->layer_idx];
                 int strideX = param.width / layer.numGridX;
@@ -228,16 +226,15 @@ void FilterWithSort(
 
                 boxIdx++;
             }
-        } else if (outputs.front()->type() ==
-                   dxrt::DataType::FLOAT) { // USE_ORT=ON
+        } else if (outputs[0]._type == dxs::DataType::FLOAT) { // USE_ORT=ON
 
-            auto *dataSrc = (float *)outputs.front()->data();
+            auto *dataSrc = (float *)outputs[0]._data;
 
-            if (outputs.front()->shape()[1] <
-                outputs.front()->shape()[2]) { // yolov8, yolov9 has an output
-                                               // of shape (batchSize, 84, 8400)
-                int dimensions = outputs.front()->shape()[1];
-                int rows = outputs.front()->shape()[2];
+            if (outputs[0]._shape[1] <
+                outputs[0]._shape[2]) { // yolov8, yolov9 has an output
+                                        // of shape (batchSize, 84, 8400)
+                int dimensions = outputs[0]._shape[1];
+                int rows = outputs[0]._shape[2];
 
                 float dataSrc_t[rows * dimensions];
                 for (int i = 0; i < dimensions; i++) {
@@ -276,8 +273,8 @@ void FilterWithSort(
                 }
             } else { // yolov5 has an output of shape (batchSize, 25200, 85)
                      // (Num classes + box[x,y,w,h] + confidence[c])
-                auto rows = outputs.front()->shape()[1];
-                auto dimensions = outputs.front()->shape()[2];
+                auto rows = outputs[0]._shape[1];
+                auto dimensions = outputs[0]._shape[2];
 
                 for (int i = 0; i < rows; i++) {
                     float *data = (float *)dataSrc + (dimensions * i);
@@ -317,7 +314,7 @@ void FilterWithSort(
 
         float conf_threshold = param.confThreshold;
         float rawThreshold = std::log(conf_threshold / (1 - conf_threshold));
-        float confidence, objectness, box_temp[4];
+        float confidence, objectness;
         float *data;
 
         for (auto &layer : param.layers) {
@@ -327,11 +324,22 @@ void FilterWithSort(
             int numGridY = layer.numGridY;
             int tensorIdx = layer.tensorIdx[0];
             float scale_x_y = layer.scaleX;
+
+            std::vector<int64_t> shape = outputs[tensorIdx]._shape;
+            uint32_t inc =
+                outputs[tensorIdx]._shape[3] * outputs[tensorIdx]._elemSize;
+
             for (int gY = 0; gY < numGridY; gY++) {
                 for (int gX = 0; gX < numGridX; gX++) {
                     for (int box = 0; box < layer.numBoxes; box++) {
-                        data = (float *)(outputs[tensorIdx]->data(
-                            gY, gX, box * (4 + 1 + param.numClasses)));
+                        data =
+                            (float *)(static_cast<uint8_t *>(
+                                          outputs[tensorIdx]._data) +
+                                      gY * shape[2] * inc + gX * inc +
+                                      outputs[tensorIdx]._elemSize *
+                                          (box * (4 + 1 + param.numClasses)));
+                        // data = (float *)(outputs[tensorIdx]->data(
+                        //     gY, gX, box * (4 + 1 + param.numClasses)));
                         if (data[4] > rawThreshold) {
                             objectness = sigmoid(data[4]);
                             /* Step1 - obj_conf > CONF_THRESHOLD */
@@ -397,10 +405,6 @@ void FilterWithSort(
     }
 }
 
-static bool compare(const Decoded &r1, const Decoded &r2) {
-    return r1.score > r2.score;
-}
-
 float CalcIOU(float *box, float *truth) {
     float ovr_left = std::max(box[0], truth[0]);
     float ovr_right = std::min(box[2], truth[2]);
@@ -432,8 +436,8 @@ void NmsOneClass(unsigned int cls,
             continue;
         }
         if (Keypoints.size() > 0) {
-            decoded = Decoded(cls, (char *)param.classNames[cls].c_str(),
-                              ScoreIndices[cls][i].first,
+            decoded = Decoded((char *)param.classNames[cls].c_str(),
+                              ScoreIndices[cls][i].first, cls,
                               Boxes[4 * ScoreIndices[cls][i].second],
                               Boxes[4 * ScoreIndices[cls][i].second + 1],
                               Boxes[4 * ScoreIndices[cls][i].second + 2],
@@ -442,12 +446,11 @@ void NmsOneClass(unsigned int cls,
                                          ScoreIndices[cls][i].second],
                               param.numKeypoints);
         } else {
-            decoded =
-                Decoded(cls, param.classNames[cls], ScoreIndices[cls][i].first,
-                        Boxes[4 * ScoreIndices[cls][i].second],
-                        Boxes[4 * ScoreIndices[cls][i].second + 1],
-                        Boxes[4 * ScoreIndices[cls][i].second + 2],
-                        Boxes[4 * ScoreIndices[cls][i].second + 3]);
+            decoded = Decoded(param.classNames[cls], ScoreIndices[cls][i].first,
+                              cls, Boxes[4 * ScoreIndices[cls][i].second],
+                              Boxes[4 * ScoreIndices[cls][i].second + 1],
+                              Boxes[4 * ScoreIndices[cls][i].second + 2],
+                              Boxes[4 * ScoreIndices[cls][i].second + 3]);
         }
 
         Result.emplace_back(decoded);
@@ -467,12 +470,12 @@ void NmsOneClass(unsigned int cls,
 void Nms(std::vector<std::vector<std::pair<float, int>>> &ScoreIndices,
          std::vector<float> &Boxes, std::vector<float> &Keypoints,
          std::vector<Decoded> &Result, YoloParam param) {
-    for (size_t cls = 0; cls < param.numClasses; cls++) {
+    for (int cls = 0; cls < param.numClasses; cls++) {
         NmsOneClass(cls, ScoreIndices, Boxes, Keypoints, Result, param);
     }
 }
 
-void YOLOPostProcess(std::vector<shared_ptr<dxrt::Tensor>> network_output,
+void YOLOPostProcess(std::vector<dxs::DXTensor> network_output,
                      DXFrameMeta *frame_meta, YoloParam param) {
 
     std::vector<Decoded> results;
@@ -541,7 +544,7 @@ void YOLOPostProcess(std::vector<shared_ptr<dxrt::Tensor>> network_output,
     }
 }
 
-extern "C" void YOLOV5S_1(std::vector<shared_ptr<dxrt::Tensor>> network_output,
+extern "C" void YOLOV5S_1(std::vector<dxs::DXTensor> network_output,
                           DXFrameMeta *frame_meta, DXObjectMeta *object_meta) {
 
     YoloParam param = {
@@ -587,7 +590,7 @@ extern "C" void YOLOV5S_1(std::vector<shared_ptr<dxrt::Tensor>> network_output,
     YOLOPostProcess(network_output, frame_meta, param);
 }
 
-extern "C" void YOLOV5S_3(std::vector<shared_ptr<dxrt::Tensor>> network_output,
+extern "C" void YOLOV5S_3(std::vector<dxs::DXTensor> network_output,
                           DXFrameMeta *frame_meta, DXObjectMeta *object_meta) {
 
     YoloParam param = {
@@ -633,7 +636,7 @@ extern "C" void YOLOV5S_3(std::vector<shared_ptr<dxrt::Tensor>> network_output,
     YOLOPostProcess(network_output, frame_meta, param);
 }
 
-extern "C" void YOLOV5S_4(std::vector<shared_ptr<dxrt::Tensor>> network_output,
+extern "C" void YOLOV5S_4(std::vector<dxs::DXTensor> network_output,
                           DXFrameMeta *frame_meta, DXObjectMeta *object_meta) {
 
     YoloParam param = {
@@ -678,7 +681,7 @@ extern "C" void YOLOV5S_4(std::vector<shared_ptr<dxrt::Tensor>> network_output,
     YOLOPostProcess(network_output, frame_meta, param);
 }
 
-extern "C" void YOLOV5S_6(std::vector<shared_ptr<dxrt::Tensor>> network_output,
+extern "C" void YOLOV5S_6(std::vector<dxs::DXTensor> network_output,
                           DXFrameMeta *frame_meta, DXObjectMeta *object_meta) {
 
     YoloParam param = {
@@ -721,7 +724,7 @@ extern "C" void YOLOV5S_6(std::vector<shared_ptr<dxrt::Tensor>> network_output,
     YOLOPostProcess(network_output, frame_meta, param);
 }
 
-extern "C" void YOLOV5X_2(std::vector<shared_ptr<dxrt::Tensor>> network_output,
+extern "C" void YOLOV5X_2(std::vector<dxs::DXTensor> network_output,
                           DXFrameMeta *frame_meta, DXObjectMeta *object_meta) {
 
     YoloParam param = {
@@ -764,9 +767,9 @@ extern "C" void YOLOV5X_2(std::vector<shared_ptr<dxrt::Tensor>> network_output,
     YOLOPostProcess(network_output, frame_meta, param);
 }
 
-extern "C" void
-YOLOV5Pose_1(std::vector<shared_ptr<dxrt::Tensor>> network_output,
-             DXFrameMeta *frame_meta, DXObjectMeta *object_meta) {
+extern "C" void YOLOV5Pose_1(std::vector<dxs::DXTensor> network_output,
+                             DXFrameMeta *frame_meta,
+                             DXObjectMeta *object_meta) {
 
     YoloParam param = {
         .height = 640,
@@ -791,7 +794,7 @@ YOLOV5Pose_1(std::vector<shared_ptr<dxrt::Tensor>> network_output,
     YOLOPostProcess(network_output, frame_meta, param);
 }
 
-extern "C" void YOLOV7_512(std::vector<shared_ptr<dxrt::Tensor>> network_output,
+extern "C" void YOLOV7_512(std::vector<dxs::DXTensor> network_output,
                            DXFrameMeta *frame_meta, DXObjectMeta *object_meta) {
 
     YoloParam param = {
@@ -834,7 +837,7 @@ extern "C" void YOLOV7_512(std::vector<shared_ptr<dxrt::Tensor>> network_output,
     YOLOPostProcess(network_output, frame_meta, param);
 }
 
-extern "C" void YOLOV7_640(std::vector<shared_ptr<dxrt::Tensor>> network_output,
+extern "C" void YOLOV7_640(std::vector<dxs::DXTensor> network_output,
                            DXFrameMeta *frame_meta, DXObjectMeta *object_meta) {
 
     YoloParam param = {
@@ -877,7 +880,7 @@ extern "C" void YOLOV7_640(std::vector<shared_ptr<dxrt::Tensor>> network_output,
     YOLOPostProcess(network_output, frame_meta, param);
 }
 
-extern "C" void YOLOV8N(std::vector<shared_ptr<dxrt::Tensor>> network_output,
+extern "C" void YOLOV8N(std::vector<dxs::DXTensor> network_output,
                         DXFrameMeta *frame_meta, DXObjectMeta *object_meta) {
 
     YoloParam param = {
@@ -911,7 +914,7 @@ extern "C" void YOLOV8N(std::vector<shared_ptr<dxrt::Tensor>> network_output,
     YOLOPostProcess(network_output, frame_meta, param);
 }
 
-extern "C" void YOLOV9S(std::vector<shared_ptr<dxrt::Tensor>> network_output,
+extern "C" void YOLOV9S(std::vector<dxs::DXTensor> network_output,
                         DXFrameMeta *frame_meta, DXObjectMeta *object_meta) {
 
     YoloParam param = {

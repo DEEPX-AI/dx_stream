@@ -40,11 +40,6 @@ static void gst_dxgather_finalize(GObject *object) {
     }
     self->_sinkpads.clear();
 
-    if (self->_srcpad) {
-        gst_object_unref(self->_srcpad);
-        self->_srcpad = NULL;
-    }
-
     for (auto tmp = self->_buffers.begin(); tmp != self->_buffers.end();
          tmp++) {
         int stream_id = tmp->first;
@@ -105,7 +100,6 @@ static gboolean gst_dxgather_sink_event(GstPad *pad, GstObject *parent,
     case GST_EVENT_EOS:
         break;
     case GST_EVENT_CAPS: {
-        g_print("event");
         gboolean result = gst_pad_push_event(self->_srcpad, event);
         if (!result) {
             g_printerr("Failed to push caps event to src pad\n");
@@ -167,8 +161,9 @@ static GstPad *gst_dxgather_request_new_pad(GstElement *element,
                                             const gchar *name,
                                             const GstCaps *caps) {
     GstDxGather *self = GST_DXGATHER(element);
-    gchar *pad_name = name ? g_strdup(name)
-                           : g_strdup_printf("sink_%d", self->_sinkpads.size());
+    gchar *pad_name = name
+                          ? g_strdup(name)
+                          : g_strdup_printf("sink_%ld", self->_sinkpads.size());
 
     GstPad *sinkpad = gst_pad_new_from_template(templ, pad_name);
 

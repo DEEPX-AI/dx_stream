@@ -6,6 +6,7 @@
 #include "gst-dxinfer.hpp"
 #include "gst-dxmuxer.hpp"
 #include "gst-dxosd.hpp"
+#include "gst-dxpostprocess.hpp"
 #include "gst-dxpreprocess.hpp"
 #include "gst-dxrate.hpp"
 #include "gst-dxrouter.hpp"
@@ -27,6 +28,10 @@ static gboolean plugin_init(GstPlugin *plugin) {
     }
     if (!gst_element_register(plugin, "dxpreprocess", GST_RANK_NONE,
                               GST_TYPE_DXPREPROCESS)) {
+        return FALSE;
+    }
+    if (!gst_element_register(plugin, "dxpostprocess", GST_RANK_NONE,
+                              GST_TYPE_DXPOSTPROCESS)) {
         return FALSE;
     }
     if (!gst_element_register(plugin, "dxosd", GST_RANK_NONE, GST_TYPE_DXOSD)) {

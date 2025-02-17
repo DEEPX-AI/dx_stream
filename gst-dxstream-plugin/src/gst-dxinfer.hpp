@@ -20,7 +20,9 @@ const int MAX_QUEUE_SIZE = 10;
 typedef struct _GstDxInfer {
     GstElement _parent_instance;
     GstPad *_srcpad;
+
     guint _preproc_id;
+    guint _infer_id;
 
     gboolean _secondary_mode;
     gchar *_model_path;
@@ -41,12 +43,6 @@ typedef struct _GstDxInfer {
 
     std::condition_variable _cv;
     std::condition_variable _push_cv;
-
-    gchar *_library_file_path;
-    gchar *_function_name;
-    void *_library_handle;
-    void (*_postproc_function)(std::vector<shared_ptr<dxrt::Tensor>>,
-                               DXFrameMeta *, DXObjectMeta *);
 
     MemoryPool _pool;
     guint _pool_size;

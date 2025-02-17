@@ -1,18 +1,17 @@
-#include "dxrt/dxrt_api.h"
 #include "gst-dxmeta.hpp"
 #include <cmath>
 #include <iostream>
 #include <vector>
 
-extern "C" void
-PostProcess(std::vector<shared_ptr<dxrt::Tensor>> network_output,
-            DXFrameMeta *frame_meta, DXObjectMeta *object_meta) {
+extern "C" void PostProcess(std::vector<dxs::DXTensor> network_output,
+                            DXFrameMeta *frame_meta,
+                            DXObjectMeta *object_meta) {
 
     object_meta->_body_feature.clear();
 
     float norm = 0.0f;
-    float *vec = (float *)network_output.front()->data();
-    for (int i = 0; i < network_output.front()->shape()[3]; i++) {
+    float *vec = (float *)network_output[0]._data;
+    for (int i = 0; i < network_output[0]._shape[3]; i++) {
         float v = *(vec + i);
         norm += v * v;
     }
@@ -27,7 +26,7 @@ PostProcess(std::vector<shared_ptr<dxrt::Tensor>> network_output,
     }
 
     // Normalize the vector
-    for (int i = 0; i < network_output.front()->shape()[3]; i++) {
+    for (int i = 0; i < network_output[0]._shape[3]; i++) {
         float v = *(vec + i);
         object_meta->_body_feature.push_back(v / norm);
     }

@@ -1,0 +1,5 @@
+{
+    "inference_id": 2,
+    "library_file_path": "/usr/share/dx-stream/lib/libpostprocess_deeplabv3plusmobilenetv2_2.so",
+    "function_name": "PostProcess"
+}
