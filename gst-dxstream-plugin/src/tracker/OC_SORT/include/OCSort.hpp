@@ -10,6 +10,9 @@
 namespace ocsort {
 
 class OCSort : public Tracker {
+  private:
+    uint64_t id_count;
+
   public:
     void init(const std::map<std::string, std::string> &params) override;
     std::vector<Eigen::RowVectorXf> update(const Eigen::MatrixXf dets) override;
