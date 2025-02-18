@@ -45,7 +45,7 @@ void OCSort::init(const std::map<std::string, std::string> &params) {
 
     inertia = std::stof(get_param("inertia", "0.2"));
     use_byte = (get_param("use_byte", "false") == "true");
-    KalmanBoxTracker::count = 0;
+    id_count = 0;
 }
 std::ostream &precision(std::ostream &os) {
     os << std::fixed << std::setprecision(2);
@@ -102,7 +102,7 @@ std::vector<Eigen::RowVectorXf> OCSort::update(Eigen::MatrixXf dets) {
     unmatched_dets = std::get<1>(result);
     unmatched_trks = std::get<2>(result);
     for (auto m : matched) {
-        Eigen::Matrix<float, 5, 1> tmp_bbox;
+        Eigen::VectorXf tmp_bbox(5);
         tmp_bbox = dets_first.block<1, 5>(m(0), 0);
         trackers[m(1)].update(&(tmp_bbox), dets_first(m(0), 5),
                               dets_first(m(0), 6));
@@ -142,9 +142,9 @@ std::vector<Eigen::RowVectorXf> OCSort::update(Eigen::MatrixXf dets) {
                 if (iou_left(m[0], m[1]) < iou_threshold)
                     continue;
 
-                Eigen::Matrix<float, 5, 1> tmp_box;
-                tmp_box = dets_second.block<1, 5>(det_ind, 0);
-                trackers[trk_ind].update(&tmp_box, dets_second(det_ind, 5),
+                Eigen::VectorXf tmp_bbox(5);
+                tmp_bbox = dets_second.block<1, 5>(det_ind, 0);
+                trackers[trk_ind].update(&tmp_bbox, dets_second(det_ind, 5),
                                          dets_second(det_ind, 6));
                 to_remove_trk_indices.push_back(trk_ind);
             }
@@ -198,7 +198,7 @@ std::vector<Eigen::RowVectorXf> OCSort::update(Eigen::MatrixXf dets) {
                 if (iou_left(i.at(0), i.at(1)) < iou_threshold) {
                     continue;
                 }
-                Eigen::Matrix<float, 5, 1> tmp_bbox;
+                Eigen::VectorXf tmp_bbox(5);
                 tmp_bbox = dets_first.block<1, 5>(det_ind, 0);
                 trackers.at(trk_ind).update(&tmp_bbox, dets_first(det_ind, 5),
                                             dets_first(det_ind, 6));
@@ -230,10 +230,12 @@ std::vector<Eigen::RowVectorXf> OCSort::update(Eigen::MatrixXf dets) {
         trackers.at(m).update(nullptr, 0, -1);
     }
     for (int i : unmatched_dets) {
+        id_count++;
         Eigen::RowVectorXf tmp_bbox = dets_first.block(i, 0, 1, 5);
         int cls_ = int(dets(i, 5));
         int idx_ = int(dets(i, 6));
-        KalmanBoxTracker trk = KalmanBoxTracker(tmp_bbox, cls_, idx_, delta_t);
+        KalmanBoxTracker trk =
+            KalmanBoxTracker(tmp_bbox, cls_, idx_, id_count, delta_t);
         trackers.push_back(trk);
     }
     // int tmp_i = trackers.size();

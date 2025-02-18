@@ -11,7 +11,7 @@ class KalmanFilterNew {
     KalmanFilterNew();
     KalmanFilterNew(int dim_x_, int dim_z_);
     void predict();
-    void update(Eigen::VectorXf *z_);
+    void update(const Eigen::VectorXf &z_);
     void freeze();
     void unfreeze();
     KalmanFilterNew &operator=(const KalmanFilterNew &) = default;
@@ -66,12 +66,12 @@ class KalmanFilterNew {
     Eigen::VectorXf x_post;
     Eigen::MatrixXf P_post;
     // keeps all observations. When there is a 'z', it is directly pushed back.
-    std::vector<Eigen::VectorXf *> history_obs;
+    std::vector<Eigen::VectorXf> history_obs;
     // The following is newly added by ocsort.
     // Used to mark the tracking state (whether there is still a target matching
     // this trajectory), default value is false.
     bool observed = false;
-    std::vector<Eigen::VectorXf *>
+    std::vector<Eigen::VectorXf>
         new_history; // Used to create a virtual trajectory.
 
     /* todo: Let's change the way we store variables, as C++ does not have
@@ -99,7 +99,7 @@ class KalmanFilterNew {
         Eigen::MatrixXf P_prior;
         Eigen::VectorXf x_post;
         Eigen::MatrixXf P_post;
-        std::vector<Eigen::VectorXf *> history_obs;
+        std::vector<Eigen::VectorXf> history_obs;
         bool observed = false;
         // The following is to determine whether the data has been saved due to
         // freezing.

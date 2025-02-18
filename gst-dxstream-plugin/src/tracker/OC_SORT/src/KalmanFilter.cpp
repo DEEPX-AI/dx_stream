@@ -30,9 +30,9 @@ void KalmanFilterNew::predict() {
     x_prior = x;
     P_prior = P;
 }
-void KalmanFilterNew::update(Eigen::VectorXf *z_) {
+void KalmanFilterNew::update(const Eigen::VectorXf &z_) {
     history_obs.push_back(z_);
-    if (z_ == nullptr) {
+    if (z_.size() == 0) {
         if (true == observed)
             freeze();
         observed = false;
@@ -45,14 +45,14 @@ void KalmanFilterNew::update(Eigen::VectorXf *z_) {
     if (false == observed)
         unfreeze();
     observed = true;
-    y = *z_ - H * x;
+    y = z_ - H * x;
     auto PHT = P * H.transpose();
     S = H * PHT + R;
     K = PHT * SI;
     x = x + K * y;
     auto I_KH = I - K * H;
     P = ((I_KH * P) * I_KH.transpose()) + ((K * R) * K.transpose());
-    z = *z_;
+    z = z_;
     x_post = x;
     P_post = P;
 }
@@ -103,14 +103,15 @@ void KalmanFilterNew::unfreeze() {
         Eigen::VectorXf box2;
         int lastNotNullIndex = -1;
         int secondLastNotNullIndex = -1;
+
         for (int i = new_history.size() - 1; i >= 0; i--) {
-            if (new_history[i] != nullptr) {
+            if (new_history[i].size() != 0) {
                 if (lastNotNullIndex == -1) {
                     lastNotNullIndex = i;
-                    box2 = *(new_history.at(lastNotNullIndex));
+                    box2 = new_history[lastNotNullIndex];
                 } else if (secondLastNotNullIndex == -1) {
                     secondLastNotNullIndex = i;
-                    box1 = *(new_history.at(secondLastNotNullIndex));
+                    box1 = new_history[secondLastNotNullIndex];
                     break;
                 }
             }
