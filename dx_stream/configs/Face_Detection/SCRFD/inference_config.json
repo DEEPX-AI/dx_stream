@@ -1,6 +1,6 @@
 {
     "preprocess_id": 4,
     "inference_id": 4,
-    "model_path" : "./dx_stream/samples/models/SCRFD500M_1.dxnn",
-    "secondary_mode": true
+    "secondary_mode": true,
+    "model_path" : "./dx_stream/samples/models/SCRFD500M_1.dxnn"
 }

@@ -102,7 +102,8 @@ static gboolean gst_dxgather_sink_event(GstPad *pad, GstObject *parent,
     case GST_EVENT_CAPS: {
         gboolean result = gst_pad_push_event(self->_srcpad, event);
         if (!result) {
-            g_printerr("Failed to push caps event to src pad\n");
+            GST_ERROR_OBJECT(
+                self, "Failed to push caps event to src pad : %d\n", result);
             return FALSE;
         }
         return result;
@@ -188,7 +189,7 @@ static void gst_dxgather_release_pad(GstElement *element, GstPad *pad) {
     gst_element_remove_pad(element, pad);
 }
 
-void merge_object_meta(DXObjectMeta *obj_meta0, const DXObjectMeta *obj_meta1) {
+void merge_object_meta(DXObjectMeta *obj_meta0, DXObjectMeta *obj_meta1) {
     if (obj_meta0->_track_id == -1 && obj_meta1->_track_id != -1) {
         obj_meta0->_track_id = obj_meta1->_track_id;
     }
@@ -257,10 +258,73 @@ void merge_object_meta(DXObjectMeta *obj_meta0, const DXObjectMeta *obj_meta1) {
         obj_meta0->_seg_cls_map.width = obj_meta1->_seg_cls_map.width;
         obj_meta0->_seg_cls_map.height = obj_meta1->_seg_cls_map.height;
     }
+
+    for (auto &pool : obj_meta1->_input_memory_pool) {
+        if (obj_meta0->_input_memory_pool.find(pool.first) ==
+            obj_meta0->_input_memory_pool.end()) {
+            obj_meta0->_input_memory_pool[pool.first] = pool.second;
+        }
+    }
+    for (auto &pool : obj_meta1->_output_memory_pool) {
+        if (obj_meta0->_output_memory_pool.find(pool.first) ==
+            obj_meta0->_output_memory_pool.end()) {
+            obj_meta0->_output_memory_pool[pool.first] = pool.second;
+        }
+    }
+    for (auto &input_tensor : obj_meta1->_input_tensor) {
+        if (obj_meta0->_input_tensor.find(input_tensor.first) ==
+            obj_meta0->_input_tensor.end()) {
+            dxs::DXTensor new_tensor;
+
+            new_tensor._name = input_tensor.second._name;
+            new_tensor._shape = input_tensor.second._shape;
+            new_tensor._type = input_tensor.second._type;
+            new_tensor._data =
+                obj_meta0->_input_memory_pool[input_tensor.first]->allocate();
+            new_tensor._phyAddr = input_tensor.second._phyAddr;
+            new_tensor._elemSize = input_tensor.second._elemSize;
+
+            memcpy(new_tensor._data, input_tensor.second._data,
+                   obj_meta0->_input_memory_pool[input_tensor.first]
+                       ->get_block_size());
+            obj_meta0->_input_tensor[input_tensor.first] = new_tensor;
+        }
+    }
+    for (auto &output_tensor : obj_meta1->_output_tensor) {
+        if (obj_meta0->_output_memory_pool.find(output_tensor.first) ==
+            obj_meta0->_output_memory_pool.end()) {
+            g_error("[dxgather] Can't not find Output memory pool \n");
+        }
+
+        if (obj_meta0->_output_tensor.find(output_tensor.first) !=
+            obj_meta0->_output_tensor.end()) {
+            g_error("[dxgather] Output Tensor is Exist \n");
+        }
+
+        void *data =
+            obj_meta0->_output_memory_pool[output_tensor.first]->allocate();
+        memcpy(data, obj_meta1->_output_tensor[output_tensor.first][0]._data,
+               obj_meta0->_output_memory_pool[output_tensor.first]
+                   ->get_block_size());
+        obj_meta0->_output_tensor[output_tensor.first] =
+            std::vector<dxs::DXTensor>();
+        for (auto &tensor : output_tensor.second) {
+            dxs::DXTensor new_tensor;
+            new_tensor._name = tensor._name;
+            new_tensor._shape = tensor._shape;
+            new_tensor._type = tensor._type;
+            new_tensor._data = static_cast<void *>(
+                static_cast<uint8_t *>(data) + tensor._phyAddr);
+            new_tensor._phyAddr = tensor._phyAddr;
+            new_tensor._elemSize = tensor._elemSize;
+            obj_meta0->_output_tensor[output_tensor.first].push_back(
+                new_tensor);
+        }
+    }
 }
 
 void copy_object_meta(DXObjectMeta *dest_object_meta,
-                      const DXObjectMeta *src_object_meta) {
+                      DXObjectMeta *src_object_meta) {
     if (!dest_object_meta || !src_object_meta) {
         return;
     }
@@ -293,7 +357,7 @@ void copy_object_meta(DXObjectMeta *dest_object_meta,
     dest_object_meta->_face_box[2] = src_object_meta->_face_box[2];
     dest_object_meta->_face_box[3] = src_object_meta->_face_box[3];
     dest_object_meta->_face_confidence = src_object_meta->_face_confidence;
-    for (const auto &point : src_object_meta->_face_landmarks) {
+    for (auto &point : src_object_meta->_face_landmarks) {
         dest_object_meta->_face_landmarks.push_back(point);
     }
     if (!src_object_meta->_face_feature.empty()) {
@@ -317,6 +381,74 @@ void copy_object_meta(DXObjectMeta *dest_object_meta,
         dest_object_meta->_seg_cls_map.data = nullptr;
         dest_object_meta->_seg_cls_map.width = 0;
         dest_object_meta->_seg_cls_map.height = 0;
+    }
+
+    // memory pool & tensors
+    // clear pool & tensor
+    for (auto &pool : src_object_meta->_input_memory_pool) {
+        if (dest_object_meta->_input_memory_pool.find(pool.first) ==
+            dest_object_meta->_input_memory_pool.end()) {
+            dest_object_meta->_input_memory_pool[pool.first] = pool.second;
+        }
+    }
+    for (auto &pool : src_object_meta->_output_memory_pool) {
+        if (dest_object_meta->_output_memory_pool.find(pool.first) ==
+            dest_object_meta->_output_memory_pool.end()) {
+            dest_object_meta->_output_memory_pool[pool.first] = pool.second;
+        }
+    }
+    // copy tensor
+    for (auto &input_tensor : src_object_meta->_input_tensor) {
+        if (dest_object_meta->_input_tensor.find(input_tensor.first) ==
+            dest_object_meta->_input_tensor.end()) {
+            dxs::DXTensor new_tensor;
+
+            new_tensor._name = input_tensor.second._name;
+            new_tensor._shape = input_tensor.second._shape;
+            new_tensor._type = input_tensor.second._type;
+            new_tensor._data =
+                dest_object_meta->_input_memory_pool[input_tensor.first]
+                    ->allocate();
+            new_tensor._phyAddr = input_tensor.second._phyAddr;
+            new_tensor._elemSize = input_tensor.second._elemSize;
+
+            memcpy(new_tensor._data, input_tensor.second._data,
+                   dest_object_meta->_input_memory_pool[input_tensor.first]
+                       ->get_block_size());
+        }
+    }
+
+    for (auto &output_tensor : src_object_meta->_output_tensor) {
+        if (dest_object_meta->_output_memory_pool.find(output_tensor.first) ==
+            dest_object_meta->_output_memory_pool.end()) {
+            g_error("[dxgather] Can't not find Output memory pool \n");
+        }
+
+        if (dest_object_meta->_output_tensor.find(output_tensor.first) ==
+            dest_object_meta->_output_tensor.end()) {
+            g_error("[dxgather] Output Tensor is Exist \n");
+        }
+
+        void *data = dest_object_meta->_output_memory_pool[output_tensor.first]
+                         ->allocate();
+        memcpy(data,
+               src_object_meta->_output_tensor[output_tensor.first][0]._data,
+               dest_object_meta->_output_memory_pool[output_tensor.first]
+                   ->get_block_size());
+        dest_object_meta->_output_tensor[output_tensor.first] =
+            std::vector<dxs::DXTensor>();
+        for (auto &tensor : output_tensor.second) {
+            dxs::DXTensor new_tensor;
+            new_tensor._name = tensor._name;
+            new_tensor._shape = tensor._shape;
+            new_tensor._type = tensor._type;
+            new_tensor._data = static_cast<void *>(
+                static_cast<uint8_t *>(data) + tensor._phyAddr);
+            new_tensor._phyAddr = tensor._phyAddr;
+            new_tensor._elemSize = tensor._elemSize;
+            dest_object_meta->_output_tensor[output_tensor.first].push_back(
+                new_tensor);
+        }
     }
 }
 
@@ -455,7 +587,8 @@ static GstFlowReturn gst_dxgather_chain(GstPad *pad, GstObject *parent,
         self->_cv.wait(lock, [self, stream_id]() {
             return self->_buffers[stream_id] == NULL || !self->_running;
         });
-        self->_buffers[stream_id] = buf;
+        self->_buffers[stream_id] = gst_buffer_ref(buf);
+        gst_buffer_unref(buf);
     }
     return GST_FLOW_OK;
 }

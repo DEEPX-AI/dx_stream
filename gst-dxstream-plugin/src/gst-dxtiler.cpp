@@ -1,6 +1,5 @@
 #include "gst-dxtiler.hpp"
 #include "gst-dxmeta.hpp"
-#include "utils.hpp"
 #include "utils/format_convert.hpp"
 #include <cmath>
 #include <json-glib/json-glib.h>
@@ -24,7 +23,8 @@ GST_DEBUG_CATEGORY_STATIC(gst_dxtiler_debug_category);
 #define GST_CAT_DEFAULT gst_dxtiler_debug_category
 
 static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE(
-    "sink", GST_PAD_SINK, GST_PAD_ALWAYS, GST_STATIC_CAPS_ANY);
+    "sink", GST_PAD_SINK, GST_PAD_ALWAYS,
+    GST_STATIC_CAPS("video/x-raw, format=(string){ RGB, I420, NV12 }"));
 
 static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE(
     "src", GST_PAD_SRC, GST_PAD_ALWAYS,
@@ -71,13 +71,14 @@ static void dxtiler_set_property(GObject *object, guint property_id,
                     g_object_set(self, "rows", rows, NULL);
                 }
             } else {
-                g_print("Error loading JSON file: %s\n", error->message);
+                g_error("[dxtiler] Error loading JSON file: %s\n",
+                        error->message);
                 g_error_free(error);
             }
 
             g_object_unref(parser);
         } else {
-            g_print("Config file does not exist: %s\n",
+            g_error("[dxtiler] Config file does not exist: %s\n",
                     self->_config_file_path);
         }
         break;
@@ -200,17 +201,17 @@ static gboolean gst_dxtiler_sink_event(GstPad *pad, GstObject *parent,
             (gint)self->_height * self->_rows, "framerate", GST_TYPE_FRACTION,
             0, 1, "pixel-aspect-ratio", GST_TYPE_FRACTION, 1, 1, NULL);
         if (!self->_caps) {
-            g_printerr("Failed to create caps\n");
+            GST_ERROR_OBJECT(self, "Failed to create caps\n");
             return FALSE;
         }
         GstEvent *caps_event = gst_event_new_caps(self->_caps);
         if (!caps_event) {
-            g_printerr("Failed to create caps event\n");
+            GST_ERROR_OBJECT(self, "Failed to create caps event\n");
             return FALSE;
         }
         result = gst_pad_push_event(self->_srcpad, caps_event);
         if (!result) {
-            g_printerr("Failed to push caps event to src pad\n");
+            GST_ERROR_OBJECT(self, "Failed to push caps event to src pad\n");
             return FALSE;
         }
         return result;
@@ -235,6 +236,18 @@ static gboolean gst_dxtiler_sink_event(GstPad *pad, GstObject *parent,
         break;
     }
     return gst_pad_event_default(pad, parent, event);
+}
+
+static gboolean gst_dxtiler_query(GstPad *pad, GstObject *parent,
+                                  GstQuery *query) {
+    if (GST_QUERY_TYPE(query) == GST_QUERY_CAPS) {
+        GstCaps *template_caps = gst_pad_get_pad_template_caps(pad);
+        gst_query_set_caps_result(query, template_caps);
+        gst_caps_unref(template_caps);
+        return TRUE;
+    }
+
+    return gst_pad_query_default(pad, parent, query);
 }
 
 static void gst_dxtiler_class_init(GstDxTilerClass *klass) {
@@ -292,7 +305,9 @@ static void gst_dxtiler_init(GstDxTiler *self) {
     gst_element_add_pad(GST_ELEMENT(self), sinkpad);
 
     self->_srcpad = gst_pad_new_from_static_template(&src_template, "src");
-    gst_pad_set_active(self->_srcpad, TRUE);
+    gst_pad_set_query_function(self->_srcpad,
+                               GST_DEBUG_FUNCPTR(gst_dxtiler_query));
+    // gst_pad_set_active(self->_srcpad, TRUE);
     gst_element_add_pad(GST_ELEMENT(self), self->_srcpad);
 
     self->_config_file_path = NULL;
@@ -318,12 +333,15 @@ static GstFlowReturn gst_dxtiler_chain(GstPad *pad, GstObject *parent,
     DXFrameMeta *frame_meta =
         (DXFrameMeta *)gst_buffer_get_meta(buf, DX_FRAME_META_API_TYPE);
     if (!frame_meta) {
-        g_error("No DXFrameMeta in GstBuffer \n");
+        GST_WARNING_OBJECT(self, "No DXFrameMeta in GstBuffer \n");
+        return GST_FLOW_OK;
     }
 
     if (self->_cols * self->_rows <= frame_meta->_stream_id) {
-        g_error("output tile size lower than input streams %d \n",
-                frame_meta->_stream_id);
+        GST_ERROR_OBJECT(self,
+                         "output tile size lower than input streams %d \n",
+                         frame_meta->_stream_id);
+        return GST_FLOW_OK;
     }
 
     int totalWidth = self->_cols * self->_width;

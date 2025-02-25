@@ -46,7 +46,6 @@ librdkafka_dep = dependency('rdkafka')
 general_inc = [include_directories('./general')]
 general_headers = [
   './general/dxcommon.hpp',
-  './src/utils/utils.hpp',
   './src/utils/memory_pool.hpp',
   './src/utils/format_convert.hpp'
 ]

@@ -142,7 +142,8 @@ static GstFlowReturn gst_dxrouter_chain_function(GstPad *pad, GstObject *parent,
     DXFrameMeta *frame_meta =
         (DXFrameMeta *)gst_buffer_get_meta(buffer, DX_FRAME_META_API_TYPE);
     if (!frame_meta) {
-        g_error("No DXFrameMeta in GstBuffer \n");
+        GST_WARNING_OBJECT(self, "No DXFrameMeta in GstBuffer \n");
+        return GST_FLOW_OK;
     }
 
     GstPad *target_pad = self->_srcpads[frame_meta->_stream_id];

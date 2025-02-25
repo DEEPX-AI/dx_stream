@@ -361,14 +361,14 @@ static GstFlowReturn gst_dxrate_transform_ip(GstBaseTransform *trans,
     GstDxRate *self = GST_DXRATE(trans);
 
     if (self->_framerate == 0) {
-        g_error("framerate must be set");
+        g_error("[dxrate] framerate must be set");
     }
 
     GstFlowReturn res = GST_BASE_TRANSFORM_FLOW_DROPPED;
     GstClockTime intime, in_ts, in_dur;
 
     if (G_UNLIKELY(self->_segment.rate < 0.0)) {
-        g_print("Unsupported reverse playback \n");
+        GST_ERROR_OBJECT(self, "Unsupported reverse playback \n");
         return GST_FLOW_ERROR;
     }
 
@@ -378,7 +378,7 @@ static GstFlowReturn gst_dxrate_transform_ip(GstBaseTransform *trans,
     if (G_UNLIKELY(!GST_CLOCK_TIME_IS_VALID(in_ts))) {
         in_ts = self->_last_ts;
         if (G_UNLIKELY(!GST_CLOCK_TIME_IS_VALID(in_ts))) {
-            g_print("Discard an invalid buffer \n");
+            GST_WARNING_OBJECT(self, "Discard an invalid buffer \n");
             return GST_BASE_TRANSFORM_FLOW_DROPPED;
         }
     }

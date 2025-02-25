@@ -1,5 +1,4 @@
 #include "gst-dxinfer.hpp"
-#include "utils.hpp"
 #include <chrono>
 #include <dlfcn.h>
 #include <json-glib/json-glib.h>
@@ -54,7 +53,8 @@ static void parse_config(GstDxInfer *self) {
                 gint int_value =
                     json_object_get_int_member(object, "preprocess_id");
                 if (int_value < 0) {
-                    g_error("Member preprocess_id has a negative value (%d) "
+                    g_error("[dxinfer] Member preprocess_id has a negative "
+                            "value (%d) "
                             "and cannot be "
                             "converted to unsigned.",
                             int_value);
@@ -65,7 +65,8 @@ static void parse_config(GstDxInfer *self) {
                 gint int_value =
                     json_object_get_int_member(object, "inference_id");
                 if (int_value < 0) {
-                    g_error("Member inference_id has a negative value (%d) "
+                    g_error("[dxinfer] Member inference_id has a negative "
+                            "value (%d) "
                             "and cannot be "
                             "converted to unsigned.",
                             int_value);
@@ -80,7 +81,8 @@ static void parse_config(GstDxInfer *self) {
                 gint int_value =
                     json_object_get_int_member(object, "pool_size");
                 if (int_value < 0) {
-                    g_error("Member pool_size has a negative value (%d) and "
+                    g_error("[dxinfer] Member pool_size has a negative value "
+                            "(%d) and "
                             "cannot be "
                             "converted to unsigned.",
                             int_value);
@@ -90,7 +92,8 @@ static void parse_config(GstDxInfer *self) {
             g_object_unref(parser);
         }
     } else {
-        g_error("Config file does not exist: %s\n", self->_config_path);
+        g_error("[dxinfer] Config file does not exist: %s\n",
+                self->_config_path);
     }
 }
 
@@ -100,7 +103,7 @@ static void gst_dxinfer_set_property(GObject *object, guint property_id,
     auto self =
         G_TYPE_CHECK_INSTANCE_CAST((object), GST_TYPE_DXINFER, GstDxInfer);
     if ((object == nullptr) || (value == nullptr) || (app_spec == nullptr)) {
-        g_error("properties can not be null pointer !! ");
+        g_error("[dxinfer] properties can not be null pointer !! ");
     }
 
     switch (property_id) {
@@ -143,7 +146,7 @@ static void gst_dxinfer_get_property(GObject *object, guint property_id,
     auto self =
         G_TYPE_CHECK_INSTANCE_CAST((object), GST_TYPE_DXINFER, GstDxInfer);
     if ((object == nullptr) || (value == nullptr) || (app_spec == nullptr)) {
-        g_error("to get property, It can not be null pointer !! ");
+        g_error("[dxinfer] to get property, It can not be null pointer !! ");
     }
     switch (property_id) {
     case PROP_MODEL_PATH:
@@ -265,8 +268,8 @@ static GstStateChangeReturn dxinfer_change_state(GstElement *element,
                     guint infer_id = callback_input->self->_infer_id;
                     if (callback_input->self->_secondary_mode) {
                         if (!callback_input->object_meta) {
-                            g_printerr("DXObjectMeta Not found in Inference "
-                                       "Callback \n");
+                            g_error("DXObjectMeta Not found in Inference "
+                                    "Callback \n");
                         }
                         // object
                         callback_input->object_meta->_output_tensor[infer_id] =
@@ -287,23 +290,24 @@ static GstStateChangeReturn dxinfer_change_state(GstElement *element,
 
                     callback_input->self->_push_cv.notify_one();
 
-                    callback_input->self->_frame_count_for_fps++;
-                    if (callback_input->self->_frame_count_for_fps % 100 == 0) {
-                        auto end = std::chrono::high_resolution_clock::now();
-                        auto frameDuration = std::chrono::duration_cast<
-                            std::chrono::microseconds>(
-                            end - callback_input->self->_start_time);
-                        double frameTimeSec = frameDuration.count() / 1000000.0;
-                        double fps = 100.0 / frameTimeSec;
-                        gchar *name = NULL;
-                        g_object_get(G_OBJECT(callback_input->self), "name",
-                                     &name, NULL);
-                        g_print("[%s]\tFPS : %f \n", name, fps);
-                        callback_input->self->_start_time =
-                            std::chrono::high_resolution_clock::now();
-                        callback_input->self->_frame_count_for_fps = 0;
-                        g_free(name);
-                    }
+                    // callback_input->self->_frame_count_for_fps++;
+                    // if (callback_input->self->_frame_count_for_fps % 100 ==
+                    // 0) {
+                    //     auto end = std::chrono::high_resolution_clock::now();
+                    //     auto frameDuration = std::chrono::duration_cast<
+                    //         std::chrono::microseconds>(
+                    //         end - callback_input->self->_start_time);
+                    //     double frameTimeSec = frameDuration.count() /
+                    //     1000000.0; double fps = 100.0 / frameTimeSec; gchar
+                    //     *name = NULL;
+                    //     g_object_get(G_OBJECT(callback_input->self), "name",
+                    //                  &name, NULL);
+                    //     g_print("[%s]\tFPS : %f \n", name, fps);
+                    //     callback_input->self->_start_time =
+                    //         std::chrono::high_resolution_clock::now();
+                    //     callback_input->self->_frame_count_for_fps = 0;
+                    //     g_free(name);
+                    // }
                     delete callback_input;
                     return 0;
                 };
@@ -445,25 +449,12 @@ static gboolean gst_dxinfer_sink_event(GstPad *pad, GstObject *parent,
                     lock, [self] { return self->_buffer_queue.size() == 0; });
             }
             self->_ie->Wait(self->_last_req_id);
-            if (self->_push_running) {
-                self->_push_running = FALSE;
-            }
 
-            while (!self->_push_queue.empty()) {
-                GstBuffer *buffer;
-                {
-                    std::unique_lock<std::mutex> lock(self->_push_lock);
-                    buffer = self->_push_queue.front();
-                    self->_push_queue.erase(self->_push_queue.begin());
-                }
-                GstFlowReturn ret = gst_pad_push(self->_srcpad, buffer);
-                if (ret != GST_FLOW_OK) {
-                    GST_ERROR("[DXInfer] Failed to push buffer: %d\n", ret);
-                    break;
-                }
+            {
+                std::unique_lock<std::mutex> lock(self->_push_lock);
+                self->_push_cv.wait(
+                    lock, [self] { return self->_push_queue.size() == 0; });
             }
-
-            self->_push_cv.notify_one();
         }
         break;
     }
@@ -576,6 +567,12 @@ void inference_async(GstDxInfer *self, DXFrameMeta *frame_meta) {
             self->_last_req_id = self->_ie->RunAsync(
                 iter->second._data, static_cast<void *>(callback_input),
                 self->_pool.allocate());
+        } else {
+            self->_ie->Wait(self->_last_req_id);
+            std::unique_lock<std::mutex> lock(self->_push_lock);
+            if (self->_push_running) {
+                self->_push_queue.push_back(frame_meta->_buf);
+            }
         }
     }
 }
@@ -610,7 +607,8 @@ static gpointer push_thread_func(GstDxInfer *self) {
                 [](GstBuffer *a, GstBuffer *b) {
                     return GST_BUFFER_PTS(a) < GST_BUFFER_PTS(b);
                 });
-            push_buf = *smallest_it;
+            push_buf = gst_buffer_ref(*smallest_it);
+            gst_buffer_unref(*smallest_it);
             self->_push_queue.erase(smallest_it);
         }
         self->_push_cv.notify_one();
@@ -618,7 +616,7 @@ static gpointer push_thread_func(GstDxInfer *self) {
         if (push_buf) {
             GstFlowReturn ret = gst_pad_push(self->_srcpad, push_buf);
             if (ret != GST_FLOW_OK) {
-                GST_ERROR("[DXInfer] Failed to push buffer:%d\n ", ret);
+                GST_ERROR_OBJECT(self, "Failed to push buffer:%d\n ", ret);
                 break;
             }
         }
@@ -680,8 +678,7 @@ static gpointer inference_thread_func(GstDxInfer *self) {
             DXFrameMeta *frame_meta =
                 (DXFrameMeta *)gst_buffer_get_meta(buf, DX_FRAME_META_API_TYPE);
             if (!frame_meta) {
-                GST_ERROR_OBJECT(self,
-                                 "[DXInfer] No DXFrameMeta in GstBuffer \n");
+                GST_ERROR_OBJECT(self, "No DXFrameMeta in GstBuffer \n");
                 gst_buffer_unref(buf);
                 continue;
             }
@@ -706,15 +703,14 @@ static GstFlowReturn gst_dxinfer_chain(GstPad *pad, GstObject *parent,
     DXFrameMeta *frame_meta =
         (DXFrameMeta *)gst_buffer_get_meta(buf, DX_FRAME_META_API_TYPE);
     if (!frame_meta) {
-        GST_ERROR_OBJECT(self, "[DXInfer] No DXFrameMeta in GstBuffer \n");
-        gst_buffer_unref(buf);
-        return GST_FLOW_ERROR;
+        GST_WARNING_OBJECT(self, "No DXFrameMeta in GstBuffer \n");
+        return GST_FLOW_OK;
     }
     if (self->_secondary_mode) {
         inference_async(self, frame_meta);
         GstFlowReturn ret = gst_pad_push(self->_srcpad, buf);
         if (ret != GST_FLOW_OK) {
-            GST_ERROR("[DXInfer] Failed to push buffer:%d\n ", ret);
+            GST_ERROR_OBJECT(self, "Failed to push buffer:%d\n ", ret);
         }
         return ret;
     } else {
