@@ -25,7 +25,6 @@ dxstream_sources = [
     'gst-dxrouter.cpp',
     'utils/format_convert.cpp',
     'utils/memory_pool.cpp',
-    'utils/utils.cpp',
     'brokers/dx_msgbrokerl_mqtt.cpp',
     'brokers/dx_msgbrokerl_kafka.cpp'
 ]

@@ -61,7 +61,8 @@ static void parse_config(GstDxPostprocess *self) {
                 gint int_value =
                     json_object_get_int_member(object, "inference_id");
                 if (int_value < 0) {
-                    g_error("Member inference_id has a negative value (%d) and "
+                    g_error("[dxpostprocess] Member inference_id has a "
+                            "negative value (%d) and "
                             "cannot be "
                             "converted to unsigned.",
                             int_value);
@@ -162,11 +163,11 @@ dxpostprocess_change_state(GstElement *element, GstStateChange transition) {
             self->_function_name) {
             self->_library_handle = dlopen(self->_library_file_path, RTLD_LAZY);
             if (!self->_library_handle) {
-                g_print("Error opening library: %s\n", dlerror());
+                g_error("Error opening library: %s\n", dlerror());
             }
             void *func_ptr = dlsym(self->_library_handle, self->_function_name);
             if (!func_ptr) {
-                g_print("Error finding function: %s\n", dlerror());
+                g_error("Error finding function: %s\n", dlerror());
                 dlclose(self->_library_handle);
                 self->_library_handle = NULL;
             }
@@ -297,11 +298,12 @@ static GstFlowReturn gst_dxpostprocess_transform_ip(GstBaseTransform *trans,
     DXFrameMeta *frame_meta =
         (DXFrameMeta *)gst_buffer_get_meta(buf, DX_FRAME_META_API_TYPE);
     if (!frame_meta) {
-        g_error("No DXFrameMeta in GstBuffer !! \n");
+        GST_WARNING_OBJECT(self, "No DXFrameMeta in GstBuffer \n");
+        return GST_FLOW_OK;
     }
 
-    bool processed = false;
-    auto start = std::chrono::high_resolution_clock::now();
+    // bool processed = false;
+    // auto start = std::chrono::high_resolution_clock::now();
     if (self->_secondary_mode) {
         int objects_size = g_list_length(frame_meta->_object_meta_list);
         for (int o = 0; o < objects_size; o++) {
@@ -310,36 +312,37 @@ static GstFlowReturn gst_dxpostprocess_transform_ip(GstBaseTransform *trans,
             auto iter = object_meta->_output_tensor.find(self->_infer_id);
             if (iter != object_meta->_output_tensor.end()) {
                 self->_postproc_function(iter->second, frame_meta, object_meta);
-                processed = true;
+                // processed = true;
             }
         }
     } else {
         auto iter = frame_meta->_output_tensor.find(self->_infer_id);
         if (iter != frame_meta->_output_tensor.end()) {
             self->_postproc_function(iter->second, frame_meta, nullptr);
-            processed = true;
+            // processed = true;
         }
     }
 
-    auto end = std::chrono::high_resolution_clock::now();
-    if (processed) {
-        auto frameDuration =
-            std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-        double frameTimeSec = frameDuration.count() / 1000000.0;
-        self->_acc_fps += 1.0 / frameTimeSec;
-        self->_frame_count_for_fps++;
+    // auto end = std::chrono::high_resolution_clock::now();
+    // if (processed) {
+    //     auto frameDuration =
+    //         std::chrono::duration_cast<std::chrono::microseconds>(end -
+    //         start);
+    //     double frameTimeSec = frameDuration.count() / 1000000.0;
+    //     self->_acc_fps += 1.0 / frameTimeSec;
+    //     self->_frame_count_for_fps++;
 
-        if (self->_frame_count_for_fps % 100 == 0 &&
-            self->_frame_count_for_fps != 0) {
-            gchar *name = NULL;
-            g_object_get(G_OBJECT(self), "name", &name, NULL);
-            g_print("[%s]\tFPS : %f \n", name,
-                    self->_acc_fps / self->_frame_count_for_fps);
-            self->_acc_fps = 0;
-            self->_frame_count_for_fps = 0;
-            g_free(name);
-        }
-    }
+    //     if (self->_frame_count_for_fps % 100 == 0 &&
+    //         self->_frame_count_for_fps != 0) {
+    //         gchar *name = NULL;
+    //         g_object_get(G_OBJECT(self), "name", &name, NULL);
+    //         g_print("[%s]\tFPS : %f \n", name,
+    //                 self->_acc_fps / self->_frame_count_for_fps);
+    //         self->_acc_fps = 0;
+    //         self->_frame_count_for_fps = 0;
+    //         g_free(name);
+    //     }
+    // }
 
     return GST_FLOW_OK;
 }

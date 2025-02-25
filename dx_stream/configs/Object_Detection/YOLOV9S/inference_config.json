@@ -1,5 +1,0 @@
-{
-    "preprocess_id": 1,
-    "inference_id": 1,
-    "model_path" : "./dx_stream/samples/models/yolov9s.dxnn"
-}

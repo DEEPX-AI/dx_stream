@@ -1,7 +1,6 @@
 #include "gst-dxosd.hpp"
 #include "format_convert.hpp"
 #include "gst-dxmeta.hpp"
-#include "utils.hpp"
 #include <cmath>
 #include <gst/video/video.h>
 #include <json-glib/json-glib.h>
@@ -170,6 +169,31 @@ static void dxosd_dispose(GObject *object) {
     G_OBJECT_CLASS(parent_class)->dispose(object);
 }
 
+static GstCaps *gst_dxosd_transform_caps(GstBaseTransform *trans,
+                                         GstPadDirection direction,
+                                         GstCaps *caps, GstCaps *filter) {
+    GstCaps *new_caps = gst_caps_copy(caps);
+
+    if (filter) {
+        GstCaps *filtered_caps = gst_caps_intersect(new_caps, filter);
+        gst_caps_unref(new_caps);
+        new_caps = filtered_caps;
+    }
+    return new_caps;
+}
+
+static gboolean gst_dxosd_set_caps(GstBaseTransform *trans, GstCaps *incaps,
+                                   GstCaps *outcaps) {
+    const GstStructure *structure = gst_caps_get_structure(incaps, 0);
+    const gchar *format = gst_structure_get_string(structure, "format");
+
+    if (!format) {
+        g_warning("No format found in sink caps!");
+        return FALSE;
+    }
+    return TRUE;
+}
+
 static void gst_dxosd_class_init(GstDxOsdClass *klass) {
     GST_DEBUG_CATEGORY_INIT(gst_dxosd_debug_category, "dxosd", 0,
                             "DXOsd plugin");
@@ -184,11 +208,17 @@ static void gst_dxosd_class_init(GstDxOsdClass *klass) {
 
     gst_element_class_add_pad_template(
         GST_ELEMENT_CLASS(klass),
-        gst_pad_template_new("src", GST_PAD_SRC, GST_PAD_ALWAYS, GST_CAPS_ANY));
+        gst_pad_template_new(
+            "sink", GST_PAD_SINK, GST_PAD_ALWAYS,
+            gst_caps_from_string(
+                "video/x-raw, format=(string){ RGB, I420, NV12 }")));
+
     gst_element_class_add_pad_template(
         GST_ELEMENT_CLASS(klass),
-        gst_pad_template_new("sink", GST_PAD_SINK, GST_PAD_ALWAYS,
-                             GST_CAPS_ANY));
+        gst_pad_template_new(
+            "src", GST_PAD_SRC, GST_PAD_ALWAYS,
+            gst_caps_from_string(
+                "video/x-raw, format=(string){ RGB, I420, NV12 }")));
 
     GstBaseTransformClass *base_transform_class =
         GST_BASE_TRANSFORM_CLASS(klass);
@@ -196,7 +226,9 @@ static void gst_dxosd_class_init(GstDxOsdClass *klass) {
     base_transform_class->stop = GST_DEBUG_FUNCPTR(gst_dxosd_stop);
     base_transform_class->transform_ip =
         GST_DEBUG_FUNCPTR(gst_dxosd_transform_ip);
-
+    base_transform_class->transform_caps =
+        GST_DEBUG_FUNCPTR(gst_dxosd_transform_caps);
+    base_transform_class->set_caps = GST_DEBUG_FUNCPTR(gst_dxosd_set_caps);
     parent_class = GST_ELEMENT_CLASS(g_type_class_peek_parent(klass));
     element_class->change_state = dxosd_change_state;
 }
@@ -358,10 +390,12 @@ void draw(DXFrameMeta *frame_meta) {
 
 static GstFlowReturn gst_dxosd_transform_ip(GstBaseTransform *trans,
                                             GstBuffer *buf) {
+    GstDxOsd *self = GST_DXOSD(trans);
     DXFrameMeta *frame_meta =
         (DXFrameMeta *)gst_buffer_get_meta(buf, DX_FRAME_META_API_TYPE);
     if (!frame_meta) {
-        g_error("No DXFrameMeta in GstBuffer \n");
+        GST_WARNING_OBJECT(self, "No DXFrameMeta in GstBuffer \n");
+        return GST_FLOW_OK;
     }
     draw(frame_meta);
 

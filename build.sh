@@ -56,13 +56,6 @@ case $1 in
             echo "Error: $TARGET_FILE not found. Was the project installed?"
         fi
 
-        if [ -f "/usr/local/lib/libdx_msgconvl.so" ]; then
-            echo "Removing /usr/local/lib/libdx_msgconvl.so"
-            sudo rm -rf /usr/local/lib/libdx_msgconvl.so
-        else
-            echo "Error: /usr/local/lib/libdx_msgconvl.so not found. Was the project installed?"
-        fi
-
         if [ -d "/usr/local/include/dx_stream" ]; then
             echo "Removing /usr/local/include/dx_stream"
             sudo rm -rf /usr/local/include/dx_stream
@@ -99,6 +92,8 @@ case $1 in
         ./build.sh debug
         cd $WRC/dx_stream/apps
         ./build.sh debug
+        cd $WRC/dx_stream/test/test_plugin
+        ./build.sh
         echo "Installation completed."
         exit 0
         ;;
@@ -119,13 +114,6 @@ case $1 in
             sudo rm "$TARGET_FILE"
         else
             echo "Error: $TARGET_FILE not found. Was the project installed?"
-        fi
-
-        if [ -f "/usr/local/lib/libdx_msgconvl.so" ]; then
-            echo "Removing /usr/local/lib/libdx_msgconvl.so"
-            sudo rm -rf /usr/local/lib/libdx_msgconvl.so
-        else
-            echo "Error: /usr/local/lib/libdx_msgconvl.so not found. Was the project installed?"
         fi
 
         if [ -d "/usr/local/include/dx_stream" ]; then
@@ -162,6 +150,8 @@ case $1 in
         cd $WRC/dx_stream/custom_library
         ./build.sh
         cd $WRC/dx_stream/apps
+        ./build.sh
+        cd $WRC/dx_stream/test/test_plugin
         ./build.sh
         echo "Installation completed."
         exit 0

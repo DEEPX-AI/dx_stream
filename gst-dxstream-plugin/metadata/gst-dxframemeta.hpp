@@ -3,11 +3,9 @@
 
 #include "dxcommon.hpp"
 #include "memory_pool.hpp"
-#include <dxrt/dxrt_api.h>
 #include <glib.h>
 #include <gst/gst.h>
 #include <map>
-#include <opencv2/opencv.hpp>
 #include <vector>
 
 G_BEGIN_DECLS

@@ -41,7 +41,7 @@ struct _GstDxPreprocess {
     int _roi[4];
 
     guint _interval;
-    guint _cnt;
+    std::map<int, guint> _cnt;
     guint _frame_count_for_fps;
     double _acc_fps;
 

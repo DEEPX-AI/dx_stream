@@ -1,7 +1,6 @@
 #include "gst-dxmsgconv.hpp"
 #include "gst-dxmeta.hpp"
 #include "gst-dxmsgmeta.hpp"
-#include "utils.hpp"
 #include <dlfcn.h>
 #include <json-glib/json-glib.h>
 
@@ -203,13 +202,13 @@ static gboolean gst_dxmsgconv_start(GstBaseTransform *trans) {
     GST_DEBUG_OBJECT(self, "start");
 
     if (self->_library_file_path == NULL) {
-        g_print("Error, dxmsgconv custom library is not set\n");
+        GST_ERROR_OBJECT(self, "dxmsgconv custom library is not set\n");
         return FALSE;
     }
 
     self->_library_handle = dlopen(self->_library_file_path, RTLD_LAZY);
     if (!self->_library_handle) {
-        g_print("Error, dxmsgconv custom library: %s\n", dlerror());
+        GST_ERROR_OBJECT(self, "dxmsgconv custom library: %s\n", dlerror());
         return FALSE;
     }
     self->_create_context_function = (DxMsg_CreateContextFptr)dlsym(
@@ -223,7 +222,7 @@ static gboolean gst_dxmsgconv_start(GstBaseTransform *trans) {
 
     if (!self->_create_context_function || !self->_delete_context_function ||
         !self->_convert_payload_function || !self->_release_payload_function) {
-        g_print("Error, dxmsgconv loading functions: %s\n", dlerror());
+        GST_ERROR_OBJECT(self, "dxmsgconv loading functions: %s\n", dlerror());
         if (self->_library_handle) {
             dlclose(self->_library_handle);
             self->_library_handle = NULL;
@@ -288,7 +287,8 @@ static GstFlowReturn gst_dxmsgconv_transform_ip(GstBaseTransform *trans,
     DXFrameMeta *frame_meta =
         (DXFrameMeta *)gst_buffer_get_meta(buf, DX_FRAME_META_API_TYPE);
     if (!frame_meta) {
-        g_error("No DXFrameMeta in GstBuffer \n");
+        GST_WARNING_OBJECT(self, "No DXFrameMeta in GstBuffer \n");
+        return GST_FLOW_OK;
     }
     convert(self, frame_meta, buf);
 

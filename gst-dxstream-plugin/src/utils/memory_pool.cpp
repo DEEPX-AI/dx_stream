@@ -1,5 +1,6 @@
 #include "memory_pool.hpp"
 #include <algorithm>
+#include <cstring>
 
 MemoryPool::MemoryPool() : m_blockSize(0), m_poolSize(0) {}
 
@@ -75,7 +76,9 @@ void MemoryPool::allocatePool() {
 
 void MemoryPool::releasePool() {
     for (void *ptr : m_memoryBlocks) {
-        ::operator delete(ptr);
+        if (ptr) {
+            ::operator delete(ptr);
+        }
     }
     m_memoryBlocks.clear();
     m_freeList.clear();

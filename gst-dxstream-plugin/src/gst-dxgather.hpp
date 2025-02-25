@@ -21,6 +21,8 @@ struct _GstDxGather {
     std::mutex _mutex;
     std::condition_variable _cv;
 
+    std::map<int, bool> _eos_list;
+
     GThread *_thread;
     gboolean _running;
 };

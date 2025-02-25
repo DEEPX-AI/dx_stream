@@ -17,5 +17,5 @@ dx_msgconvl_lib = shared_library('dx_msgconvl',
     ],
     dependencies : [gst_dep, opencv_dep, json_glib_dep, dx_stream_dep],
     install: true,
-    install_dir: '/usr/local/lib'
+    install_dir: '/usr/share/dx-stream/lib'
 )

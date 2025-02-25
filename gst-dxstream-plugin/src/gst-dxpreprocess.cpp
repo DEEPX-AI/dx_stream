@@ -1,6 +1,5 @@
 #include "gst-dxpreprocess.hpp"
 #include "format_convert.hpp"
-#include "utils.hpp"
 #include <chrono>
 #include <dlfcn.h>
 #include <iostream>
@@ -31,19 +30,6 @@ enum {
 static GParamSpec *obj_properties[N_PROPERTIES] = {
     NULL,
 };
-
-typedef enum { COLOR_RGB, COLOR_BGR, COLOR_LAST } ColorFormat;
-
-GType color_mode_get_type() {
-    static GType color_mode_type = 0;
-    static const GEnumValue color_formats[] = {
-        {COLOR_RGB, "RGB", "rgb"}, {COLOR_BGR, "BGR", "bgr"}, {0, NULL, NULL}};
-
-    if (color_mode_type == 0) {
-        color_mode_type = g_enum_register_static("ColorFormat", color_formats);
-    }
-    return color_mode_type;
-}
 
 GST_DEBUG_CATEGORY_STATIC(gst_dxpreprocess_debug_category);
 #define GST_CAT_DEFAULT gst_dxpreprocess_debug_category
@@ -85,7 +71,8 @@ static void parse_config(GstDxPreprocess *self) {
                 gint int_value =
                     json_object_get_int_member(object, "preprocess_id");
                 if (int_value < 0) {
-                    g_error("Member preprocess_id has a negative value (%d) "
+                    g_error("[dxpreprocess] Member preprocess_id has a "
+                            "negative value (%d) "
                             "and cannot be "
                             "converted to unsigned.",
                             int_value);
@@ -108,7 +95,8 @@ static void parse_config(GstDxPreprocess *self) {
                 gint int_value =
                     json_object_get_int_member(object, "resize_width");
                 if (int_value < 0) {
-                    g_error("Member resize_width has a negative value (%d) and "
+                    g_error("[dxpreprocess] Member resize_width has a negative "
+                            "value (%d) and "
                             "cannot be "
                             "converted to unsigned.",
                             int_value);
@@ -119,7 +107,8 @@ static void parse_config(GstDxPreprocess *self) {
                 gint int_value =
                     json_object_get_int_member(object, "resize_height");
                 if (int_value < 0) {
-                    g_error("Member resize_height has a negative value (%d) "
+                    g_error("[dxpreprocess] Member resize_height has a "
+                            "negative value (%d) "
                             "and cannot be "
                             "converted to unsigned.",
                             int_value);
@@ -130,7 +119,8 @@ static void parse_config(GstDxPreprocess *self) {
                 gint int_value =
                     json_object_get_int_member(object, "pad_value");
                 if (int_value < 0) {
-                    g_error("Member pad_value has a negative value (%d) and "
+                    g_error("[dxpreprocess] Member pad_value has a negative "
+                            "value (%d) and "
                             "cannot be "
                             "converted to unsigned.",
                             int_value);
@@ -145,7 +135,8 @@ static void parse_config(GstDxPreprocess *self) {
                 gint int_value =
                     json_object_get_int_member(object, "min_object_width");
                 if (int_value < 0) {
-                    g_error("Member min_object_width has a negative value (%d) "
+                    g_error("[dxpreprocess] Member min_object_width has a "
+                            "negative value (%d) "
                             "and cannot be "
                             "converted to unsigned.",
                             int_value);
@@ -156,7 +147,8 @@ static void parse_config(GstDxPreprocess *self) {
                 gint int_value =
                     json_object_get_int_member(object, "min_object_height");
                 if (int_value < 0) {
-                    g_error("Member min_object_height has a negative value "
+                    g_error("[dxpreprocess] Member min_object_height has a "
+                            "negative value "
                             "(%d) and cannot be "
                             "converted to unsigned.",
                             int_value);
@@ -166,7 +158,8 @@ static void parse_config(GstDxPreprocess *self) {
             if (json_object_has_member(object, "interval")) {
                 gint int_value = json_object_get_int_member(object, "interval");
                 if (int_value < 0) {
-                    g_error("Member interval has a negative value (%d) and "
+                    g_error("[dxpreprocess] Member interval has a negative "
+                            "value (%d) and "
                             "cannot be "
                             "converted to unsigned.",
                             int_value);
@@ -185,7 +178,8 @@ static void parse_config(GstDxPreprocess *self) {
                 gint int_value =
                     json_object_get_int_member(object, "pool_size");
                 if (int_value < 0) {
-                    g_error("Member pool_size has a negative value (%d) and "
+                    g_error("[dxpreprocess] Member pool_size has a negative "
+                            "value (%d) and "
                             "cannot be "
                             "converted to unsigned.",
                             int_value);
@@ -195,29 +189,35 @@ static void parse_config(GstDxPreprocess *self) {
             if (json_object_has_member(object, "roi")) {
                 JsonArray *roi_array =
                     json_object_get_array_member(object, "roi");
-
                 if (!roi_array) {
-                    g_printerr("Expected 'roi' to be a JSON array.\n");
+                    g_printerr("Error: 'roi' must be a JSON array.\n");
                     return;
                 }
-
                 guint length = json_array_get_length(roi_array);
                 if (length != 4) {
-                    g_printerr("ROI must have exactly 4 integer values.\n");
+                    g_printerr("Error: ROI must have exactly 4 integer values "
+                               "(received %u values).\n",
+                               length);
                     return;
                 }
-
+                gint temp_roi[4] = {-1, -1, -1, -1};
                 for (guint i = 0; i < length; i++) {
                     JsonNode *node = json_array_get_element(roi_array, i);
-                    if (!JSON_NODE_HOLDS_VALUE(node) ||
-                        json_node_get_value_type(node) != G_TYPE_INT) {
+                    if (!JSON_NODE_HOLDS_VALUE(node)) {
                         g_printerr(
-                            "ROI array must contain only integer values.\n");
+                            "Error: ROI array contains a non-value node.\n");
                         return;
                     }
-
-                    int value = json_node_get_int(node);
-                    self->_roi[i] = value;
+                    GType value_type = json_node_get_value_type(node);
+                    if (value_type != G_TYPE_INT) {
+                        g_printerr("Error: ROI array must contain only integer "
+                                   "values.\n");
+                        return;
+                    }
+                    temp_roi[i] = json_node_get_int(node);
+                }
+                for (guint i = 0; i < 4; i++) {
+                    self->_roi[i] = temp_roi[i];
                 }
             }
 
@@ -259,13 +259,13 @@ static void dxpreprocess_set_property(GObject *object, guint property_id,
         break;
 
     case PROP_COLOR_FORMAT: {
-        const gchar *color_mode = g_value_get_string(value);
-        if (g_strcmp0(color_mode, "RGB") == 0 ||
-            g_strcmp0(color_mode, "BGR") == 0) {
-            g_free(self->_color_format);
-            self->_color_format = g_strdup(color_mode);
+        guint color_value = g_value_get_uint(value);
+        if (color_value == 0) {
+            self->_color_format = g_strdup("RGB");
+        } else if (color_value == 1) {
+            self->_color_format = g_strdup("BGR");
         } else {
-            g_warning("Invalid color mode: %s. Use RGB or BGR.", color_mode);
+            g_warning("Invalid color mode: %d. Use RGB or BGR.", color_value);
         }
         break;
     }
@@ -306,24 +306,21 @@ static void dxpreprocess_set_property(GObject *object, guint property_id,
         break;
 
     case PROP_ROI: {
-        if (!GST_VALUE_HOLDS_ARRAY(value)) {
-            g_printerr("Expected a value array for ROI property.\n");
-            return;
-        }
+        if (G_VALUE_HOLDS_STRING(value)) {
+            const gchar *roi_str = g_value_get_string(value);
+            gint roi_values[4];
+            int count = sscanf(roi_str, "%d,%d,%d,%d", &roi_values[0],
+                               &roi_values[1], &roi_values[2], &roi_values[3]);
 
-        guint length = gst_value_array_get_size(value);
-        if (length != 4) {
-            g_printerr("ROI must have exactly 4 integer values.\n");
-            return;
-        }
-
-        for (guint i = 0; i < length; i++) {
-            const GValue *element = gst_value_array_get_value(value, i);
-            if (!G_VALUE_HOLDS_INT(element)) {
-                g_printerr("ROI array must contain only integers.\n");
+            if (count != 4) {
+                g_error("Invalid ROI format. Expected format: "
+                        "roi=\"x1,y1,x2,y2\"\n");
                 return;
             }
-            self->_roi[i] = g_value_get_int(element);
+
+            for (size_t i = 0; i < 4; i++) {
+                self->_roi[i] = roi_values[i];
+            }
         }
         break;
     }
@@ -360,7 +357,14 @@ static void dxpreprocess_get_property(GObject *object, guint property_id,
         break;
 
     case PROP_COLOR_FORMAT:
-        g_value_set_string(value, self->_color_format);
+        if (g_strcmp0(self->_color_format, "RGB") == 0) {
+            g_value_set_uint(value, 0);
+        } else if (g_strcmp0(self->_color_format, "BGR") == 0) {
+            g_value_set_uint(value, 1);
+        } else {
+            g_warning("Invalid color mode: %s. Use RGB or BGR.",
+                      self->_color_format);
+        }
         break;
 
     case PROP_RESIZE_WIDTH:
@@ -404,19 +408,11 @@ static void dxpreprocess_get_property(GObject *object, guint property_id,
         break;
 
     case PROP_ROI: {
-        GValue list = G_VALUE_INIT;
-        g_value_init(&list, G_TYPE_ARRAY);
+        gchar roi_str[50];
+        g_snprintf(roi_str, sizeof(roi_str), "%d,%d,%d,%d", self->_roi[0],
+                   self->_roi[1], self->_roi[2], self->_roi[3]);
 
-        for (size_t i = 0; i < 4; i++) {
-            GValue val = G_VALUE_INIT;
-            g_value_init(&val, G_TYPE_INT);
-            g_value_set_int(&val, self->_roi[i]);
-            gst_value_array_append_value(&list, &val);
-            g_value_unset(&val);
-        }
-
-        g_value_set_boxed(value, g_value_get_boxed(&list));
-        g_value_unset(&list);
+        g_value_set_string(value, roi_str);
         break;
     }
 
@@ -470,6 +466,32 @@ static void dxpreprocess_finalize(GObject *object) {
     G_OBJECT_CLASS(parent_class)->finalize(object);
 }
 
+static GstCaps *gst_dxpreprocess_transform_caps(GstBaseTransform *trans,
+                                                GstPadDirection direction,
+                                                GstCaps *caps,
+                                                GstCaps *filter) {
+    GstCaps *new_caps = gst_caps_copy(caps);
+
+    if (filter) {
+        GstCaps *filtered_caps = gst_caps_intersect(new_caps, filter);
+        gst_caps_unref(new_caps);
+        new_caps = filtered_caps;
+    }
+    return new_caps;
+}
+
+static gboolean gst_dxpreprocess_set_caps(GstBaseTransform *trans,
+                                          GstCaps *incaps, GstCaps *outcaps) {
+    const GstStructure *structure = gst_caps_get_structure(incaps, 0);
+    const gchar *format = gst_structure_get_string(structure, "format");
+
+    if (!format) {
+        g_warning("No format found in sink caps!");
+        return FALSE;
+    }
+    return TRUE;
+}
+
 static void gst_dxpreprocess_class_init(GstDxPreprocessClass *klass) {
     GST_DEBUG_CATEGORY_INIT(gst_dxpreprocess_debug_category, "dxpreprocess", 0,
                             "DXPreprocess plugin");
@@ -501,9 +523,10 @@ static void gst_dxpreprocess_class_init(GstDxPreprocessClass *klass) {
                           0, G_PARAM_READWRITE);
 
     obj_properties[PROP_COLOR_FORMAT] =
-        g_param_spec_enum("color-format", "Color Format",
-                          "Specifies the color format for preprocessing.",
-                          color_mode_get_type(), COLOR_RGB, G_PARAM_READWRITE);
+        g_param_spec_uint("color-format", "Color Format",
+                          "Specifies the color format for preprocessing. "
+                          "[0: RGB, 1: BGR]",
+                          0, 1, 0, G_PARAM_READWRITE);
 
     obj_properties[PROP_RESIZE_WIDTH] = g_param_spec_uint(
         "resize-width", "Resize Width", "Specifies the width for resizing.", 0,
@@ -553,12 +576,10 @@ static void gst_dxpreprocess_class_init(GstDxPreprocessClass *klass) {
         "Number of preallocated memory blocks for input tensors.", 0, 1000, 0,
         G_PARAM_READWRITE);
 
-    obj_properties[PROP_ROI] = g_param_spec_value_array(
+    obj_properties[PROP_ROI] = g_param_spec_string(
         "roi", "Region of Interest",
-        "Defines the ROI (Region of Interest) for preprocessing. ",
-        g_param_spec_int("roi", "ROI", "An ROI integer", G_MININT, G_MAXINT, 0,
-                         G_PARAM_READWRITE),
-        G_PARAM_READWRITE);
+        "Defines the ROI as a comma-separated string (x1,y1,x2,y2)",
+        "-1,-1,-1,-1", G_PARAM_READWRITE);
 
     g_object_class_install_properties(gobject_class, N_PROPERTIES,
                                       obj_properties);
@@ -569,11 +590,18 @@ static void gst_dxpreprocess_class_init(GstDxPreprocessClass *klass) {
 
     gst_element_class_add_pad_template(
         GST_ELEMENT_CLASS(klass),
-        gst_pad_template_new("src", GST_PAD_SRC, GST_PAD_ALWAYS, GST_CAPS_ANY));
+        gst_pad_template_new(
+            "sink", GST_PAD_SINK, GST_PAD_ALWAYS,
+            gst_caps_from_string(
+                "video/x-raw, format=(string){ RGB, I420, NV12 }")));
+
     gst_element_class_add_pad_template(
         GST_ELEMENT_CLASS(klass),
-        gst_pad_template_new("sink", GST_PAD_SINK, GST_PAD_ALWAYS,
-                             GST_CAPS_ANY));
+        gst_pad_template_new(
+            "src", GST_PAD_SRC, GST_PAD_ALWAYS,
+            gst_caps_from_string(
+                "video/x-raw, format=(string){ RGB, I420, NV12 }")));
+
     gst_element_class_set_static_metadata(
         element_class, "DXPreprocess", "Generic", "Preprocesses network input",
         "Jo Sangil <sijo@deepx.ai>");
@@ -585,6 +613,10 @@ static void gst_dxpreprocess_class_init(GstDxPreprocessClass *klass) {
     base_transform_class->stop = GST_DEBUG_FUNCPTR(gst_dxpreprocess_stop);
     base_transform_class->transform_ip =
         GST_DEBUG_FUNCPTR(gst_dxpreprocess_transform_ip);
+    base_transform_class->transform_caps =
+        GST_DEBUG_FUNCPTR(gst_dxpreprocess_transform_caps);
+    base_transform_class->set_caps =
+        GST_DEBUG_FUNCPTR(gst_dxpreprocess_set_caps);
     parent_class = GST_ELEMENT_CLASS(g_type_class_peek_parent(klass));
     element_class->change_state = dxpreprocess_change_state;
 }
@@ -603,7 +635,7 @@ static void gst_dxpreprocess_init(GstDxPreprocess *self) {
     self->_min_object_width = 0;
     self->_min_object_height = 0;
     self->_interval = 0;
-    self->_cnt = 0;
+    self->_cnt.clear();
 
     self->_acc_fps = 0;
     self->_frame_count_for_fps = 0;
@@ -810,7 +842,7 @@ bool check_object(GstDxPreprocess *self, DXFrameMeta *frame_meta,
         self->_track_cnt[frame_meta->_stream_id][object_meta->_track_id] = 0;
     } else {
         // untracked
-        if (self->_cnt < self->_interval) {
+        if (self->_cnt[frame_meta->_stream_id] < self->_interval) {
             return false;
         }
     }
@@ -894,10 +926,10 @@ bool preproc(GstDxPreprocess *self, DXFrameMeta *frame_meta) {
             object_meta->_input_tensor[self->_preprocess_id] = new_tensor;
             processed = true;
         }
-        if (self->_cnt < self->_interval) {
-            self->_cnt += 1;
+        if (self->_cnt[frame_meta->_stream_id] < self->_interval) {
+            self->_cnt[frame_meta->_stream_id] += 1;
         } else {
-            self->_cnt = 0;
+            self->_cnt[frame_meta->_stream_id] = 0;
         }
     } else {
         if (frame_meta->_input_memory_pool.find(self->_preprocess_id) !=
@@ -944,8 +976,37 @@ static GstFlowReturn gst_dxpreprocess_transform_ip(GstBaseTransform *trans,
                                                    GstBuffer *buf) {
     GstDxPreprocess *self = GST_DXPREPROCESS(trans);
 
-    if (!self->_secondary_mode && self->_cnt < self->_interval) {
-        self->_cnt += 1;
+    DXFrameMeta *frame_meta =
+        (DXFrameMeta *)gst_buffer_get_meta(buf, DX_FRAME_META_API_TYPE);
+    if (!frame_meta) {
+        if (!gst_buffer_is_writable(buf)) {
+            buf = gst_buffer_make_writable(buf);
+        }
+        frame_meta =
+            (DXFrameMeta *)gst_buffer_add_meta(buf, DX_FRAME_META_INFO, NULL);
+
+        GstPad *sinkpad = GST_BASE_TRANSFORM_SINK_PAD(trans);
+        GstCaps *caps = gst_pad_get_current_caps(sinkpad);
+        GstStructure *s = gst_caps_get_structure(caps, 0);
+        frame_meta->_name = gst_structure_get_name(s);
+        frame_meta->_format = gst_structure_get_string(s, "format");
+        gst_structure_get_int(s, "width", &frame_meta->_width);
+        gst_structure_get_int(s, "height", &frame_meta->_height);
+        gint num, denom;
+        gst_structure_get_fraction(s, "framerate", &num, &denom);
+        frame_meta->_frame_rate = (gfloat)num / (gfloat)denom;
+        frame_meta->_stream_id = 0;
+        frame_meta->_buf = buf;
+        gst_caps_unref(caps);
+    }
+
+    auto iter = self->_cnt.find(frame_meta->_stream_id);
+    if (iter == self->_cnt.end()) {
+        self->_cnt[frame_meta->_stream_id] = 0;
+    }
+    if (!self->_secondary_mode &&
+        self->_cnt[frame_meta->_stream_id] < self->_interval) {
+        self->_cnt[frame_meta->_stream_id] += 1;
         return GST_FLOW_OK;
     }
 
@@ -972,55 +1033,33 @@ static GstFlowReturn gst_dxpreprocess_transform_ip(GstBaseTransform *trans,
         }
     }
 
-    auto start = std::chrono::high_resolution_clock::now();
-    DXFrameMeta *frame_meta =
-        (DXFrameMeta *)gst_buffer_get_meta(buf, DX_FRAME_META_API_TYPE);
-    if (!frame_meta) {
-        if (!gst_buffer_is_writable(buf)) {
-            buf = gst_buffer_make_writable(buf);
-        }
-        frame_meta =
-            (DXFrameMeta *)gst_buffer_add_meta(buf, DX_FRAME_META_INFO, NULL);
+    // auto start = std::chrono::high_resolution_clock::now();
 
-        GstPad *sinkpad = GST_BASE_TRANSFORM_SINK_PAD(trans);
-        GstCaps *caps = gst_pad_get_current_caps(sinkpad);
-        GstStructure *s = gst_caps_get_structure(caps, 0);
-        frame_meta->_name = gst_structure_get_name(s);
-        frame_meta->_format = gst_structure_get_string(s, "format");
-        gst_structure_get_int(s, "width", &frame_meta->_width);
-        gst_structure_get_int(s, "height", &frame_meta->_height);
-        gint num, denom;
-        gst_structure_get_fraction(s, "framerate", &num, &denom);
-        frame_meta->_frame_rate = (gfloat)num / (gfloat)denom;
-        frame_meta->_stream_id = 0;
-        frame_meta->_buf = buf;
-        gst_caps_unref(caps);
-    }
+    preproc(self, frame_meta);
 
-    bool processed = preproc(self, frame_meta);
+    // auto end = std::chrono::high_resolution_clock::now();
+    // if (processed) {
+    //     auto frameDuration =
+    //         std::chrono::duration_cast<std::chrono::microseconds>(end -
+    //         start);
+    //     double frameTimeSec = frameDuration.count() / 1000000.0;
+    //     self->_acc_fps += 1.0 / frameTimeSec;
+    //     self->_frame_count_for_fps++;
 
-    auto end = std::chrono::high_resolution_clock::now();
-    if (processed) {
-        auto frameDuration =
-            std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-        double frameTimeSec = frameDuration.count() / 1000000.0;
-        self->_acc_fps += 1.0 / frameTimeSec;
-        self->_frame_count_for_fps++;
-
-        if (self->_frame_count_for_fps % 100 == 0 &&
-            self->_frame_count_for_fps != 0) {
-            gchar *name = NULL;
-            g_object_get(G_OBJECT(self), "name", &name, NULL);
-            g_print("[%s]\tFPS : %f \n", name,
-                    self->_acc_fps / self->_frame_count_for_fps);
-            self->_acc_fps = 0;
-            self->_frame_count_for_fps = 0;
-            g_free(name);
-        }
-    }
+    //     if (self->_frame_count_for_fps % 100 == 0 &&
+    //         self->_frame_count_for_fps != 0) {
+    //         gchar *name = NULL;
+    //         g_object_get(G_OBJECT(self), "name", &name, NULL);
+    //         g_print("[%s]\tFPS : %f \n", name,
+    //                 self->_acc_fps / self->_frame_count_for_fps);
+    //         self->_acc_fps = 0;
+    //         self->_frame_count_for_fps = 0;
+    //         g_free(name);
+    //     }
+    // }
 
     if (!self->_secondary_mode) {
-        self->_cnt = 0;
+        self->_cnt[frame_meta->_stream_id] = 0;
     }
 
     return GST_FLOW_OK;

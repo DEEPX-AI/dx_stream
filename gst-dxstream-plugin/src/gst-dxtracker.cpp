@@ -1,7 +1,6 @@
 #include "gst-dxtracker.hpp"
 #include "TrackerFactory.hpp"
 #include "gst-dxmeta.hpp"
-#include "utils.hpp"
 #include <glib.h>
 #include <json-glib/json-glib.h>
 
@@ -292,7 +291,8 @@ static GstFlowReturn gst_dxtracker_transform_ip(GstBaseTransform *trans,
     DXFrameMeta *frame_meta =
         (DXFrameMeta *)gst_buffer_get_meta(buf, DX_FRAME_META_API_TYPE);
     if (!frame_meta) {
-        g_error("No DXFrameMeta in GstBuffer \n");
+        GST_WARNING_OBJECT(self, "No DXFrameMeta in GstBuffer \n");
+        return GST_FLOW_OK;
     }
     track(self, frame_meta, buf);
 

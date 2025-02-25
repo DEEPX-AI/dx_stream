@@ -290,7 +290,7 @@ void push_buffers(GstDxMuxer *self) {
             std::unique_lock<std::mutex> lock(self->_mutexes[stream_id]);
 
             if (!self->_buffers[stream_id]) {
-                g_printerr("Failed to create GstBuffers\n");
+                GST_ERROR_OBJECT(self, "Failed to create GstBuffers\n");
                 return;
             }
 
@@ -324,8 +324,7 @@ void push_buffers(GstDxMuxer *self) {
             GstFlowReturn ret = gst_pad_push(self->_srcpad, outbuf);
 
             if (ret != GST_FLOW_OK) {
-                GST_ERROR_OBJECT(self, "[DXMuxer] Failed to push buffer:% d\n ",
-                                 ret);
+                GST_ERROR_OBJECT(self, "Failed to push buffer:% d\n ", ret);
             }
             gst_buffer_unref(self->_buffers[stream_id]);
             self->_buffers[stream_id] = NULL;

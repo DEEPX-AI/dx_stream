@@ -116,6 +116,8 @@ void copy_tensor(DXFrameMeta *src_meta, DXFrameMeta *dst_meta) {
         memcpy(
             new_tensor._data, input_tensor.second._data,
             dst_meta->_input_memory_pool[input_tensor.first]->get_block_size());
+
+        dst_meta->_input_tensor[input_tensor.first] = new_tensor;
     }
 
     for (auto &temp : src_meta->_output_tensor) {
