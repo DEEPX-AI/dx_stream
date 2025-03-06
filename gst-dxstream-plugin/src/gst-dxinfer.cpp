@@ -311,11 +311,12 @@ static GstStateChangeReturn dxinfer_change_state(GstElement *element,
                     delete callback_input;
                     return 0;
                 };
-            self->_ie->RegisterCallBack(postProcCallBack);
+            self->_ie->RegisterCallback(postProcCallBack);
         }
         if (self->_ie != nullptr) {
             self->_pool.deinitialize();
-            self->_pool.initialize(self->_ie->output_size(), self->_pool_size);
+            self->_pool.initialize(self->_ie->GetOutputSize(),
+                                   self->_pool_size);
         }
     } break;
     case GST_STATE_CHANGE_READY_TO_PAUSED: {
@@ -683,7 +684,7 @@ static gpointer inference_thread_func(GstDxInfer *self) {
                 continue;
             }
             inference_async(self, frame_meta);
-            gint64 latency = (gint64)self->_ie->latency();
+            gint64 latency = (gint64)self->_ie->GetLatency();
 
             if (g_queue_get_length(self->_recent_latencies) == 10) {
                 g_queue_pop_head(self->_recent_latencies);

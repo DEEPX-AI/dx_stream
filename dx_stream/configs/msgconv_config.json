@@ -1,6 +1,6 @@
 {
     "cfgSection": {
-        "library_file_path": "/usr/local/lib/libdx_msgconvl.so",
+        "library_file_path": "/usr/share/dx-stream/lib/libdx_msgconvl.so",
         "message_interval": 1,
         "include_frame": true
     },

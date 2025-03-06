@@ -178,10 +178,8 @@ extern "C" void SCRFDPostProcess(std::vector<dxs::DXTensor> outputs,
     std::vector<BBox> rawBoxes;
     rawBoxes.clear();
 
-    int numBoxes = outputs[0]._shape[0];
-
     int boxIdx = 0;
-    for (int b_idx = 0; b_idx < numBoxes; b_idx++) {
+    for (int b_idx = 0; b_idx < outputs[0]._shape[1]; b_idx++) {
         uint8_t *raw_data = (uint8_t *)outputs[0]._data + (b_idx * 64);
         dxs::DeviceFace_t *data =
             static_cast<dxs::DeviceFace_t *>((void *)raw_data);

@@ -1,5 +1,7 @@
 #include "format_convert.hpp"
 
+#define ALIGN_UP(value, align) (((value) + (align) - 1) & ~((align) - 1))
+
 int I420Crop(const uint8_t *src_y, int src_stride_y, const uint8_t *src_u,
              int src_stride_u, const uint8_t *src_v, int src_stride_v,
              int src_width, int src_height, uint8_t *dst, int crop_width,
@@ -166,7 +168,9 @@ uint8_t *Resize(uint8_t *src, int src_width, int src_height, int dst_width,
         memcpy(dst, mat_dst.data, dst_width * dst_height * 3);
 
     } else if (g_strcmp0(format, "I420") == 0) {
-        dst = (uint8_t *)calloc(1, dst_width * dst_height * 3 / 2);
+        int aligned_width = ALIGN_UP(dst_width, 2);
+        int aligned_height = ALIGN_UP(dst_height, 2);
+        dst = (uint8_t *)calloc(1, aligned_width * aligned_height * 3 / 2);
         if (!dst) {
             g_warning("Resize: Memory allocation failed\n");
             return nullptr;
@@ -185,7 +189,9 @@ uint8_t *Resize(uint8_t *src, int src_width, int src_height, int dst_width,
             dst_v, dst_width / 2, dst_width, dst_height, libyuv::kFilterLinear);
 
     } else if (g_strcmp0(format, "NV12") == 0) {
-        dst = (uint8_t *)calloc(1, dst_width * dst_height * 3 / 2);
+        int aligned_width = ALIGN_UP(dst_width, 2);
+        int aligned_height = ALIGN_UP(dst_height, 2);
+        dst = (uint8_t *)calloc(1, aligned_width * aligned_height * 3 / 2);
         if (!dst) {
             g_warning("Resize: Memory allocation failed\n");
             return nullptr;
@@ -196,10 +202,10 @@ uint8_t *Resize(uint8_t *src, int src_width, int src_height, int dst_width,
         const uint8_t *src_y = src;
         const uint8_t *src_uv = src + src_width * src_height;
 
-        result = libyuv::NV12Scale(src_y, src_width, src_uv, src_width / 2,
-                                   src_width, src_height, dst_y, dst_width,
-                                   dst_uv, dst_width, dst_width, dst_height,
-                                   libyuv::kFilterLinear);
+        result =
+            libyuv::NV12Scale(src_y, src_width, src_uv, src_width, src_width,
+                              src_height, dst_y, dst_width, dst_uv, dst_width,
+                              dst_width, dst_height, libyuv::kFilterLinear);
     } else {
         g_warning("Resize: Not supported color format\n");
         return nullptr;
@@ -240,7 +246,9 @@ uint8_t *Resize(GstBuffer *buf, int src_width, int src_height, int dst_width,
                    cv::INTER_LINEAR);
 
     } else if (g_strcmp0(format, "I420") == 0) {
-        dst = (uint8_t *)calloc(1, dst_width * dst_height * 3 / 2);
+        int aligned_width = ALIGN_UP(dst_width, 2);
+        int aligned_height = ALIGN_UP(dst_height, 2);
+        dst = (uint8_t *)calloc(1, aligned_width * aligned_height * 3 / 2);
         uint8_t *dst_y = dst;
         uint8_t *dst_u = dst_y + dst_width * dst_height;
         uint8_t *dst_v = dst_u + (dst_width / 2) * (dst_height / 2);
@@ -263,13 +271,15 @@ uint8_t *Resize(GstBuffer *buf, int src_width, int src_height, int dst_width,
             src_height, dst_y, dst_width, dst_u, dst_width / 2, dst_v,
             dst_width / 2, dst_width, dst_height, libyuv::kFilterLinear);
     } else if (g_strcmp0(format, "NV12") == 0) {
-        dst = (uint8_t *)calloc(1, dst_width * dst_height * 3 / 2);
+        int aligned_width = ALIGN_UP(dst_width, 2);
+        int aligned_height = ALIGN_UP(dst_height, 2);
+        dst = (uint8_t *)calloc(1, aligned_width * aligned_height * 3 / 2);
         uint8_t *dst_y = dst;
         uint8_t *dst_uv = dst_y + dst_width * dst_height;
         const uint8_t *src_y = map.data;
         const uint8_t *src_uv = map.data + src_width * src_height;
         gint strideY = src_width;
-        gint strideUV = src_width / 2;
+        gint strideUV = src_width;
         if (meta) {
             src_y = map.data + meta->offset[0];
             src_uv = map.data + meta->offset[1];
@@ -355,7 +365,7 @@ uint8_t *CvtColor(GstBuffer *buf, int width, int height,
         const uint8_t *src_y = map.data;
         const uint8_t *src_uv = map.data + width * height;
         gint strideY = width;
-        gint strideUV = width / 2;
+        gint strideUV = width;
         if (meta) {
             src_y = map.data + meta->offset[0];
             src_uv = map.data + meta->offset[1];
@@ -505,7 +515,7 @@ void RGB24toNV12(DXFrameMeta *frame_meta, uint8_t *surface) {
         dstUV = map.data + frame_meta->_width * frame_meta->_height;
 
         strideY = frame_meta->_width;
-        strideUV = frame_meta->_width / 2;
+        strideUV = frame_meta->_width;
     }
     cv::Mat yuv_frame;
     cv::Mat surface_mat =

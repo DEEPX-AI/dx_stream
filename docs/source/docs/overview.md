@@ -120,9 +120,7 @@ To follow this guide, you will need:
     3: Semantic Segmentation
     4: Multi-Channel Object Detection
     5: Multi-Channel RTSP
-    6: Msgbroker (mqtt)
-    7: Msgbroker (kafka)
-    8: secondary mode
+    6: secondary mode
     which AI demo do you want to run:(timeout:10s, default:0)
     ```
     Enter the number corresponding to the desired demo to run it.

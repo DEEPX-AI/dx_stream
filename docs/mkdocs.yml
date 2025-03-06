@@ -68,7 +68,7 @@ plugins:
       #
       #cover: false
       #cover_title: TITLE TEXT
-      cover_subtitle: 2025/02/13
+      cover_subtitle: 2025/03/05
       cover_logo : img/deepx.png
       custom_template_path: docs/stylesheets
       #back_cover: true
@@ -94,7 +94,7 @@ plugins:
       #render_js: true
       #headless_chrome_path: headless-chromium
       #
-      output_path: ../DX-Stream v1.0.1.pdf
+      output_path: ../DX-Stream v1.1.2.pdf
       #enabled_if_env: ENABLE_PDF_EXPORT
       #
       #debug_html: true
