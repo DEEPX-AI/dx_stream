@@ -108,6 +108,9 @@ function install_dx_stream_dep() {
         fi
     fi
 
+    sudo add-apt-repository -y ppa:mosquitto-dev/mosquitto-ppa
+    sudo apt install mosquitto mosquitto-clients
+
     # Check if librdkafka is installed
     if ldconfig -p | grep -q librdkafka; then
         echo "Kafka (librdkafka) is already installed. Skipping installation."

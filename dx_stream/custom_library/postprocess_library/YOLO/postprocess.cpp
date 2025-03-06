@@ -125,18 +125,13 @@ void FilterWithSort(
         return;
     }
 
-    int numElements = outputs[0]._shape.front();
-    if (numElements <= 0) {
-        return;
-    }
-
     if (outputs.size() == 1) {
         if (outputs[0]._type == dxs::DataType::BBOX) {
 
             dxs::DeviceBoundingBox_t *dataSrc =
                 (dxs::DeviceBoundingBox_t *)outputs[0]._data;
 
-            for (int i = 0; i < numElements; i++) {
+            for (int i = 0; i < outputs[0]._shape[1]; i++) {
                 dxs::DeviceBoundingBox_t *data = dataSrc + i;
                 auto layer = param.layers[data->layer_idx];
                 int strideX = param.width / layer.numGridX;
@@ -179,7 +174,7 @@ void FilterWithSort(
 
             dxs::DevicePose_t *dataSrc = (dxs::DevicePose_t *)outputs[0]._data;
 
-            for (int i = 0; i < numElements; i++) {
+            for (int i = 0; i < outputs[0]._shape[1]; i++) {
                 dxs::DevicePose_t *data = dataSrc + i;
 
                 auto layer = param.layers[data->layer_idx];
