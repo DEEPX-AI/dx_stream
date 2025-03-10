@@ -19,8 +19,15 @@ INPUT_VIDEO_PATH_LIST=(
     "$SRC_DIR/samples/videos/snowboard.mp4"
 )
 
+# check 'vaapidecodebin'
+if gst-inspect-1.0 vaapidecodebin &>/dev/null; then
+    DECODE_PIPELINE="qtdemux ! vaapidecodebin"
+else
+    DECODE_PIPELINE="decodebin"
+fi
+
 for INPUT_VIDEO_PATH in "${INPUT_VIDEO_PATH_LIST[@]}"; do
-    gst-launch-1.0 urisourcebin uri=file://$INPUT_VIDEO_PATH ! decodebin ! \
+    gst-launch-1.0 urisourcebin uri=file://$INPUT_VIDEO_PATH ! $DECODE_PIPELINE ! \
                     dxpreprocess config-file-path=$SRC_DIR/configs/Object_Detection/YOLOV8N/preprocess_config.json ! queue ! \
                     dxinfer config-file-path=$SRC_DIR/configs/Object_Detection/YOLOV8N/inference_config.json ! queue ! \
                     dxpostprocess config-file-path=$SRC_DIR/configs/Object_Detection/YOLOV8N/postprocess_config.json ! queue ! \
