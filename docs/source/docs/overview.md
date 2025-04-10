@@ -107,7 +107,8 @@ To follow this guide, you will need:
     Inside the running container, execute the demo script:
 
     ```
-    # cd /usr/share/dx-stream/src
+    # cd /deepx/dx-runtime/dx_stream
+    # ./setup.sh
     # ./run_demo.sh
     ```
 

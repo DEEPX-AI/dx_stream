@@ -443,6 +443,7 @@ static gboolean gst_dxinfer_sink_event(GstPad *pad, GstObject *parent,
 
     switch (GST_EVENT_TYPE(event)) {
     case GST_EVENT_EOS: {
+        self->_get_eos = true;
         if (!self->_secondary_mode) {
             {
                 std::unique_lock<std::mutex> lock(self->_queue_lock);
@@ -538,6 +539,8 @@ static void gst_dxinfer_init(GstDxInfer *self) {
 
     self->_qos_timestamp = 0;
     self->_qos_timediff = 0;
+
+    self->_get_eos = false;
 }
 
 void inference_async(GstDxInfer *self, DXFrameMeta *frame_meta) {
@@ -596,6 +599,10 @@ gint64 calculate_average(GQueue *queue) {
 
 static gpointer push_thread_func(GstDxInfer *self) {
     while (self->_push_running) {
+        if (!self->_get_eos && self->_push_queue.size() <= MAX_QUEUE_SIZE - 1) {
+            g_usleep(100);
+            continue;
+        }
         if (self->_push_queue.empty()) {
             g_usleep(100);
             continue;

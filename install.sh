@@ -110,34 +110,17 @@ function install_dx_stream_dep() {
 
     sudo add-apt-repository -y ppa:mosquitto-dev/mosquitto-ppa
     sudo apt install -y mosquitto mosquitto-clients
+    sudo apt install -y libssl-dev libsasl2-dev libzstd-dev libz-dev librdkafka-dev default-jdk
 
-    # Check if librdkafka is installed
-    if ldconfig -p | grep -q librdkafka; then
-        echo "Kafka (librdkafka) is already installed. Skipping installation."
-    else
-        echo "Kafka (librdkafka) is not installed. Proceeding with installation."
-        
-        # Install Kafka (librdkafka v2.6.1)
-        if ! test -e $DX_SRC_DIR/util; then 
-            mkdir -p $DX_SRC_DIR/util
-        fi
+    # # for kafka demo
+    # if ! test -e $DX_SRC_DIR/util; then 
+    #     mkdir -p $DX_SRC_DIR/util
+    # fi
 
-        cd $DX_SRC_DIR/util
-        sudo apt update
-        sudo apt install -y libssl-dev libsasl2-dev libzstd-dev libz-dev
-
-        if [ ! -d librdkafka ]; then
-            git clone --branch v2.6.1 https://github.com/confluentinc/librdkafka.git
-        fi
-
-        cd librdkafka
-        ./configure --enable-ssl
-        make -j"$(nproc)"
-        sudo make install
-        sudo ldconfig
-
-        echo "Kafka (librdkafka) installation completed."
-    fi
+    # cd $DX_SRC_DIR/util
+    # wget https://downloads.apache.org/kafka/3.9.0/kafka_2.13-3.9.0.tgz
+    # tar -xzf kafka_2.13-3.9.0.tgz
+    # cd kafka_2.13-3.9.0.tgz
 }
 
 [ $# -gt 0 ] && \

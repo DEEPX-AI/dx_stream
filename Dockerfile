@@ -17,20 +17,27 @@ RUN apt-get install -y x11-apps libx11-6 xauth libxext6 libxrender1 libxtst6 lib
 
 USER root
 
-WORKDIR /tmp
-COPY ${RT_FILE} /tmp/${RT_FILE}
+WORKDIR /deepx/dx-runtime/
+COPY ${RT_FILE} /deepx/dx-runtime/${RT_FILE}
 RUN tar -xzvf ./${RT_FILE} && \
     cd $(basename ${RT_FILE} .tar.gz) && \
     ./install.sh --dep && \
     ./build.sh --install /usr/local
 
-COPY build.sh /usr/share/dx-stream/src/build.sh
-COPY install.sh /usr/share/dx-stream/src/install.sh
-COPY run_demo.sh /usr/share/dx-stream/src/run_demo.sh
-COPY gst-dxstream-plugin /usr/share/dx-stream/src/gst-dxstream-plugin
-COPY dx_stream /usr/share/dx-stream/src/dx_stream
+WORKDIR /deepx/dx-runtime
+RUN rm -rf ./dx_rt*
 
-WORKDIR /usr/share/dx-stream/src
+COPY build.sh /deepx/dx-runtime/dx_stream/build.sh
+COPY install.sh /deepx/dx-runtime/dx_stream/install.sh
+COPY run_demo.sh /deepx/dx-runtime/dx_stream/run_demo.sh
+COPY setup_sample_models.sh /deepx/dx-runtime/dx_stream/setup_sample_models.sh
+COPY setup_sample_videos.sh /deepx/dx-runtime/dx_stream/setup_sample_videos.sh
+COPY setup.sh /deepx/dx-runtime/dx_stream/setup.sh
+COPY gst-dxstream-plugin /deepx/dx-runtime/dx_stream/gst-dxstream-plugin
+COPY dx_stream /deepx/dx-runtime/dx_stream/dx_stream
+COPY scripts /deepx/dx-runtime/dx_stream/scripts
+
+WORKDIR /deepx/dx-runtime/dx_stream
 RUN ./install.sh
 RUN ./build.sh --install
 

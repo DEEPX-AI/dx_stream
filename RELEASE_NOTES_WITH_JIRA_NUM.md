@@ -1,5 +1,30 @@
 # RELEASE_NOTES
 
+## v1.3.0 / 2025-04-10
+### 1. Changed
+- None
+### 2. Fixed
+- add option '--force' in the setup scritps [DSA1-228](https://deepx.atlassian.net/browse/DSA1-288)
+- update get_resource.sh to check internel structure of the tar file [DSA1-228](https://deepx.atlassian.net/browse/DSA1-288)
+### 3. Added
+- None
+
+## v1.2.2 / 2025-03-25
+### 1. Changed
+- None
+### 2. Fixed
+- Fix buffer shuffle problem in dx-infer element [DSA1-328](https://deepx.atlassian.net/browse/DSA1-328)
+### 3. Added
+- None
+
+## v1.2.1 / 2025-03-20
+### 1. Changed
+- Download assets(model, video) from AWS S3 [DSA1-324](https://deepx.atlassian.net/browse/DSA1-324)
+### 2. Fixed
+- update dependency installation (librdkafka) [DSA1-323](https://deepx.atlassian.net/browse/DSA1-323)
+### 3. Added
+- None
+
 ## v1.2.0 / 2025-03-10
 ### 1. Changed
 - None
