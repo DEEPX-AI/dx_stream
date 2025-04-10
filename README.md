@@ -4,7 +4,7 @@ DX-Stream is a GStreamer-based Vision AI application development tool that allow
 
 ## Documentation
 
-[DX-Stream User Guide](./docs/source/overview.md)
+[DX-Stream User Guide](./docs/source/docs/overview.md)
 
 ## For DEEPX Internal 
 

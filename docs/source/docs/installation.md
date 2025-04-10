@@ -15,9 +15,9 @@
 
 | **Package**              | **Version**     | **Description**               |
 |---------------------------|-----------------|--------------------------------|
-| **M1 Accelerator**        | FW v1.6.0      | Firmware for the M1A accelerator. |
-| **NPU Driver**            | v1.3.1         | Includes PCIE v1.2.0 support. |
-| **DX-RT**                 | v2.6.3         | Runtime library for AI inference. |
+| **M1 Accelerator**        | FW v1.6.3      | Firmware for the M1A accelerator. |
+| **NPU Driver**            | v1.3.3         | Includes PCIE v1.2.0 support. |
+| **DX-RT**                 | v2.7.0         | Runtime library for AI inference. |
 
 - Ensure the NPU Driver and DX-RT must be installed
     NPU Driver Installation : TBD

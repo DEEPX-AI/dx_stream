@@ -44,38 +44,24 @@ case $1 in
         if [ -f "$TARGET_FILE" ]; then
             echo "Removing $TARGET_FILE..."
             sudo rm "$TARGET_FILE"
-        else
-            echo "Error: $TARGET_FILE not found. Was the project installed?"
         fi
         
         TARGET_FILE="$GSTREAMER_PLUGIN_DIR/libgstdxstream.so"
         if [ -f "$TARGET_FILE" ]; then
             echo "Removing $TARGET_FILE..."
             sudo rm "$TARGET_FILE"
-        else
-            echo "Error: $TARGET_FILE not found. Was the project installed?"
         fi
 
         if [ -d "/usr/local/include/dx_stream" ]; then
             echo "Removing /usr/local/include/dx_stream"
             sudo rm -rf /usr/local/include/dx_stream
-        else
-            echo "Error: /usr/local/include/dx_stream not found. Was the project installed?"
         fi
 
-        if [ -d "/usr/share/dx-stream/bin" ]; then
-            echo "Removing /usr/share/dx-stream/bin"
-            sudo rm -rf /usr/share/dx-stream/bin
-        else
-            echo "Error: /usr/share/dx-stream/bin not found. Was the project installed?"
+        if [ -d "/usr/share/dx-stream" ]; then
+            echo "Removing /usr/share/dx-stream"
+            sudo rm -rf /usr/share/dx-stream
         fi
 
-        if [ -d "/usr/share/dx-stream/lib" ]; then
-            echo "Removing /usr/share/dx-stream/lib"
-            sudo rm -rf /usr/share/dx-stream/lib
-        else
-            echo "Error: /usr/share/dx-stream/lib not found. Was the project installed?"
-        fi
         echo "Uninstallation completed."
 
         # install for debug
@@ -104,38 +90,24 @@ case $1 in
         if [ -f "$TARGET_FILE" ]; then
             echo "Removing $TARGET_FILE..."
             sudo rm "$TARGET_FILE"
-        else
-            echo "Error: $TARGET_FILE not found. Was the project installed?"
         fi
         
         TARGET_FILE="$GSTREAMER_PLUGIN_DIR/libgstdxstream.so"
         if [ -f "$TARGET_FILE" ]; then
             echo "Removing $TARGET_FILE..."
             sudo rm "$TARGET_FILE"
-        else
-            echo "Error: $TARGET_FILE not found. Was the project installed?"
         fi
 
         if [ -d "/usr/local/include/dx_stream" ]; then
             echo "Removing /usr/local/include/dx_stream"
             sudo rm -rf /usr/local/include/dx_stream
-        else
-            echo "Error: /usr/local/include/dx_stream not found. Was the project installed?"
         fi
 
-        if [ -d "/usr/share/dx-stream/bin" ]; then
-            echo "Removing /usr/share/dx-stream/bin"
-            sudo rm -rf /usr/share/dx-stream/bin
-        else
-            echo "Error: /usr/share/dx-stream/bin not found. Was the project installed?"
+        if [ -d "/usr/share/dx-stream" ]; then
+            echo "Removing /usr/share/dx-stream"
+            sudo rm -rf /usr/share/dx-stream
         fi
 
-        if [ -d "/usr/share/dx-stream/lib" ]; then
-            echo "Removing /usr/share/dx-stream/lib"
-            sudo rm -rf /usr/share/dx-stream/lib
-        else
-            echo "Error: /usr/share/dx-stream/lib not found. Was the project installed?"
-        fi
         echo "Uninstallation completed."
 
         echo "Starting installation process..."
@@ -174,13 +146,6 @@ case $1 in
             echo "Error: $TARGET_FILE not found. Was the project installed?"
         fi
 
-        if [ -f "/usr/local/lib/libdx_msgconvl.so" ]; then
-            echo "Removing /usr/local/lib/libdx_msgconvl.so"
-            sudo rm -rf /usr/local/lib/libdx_msgconvl.so
-        else
-            echo "Error: /usr/local/lib/libdx_msgconvl.so not found. Was the project installed?"
-        fi
-
         if [ -d "/usr/local/include/dx_stream" ]; then
             echo "Removing /usr/local/include/dx_stream"
             sudo rm -rf /usr/local/include/dx_stream
@@ -188,19 +153,13 @@ case $1 in
             echo "Error: /usr/local/include/dx_stream not found. Was the project installed?"
         fi
 
-        if [ -d "/usr/share/dx-stream/bin" ]; then
-            echo "Removing /usr/share/dx-stream/bin"
-            sudo rm -rf /usr/share/dx-stream/bin
+        if [ -d "/usr/share/dx-stream" ]; then
+            echo "Removing /usr/share/dx-stream"
+            sudo rm -rf /usr/share/dx-stream
         else
-            echo "Error: /usr/share/dx-stream/bin not found. Was the project installed?"
+            echo "Error: /usr/share/dx-stream not found. Was the project installed?"
         fi
 
-        if [ -d "/usr/share/dx-stream/lib" ]; then
-            echo "Removing /usr/share/dx-stream/lib"
-            sudo rm -rf /usr/share/dx-stream/lib
-        else
-            echo "Error: /usr/share/dx-stream/lib not found. Was the project installed?"
-        fi
         echo "Uninstallation completed."
         exit 0
         ;;

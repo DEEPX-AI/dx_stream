@@ -21,7 +21,7 @@ The inference pipeline in DX-Stream is composed of the following elements:
 - Uses the `input tensor` created by `dxpreprocess` and performs inference via dxinfer element (**DX-RT**).
 - Refers to the `output tensor` created by `dxinfer` and executes the postprocessing algorithm defined in a custom library.
 - Custom postprocessing is required for each model.
-- Examples for common vision tasks can be found in `/usr/share/dx-stream/src/dx_stream/custom_library`.
+- Examples for common vision tasks can be found in `dx-stream/dx_stream/custom_library`.
 
 ---
 

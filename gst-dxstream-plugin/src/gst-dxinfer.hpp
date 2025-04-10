@@ -45,6 +45,8 @@ typedef struct _GstDxInfer {
     std::condition_variable _cv;
     std::condition_variable _push_cv;
 
+    bool _get_eos;
+
     MemoryPool _pool;
     guint _pool_size;
 

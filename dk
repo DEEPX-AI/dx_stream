@@ -60,7 +60,7 @@ for i in {0..3}; do
 done
 
 DXSTREAM_BUILD_OPTIONS="-f Dockerfile -t dxstream . --build-arg RT_FILE=$RT_FILE"
-DXSTREAM_RUN_OPTIONS="--volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" --env=XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" --env=DISPLAY="$DISPLAY" --volume /models/m1a:/models/m1a --volume /dev:/dev --volume /lib/modules:/lib/modules --volume /lib/udev/rules.d:/lib/udev/rules.d --volume /usr/src:/usr/src --volume /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket --security-opt apparmor=unconfined -it -d dxstream"
+DXSTREAM_RUN_OPTIONS="--volume="/tmp/.X11-unix:/tmp/.X11-unix:rw" --env=DOCKER_VOLUME_PATH=/deepx/workspace --env=XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" --env=DISPLAY="$DISPLAY" --volume /models/m1a:/models/m1a --volume /dev:/dev --volume /lib/modules:/lib/modules --volume /lib/udev/rules.d:/lib/udev/rules.d --volume /usr/src:/usr/src --volume ./workspace:/deepx/workspace --volume /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket --security-opt apparmor=unconfined -it -d dxstream"
 
 # Check the first argument
 case $ACTION in
