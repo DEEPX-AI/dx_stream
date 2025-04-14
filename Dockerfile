@@ -17,15 +17,20 @@ RUN apt-get install -y x11-apps libx11-6 xauth libxext6 libxrender1 libxtst6 lib
 
 USER root
 
-WORKDIR /deepx/dx-runtime/
-COPY ${RT_FILE} /deepx/dx-runtime/${RT_FILE}
-RUN tar -xzvf ./${RT_FILE} && \
-    cd $(basename ${RT_FILE} .tar.gz) && \
-    ./install.sh --dep && \
+WORKDIR /deepx/dx-runtime/dx_rt
+COPY ${RT_FILE} /deepx/dx-runtime/dx_rt/${RT_FILE}
+
+RUN \
+    if tar -tzf ./${RT_FILE} | awk -F/ 'NF == 1 { exit 1 }' > /dev/null 2>&1; then \
+        tar -xzf ./${RT_FILE} --strip-components=1; \
+    else \
+        tar -xzf ./${RT_FILE}; \
+    fi
+RUN ./install.sh --dep && \
     ./build.sh --install /usr/local
 
 WORKDIR /deepx/dx-runtime
-RUN rm -rf ./dx_rt*
+RUN rm -rf ./dx_rt
 
 COPY build.sh /deepx/dx-runtime/dx_stream/build.sh
 COPY install.sh /deepx/dx-runtime/dx_stream/install.sh
