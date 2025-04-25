@@ -1,5 +1,21 @@
 # RELEASE_NOTES
 
+## v1.4.0 / 2025-04-24
+### 1. Changed
+- None
+### 2. Fixed
+- None
+### 3. Added
+- Add example for YOLOV5S Face Model
+
+## v1.3.1 / 2025-04-23
+### 1. Changed
+- None
+### 2. Fixed
+- Modify to stop the build process upon encountering an error and require explicit error handling in Jenkins, etc.
+### 3. Added
+- None
+
 ## v1.3.0 / 2025-04-10
 ### 1. Changed
 - None
