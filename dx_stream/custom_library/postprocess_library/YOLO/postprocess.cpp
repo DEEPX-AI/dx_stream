@@ -225,9 +225,9 @@ void FilterWithSort(
 
             auto *dataSrc = (float *)outputs[0]._data;
 
-            if (outputs[0]._shape[1] <
-                outputs[0]._shape[2]) { // yolov8, yolov9 has an output
-                                        // of shape (batchSize, 84, 8400)
+            if (outputs[0]._shape[1] == 84 
+                && outputs[0]._shape[2] == 8400 ) { // yolov8, yolov9 has an output
+                                                    // of shape (batchSize, 84, 8400)
                 int dimensions = outputs[0]._shape[1];
                 int rows = outputs[0]._shape[2];
 
@@ -265,6 +265,43 @@ void FilterWithSort(
 
                         boxIdx++;
                     }
+                }
+            } else if (outputs[0]._shape[1] == 25200 
+                && outputs[0]._shape[2] == 16 ) { // yolov5s face has an output
+                                                  // of shape (batchSize, 25200, 16)
+
+                // 16 [x, y, w, h, obj_conf, 5x2 landmarks, cls_conf]
+                auto rows = outputs[0]._shape[1];       // 252000
+                auto dimensions = outputs[0]._shape[2]; // 16
+
+                for (int i = 0; i < rows; i++) {
+                    float *data = (float *)dataSrc + (dimensions * i);
+            
+                    float obj_conf = data[4];
+                    float cls_conf = data[15];
+                    float conf = obj_conf * cls_conf;
+            
+                    if (conf < param.scoreThreshold){
+                        continue;
+                    }
+                    
+                    ScoreIndices[0].emplace_back(conf, boxIdx);
+            
+                    // BBOX
+                    Boxes.emplace_back(data[0] - data[2] / 2.); /*x1*/
+                    Boxes.emplace_back(data[1] - data[3] / 2.); /*y1*/
+                    Boxes.emplace_back(data[0] + data[2] / 2.); /*x2*/
+                    Boxes.emplace_back(data[1] + data[3] / 2.); /*y2*/
+
+                    // keypoints (YOLO_FACE)
+                    for (int k = 0; k < param.numKeypoints; k++) {
+                        int kptIdx = 5 + (2 * k);
+                        Keypoints.emplace_back(data[kptIdx]);       // x 
+                        Keypoints.emplace_back(data[kptIdx + 1]);   // y
+                        Keypoints.emplace_back(0.5f);               // conf
+                    }
+
+                    boxIdx++;
                 }
             } else { // yolov5 has an output of shape (batchSize, 25200, 85)
                      // (Num classes + box[x,y,w,h] + confidence[c])
@@ -306,6 +343,7 @@ void FilterWithSort(
         }
 
     } else if (outputs.size() == 3) {
+        // TODO: Log an error and terminate the program for unsupported models(yolov8, yolov9, ...)
 
         float conf_threshold = param.confThreshold;
         float rawThreshold = std::log(conf_threshold / (1 - conf_threshold));
@@ -391,6 +429,7 @@ void FilterWithSort(
             }
         }
     } else {
+        g_error("Post-process: Not supported format\n");
         return;
     }
 
@@ -534,6 +573,75 @@ void YOLOPostProcess(std::vector<dxs::DXTensor> network_output,
             }
 
             object_meta->_keypoints.push_back(ks);
+        }
+        dx_add_object_meta_to_frame_meta(object_meta, frame_meta);
+    }
+}
+
+void YOLOFacePostProcess(std::vector<dxs::DXTensor> network_output,
+    DXFrameMeta *frame_meta, YoloParam param) {
+
+    std::vector<Decoded> results;
+    std::vector<std::vector<std::pair<float, int>>> ScoreIndices;
+    std::vector<float> Boxes;
+    std::vector<float> Keypoints;
+
+    for (int cls = 0; cls < param.numClasses; cls++) {
+    std::vector<std::pair<float, int>> v;
+    ScoreIndices.push_back(v);
+    }
+
+    FilterWithSort(network_output, ScoreIndices, Boxes, Keypoints, param);
+
+    Nms(ScoreIndices, Boxes, Keypoints, results, param);
+
+    for (auto &ret : results) {
+        int origin_w = frame_meta->_width;
+        int origin_h = frame_meta->_height;
+        if (frame_meta->_roi[0] != -1 && frame_meta->_roi[1] != -1 &&
+            frame_meta->_roi[2] != -1 && frame_meta->_roi[3] != -1) {
+            origin_w = frame_meta->_roi[2] - frame_meta->_roi[0];
+            origin_h = frame_meta->_roi[3] - frame_meta->_roi[1];
+        }
+
+        float r = std::min(param.width / (float)origin_w,
+                param.height / (float)origin_h);
+        float w_pad = (param.width - origin_w * r) / 2.;
+        float h_pad = (param.height - origin_h * r) / 2.;
+
+        float x1 = (ret.box[0] - w_pad) / r;
+        float x2 = (ret.box[2] - w_pad) / r;
+        float y1 = (ret.box[1] - h_pad) / r;
+        float y2 = (ret.box[3] - h_pad) / r;
+
+        x1 = std::min((float)origin_w, std::max((float)0.0, x1));
+        x2 = std::min((float)origin_w, std::max((float)0.0, x2));
+        y1 = std::min((float)origin_h, std::max((float)0.0, y1));
+        y2 = std::min((float)origin_h, std::max((float)0.0, y2));
+
+        DXObjectMeta *object_meta = dx_create_object_meta(frame_meta->_buf);
+        object_meta->_confidence = ret.score;
+        object_meta->_label = ret.label;
+        object_meta->_label_name = g_string_new(ret.labelname.c_str());
+        object_meta->_box[0] = x1;
+        object_meta->_box[1] = y1;
+        object_meta->_box[2] = x2;
+        object_meta->_box[3] = y2;
+
+        for (int k = 0; k < param.numKeypoints; k++) {
+                float kx = (ret.kpts[k * 3 + 0] - w_pad) / r;
+                float ky = (ret.kpts[k * 3 + 1] - h_pad) / r;
+            if (frame_meta->_roi[0] != -1 && frame_meta->_roi[1] != -1 &&
+                frame_meta->_roi[2] != -1 && frame_meta->_roi[3] != -1) {
+
+                object_meta->_face_landmarks.push_back(dxs::Point_f(
+                    kx + frame_meta->_roi[0],
+                    ky + frame_meta->_roi[1]));
+            } else {
+                object_meta->_face_landmarks.push_back(dxs::Point_f(
+                    kx,
+                    ky));
+            }
         }
         dx_add_object_meta_to_frame_meta(object_meta, frame_meta);
     }
@@ -718,6 +826,24 @@ extern "C" void YOLOV5S_6(std::vector<dxs::DXTensor> network_output,
 
     YOLOPostProcess(network_output, frame_meta, param);
 }
+
+extern "C" void YOLOV5S_Face(std::vector<dxs::DXTensor> network_output,
+                                DXFrameMeta *frame_meta,
+                                DXObjectMeta *object_meta) {
+
+    YoloParam param = {
+        .height = 640,
+        .width = 640,
+        .scoreThreshold = 0.25,
+        .iouThreshold = 0.4,
+        .numClasses = 1,
+        .numKeypoints = 5,
+        .classNames = {"person"},
+    };
+
+    YOLOFacePostProcess(network_output, frame_meta, param);
+}
+
 
 extern "C" void YOLOV5X_2(std::vector<dxs::DXTensor> network_output,
                           DXFrameMeta *frame_meta, DXObjectMeta *object_meta) {

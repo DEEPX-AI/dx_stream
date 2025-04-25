@@ -44,6 +44,6 @@ COPY scripts /deepx/dx-runtime/dx_stream/scripts
 
 WORKDIR /deepx/dx-runtime/dx_stream
 RUN ./install.sh
-RUN ./build.sh --install
+RUN ./build.sh
 
 ENTRYPOINT [ "/usr/local/bin/dxrtd" ]
