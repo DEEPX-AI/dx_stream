@@ -1,15 +1,74 @@
 #!/bin/bash
-
 SCRIPT_DIR=$(realpath "$(dirname "$0")")
 
-if [ -d "$SCRIPT_DIR/install" ]; then
-    rm -rf $SCRIPT_DIR/install
-fi
+BUILD_TYPE="release"
+SONAR_MODE_ARG=""
 
-if [ -d "$SCRIPT_DIR/build" ]; then
-    rm -rf $SCRIPT_DIR/build
-fi
 
-meson setup build --buildtype=debug --prefix="$SCRIPT_DIR"
-meson compile -C build
-meson install -C build
+show_help() {
+  echo "Usage: $(basename "$0") [--debug] [--help]"
+  echo "Example 1): $0"
+  echo "Options:"
+  echo "  [--help]        Show this help message"
+
+  if [ "$1" == "error" ]; then
+    echo "Error: Invalid or missing arguments."
+    exit 1
+  fi
+  exit 0
+}
+
+
+# Parse arguments
+for i in "$@"; do
+    case "$1" in
+        --sonar)
+            SONAR_MODE_ARG="--sonar"
+            ;;
+        --help)
+            show_help
+            ;;
+        *)
+            echo "Unknown option: $1"
+            show_help "error"
+            ;;
+    esac
+    shift
+done
+
+
+echo "Using build type: $BUILD_TYPE"
+echo "SONAR_MODE_ARG($SONAR_MODE_ARG) is set"
+
+build_and_install() {
+    if [ -d "$SCRIPT_DIR/install" ]; then
+        rm -rf $SCRIPT_DIR/install
+    fi
+
+    if [ -d "$SCRIPT_DIR/build" ]; then
+        rm -rf $SCRIPT_DIR/build
+    fi
+
+    meson setup build --buildtype=debug --prefix="$SCRIPT_DIR"
+    if [ $? -ne 0 ]; then
+        echo -e "Error: meson setup failed"
+        exit 1
+    fi
+    meson compile -C build
+    if [ $? -ne 0 ]; then
+        echo -e "Error: meson compile failed"
+        exit 1
+    fi
+    meson install -C build
+    if [ $? -ne 0 ]; then
+        echo -e "Error: meson install failed"
+        exit 1
+    fi
+    if [ ! -n "${SONAR_MODE_ARG}" ]; then
+        rm -rf build
+    else
+        echo -e "Warn: The '--sonar' option is set. So, Skip to remove 'build' directory"
+    fi
+}
+
+build_and_install

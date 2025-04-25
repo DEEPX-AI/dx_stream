@@ -43,7 +43,7 @@
 
 - Build DX-Stream
     ```
-    $ ./build.sh --install
+    $ ./build.sh
     ```
 
     (Optional) For debug dx-stream:

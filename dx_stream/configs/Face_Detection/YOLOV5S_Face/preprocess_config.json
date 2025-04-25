@@ -1,0 +1,8 @@
+{
+    "preprocess_id": 1,
+    "resize_width": 640,
+    "resize_height": 640,
+    "keep_ratio": true,
+    "pad_value": 114,
+    "interval": 0
+}
