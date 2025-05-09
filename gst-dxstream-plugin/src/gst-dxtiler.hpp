@@ -25,6 +25,9 @@ struct _GstDxTiler {
 
     gint _cols;
     gint _rows;
+
+    uint8_t *_resized_frame;
+    uint8_t *_convert_frame;
 };
 
 G_END_DECLS

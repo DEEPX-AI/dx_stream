@@ -36,6 +36,6 @@ for INPUT_VIDEO_PATH in "${INPUT_VIDEO_PATH_LIST[@]}"; do
                     dxpostprocess config-file-path=$SRC_DIR/configs/Face_Detection/SCRFD/postprocess_config.json ! queue ! \
                     gather.sink_1 \
                     dxgather name=gather ! queue ! \
-                    dxosd ! queue ! \
-                    fpsdisplaysink sync=true
+                    dxosd width=1280 height=720 ! queue ! \
+                    videoconvert ! fpsdisplaysink 
 done

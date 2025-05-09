@@ -1,0 +1,109 @@
+name: Cppcheck Analysis
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  cppcheck:
+    runs-on: self-hosted
+    steps:
+      - name: Clean
+        run: |
+          sudo rm -rf ${{ github.workspace }}/*
+          sudo rm -rf ${{ github.workspace }}/.[!.]* 2>/dev/null || true
+          sudo rm -rf ${{ github.workspace }}/..?* 2>/dev/null || true
+
+      - name: Set git config
+        run: git config --global http.postBuffer 524288000
+
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.GH_DCI_TOKEN }}
+          fetch-depth: 0
+
+      - name: Install Cppcheck and xsltproc
+        run: sudo apt-get update && sudo apt-get install -y cppcheck xsltproc
+
+      - name: Run Cppcheck
+        run: |
+          cd ${{ github.workspace }}
+          cppcheck --enable=all --inconclusive --xml --xml-version=2 ./ 2> cppcheck_report.xml
+
+      - name: Create XSLT stylesheet
+        run: |
+          cat <<EOF > cppcheck_report.xslt
+          <xsl:stylesheet version="1.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform">
+            <xsl:output method="html"/>
+            <xsl:template match="/">
+              <html>
+                <head>
+                  <title>Cppcheck Report</title>
+                  <style>
+                    body { font-family: sans-serif; }
+                    .error { color: red; font-weight: bold; }
+                    .warning { color: orange; font-weight: bold; }
+                    .info { color: blue; font-weight: bold; }
+                    table { border-collapse: collapse; width: 100%; }
+                    th, td { border: 1px solid #ddd; padding: 8px; }
+                    tr:nth-child(even){background-color: #f2f2f2;}
+                    th { background-color: #4CAF50; color: white; }
+                  </style>
+                </head>
+                <body>
+                  <h1>Cppcheck Report</h1>
+                  <table>
+                    <tr>
+                      <th>File</th>
+                      <th>Line</th>
+                      <th>Severity</th>
+                      <th>Message</th>
+                    </tr>
+                    <xsl:for-each select="//error">
+                      <tr>
+                        <td><xsl:value-of select="@file"/></td>
+                        <td><xsl:value-of select="@line"/></td>
+                        <td class="severity"><xsl:value-of select="@severity"/></td>
+                        <td><xsl:value-of select="@msg"/></td>
+                      </tr>
+                    </xsl:for-each>
+                  </table>
+                </body>
+              </html>
+            </xsl:template>
+          </xsl:stylesheet>
+          EOF
+
+      - name: Transform XML to HTML
+        run: xsltproc cppcheck_report.xslt cppcheck_report.xml > cppcheck_report.html
+
+      - name: Upload HTML report to Nexus Storage
+        id: set
+        run: |
+          tar -czf cppcheck-report-${{ github.event.pull_request.number }}.tar.gz cppcheck_report.html
+          curl --upload-file cppcheck-report-${{ github.event.pull_request.number }}.tar.gz -u ${{ secrets.NX_USER }}:${{ secrets.NX_PW }} ${{ env.NX_TEST }}
+          echo "download_url=${{ env.NX_TEST }}" >> $GITHUB_OUTPUT
+        env:
+          NX_TEST: "http://192.168.0.54:8081/repository/cppcheck-report/${{ github.repository }}/cppcheck-report-${{ github.event.pull_request.number }}.tar.gz"
+    outputs:
+      download_url: ${{ steps.set.outputs.download_url }}
+        
+  create_comment:
+    needs: cppcheck
+    runs-on: self-hosted
+    steps:
+      - name: Create Pull Request Comment
+        uses: peter-evans/create-or-update-comment@v4
+        with:
+          token: ${{ secrets.GH_DCI_TOKEN }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            ### Cppcheck analysis has been completed. You can download the report in HTML format:
+            -   [Cppcheck Report (HTML)](${{ needs.cppcheck.outputs.download_url }})
+            
+            **To view the report:**
+            1.  위 링크 **_우클릭_** 후 `다른 이름으로 링크 저장...` 클릭
+            2.  압축 해제 후 확인 가능

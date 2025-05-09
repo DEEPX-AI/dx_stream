@@ -1,5 +1,23 @@
 # RELEASE_NOTES
 
+## v1.6.0 / 2025-05-09
+### 1. Changed
+- None
+### 2. Fixed
+- None
+### 3. Added
+- Supporting the Ubuntu 18.04 OS environment
+- onnxruntime segmentation post process added
+
+## v1.5.0 / 2025-05-07
+### 1. Changed
+- OSD push resized BGR format Buffer (property fixed)
+- update multi-stream pipeline demo with compositor
+### 2. Fixed
+- Fixed buffer copy in dx-gather
+### 3. Added
+- Add RGA based preprocess & osd process
+
 ## v1.4.0 / 2025-04-24
 ### 1. Changed
 - None

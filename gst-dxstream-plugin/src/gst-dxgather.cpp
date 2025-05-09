@@ -551,10 +551,9 @@ static gpointer gather_push_thread_func(GstDxGather *self) {
                     if (!output_buffer) {
                         output_buffer = gst_buffer_ref(input_buffer);
                     } else {
-                        if (check_same_source(output_buffer, input_buffer)) {
+                        if (output_buffer != input_buffer &&
+                            check_same_source(output_buffer, input_buffer)) {
                             frame_meta_merge(&output_buffer, input_buffer);
-                        } else {
-                            continue;
                         }
                     }
                     gst_buffer_unref(input_buffer);

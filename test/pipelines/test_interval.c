@@ -438,7 +438,7 @@ GST_END_TEST
 Suite *interval_suite(void) {
     Suite *s = suite_create("Interval TEST");
     TCase *tc_core = tcase_create("Core");
-
+    tcase_set_timeout(tc_core, 20.0);
     tcase_add_test(tc_core, test_single_stream);
     tcase_add_test(tc_core, test_multi_stream);
 

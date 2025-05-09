@@ -1,5 +1,23 @@
 # RELEASE_NOTES
 
+## v1.6.0 / 2025-05-09
+### 1. Changed
+- None
+### 2. Fixed
+- None
+### 3. Added
+- Supporting the Ubuntu 18.04 OS environment [DSA1-362](https://deepx.atlassian.net/browse/DSA1-362)
+- onnxruntime segmentation post process added
+
+## v1.5.0 / 2025-05-07
+### 1. Changed
+- OSD push resized BGR format Buffer (property fixed) [DSA1-344](https://deepx.atlassian.net/browse/DSA1-344)
+- update multi-stream pipeline demo with compositor [DSA1-344](https://deepx.atlassian.net/browse/DSA1-344)
+### 2. Fixed
+- Fixed buffer copy in dx-gather [DSA1-344](https://deepx.atlassian.net/browse/DSA1-344)
+### 3. Added
+- Add RGA based preprocess & osd process [DSA1-344](https://deepx.atlassian.net/browse/DSA1-344)
+
 ## v1.4.0 / 2025-04-24
 ### 1. Changed
 - None

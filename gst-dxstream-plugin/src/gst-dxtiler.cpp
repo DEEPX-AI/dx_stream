@@ -1,6 +1,8 @@
 #include "gst-dxtiler.hpp"
 #include "gst-dxmeta.hpp"
-#include "utils/format_convert.hpp"
+
+#include "libyuv_transform/libyuv_transform.hpp"
+
 #include <cmath>
 #include <json-glib/json-glib.h>
 #include <libyuv.h>
@@ -180,6 +182,16 @@ static void dxtiler_dispose(GObject *object) {
         g_free(self->_config_file_path);
         self->_config_file_path = NULL;
     }
+
+    if (self->_resized_frame) {
+        free(self->_resized_frame);
+        self->_resized_frame = nullptr;
+    }
+
+    if (self->_convert_frame) {
+        free(self->_convert_frame);
+        self->_convert_frame = nullptr;
+    }
     G_OBJECT_CLASS(parent_class)->dispose(object);
 }
 
@@ -316,6 +328,9 @@ static void gst_dxtiler_init(GstDxTiler *self) {
     self->_cols = 1;
     self->_rows = 1;
     self->_last_pts = 0;
+
+    self->_resized_frame = nullptr;
+    self->_convert_frame = nullptr;
 }
 
 void copyMatToGstBuffer(const cv::Mat &mat, const GstMapInfo &map, int offset,
@@ -360,14 +375,13 @@ static GstFlowReturn gst_dxtiler_chain(GstPad *pad, GstObject *parent,
         newHeight = newWidth / ratioSrc;
     }
 
-    uint8_t *resized_frame =
-        Resize(frame_meta->_buf, frame_meta->_width, frame_meta->_height,
-               newWidth, newHeight, frame_meta->_format);
-    uint8_t *convert_frame = CvtColor(resized_frame, newWidth, newHeight,
-                                      frame_meta->_format, "RGB");
-    free(resized_frame);
+    Resize(frame_meta->_buf, &self->_resized_frame, frame_meta->_width,
+           frame_meta->_height, newWidth, newHeight, frame_meta->_format);
+    CvtColor(self->_resized_frame, &self->_convert_frame, newWidth, newHeight,
+             frame_meta->_format, "RGB");
 
-    cv::Mat resizeFrame = cv::Mat(newHeight, newWidth, CV_8UC3, convert_frame);
+    cv::Mat resizeFrame =
+        cv::Mat(newHeight, newWidth, CV_8UC3, self->_convert_frame);
 
     int top = (int)round((self->_height - newHeight) / 2.0);
     int bottom = self->_height - newHeight - top;
@@ -380,7 +394,6 @@ static GstFlowReturn gst_dxtiler_chain(GstPad *pad, GstObject *parent,
     cv::Mat bgrxFrame(self->_height, self->_width, CV_8UC4);
     libyuv::RAWToARGB(resizeFrame.data, resizeFrame.step, bgrxFrame.data,
                       bgrxFrame.step, self->_width, self->_height);
-    free(convert_frame);
     int row = frame_meta->_stream_id / self->_cols;
     int col = frame_meta->_stream_id % self->_cols;
     int offset = (row * self->_height * stride) + (col * self->_width * 4);
