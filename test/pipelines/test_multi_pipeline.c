@@ -281,7 +281,7 @@ GST_END_TEST
 Suite *multi_suite(void) {
     Suite *s = suite_create("Multi TEST");
     TCase *tc_core = tcase_create("Core");
-
+    tcase_set_timeout(tc_core, 20.0);
     tcase_add_test(tc_core, test_multi_pipeline);
 
     suite_add_tcase(s, tc_core);

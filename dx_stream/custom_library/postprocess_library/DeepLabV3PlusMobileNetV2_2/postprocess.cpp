@@ -1,7 +1,8 @@
-#include "dxcommon.hpp"
-#include "gst-dxmeta.hpp"
 #include <cmath>
 #include <numeric>
+
+#include "dxcommon.hpp"
+#include "gst-dxmeta.hpp"
 
 struct segmentationParams {
     bool needArgmax;
@@ -12,7 +13,6 @@ struct segmentationParams {
 
 void Segmentation(std::vector<dxs::DXTensor> outputs, DXFrameMeta *frame_meta,
                   segmentationParams &params) {
-
     DXObjectMeta *object_meta = dx_create_object_meta(frame_meta->_buf);
 
     object_meta->_seg_cls_map.width = params.input_width;
@@ -24,15 +24,30 @@ void Segmentation(std::vector<dxs::DXTensor> outputs, DXFrameMeta *frame_meta,
     for (int h = 0; h < params.input_height; h++) {
         for (int w = 0; w < params.input_width; w++) {
             if (params.needArgmax) {
-
                 float *input = (float *)outputs[0]._data;
 
                 int maxIdx = 0;
                 int align = outputs[0]._shape.back();
-                for (int c = 0; c < params.numClasses; c++) {
-                    if (input[(params.input_width * h + w) * align + maxIdx] <
-                        input[(params.input_width * h + w) * align + c]) {
-                        maxIdx = c;
+
+                if (align == 32) {
+                    for (int c = 0; c < params.numClasses; c++) {
+                        if (input[(params.input_width * h + w) * align +
+                                  maxIdx] <
+                            input[(params.input_width * h + w) * align + c]) {
+                            maxIdx = c;
+                        }
+                    }
+                } else {
+                    // USE_ORT
+                    for (int c = 0; c < params.numClasses; c++) {
+                        if (input[(params.input_height * params.input_width *
+                                   maxIdx) +
+                                  (params.input_width * h) + w] <
+                            input[(params.input_height * params.input_width *
+                                   c) +
+                                  (params.input_width * h) + w]) {
+                            maxIdx = c;
+                        }
                     }
                 }
 
@@ -40,7 +55,6 @@ void Segmentation(std::vector<dxs::DXTensor> outputs, DXFrameMeta *frame_meta,
                     maxIdx;
 
             } else {
-
                 uint16_t *input = (uint16_t *)outputs[0]._data;
 
                 int cls = input[params.input_width * h + w];
@@ -57,7 +71,6 @@ void Segmentation(std::vector<dxs::DXTensor> outputs, DXFrameMeta *frame_meta,
 extern "C" void PostProcess(std::vector<dxs::DXTensor> network_output,
                             DXFrameMeta *frame_meta,
                             DXObjectMeta *object_meta) {
-
     segmentationParams params = {.needArgmax = true,
                                  .input_width = 640,
                                  .input_height = 640,

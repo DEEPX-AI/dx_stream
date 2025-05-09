@@ -4,15 +4,15 @@
 #include <libyuv.h>
 #include <opencv2/opencv.hpp>
 
-uint8_t *Resize(uint8_t *src, int src_width, int src_height, int dst_width,
+void Resize(uint8_t *src, uint8_t **dst, int src_width, int src_height, int dst_width,
                 int dst_height, const gchar *format);
-uint8_t *Resize(GstBuffer *buf, int src_width, int src_height, int dst_width,
+void Resize(GstBuffer *buf, uint8_t **dst, int src_width, int src_height, int dst_width,
                 int dst_height, const gchar *format);
-uint8_t *CvtColor(uint8_t *src, int width, int height, const gchar *src_format,
+void CvtColor(uint8_t *src, uint8_t **dst, int width, int height, const gchar *src_format,
                   const gchar *dst_format);
-uint8_t *CvtColor(GstBuffer *buf, int width, int height,
+void CvtColor(GstBuffer *buf, uint8_t **dst, int width, int height,
                   const gchar *src_format, const gchar *dst_format);
-uint8_t *Crop(GstBuffer *buf, int src_width, int src_height, int crop_x,
+void Crop(GstBuffer *buf, uint8_t **dst, int src_width, int src_height, int crop_x,
               int crop_y, int crop_width, int crop_height, const gchar *format);
 
 void SurfaceToOrigin(DXFrameMeta *frame_meta, uint8_t *surface);

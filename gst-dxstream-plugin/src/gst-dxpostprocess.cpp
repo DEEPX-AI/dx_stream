@@ -311,6 +311,9 @@ static GstFlowReturn gst_dxpostprocess_transform_ip(GstBaseTransform *trans,
                 frame_meta->_object_meta_list, o);
             auto iter = object_meta->_output_tensor.find(self->_infer_id);
             if (iter != object_meta->_output_tensor.end()) {
+                if (iter->second.size() == 0) {
+                    std::cout << "!@#!@#!@#!@#" << std::endl;
+                }
                 self->_postproc_function(iter->second, frame_meta, object_meta);
                 // processed = true;
             }

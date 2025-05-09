@@ -274,7 +274,7 @@ static GstStateChangeReturn dxinfer_change_state(GstElement *element,
                         // object
                         callback_input->object_meta->_output_tensor[infer_id] =
                             convert_tensor(outputs);
-
+                        // callback_input->self->_infer_count++;
                     } else {
                         // frame
                         callback_input->frame_meta->_output_tensor[infer_id] =
@@ -537,6 +537,8 @@ static void gst_dxinfer_init(GstDxInfer *self) {
     self->_throttling_accum = 0;
     self->_buffer_cnt = 0;
 
+    self->_infer_count = 0;
+
     self->_qos_timestamp = 0;
     self->_qos_timediff = 0;
 
@@ -545,6 +547,7 @@ static void gst_dxinfer_init(GstDxInfer *self) {
 
 void inference_async(GstDxInfer *self, DXFrameMeta *frame_meta) {
     if (self->_secondary_mode) {
+        int infer_objects_cnt = 0;
         int objects_size = g_list_length(frame_meta->_object_meta_list);
         for (int o = 0; o < objects_size; o++) {
             DXObjectMeta *object_meta = (DXObjectMeta *)g_list_nth_data(
@@ -555,12 +558,17 @@ void inference_async(GstDxInfer *self, DXFrameMeta *frame_meta) {
                     new CallbackInput(frame_meta, object_meta, self);
                 object_meta->_output_memory_pool[self->_infer_id] =
                     (MemoryPool *)&self->_pool;
-                self->_last_req_id = self->_ie->RunAsync(
+                self->_ie->Run(
                     iter->second._data, static_cast<void *>(callback_input),
                     self->_pool.allocate());
+                infer_objects_cnt++;
             }
         }
-        self->_ie->Wait(self->_last_req_id);
+        // while(self->_infer_count < infer_objects_cnt) {
+        //     g_print("sdf");
+        // }
+        // self->_infer_count = 0;
+        // self->_ie->Wait(self->_last_req_id);
     } else {
         auto iter = frame_meta->_input_tensor.find(self->_preproc_id);
         if (iter != frame_meta->_input_tensor.end()) {

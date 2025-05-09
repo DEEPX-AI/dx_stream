@@ -4,8 +4,8 @@
 
 MemoryPool::MemoryPool() : m_blockSize(0), m_poolSize(0) {}
 
-MemoryPool::MemoryPool(size_t blockSize, size_t poolSize)
-    : m_blockSize(blockSize), m_poolSize(poolSize) {
+MemoryPool::MemoryPool(size_t blockSize, size_t poolSize, uint8_t value)
+    : m_blockSize(blockSize), m_poolSize(poolSize), m_value(value) {
     allocatePool();
 }
 
@@ -13,13 +13,13 @@ MemoryPool::~MemoryPool() { releasePool(); }
 
 MemoryPool::MemoryPool(MemoryPool &&other) noexcept
     : m_blockSize(other.m_blockSize), m_poolSize(other.m_poolSize),
-      m_freeList(std::move(other.m_freeList)),
+      m_value(other.m_value), m_freeList(std::move(other.m_freeList)),
       m_memoryBlocks(std::move(other.m_memoryBlocks)) {}
 
 MemoryPool &MemoryPool::operator=(MemoryPool &&other) noexcept {
     if (this != &other) {
         releasePool();
-
+        m_value = other.m_value;
         m_blockSize = other.m_blockSize;
         m_poolSize = other.m_poolSize;
         m_freeList = std::move(other.m_freeList);
@@ -28,11 +28,12 @@ MemoryPool &MemoryPool::operator=(MemoryPool &&other) noexcept {
     return *this;
 }
 
-void MemoryPool::initialize(size_t blockSize, size_t poolSize) {
+void MemoryPool::initialize(size_t blockSize, size_t poolSize, uint8_t value) {
     std::lock_guard<std::mutex> lock(m_mutex);
     if (!m_memoryBlocks.empty()) {
         releasePool();
     }
+    m_value = value;
     m_blockSize = blockSize;
     m_poolSize = poolSize;
     allocatePool();
@@ -47,6 +48,7 @@ void *MemoryPool::allocate() {
     std::lock_guard<std::mutex> lock(m_mutex);
     if (m_freeList.empty()) {
         void *newBlock = ::operator new(m_blockSize);
+        memset(newBlock, m_value, m_blockSize);
         m_memoryBlocks.push_back(newBlock);
         m_poolSize += 1;
         return newBlock;
@@ -69,6 +71,7 @@ void MemoryPool::deallocate(void *obj) {
 void MemoryPool::allocatePool() {
     for (size_t i = 0; i < m_poolSize; ++i) {
         void *ptr = ::operator new(m_blockSize);
+        memset(ptr, m_value, m_blockSize);
         m_freeList.push_back(ptr);
         m_memoryBlocks.push_back(ptr);
     }

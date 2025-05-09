@@ -23,7 +23,7 @@ for INPUT_VIDEO_PATH in "${INPUT_VIDEO_PATH_LIST[@]}"; do
                     dxpreprocess config-file-path=$SRC_DIR/configs/Pose_Estimation/YOLOV5Pose640_1/preprocess_config.json ! queue ! \
                     dxinfer config-file-path=$SRC_DIR/configs/Pose_Estimation/YOLOV5Pose640_1/inference_config.json ! queue ! \
                     dxpostprocess config-file-path=$SRC_DIR/configs/Pose_Estimation/YOLOV5Pose640_1/postprocess_config.json ! queue ! \
-                    dxosd ! queue ! \
-                    autovideosink sync=true
+                    dxosd width=1280 height=720 ! queue ! \
+                    videoconvert ! autovideosink sync=true
 done
 

@@ -30,6 +30,7 @@ typedef struct _GstDxInfer {
 
     std::shared_ptr<dxrt::InferenceEngine> _ie;
     int _last_req_id;
+    int _infer_count;
 
     GThread *_thread;
     gboolean _running;
