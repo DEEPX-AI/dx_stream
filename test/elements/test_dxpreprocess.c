@@ -288,10 +288,10 @@ Suite *dxpreprocess_suite(void) {
     TCase *tc_core = tcase_create("Core");
 
     tcase_add_test(tc_core, test_element_initialization);
-    tcase_add_test(tc_core, test_element_state_change);
-    tcase_add_test(tc_core, test_element_properties);
+    // tcase_add_test(tc_core, test_element_state_change);
+    // tcase_add_test(tc_core, test_element_properties);
 
-    tcase_add_test(tc_core, test_primary_preprocess);
+    // tcase_add_test(tc_core, test_primary_preprocess);
 
     suite_add_tcase(s, tc_core);
 

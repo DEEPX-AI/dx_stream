@@ -23,7 +23,7 @@ for INPUT_VIDEO_PATH in "${INPUT_VIDEO_PATH_LIST[@]}"; do
                     dxpreprocess config-file-path=$SRC_DIR/configs/Face_Detection/YOLOV5S_Face/preprocess_config.json ! queue ! \
                     dxinfer config-file-path=$SRC_DIR/configs/Face_Detection/YOLOV5S_Face/inference_config.json ! queue ! \
                     dxpostprocess config-file-path=$SRC_DIR/configs/Face_Detection/YOLOV5S_Face/postprocess_config.json ! queue ! \
-                    dxosd ! queue ! \
-                    autovideosink sync=true
+                    dxosd width=1280 height=720 ! queue ! \
+                    videoconvert ! fpsdisplaysink sync=false
 done
 

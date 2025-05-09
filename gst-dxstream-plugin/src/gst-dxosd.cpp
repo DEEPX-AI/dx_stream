@@ -1,8 +1,7 @@
 #include "gst-dxosd.hpp"
-#include "format_convert.hpp"
 #include "gst-dxmeta.hpp"
+
 #include <cmath>
-#include <gst/video/video.h>
 #include <json-glib/json-glib.h>
 #include <opencv2/opencv.hpp>
 
@@ -140,20 +139,70 @@ std::vector<cv::Scalar> COLORS = {
     cv::Scalar(185, 37, 122),  // Soft Pink
 };
 
+enum { PROP_0, PROP_WIDTH, PROP_HEIGHT, N_PROPERTIES };
+
+static GParamSpec *obj_properties[N_PROPERTIES] = {
+    NULL,
+};
+
 GST_DEBUG_CATEGORY_STATIC(gst_dxosd_debug_category);
 #define GST_CAT_DEFAULT gst_dxosd_debug_category
 
-static GstFlowReturn gst_dxosd_transform_ip(GstBaseTransform *trans,
-                                            GstBuffer *buf);
-static gboolean gst_dxosd_start(GstBaseTransform *trans);
-static gboolean gst_dxosd_stop(GstBaseTransform *trans);
+static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE(
+    "sink", GST_PAD_SINK, GST_PAD_ALWAYS,
+    GST_STATIC_CAPS("video/x-raw, "
+                    "format = (string){ RGB, I420, NV12 }, "
+                    "width = [ 1, 16384 ], "
+                    "height = [ 1, 16384 ], "
+                    "framerate = [ 0/1, 16384/1 ]"));
 
-G_DEFINE_TYPE_WITH_CODE(
-    GstDxOsd, gst_dxosd, GST_TYPE_BASE_TRANSFORM,
-    GST_DEBUG_CATEGORY_INIT(gst_dxosd_debug_category, "gst-dxosd", 0,
-                            "debug category for gst-dxosd element"))
+static GstStaticPadTemplate src_template =
+    GST_STATIC_PAD_TEMPLATE("src", GST_PAD_SRC, GST_PAD_ALWAYS,
+                            GST_STATIC_CAPS("video/x-raw, "
+                                            "format = (string){ BGR }, "
+                                            "width = [ 1, 16384 ], "
+                                            "height = [ 1, 16384 ], "
+                                            "framerate = [ 0/1, 16384/1 ]"));
+
+static GstFlowReturn gst_dxosd_chain(GstPad *pad, GstObject *parent,
+                                     GstBuffer *buf);
+
+G_DEFINE_TYPE(GstDxOsd, gst_dxosd, GST_TYPE_ELEMENT);
 
 static GstElementClass *parent_class = NULL;
+
+static void dxosd_set_property(GObject *object, guint property_id,
+                               const GValue *value, GParamSpec *pspec) {
+    GstDxOsd *self = GST_DXOSD(object);
+    switch (property_id) {
+    case PROP_WIDTH:
+        self->_width = g_value_get_int(value);
+        break;
+    case PROP_HEIGHT:
+        self->_height = g_value_get_int(value);
+        break;
+    default:
+        G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
+        break;
+    }
+}
+
+static void dxosd_get_property(GObject *object, guint property_id,
+                               GValue *value, GParamSpec *pspec) {
+    GstDxOsd *self = GST_DXOSD(object);
+
+    switch (property_id) {
+    case PROP_WIDTH:
+        g_value_set_int(value, self->_width);
+        break;
+    case PROP_HEIGHT:
+        g_value_set_int(value, self->_height);
+        break;
+    default:
+        G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
+        break;
+    }
+}
 
 static GstStateChangeReturn dxosd_change_state(GstElement *element,
                                                GstStateChange transition) {
@@ -166,32 +215,18 @@ static GstStateChangeReturn dxosd_change_state(GstElement *element,
 }
 
 static void dxosd_dispose(GObject *object) {
+#ifdef HAVE_LIBRGA
+#else
+    GstDxOsd *self = GST_DXOSD(object);
+    for (std::map<int, uint8_t *>::iterator it = self->_resized_frame.begin();
+         it != self->_resized_frame.end(); ++it) {
+        if (it->second != nullptr) {
+            free(it->second);
+        }
+    }
+    self->_resized_frame.clear();
+#endif
     G_OBJECT_CLASS(parent_class)->dispose(object);
-}
-
-static GstCaps *gst_dxosd_transform_caps(GstBaseTransform *trans,
-                                         GstPadDirection direction,
-                                         GstCaps *caps, GstCaps *filter) {
-    GstCaps *new_caps = gst_caps_copy(caps);
-
-    if (filter) {
-        GstCaps *filtered_caps = gst_caps_intersect(new_caps, filter);
-        gst_caps_unref(new_caps);
-        new_caps = filtered_caps;
-    }
-    return new_caps;
-}
-
-static gboolean gst_dxosd_set_caps(GstBaseTransform *trans, GstCaps *incaps,
-                                   GstCaps *outcaps) {
-    const GstStructure *structure = gst_caps_get_structure(incaps, 0);
-    const gchar *format = gst_structure_get_string(structure, "format");
-
-    if (!format) {
-        g_warning("No format found in sink caps!");
-        return FALSE;
-    }
-    return TRUE;
 }
 
 static void gst_dxosd_class_init(GstDxOsdClass *klass) {
@@ -199,7 +234,20 @@ static void gst_dxosd_class_init(GstDxOsdClass *klass) {
                             "DXOsd plugin");
 
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
+    gobject_class->set_property = dxosd_set_property;
+    gobject_class->get_property = dxosd_get_property;
     gobject_class->dispose = dxosd_dispose;
+
+    obj_properties[PROP_WIDTH] = g_param_spec_int(
+        "width", "Width", "Sets the width of each tile in the grid.", 0, 10000,
+        640, G_PARAM_READWRITE);
+
+    obj_properties[PROP_HEIGHT] = g_param_spec_int(
+        "height", "Height", "Sets the height of each tile in the grid.", 0,
+        10000, 360, G_PARAM_READWRITE);
+
+    g_object_class_install_properties(gobject_class, N_PROPERTIES,
+                                      obj_properties);
 
     GstElementClass *element_class = GST_ELEMENT_CLASS(klass);
     gst_element_class_set_static_metadata(element_class, "DXOsd", "Generic",
@@ -207,46 +255,218 @@ static void gst_dxosd_class_init(GstDxOsdClass *klass) {
                                           "Jo Sangil <sijo@deepx.ai>");
 
     gst_element_class_add_pad_template(
-        GST_ELEMENT_CLASS(klass),
-        gst_pad_template_new(
-            "sink", GST_PAD_SINK, GST_PAD_ALWAYS,
-            gst_caps_from_string(
-                "video/x-raw, format=(string){ RGB, I420, NV12 }")));
-
+        element_class, gst_static_pad_template_get(&sink_template));
     gst_element_class_add_pad_template(
-        GST_ELEMENT_CLASS(klass),
-        gst_pad_template_new(
-            "src", GST_PAD_SRC, GST_PAD_ALWAYS,
-            gst_caps_from_string(
-                "video/x-raw, format=(string){ RGB, I420, NV12 }")));
+        element_class, gst_static_pad_template_get(&src_template));
 
-    GstBaseTransformClass *base_transform_class =
-        GST_BASE_TRANSFORM_CLASS(klass);
-    base_transform_class->start = GST_DEBUG_FUNCPTR(gst_dxosd_start);
-    base_transform_class->stop = GST_DEBUG_FUNCPTR(gst_dxosd_stop);
-    base_transform_class->transform_ip =
-        GST_DEBUG_FUNCPTR(gst_dxosd_transform_ip);
-    base_transform_class->transform_caps =
-        GST_DEBUG_FUNCPTR(gst_dxosd_transform_caps);
-    base_transform_class->set_caps = GST_DEBUG_FUNCPTR(gst_dxosd_set_caps);
     parent_class = GST_ELEMENT_CLASS(g_type_class_peek_parent(klass));
     element_class->change_state = dxosd_change_state;
 }
 
-static void gst_dxosd_init(GstDxOsd *self) { GST_DEBUG_OBJECT(self, "init"); }
+static gboolean gst_dxosd_sink_event(GstPad *pad, GstObject *parent,
+                                     GstEvent *event) {
+    GstDxOsd *self = GST_DXOSD(parent);
+    gboolean ret = TRUE;
 
-static gboolean gst_dxosd_start(GstBaseTransform *trans) {
-    GST_DEBUG_OBJECT(trans, "start");
-    return TRUE;
+    GST_DEBUG_OBJECT(self, "Received event %s on sink pad",
+                     GST_EVENT_TYPE_NAME(event));
+
+    switch (GST_EVENT_TYPE(event)) {
+    case GST_EVENT_CAPS: {
+        GstCaps *incaps = NULL;
+        GstCaps *outcaps = NULL;
+        GstCaps *fixed_outcaps = NULL;
+        gboolean success = TRUE;
+
+        gst_event_parse_caps(event, &incaps);
+        GST_INFO_OBJECT(self, "Received CAPS %" GST_PTR_FORMAT, incaps);
+
+        if (success && !gst_video_info_from_caps(&self->_input_info, incaps)) {
+            GST_ERROR_OBJECT(
+                self, "Failed to parse input caps or format not supported");
+            success = FALSE;
+        }
+        if (success) {
+            GST_INFO_OBJECT(
+                self, "Input format: %s, %dx%d",
+                gst_video_format_to_string(self->_input_info.finfo->format),
+                GST_VIDEO_INFO_WIDTH(&self->_input_info),
+                GST_VIDEO_INFO_HEIGHT(&self->_input_info));
+        }
+        if (success && (self->_width <= 0 || self->_height <= 0)) {
+            GST_ERROR_OBJECT(self, "Output width/height property not set!");
+            success = FALSE;
+        }
+        if (success) {
+            outcaps = gst_caps_copy(incaps);
+            gst_caps_set_simple(outcaps, "format", G_TYPE_STRING, "BGR",
+                                "width", G_TYPE_INT, self->_width, "height",
+                                G_TYPE_INT, self->_height, NULL);
+        }
+        if (success) {
+            fixed_outcaps = gst_caps_fixate(outcaps);
+            if (fixed_outcaps != outcaps) {
+                gst_caps_unref(outcaps);
+                outcaps = NULL;
+            }
+            if (!fixed_outcaps) {
+                GST_ERROR_OBJECT(self,
+                                 "Failed to fixate generated output caps!");
+                success = FALSE;
+            } else {
+                GST_INFO_OBJECT(self, "Fixated output CAPS %" GST_PTR_FORMAT,
+                                fixed_outcaps);
+                if (self->_output_caps) {
+                    gst_caps_unref(self->_output_caps);
+                }
+                self->_output_caps = fixed_outcaps;
+            }
+        } else if (outcaps) {
+            gst_caps_unref(outcaps);
+            outcaps = NULL;
+        }
+        if (success) {
+            if (!self->_output_caps || !gst_caps_is_fixed(self->_output_caps)) {
+                GST_ERROR_OBJECT(
+                    self,
+                    "Output caps are null or not fixed before parsing info!");
+                success = FALSE;
+            } else if (!gst_video_info_from_caps(&self->_output_info,
+                                                 self->_output_caps)) {
+                GST_ERROR_OBJECT(self,
+                                 "Failed to parse generated output caps!");
+                success = FALSE;
+            }
+
+            if (success) {
+                GST_INFO_OBJECT(
+                    self, "Output info: %s, %dx%d, size: %" G_GSIZE_FORMAT,
+                    gst_video_format_to_string(
+                        self->_output_info.finfo->format),
+                    GST_VIDEO_INFO_WIDTH(&self->_output_info),
+                    GST_VIDEO_INFO_HEIGHT(&self->_output_info),
+                    self->_output_info.size);
+            } else {
+                if (self->_output_caps) {
+                    gst_caps_unref(self->_output_caps);
+                    self->_output_caps = NULL;
+                }
+            }
+        }
+        if (success) {
+            GST_INFO_OBJECT(self,
+                            "Pushing new CAPS %" GST_PTR_FORMAT
+                            " downstream via src pad",
+                            self->_output_caps);
+            GstEvent *new_caps_event = gst_event_new_caps(self->_output_caps);
+            if (!gst_pad_push_event(self->_srcpad, new_caps_event)) {
+                GST_ERROR_OBJECT(self,
+                                 "Failed to push new CAPS event downstream.");
+                success = FALSE;
+            } else {
+                GST_INFO_OBJECT(
+                    self, "Successfully pushed new CAPS event downstream.");
+            }
+        }
+        gst_event_unref(event);
+        ret = success;
+        break;
+    }
+    default:
+        GST_DEBUG_OBJECT(self, "Forwarding event %s to default handler",
+                         GST_EVENT_TYPE_NAME(event));
+        ret = gst_pad_event_default(pad, parent, event);
+        break;
+    }
+
+    return ret;
 }
 
-static gboolean gst_dxosd_stop(GstBaseTransform *trans) {
-    GST_DEBUG_OBJECT(trans, "stop");
-    return TRUE;
+static gboolean gst_dxosd_src_query(GstPad *pad, GstObject *parent,
+                                    GstQuery *query) {
+    GstDxOsd *self = GST_DXOSD(parent);
+    GstCaps *filter_caps, *result_caps, *possible_caps;
+    gboolean ret = TRUE;
+
+    GST_DEBUG_OBJECT(self, "Handling query %s", GST_QUERY_TYPE_NAME(query));
+
+    switch (GST_QUERY_TYPE(query)) {
+    case GST_QUERY_CAPS:
+        if (!self->_output_caps) {
+            GST_WARNING_OBJECT(self, "Output caps not negotiated yet, cannot "
+                                     "answer caps query precisely.");
+            return gst_pad_query_default(pad, parent, query);
+        }
+
+        gst_query_parse_caps(query, &filter_caps);
+        GST_INFO_OBJECT(self,
+                        "Answering CAPS query, filter is %" GST_PTR_FORMAT,
+                        filter_caps);
+        GST_INFO_OBJECT(self, "My output caps are %" GST_PTR_FORMAT,
+                        self->_output_caps);
+
+        possible_caps = gst_caps_copy(self->_output_caps);
+
+        if (filter_caps) {
+            result_caps = gst_caps_intersect_full(filter_caps, possible_caps,
+                                                  GST_CAPS_INTERSECT_FIRST);
+            gst_caps_unref(possible_caps);
+            GST_INFO_OBJECT(self, "Intersection result: %" GST_PTR_FORMAT,
+                            result_caps);
+        } else {
+            result_caps = possible_caps;
+        }
+
+        gst_query_set_caps_result(query, result_caps);
+        gst_caps_unref(result_caps);
+        ret = TRUE;
+        break;
+
+    case GST_QUERY_ALLOCATION:
+        ret = gst_pad_query_default(pad, parent, query);
+        break;
+
+    default:
+        ret = gst_pad_query_default(pad, parent, query);
+        break;
+    }
+    return ret;
 }
 
-void draw_object_meta(cv::Mat &img, DXObjectMeta *obj_meta) {
+static gboolean gst_dxosd_src_event(GstPad *pad, GstObject *parent,
+                                    GstEvent *event) {
+    return gst_pad_event_default(pad, parent, event);
+}
 
+static void gst_dxosd_init(GstDxOsd *self) {
+    GST_DEBUG_OBJECT(self, "init");
+
+    self->_sinkpad = gst_pad_new_from_static_template(&sink_template, "sink");
+    gst_pad_set_chain_function(self->_sinkpad,
+                               GST_DEBUG_FUNCPTR(gst_dxosd_chain));
+    gst_pad_set_event_function(self->_sinkpad,
+                               GST_DEBUG_FUNCPTR(gst_dxosd_sink_event));
+    gst_element_add_pad(GST_ELEMENT(self), self->_sinkpad);
+
+    self->_srcpad = gst_pad_new_from_static_template(&src_template, "src");
+    gst_pad_set_event_function(self->_srcpad,
+                               GST_DEBUG_FUNCPTR(gst_dxosd_src_event));
+    gst_pad_set_query_function(self->_srcpad,
+                               GST_DEBUG_FUNCPTR(gst_dxosd_src_query));
+    gst_element_add_pad(GST_ELEMENT(self), self->_srcpad);
+
+    self->_width = 640;
+    self->_height = 360;
+
+    self->_output_caps = NULL;
+#ifdef HAVE_LIBRGA
+#else
+    self->_resized_frame = std::map<int, uint8_t *>();
+#endif
+}
+
+void draw_object_meta(cv::Mat &img, DXObjectMeta *obj_meta,
+                      float scale_factor_x, float scale_factor_y) {
     if (obj_meta->_seg_cls_map.data != nullptr) {
         cv::Mat seg_vis_map(obj_meta->_seg_cls_map.height,
                             obj_meta->_seg_cls_map.width, CV_8UC3);
@@ -270,8 +490,8 @@ void draw_object_meta(cv::Mat &img, DXObjectMeta *obj_meta) {
 
         std::vector<cv::Point> points;
         for (int k = 0; k < 17; k++) {
-            float kx = obj_meta->_keypoints[k * 3 + 0];
-            float ky = obj_meta->_keypoints[k * 3 + 1];
+            float kx = obj_meta->_keypoints[k * 3 + 0] / scale_factor_x;
+            float ky = obj_meta->_keypoints[k * 3 + 1] / scale_factor_y;
             float ks = obj_meta->_keypoints[k * 3 + 2];
             if (ks > 0.5) {
                 points.emplace_back(cv::Point(kx, ky));
@@ -295,18 +515,21 @@ void draw_object_meta(cv::Mat &img, DXObjectMeta *obj_meta) {
     }
 
     for (auto &landmark : obj_meta->_face_landmarks) {
-        cv::circle(img, cv::Point(landmark._x, landmark._y), 3,
-                   cv::Scalar(0, 255, 0), -1, cv::LINE_AA);
+        cv::circle(img,
+                   cv::Point(int(landmark._x / scale_factor_x),
+                             int(landmark._y / scale_factor_y)),
+                   3, cv::Scalar(0, 255, 0), -1, cv::LINE_AA);
     }
 
     if (obj_meta->_face_box[0] || obj_meta->_face_box[1] ||
         obj_meta->_face_box[2] || obj_meta->_face_box[3]) {
-        cv::rectangle(img,
-                      cv::Rect(cv::Point(int(obj_meta->_face_box[0]),
-                                         int(obj_meta->_face_box[1])),
-                               cv::Point(int(obj_meta->_face_box[2]),
-                                         int(obj_meta->_face_box[3]))),
-                      cv::Scalar(255, 0, 0), 2);
+        cv::rectangle(
+            img,
+            cv::Rect(cv::Point(int(obj_meta->_face_box[0] / scale_factor_x),
+                               int(obj_meta->_face_box[1] / scale_factor_y)),
+                     cv::Point(int(obj_meta->_face_box[2] / scale_factor_x),
+                               int(obj_meta->_face_box[3] / scale_factor_y))),
+            cv::Scalar(255, 0, 0), 2);
     }
 
     // visualize track id
@@ -324,20 +547,25 @@ void draw_object_meta(cv::Mat &img, DXObjectMeta *obj_meta) {
 
         cv::rectangle(
             img,
-            cv::Rect(cv::Point(int(obj_meta->_box[0]), int(obj_meta->_box[1])),
-                     cv::Point(int(obj_meta->_box[2]), int(obj_meta->_box[3]))),
+            cv::Rect(cv::Point(int(obj_meta->_box[0] / scale_factor_x),
+                               int(obj_meta->_box[1] / scale_factor_y)),
+                     cv::Point(int(obj_meta->_box[2] / scale_factor_x),
+                               int(obj_meta->_box[3] / scale_factor_y))),
             COLORS[(obj_meta->_track_id) % COLORS.size()], 2);
 
         cv::rectangle(
             img,
-            cv::Rect(cv::Point(int(obj_meta->_box[0]),
-                               int(obj_meta->_box[1] - textSize.height)),
-                     cv::Point(int(obj_meta->_box[0] + textSize.width),
-                               int(obj_meta->_box[1]))),
+            cv::Rect(cv::Point(int(obj_meta->_box[0] / scale_factor_x),
+                               int((obj_meta->_box[1] / scale_factor_y) -
+                                   textSize.height)),
+                     cv::Point(int((obj_meta->_box[0] / scale_factor_x) +
+                                   textSize.width),
+                               int(obj_meta->_box[1] / scale_factor_y))),
             COLORS[(obj_meta->_track_id) % COLORS.size()], cv::FILLED);
 
         cv::putText(img, text,
-                    cv::Point(int(obj_meta->_box[0]), int(obj_meta->_box[1])),
+                    cv::Point(int(obj_meta->_box[0] / scale_factor_x),
+                              int(obj_meta->_box[1] / scale_factor_y)),
                     cv::FONT_HERSHEY_SIMPLEX, font_scale,
                     cv::Scalar(255, 255, 255));
     } else if (obj_meta->_label != -1) {
@@ -351,53 +579,208 @@ void draw_object_meta(cv::Mat &img, DXObjectMeta *obj_meta) {
 
         cv::rectangle(
             img,
-            cv::Rect(cv::Point(int(obj_meta->_box[0]), int(obj_meta->_box[1])),
-                     cv::Point(int(obj_meta->_box[2]), int(obj_meta->_box[3]))),
+            cv::Rect(cv::Point(int(obj_meta->_box[0] / scale_factor_x),
+                               int(obj_meta->_box[1] / scale_factor_y)),
+                     cv::Point(int(obj_meta->_box[2] / scale_factor_x),
+                               int(obj_meta->_box[3] / scale_factor_y))),
             COLORS[obj_meta->_label % COLORS.size()], 2);
 
         cv::rectangle(
             img,
-            cv::Rect(cv::Point(int(obj_meta->_box[0]),
-                               int(obj_meta->_box[1] - textSize.height)),
-                     cv::Point(int(obj_meta->_box[0] + textSize.width),
-                               int(obj_meta->_box[1]))),
+            cv::Rect(cv::Point(int(obj_meta->_box[0] / scale_factor_x),
+                               int((obj_meta->_box[1] / scale_factor_y) -
+                                   textSize.height)),
+                     cv::Point(int((obj_meta->_box[0] / scale_factor_x) +
+                                   textSize.width),
+                               int(obj_meta->_box[1] / scale_factor_y))),
             COLORS[obj_meta->_label % COLORS.size()], cv::FILLED);
 
         cv::putText(img, text,
-                    cv::Point(int(obj_meta->_box[0]), int(obj_meta->_box[1])),
+                    cv::Point(int(obj_meta->_box[0] / scale_factor_x),
+                              int(obj_meta->_box[1] / scale_factor_y)),
                     cv::FONT_HERSHEY_SIMPLEX, font_scale,
                     cv::Scalar(255, 255, 255));
     }
 }
 
-void draw(DXFrameMeta *frame_meta) {
-    unsigned int object_length = g_list_length(frame_meta->_object_meta_list);
+bool calculate_strides(int w, int h, int wa, int ha, int *ws, int *hs) {
+    if (!ws || !hs || w <= 0 || h <= 0 || (h % 2 != 0) || wa < 0 || ha < 0) {
+        return false;
+    }
+    *ws = (wa <= 1) ? w : (((w + wa - 1) / wa) * wa);
+    *hs = (ha <= 1) ? h : (((h + ha - 1) / ha) * ha);
 
-    uint8_t *convert_frame =
-        CvtColor(frame_meta->_buf, frame_meta->_width, frame_meta->_height,
-                 frame_meta->_format, "RGB");
-    cv::Mat surface = cv::Mat(frame_meta->_height, frame_meta->_width, CV_8UC3,
-                              convert_frame);
+    return true;
+}
+
+#ifdef HAVE_LIBRGA
+void draw_rga(GstDxOsd *self, DXFrameMeta *frame_meta, GstBuffer *outbuffer) {
+    GstVideoMeta *meta = gst_buffer_get_video_meta(frame_meta->_buf);
+    if (!meta) {
+        g_error("ERROR : video meta is nullptr! \n");
+        return;
+    }
+
+    if (self->_width % 16 != 0) {
+        g_error("ERROR : DXOSD output W stride must be 16 aligned ! \n");
+        return;
+    }
+
+    if (g_strcmp0(frame_meta->_format, "NV12") != 0) {
+        g_error("ERROR : not supported format (use NV12)! \n");
+        return;
+    }
+
+    GstMapInfo input_map, output_map;
+    if (!gst_buffer_map(frame_meta->_buf, &input_map, GST_MAP_READ)) {
+        g_error("ERROR : DXOSD Failed to map GstBuffer (input)\n");
+        return;
+    }
+
+    if (!gst_buffer_map(outbuffer, &output_map, GST_MAP_READ)) {
+        g_error("ERROR : DXOSD Failed to map GstBuffer (output)\n");
+        return;
+    }
+
+    if ((float)frame_meta->_width / self->_width <= 0.125 ||
+        (float)frame_meta->_width / self->_width >= 8 ||
+        (float)frame_meta->_height / self->_height <= 0.125 ||
+        (float)frame_meta->_height / self->_height >= 8) {
+        g_error("DX OSD : scale check error, scale limit[1/8 ~ 8] \n");
+        return;
+    }
+
+    if (frame_meta->_width < 68 || frame_meta->_height < 2 ||
+        frame_meta->_width > 8176 || frame_meta->_height > 8176) {
+        g_error("DX OSD : resolution check error, input range[68x2 ~ "
+                "8176x8176] \n");
+        return;
+    }
+
+    if (self->_width < 68 || self->_height < 2 || self->_width > 8128 ||
+        self->_height > 8128) {
+        g_error("DX OSD : resolution check error, output range[68x2 ~ "
+                "8128x8128] \n");
+        return;
+    }
+
+    int wstride, hstride;
+    calculate_strides(frame_meta->_width, frame_meta->_height, 16, 16, &wstride,
+                      &hstride);
+    rga_buffer_t src_img = wrapbuffer_virtualaddr(
+        reinterpret_cast<void *>(input_map.data), frame_meta->_width,
+        frame_meta->_height, RK_FORMAT_YCbCr_420_SP, meta->stride[0], hstride);
+    rga_buffer_t dst_img =
+        wrapbuffer_virtualaddr(reinterpret_cast<void *>(output_map.data),
+                               self->_width, self->_height, RK_FORMAT_BGR_888);
+
+    imconfig(IM_CONFIG_SCHEDULER_CORE,
+             IM_SCHEDULER_RGA3_CORE0 | IM_SCHEDULER_RGA3_CORE1);
+    int ret = imcheck(src_img, dst_img, {}, {});
+    if (IM_STATUS_NOERROR != ret) {
+        std::cerr << "check error: " << ret << " - "
+                  << imStrError((IM_STATUS)ret) << std::endl;
+        return;
+    }
+
+    ret = improcess(src_img, dst_img, {}, {}, {}, {}, IM_SYNC);
+    if (ret != IM_STATUS_SUCCESS) {
+        std::cerr << "RGA resize (imresize) failed: " << ret << " - "
+                  << imStrError((IM_STATUS)ret) << std::endl;
+        return;
+    }
+
+    cv::Mat surface =
+        cv::Mat(self->_height, self->_width, CV_8UC3, output_map.data);
+
+    float scale_factor_x = (float)frame_meta->_width / self->_width;
+    float scale_factor_y = (float)frame_meta->_height / self->_height;
+
+    unsigned int object_length = g_list_length(frame_meta->_object_meta_list);
     for (size_t i = 0; i < (size_t)object_length; i++) {
         DXObjectMeta *obj_meta =
             (DXObjectMeta *)g_list_nth_data(frame_meta->_object_meta_list, i);
-        draw_object_meta(surface, obj_meta);
+        draw_object_meta(surface, obj_meta, scale_factor_x, scale_factor_y);
     }
-    SurfaceToOrigin(frame_meta, convert_frame);
-    surface.release();
-    free(convert_frame);
-}
 
-static GstFlowReturn gst_dxosd_transform_ip(GstBaseTransform *trans,
-                                            GstBuffer *buf) {
-    GstDxOsd *self = GST_DXOSD(trans);
+    gst_buffer_unmap(frame_meta->_buf, &input_map);
+    gst_buffer_unmap(outbuffer, &output_map);
+}
+#else
+void draw(GstDxOsd *self, DXFrameMeta *frame_meta, GstBuffer *outbuffer) {
+    GstMapInfo output_map;
+
+    if (!gst_buffer_map(outbuffer, &output_map, GST_MAP_READ)) {
+        g_error("ERROR : DXOSD Failed to map GstBuffer (output)\n");
+        return;
+    }
+
+    auto iter = self->_resized_frame.find(frame_meta->_stream_id);
+    if (iter == self->_resized_frame.end()) {
+        self->_resized_frame[frame_meta->_stream_id] = nullptr;
+    }
+
+    unsigned int object_length = g_list_length(frame_meta->_object_meta_list);
+
+    Resize(frame_meta->_buf, &self->_resized_frame[frame_meta->_stream_id],
+           frame_meta->_width, frame_meta->_height, self->_width, self->_height,
+           frame_meta->_format);
+
+    CvtColor(self->_resized_frame[frame_meta->_stream_id], &output_map.data,
+             self->_width, self->_height, frame_meta->_format, "BGR");
+
+    cv::Mat surface =
+        cv::Mat(self->_height, self->_width, CV_8UC3, output_map.data);
+
+    float scale_factor_x = (float)frame_meta->_width / self->_width;
+    float scale_factor_y = (float)frame_meta->_height / self->_height;
+
+    for (size_t i = 0; i < (size_t)object_length; i++) {
+        DXObjectMeta *obj_meta =
+            (DXObjectMeta *)g_list_nth_data(frame_meta->_object_meta_list, i);
+        draw_object_meta(surface, obj_meta, scale_factor_x, scale_factor_y);
+    }
+
+    gst_buffer_unmap(outbuffer, &output_map);
+}
+#endif
+
+static GstFlowReturn gst_dxosd_chain(GstPad *pad, GstObject *parent,
+                                     GstBuffer *buf) {
+    GstDxOsd *self = GST_DXOSD(parent);
+
+    GstBuffer *outbuf = NULL;
+    GstFlowReturn ret = GST_FLOW_OK;
+
+    gsize out_size = self->_output_info.size;
+    outbuf = gst_buffer_new_allocate(NULL, out_size, NULL);
+
+    if (!gst_buffer_copy_into(outbuf, buf,
+                              (GstBufferCopyFlags)(GST_BUFFER_COPY_FLAGS |
+                                                   GST_BUFFER_COPY_TIMESTAMPS),
+                              0, -1)) {
+        GST_WARNING_OBJECT(self, "Failed to copy buffer metadata");
+    }
+
+    GST_BUFFER_OFFSET(outbuf) = GST_BUFFER_OFFSET(buf);
+    GST_BUFFER_OFFSET_END(outbuf) = GST_BUFFER_OFFSET_END(buf);
+
     DXFrameMeta *frame_meta =
         (DXFrameMeta *)gst_buffer_get_meta(buf, DX_FRAME_META_API_TYPE);
     if (!frame_meta) {
         GST_WARNING_OBJECT(self, "No DXFrameMeta in GstBuffer \n");
-        return GST_FLOW_OK;
+    } else {
+#ifdef HAVE_LIBRGA
+        draw_rga(self, frame_meta, outbuf);
+#else
+        draw(self, frame_meta, outbuf);
+#endif
     }
-    draw(frame_meta);
 
-    return GST_FLOW_OK;
+    gst_buffer_unref(buf);
+    ret = gst_pad_push(self->_srcpad, outbuf);
+    if (ret != GST_FLOW_OK) {
+        GST_ERROR_OBJECT(self, "Failed to push buffer: %d\n", ret);
+    }
+    return ret;
 }

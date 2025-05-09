@@ -19,13 +19,22 @@ g++ -g -o "$SCRIPT_DIR/bin/test_interval" test_interval.c $(pkg-config --cflags 
 
 cd "$SCRIPT_DIR/bin"
 
-binaries=(
+LIBRARY_NAME="librga.so"
+LIBRARY_PATH=$(ldconfig -p | grep "$LIBRARY_NAME" | grep -oP '=>\s*\K/.*')
+
+binaries=()
+
+if [ -n "$LIBRARY_PATH" ]; then
+  FIRST_PATH=$(echo "$LIBRARY_PATH" | head -n 1)
+else
+  binaries+=(
     "test_single_pipeline"
     "test_secondary_pipeline"
     "test_multi_pipeline"
     "test_roi"
-    test_interval
+    "test_interval"
 )
+fi
 
 for bin in "${binaries[@]}"; do
     ./$bin

@@ -22,6 +22,6 @@ for INPUT_VIDEO_PATH in "${INPUT_VIDEO_PATH_LIST[@]}"; do
                     dxpreprocess config-file-path=$SRC_DIR/configs/Segmentation/DeepLabV3PlusMobileNetV2_2/preprocess_config.json ! queue ! \
                     dxinfer config-file-path=$SRC_DIR/configs/Segmentation/DeepLabV3PlusMobileNetV2_2/inference_config.json ! queue ! \
                     dxpostprocess config-file-path=$SRC_DIR/configs/Segmentation/DeepLabV3PlusMobileNetV2_2/postprocess_config.json ! queue ! \
-                    dxosd ! queue ! \
-                    fpsdisplaysink sync=false
+                    dxosd width=1280 height=720 ! queue ! \
+                    videoconvert ! fpsdisplaysink sync=false
 done

@@ -4,7 +4,7 @@
 #include <opencv2/opencv.hpp>
 
 #include "dx_msgconvl_priv.hpp"
-#include "dx_stream/format_convert.hpp"
+#include "libyuv_transform.hpp"
 
 DxMsgContextPriv *dxcontext_create_contextPriv(void) {
     DxMsgContextPriv *contextPriv = g_new0(DxMsgContextPriv, 1);
@@ -191,9 +191,9 @@ gchar *dxpayload_convert_to_json(DxMsgContext *context,
     if (meta_info->_include_frame) {
         std::vector<uchar> buf;
 
-        uint8_t *rgb_buffer =
-            CvtColor(frame_meta->_buf, frame_meta->_width, frame_meta->_height,
-                     frame_meta->_format, "RGB");
+        uint8_t *rgb_buffer = nullptr;
+        CvtColor(frame_meta->_buf, &rgb_buffer, frame_meta->_width,
+                 frame_meta->_height, frame_meta->_format, "RGB");
         cv::Mat rgb_surface = cv::Mat(frame_meta->_height, frame_meta->_width,
                                       CV_8UC3, rgb_buffer);
         cv::imencode(".jpg", rgb_surface, buf);
@@ -202,7 +202,7 @@ gchar *dxpayload_convert_to_json(DxMsgContext *context,
         g_free(base64_str);
         free(rgb_buffer);
     } else {
-        // json_object_set_string_member(jobj_root, "frameData", "");
+        json_object_set_string_member(jobj_root, "frameData", "");
     }
 
     JsonArray *jarray_objects = json_array_new();

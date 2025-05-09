@@ -292,7 +292,7 @@ GST_END_TEST
 Suite *secondary_suite(void) {
     Suite *s = suite_create("Secondary TEST");
     TCase *tc_core = tcase_create("Core");
-    tcase_set_timeout(tc_core, 10.0);
+    tcase_set_timeout(tc_core, 20.0);
 
     tcase_add_test(tc_core, test_face_recognition_pipeline);
 

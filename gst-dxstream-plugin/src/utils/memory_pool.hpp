@@ -8,13 +8,13 @@
 class MemoryPool {
   public:
     MemoryPool();
-    MemoryPool(size_t blockSize, size_t poolSize);
+    MemoryPool(size_t blockSize, size_t poolSize, uint8_t value = 0);
     ~MemoryPool();
 
     void *allocate();
     void deallocate(void *obj);
 
-    void initialize(size_t blockSize, size_t poolSize);
+    void initialize(size_t blockSize, size_t poolSize, uint8_t value = 0);
     void deinitialize();
 
     size_t get_block_size() const { return this->m_blockSize; }
@@ -33,6 +33,7 @@ class MemoryPool {
 
     size_t m_blockSize = 0;
     size_t m_poolSize = 0;
+    uint8_t m_value;
     std::vector<void *> m_freeList;
     std::vector<void *> m_memoryBlocks;
     std::mutex m_mutex;

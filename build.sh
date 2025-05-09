@@ -1,5 +1,9 @@
 #!/bin/bash
 
+SCRIPT_DIR=$(realpath "$(dirname "$0")")
+PROJECT_ROOT=$(realpath -s "${SCRIPT_DIR}")
+VENV_PATH=${PROJECT_ROOT}/venv-dx_stream
+
 # Determine the architecture
 ARCH=$(uname -m)
 
@@ -19,6 +23,7 @@ BUILD_DIR=builddir
 BUILD_TYPE="release"
 DEBUG_ARG=""
 SONAR_MODE_ARG=""
+NATIVE_FILE_ARG=""
 
 
 show_help() {
@@ -38,6 +43,27 @@ show_help() {
   exit 0
 }
 
+set_native_file_arg(){
+    local gcc_version=$(gcc -dumpversion | cut -f1 -d.)
+    local gpp_version=$(g++ -dumpversion | cut -f1 -d.)
+
+    echo "Current GCC version: $gcc_version"
+    echo "Current G++ version: $gpp_version"
+
+    # If version is less than 11, install gcc-11 and g++-11
+    if [ "$gcc_version" -lt 11 ] || [ "$gpp_version" -lt 11 ]; then
+        # Check if gcc-11 is installed
+        if dpkg -s gcc-11 >/dev/null 2>&1; then
+            NATIVE_FILE_ARG="--native-file ${PROJECT_ROOT}/gcc11.ini"
+            echo "GCC/G++ version 11 is already installed"
+        else
+            echo "Error: GCC/G++ version 11 or higher are required. Please run install.sh to install them and try again..."
+            exit 1
+        fi
+    else
+        echo "GCC/G++ 11 or higher is already installed."
+    fi
+}
 
 __print_clean_result() {
     local mode="$1"
@@ -88,10 +114,12 @@ clean() {
 
 build() {
     clean "clean"
+    
+    set_native_file_arg
 
     echo "Starting build process... build_type(${BUILD_TYPE})"
     cd gst-dxstream-plugin
-    meson setup ${BUILD_DIR} --buildtype=${BUILD_TYPE}
+    meson setup ${BUILD_DIR} --buildtype=${BUILD_TYPE} ${NATIVE_FILE_ARG}
     if [ $? -ne 0 ]; then
         echo -e "Error: meson setup failed"
         exit 1
@@ -102,7 +130,7 @@ build() {
         exit 1
     fi
     echo "Install DX-Stream to $GSTREAMER_PLUGIN_DIR"
-    sudo meson install -C ${BUILD_DIR}
+    yes | meson install -C ${BUILD_DIR}
     if [ $? -ne 0 ]; then
         echo -e "Error: meson install failed"
         exit 1
@@ -141,6 +169,15 @@ build() {
     echo "Build completed."
 }
 
+activate_venv() {
+    # activate venv
+    source ${VENV_PATH}/bin/activate
+    if [ $? -ne 0 ]; then
+        echo -e "[ERROR] Failed to activate venv. Please run 'install.sh' first to set up the venv environment, then try again."
+        exit 1
+    fi
+}
+
 # Parse arguments
 for i in "$@"; do
     case "$1" in
@@ -169,7 +206,7 @@ for i in "$@"; do
     shift
 done
 
-
+activate_venv
 build
 
 exit 0
