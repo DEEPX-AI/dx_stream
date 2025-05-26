@@ -31,12 +31,12 @@ void dxcontext_delete_contextPriv(DxMsgContextPriv *contextPriv) {
  * }
  */
 
-#define CFG_KEY_INFO_SECTION "infoSection"
-#define CFG_KEY_IS_CUSTOM_ID "customId"
-#define CFG_KEY_FILTER_SECTION "filterSection"
-#define CFG_KEY_FS_OBJECT "object"
-#define CFG_KEY_FS_INCLUDE "include"
-#define CFG_VALUE_INVALID 0
+constexpr const char *CFG_KEY_INFO_SECTION = "infoSection";
+constexpr const char *CFG_KEY_IS_CUSTOM_ID = "customId";
+constexpr const char *CFG_KEY_FILTER_SECTION = "filterSection";
+constexpr const char *CFG_KEY_FS_OBJECT = "object";
+constexpr const char *CFG_KEY_FS_INCLUDE = "include";
+constexpr int CFG_VALUE_INVALID = 0;
 
 bool dxcontext_parse_json_config(const gchar *file,
                                  DxMsgContextPriv *contextPriv) {
@@ -50,7 +50,7 @@ bool dxcontext_parse_json_config(const gchar *file,
     }
 
     JsonParser *parser = json_parser_new();
-    GError *error = NULL;
+    GError *error = nullptr;
 
     if (!json_parser_load_from_file(parser, file, &error)) {
         GST_WARNING("Unable to parse JSON: %s\n", error->message);
@@ -73,22 +73,34 @@ bool dxcontext_parse_json_config(const gchar *file,
         }
     }
 
-    if (json_object_has_member(root_obj, CFG_KEY_FILTER_SECTION)) {
-        JsonObject *filter_section =
-            json_object_get_object_member(root_obj, CFG_KEY_FILTER_SECTION);
-        if (json_object_has_member(filter_section, CFG_KEY_FS_OBJECT)) {
-            JsonObject *object = json_object_get_object_member(
-                filter_section, CFG_KEY_FS_OBJECT);
-            if (json_object_has_member(object, CFG_KEY_FS_INCLUDE)) {
-                JsonArray *include_array =
-                    json_object_get_array_member(object, CFG_KEY_FS_INCLUDE);
-                contextPriv->_object_include_list.clear();
-                for (guint i = 0; i < json_array_get_length(include_array);
-                     i++) {
-                    contextPriv->_object_include_list.push_back(
-                        json_array_get_string_element(include_array, i));
-                }
-            }
+    JsonObject *filter_section =
+        json_object_get_object_member(root_obj, CFG_KEY_FILTER_SECTION);
+    if (filter_section == nullptr) {
+        return false;
+    }
+
+    JsonObject *object_node =
+        json_object_get_object_member(filter_section, CFG_KEY_FS_OBJECT);
+    if (object_node == nullptr) {
+        return false;
+    }
+
+    JsonArray *include_array =
+        json_object_get_array_member(object_node, CFG_KEY_FS_INCLUDE);
+    if (include_array == nullptr) {
+        return false;
+    }
+    contextPriv->_object_include_list.clear();
+
+    for (guint i = 0; i < json_array_get_length(include_array); i++) {
+        const char *list_item_str =
+            json_array_get_string_element(include_array, i);
+        if (list_item_str != nullptr) {
+            contextPriv->_object_include_list.push_back(list_item_str);
+        } else {
+            g_warning(
+                "Item at index %u in '%s' array is not a string or is null.", i,
+                CFG_KEY_FS_INCLUDE);
         }
     }
 
@@ -172,25 +184,171 @@ bool dxcontext_parse_json_config(const gchar *file,
  *       },
  */
 
+static void add_segment_to_json(JsonObject *jobj_root, DXObjectMeta *obj_meta) {
+    if (obj_meta->_seg_cls_map.data.empty())
+        return;
+
+    GST_DEBUG("|SEGMENT| height: %d, width: %d, data: %p",
+              obj_meta->_seg_cls_map.height, obj_meta->_seg_cls_map.width,
+              obj_meta->_seg_cls_map.data.data());
+
+    JsonObject *jobj_segment = json_object_new();
+    json_object_set_int_member(jobj_segment, "height",
+                               obj_meta->_seg_cls_map.height);
+    json_object_set_int_member(jobj_segment, "width",
+                               obj_meta->_seg_cls_map.width);
+    json_object_set_int_member(
+        jobj_segment, "data",
+        reinterpret_cast<uintptr_t>(obj_meta->_seg_cls_map.data.data()));
+
+    json_object_set_object_member(jobj_root, "segment", jobj_segment);
+}
+
+static void add_pose_to_json(JsonObject *jobj_parent, DXObjectMeta *obj_meta) {
+    if (obj_meta->_keypoints.empty())
+        return;
+
+    GST_DEBUG("|POSE| keypoints: [ {%f, %f, %f}, ...]", obj_meta->_keypoints[0],
+              obj_meta->_keypoints[1], obj_meta->_keypoints[2]);
+
+    JsonArray *jarray = json_array_new();
+    for (int k = 0; k < 17; k++) {
+        float kx = obj_meta->_keypoints[k * 3 + 0];
+        float ky = obj_meta->_keypoints[k * 3 + 1];
+        float ks = obj_meta->_keypoints[k * 3 + 2];
+        JsonObject *jobj_keyset = json_object_new();
+        json_object_set_int_member(jobj_keyset, "kx", kx);
+        json_object_set_int_member(jobj_keyset, "ky", ky);
+        json_object_set_double_member(jobj_keyset, "ks", ks);
+        json_array_add_element(
+            jarray, json_node_init_object(json_node_alloc(), jobj_keyset));
+    }
+    JsonObject *jobj_object = json_object_new();
+    json_object_set_array_member(jobj_object, "keypoints", jarray);
+    json_object_set_object_member(jobj_parent, "pose", jobj_object);
+}
+
+static void add_face_to_json(JsonObject *jobj_parent, DXObjectMeta *obj_meta) {
+    if (obj_meta->_face_landmarks.empty())
+        return;
+
+    GST_DEBUG("|JCP| [FACE] landmark: [{%f, %f}, ...]",
+              obj_meta->_face_landmarks[0]._x, obj_meta->_face_landmarks[0]._y);
+
+    JsonArray *jarray = json_array_new();
+    for (auto &landmark : obj_meta->_face_landmarks) {
+        JsonObject *jobj_point = json_object_new();
+        json_object_set_int_member(jobj_point, "x", landmark._x);
+        json_object_set_int_member(jobj_point, "y", landmark._y);
+        json_array_add_element(
+            jarray, json_node_init_object(json_node_alloc(), jobj_point));
+    }
+    JsonObject *jobj_object = json_object_new();
+    json_object_set_array_member(jobj_object, "landmark", jarray);
+    json_object_set_object_member(jobj_parent, "face", jobj_object);
+}
+
+static void add_track_to_json(JsonObject *jobj_parent, DXObjectMeta *obj_meta) {
+    if (obj_meta->_track_id == -1)
+        return;
+
+    GST_DEBUG("|TRACK| TrackId: %d, Box: {%f, %f, %f, %f}", obj_meta->_track_id,
+              obj_meta->_box[0], obj_meta->_box[1], obj_meta->_box[2],
+              obj_meta->_box[3]);
+
+    JsonObject *jobj_object = json_object_new();
+    json_object_set_int_member(jobj_object, "id", obj_meta->_track_id);
+
+    JsonObject *jobj_box = json_object_new();
+    json_object_set_int_member(jobj_box, "startX", obj_meta->_box[0]);
+    json_object_set_int_member(jobj_box, "startY", obj_meta->_box[1]);
+    json_object_set_int_member(jobj_box, "endX", obj_meta->_box[2]);
+    json_object_set_int_member(jobj_box, "endY", obj_meta->_box[3]);
+
+    json_object_set_object_member(jobj_object, "box", jobj_box);
+    json_object_set_object_member(jobj_parent, "track", jobj_object);
+}
+
+static void add_object_to_json(JsonObject *jobj_parent,
+                               DXObjectMeta *obj_meta) {
+    if (obj_meta->_label == -1)
+        return;
+
+    GST_DEBUG("|OBJECT| LabelId: %d, Confidence: %.2f, Box: {%f, %f, %f, %f}, "
+              "Label Name: %s",
+              obj_meta->_label, obj_meta->_confidence, obj_meta->_box[0],
+              obj_meta->_box[1], obj_meta->_box[2], obj_meta->_box[3],
+              obj_meta->_label_name->str);
+
+    JsonObject *jobj_object = json_object_new();
+    json_object_set_int_member(jobj_object, "id", obj_meta->_label);
+    json_object_set_double_member(jobj_object, "confidence",
+                                  obj_meta->_confidence);
+    json_object_set_string_member(jobj_object, "name",
+                                  obj_meta->_label_name->str);
+
+    JsonObject *jobj_box = json_object_new();
+    json_object_set_int_member(jobj_box, "startX", obj_meta->_box[0]);
+    json_object_set_int_member(jobj_box, "startY", obj_meta->_box[1]);
+    json_object_set_int_member(jobj_box, "endX", obj_meta->_box[2]);
+    json_object_set_int_member(jobj_box, "endY", obj_meta->_box[3]);
+
+    json_object_set_object_member(jobj_object, "box", jobj_box);
+    json_object_set_object_member(jobj_parent, "object", jobj_object);
+}
+
+static bool is_object_included(DxMsgContextPriv *contextPriv,
+                               DXObjectMeta *obj_meta) {
+    if (obj_meta->_label == -1)
+        return true; // -1인 경우 필터링 안함
+    if (contextPriv->_object_include_list.empty())
+        return true;
+
+    for (const auto &item : contextPriv->_object_include_list) {
+        if (g_strcmp0(item.c_str(), obj_meta->_label_name->str) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+static void add_object_meta_to_json(JsonArray *jarray_objects,
+                                    JsonObject *jobj_root,
+                                    DXObjectMeta *obj_meta) {
+    JsonNode *jnode_object = json_node_new(JSON_NODE_OBJECT);
+    JsonObject *jobj_parent = json_object_new();
+
+    add_segment_to_json(jobj_root, obj_meta);
+    add_pose_to_json(jobj_parent, obj_meta);
+    add_face_to_json(jobj_parent, obj_meta);
+    add_track_to_json(jobj_parent, obj_meta);
+    add_object_to_json(jobj_parent, obj_meta);
+
+    // segment은 루트에 따로 넣고, 그 외는 objects 배열에 추가
+    if (obj_meta->_seg_cls_map.data.empty()) {
+        json_node_set_object(jnode_object, jobj_parent);
+        json_array_add_element(jarray_objects, jnode_object);
+    }
+}
+
 gchar *dxpayload_convert_to_json(DxMsgContext *context,
                                  DxMsgMetaInfo *meta_info) {
     DXFrameMeta *frame_meta = (DXFrameMeta *)(meta_info->_frame_meta);
+    DxMsgContextPriv *contextPriv = (DxMsgContextPriv *)context->_priv_data;
 
     JsonNode *jnode_root = json_node_new(JSON_NODE_OBJECT);
     JsonObject *jobj_root = json_object_new();
 
+    // 기본 메타 정보 설정
     json_object_set_int_member(jobj_root, "streamId", frame_meta->_stream_id);
     json_object_set_int_member(jobj_root, "seqId", meta_info->_seq_id);
     json_object_set_int_member(jobj_root, "width", frame_meta->_width);
     json_object_set_int_member(jobj_root, "height", frame_meta->_height);
-
-    DxMsgContextPriv *contextPriv = (DxMsgContextPriv *)context->_priv_data;
     json_object_set_int_member(jobj_root, "customId", contextPriv->_customId);
 
-    // frame data
+    // frame data 처리
     if (meta_info->_include_frame) {
         std::vector<uchar> buf;
-
         uint8_t *rgb_buffer = nullptr;
         CvtColor(frame_meta->_buf, &rgb_buffer, frame_meta->_width,
                  frame_meta->_height, frame_meta->_format, "RGB");
@@ -205,6 +363,7 @@ gchar *dxpayload_convert_to_json(DxMsgContext *context,
         json_object_set_string_member(jobj_root, "frameData", "");
     }
 
+    // objects 배열 생성
     JsonArray *jarray_objects = json_array_new();
     json_object_set_array_member(jobj_root, "objects", jarray_objects);
 
@@ -213,161 +372,17 @@ gchar *dxpayload_convert_to_json(DxMsgContext *context,
         DXObjectMeta *obj_meta =
             (DXObjectMeta *)g_list_nth_data(frame_meta->_object_meta_list, i);
 
-        // context's filter: match include
-        if (obj_meta->_label != -1 &&
-            contextPriv->_object_include_list.size() > 0) {
-            bool is_include = false;
-            for (const auto &item : contextPriv->_object_include_list) {
-                if (g_strcmp0(item.c_str(), obj_meta->_label_name->str) == 0) {
-                    is_include = true;
-                    break;
-                }
-            }
-            if (!is_include) {
-                continue;
-            }
+        if (!is_object_included(contextPriv, obj_meta)) {
+            continue;
         }
-
-        JsonNode *jnode_object = json_node_new(JSON_NODE_OBJECT);
-        JsonObject *jobj_parent = json_object_new();
-        JsonObject *jobj_segment = nullptr;
-
-        if (obj_meta->_seg_cls_map.data != nullptr) {
-            GST_DEBUG("|SEGMENT| height: %d, width: %d, data: %p",
-                      obj_meta->_seg_cls_map.height,
-                      obj_meta->_seg_cls_map.width,
-                      obj_meta->_seg_cls_map.data);
-            jobj_segment = json_object_new();
-            json_object_set_int_member(jobj_segment, "height",
-                                       obj_meta->_seg_cls_map.height);
-            json_object_set_int_member(jobj_segment, "width",
-                                       obj_meta->_seg_cls_map.width);
-            json_object_set_int_member(
-                jobj_segment, "data",
-                reinterpret_cast<uintptr_t>(obj_meta->_seg_cls_map.data));
-        }
-
-        if (obj_meta->_keypoints.size() > 0) {
-            GST_DEBUG("|POSE| keypoints: [ {%f, %f, %f}, ...]",
-                      obj_meta->_keypoints[0], obj_meta->_keypoints[1],
-                      obj_meta->_keypoints[2]);
-
-            JsonArray *jarray = json_array_new();
-            for (int k = 0; k < 17; k++) {
-                float kx = obj_meta->_keypoints[k * 3 + 0];
-                float ky = obj_meta->_keypoints[k * 3 + 1];
-                float ks = obj_meta->_keypoints[k * 3 + 2];
-                JsonObject *jobj_keyset = json_object_new();
-                json_object_set_int_member(jobj_keyset, "kx", kx);
-                json_object_set_int_member(jobj_keyset, "ky", ky);
-                json_object_set_double_member(jobj_keyset, "ks", ks);
-                json_array_add_element(
-                    jarray,
-                    json_node_init_object(json_node_alloc(), jobj_keyset));
-            }
-
-            JsonObject *jobj_object = json_object_new();
-            json_object_set_array_member(jobj_object, "keypoints", jarray);
-            json_object_set_object_member(jobj_parent, "pose", jobj_object);
-        }
-
-        if (obj_meta->_face_landmarks.size() > 0) {
-            GST_DEBUG("|JCP| [FACE] landmark: [{%f, %f}, ...",
-                      obj_meta->_face_landmarks[0]._x,
-                      obj_meta->_face_landmarks[0]._y);
-
-            JsonArray *jarray = json_array_new();
-            for (auto &landmark : obj_meta->_face_landmarks) {
-                JsonObject *jobj_point = json_object_new();
-                json_object_set_int_member(jobj_point, "x", landmark._x);
-                json_object_set_int_member(jobj_point, "y", landmark._y);
-                json_array_add_element(
-                    jarray,
-                    json_node_init_object(json_node_alloc(), jobj_point));
-            }
-
-            JsonObject *jobj_object = json_object_new();
-            json_object_set_array_member(jobj_object, "landmark", jarray);
-            json_object_set_object_member(jobj_parent, "face", jobj_object);
-        }
-
-        if (obj_meta->_track_id != -1) {
-            GST_DEBUG("|TRACK| TrackId: %d, Box: {%f, %f, %f, %f}",
-                      obj_meta->_track_id, obj_meta->_box[0], obj_meta->_box[1],
-                      obj_meta->_box[2], obj_meta->_box[3]);
-
-            JsonObject *jobj_object = json_object_new();
-            json_object_set_int_member(jobj_object, "id", obj_meta->_track_id);
-            JsonObject *jobj_box = json_object_new();
-            json_object_set_int_member(jobj_box, "startX", obj_meta->_box[0]);
-            json_object_set_int_member(jobj_box, "startY", obj_meta->_box[1]);
-            json_object_set_int_member(jobj_box, "endX", obj_meta->_box[2]);
-            json_object_set_int_member(jobj_box, "endY", obj_meta->_box[3]);
-            json_object_set_object_member(jobj_object, "box", jobj_box);
-            json_object_set_object_member(jobj_parent, "track", jobj_object);
-        } else if (obj_meta->_label != -1) {
-            GST_DEBUG("|OBJECT| LabelId: %d, Confidence: %.2f, Box: {%f, %f, "
-                      "%f, %f}, Label Name: %s",
-                      obj_meta->_label, obj_meta->_confidence,
-                      obj_meta->_box[0], obj_meta->_box[1], obj_meta->_box[2],
-                      obj_meta->_box[3], obj_meta->_label_name->str);
-
-            JsonObject *jobj_object = json_object_new();
-            json_object_set_int_member(jobj_object, "id", obj_meta->_label);
-            json_object_set_double_member(jobj_object, "confidence",
-                                          obj_meta->_confidence);
-            json_object_set_string_member(jobj_object, "name",
-                                          obj_meta->_label_name->str);
-
-            JsonObject *jobj_box = json_object_new();
-            json_object_set_int_member(jobj_box, "startX", obj_meta->_box[0]);
-            json_object_set_int_member(jobj_box, "startY", obj_meta->_box[1]);
-            json_object_set_int_member(jobj_box, "endX", obj_meta->_box[2]);
-            json_object_set_int_member(jobj_box, "endY", obj_meta->_box[3]);
-            json_object_set_object_member(jobj_object, "box", jobj_box);
-            json_object_set_object_member(jobj_parent, "object", jobj_object);
-        }
-
-        /* if segment,                        then root -> "segment": {}
-         * else if pose, face, track, object, then root -> "objects": [{}, {},
-         * ...]
-         */
-        if (jobj_segment) {
-            json_object_set_object_member(jobj_root, "segment", jobj_segment);
-        } else {
-            json_node_set_object(jnode_object, jobj_parent);
-            json_array_add_element(jarray_objects, jnode_object);
-        }
+        add_object_meta_to_json(jarray_objects, jobj_root, obj_meta);
     }
 
     json_node_set_object(jnode_root, jobj_root);
-
     gchar *json_data = json_to_string(jnode_root, TRUE);
 
     json_node_free(jnode_root);
     json_object_unref(jobj_root);
-
-#if 0 /* debug purpose */
-    if (meta_info->_seq_id <= 10) {
-        gchar *file_name;
-        file_name = g_strdup_printf("./_mytest/output_%d_%02lu.json",
-                                    frame_meta->_stream_id, meta_info->_seq_id);
-        GError *error = NULL;
-        g_file_set_contents(file_name, json_data, -1, &error);
-        if (error != NULL) {
-            g_printerr("Error saving file: %s\n", error->message);
-            g_error_free(error);
-        }
-        g_free(file_name);
-
-        file_name = g_strdup_printf("./_mytest/output_%d_%02lu.jpg",
-                                    frame_meta->_stream_id, meta_info->_seq_id);
-        cv::Mat rgb_image;
-        cv::cvtColor(frame_meta->_rgb_surface, rgb_image, cv::COLOR_BGR2RGB);
-        cv::imwrite(file_name, rgb_image);
-        g_free(file_name);
-    }
-#endif
 
     return json_data;
 }

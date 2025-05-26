@@ -299,169 +299,227 @@ void Resize(GstBuffer *buf, uint8_t **dst, int src_width, int src_height,
     gst_buffer_unmap(buf, &map);
 }
 
+static inline void allocate_dst_buffer(uint8_t **dst, int size) {
+    if (!*dst) {
+        *dst = (uint8_t *)malloc(size);
+        if (!*dst) {
+            g_error("Memory allocation failed\n");
+        }
+    }
+}
+
+static inline void handle_unsupported_format(const char *func_name) {
+    g_error("%s: Not supported color format\n", func_name);
+}
+
+static bool is_rgb(const gchar *fmt) { return g_strcmp0(fmt, "RGB") == 0; }
+
+static bool is_bgr(const gchar *fmt) { return g_strcmp0(fmt, "BGR") == 0; }
+
+static void handle_conversion_error(int result, const char *tag) {
+    if (result != 0) {
+        g_error("%s: Failed to convert color\n", tag);
+    }
+}
+
+static void convert_from_rgb(const uint8_t *src, int width, int height,
+                             int stride, const gchar *dst_format, uint8_t **dst,
+                             const char *tag) {
+    int size = width * height * 3;
+    allocate_dst_buffer(dst, size);
+
+    if (is_rgb(dst_format)) {
+        memcpy(*dst, src, size);
+    } else if (is_bgr(dst_format)) {
+        int result =
+            libyuv::RAWToRGB24(src, stride, *dst, stride, width, height);
+        handle_conversion_error(result, tag);
+    } else {
+        handle_unsupported_format(tag);
+    }
+}
+
+static void convert_from_i420(const uint8_t *y, const uint8_t *u,
+                              const uint8_t *v, int strideY, int strideU,
+                              int strideV, int width, int height,
+                              const gchar *dst_format, uint8_t **dst,
+                              const char *tag) {
+    int size = width * height * 3;
+    allocate_dst_buffer(dst, size);
+
+    if (is_rgb(dst_format)) {
+        int result = libyuv::I420ToRAW(y, strideY, u, strideU, v, strideV, *dst,
+                                       width * 3, width, height);
+        handle_conversion_error(result, tag);
+    } else if (is_bgr(dst_format)) {
+        int result = libyuv::I420ToRGB24(y, strideY, u, strideU, v, strideV,
+                                         *dst, width * 3, width, height);
+        handle_conversion_error(result, tag);
+    } else {
+        handle_unsupported_format(tag);
+    }
+}
+
+static void convert_from_nv12(const uint8_t *y, const uint8_t *uv, int strideY,
+                              int strideUV, int width, int height,
+                              const gchar *dst_format, uint8_t **dst,
+                              const char *tag) {
+    int size = width * height * 3;
+    allocate_dst_buffer(dst, size);
+
+    if (is_rgb(dst_format)) {
+        int result = libyuv::NV12ToRAW(y, strideY, uv, strideUV, *dst,
+                                       width * 3, width, height);
+        handle_conversion_error(result, tag);
+    } else if (is_bgr(dst_format)) {
+        int result = libyuv::NV12ToRGB24(y, strideY, uv, strideUV, *dst,
+                                         width * 3, width, height);
+        handle_conversion_error(result, tag);
+    } else {
+        handle_unsupported_format(tag);
+    }
+}
+
+static bool map_buffer(GstBuffer *buf, GstMapInfo *map, const char *tag) {
+    if (!gst_buffer_map(buf, map, GST_MAP_READ)) {
+        g_error("%s: Failed to map GstBuffer\n", tag);
+        return false;
+    }
+    return true;
+}
+
+static void handle_rgb(const uint8_t *data, GstVideoMeta *meta, int width,
+                       int height, const gchar *dst_format, uint8_t **dst,
+                       const char *tag) {
+    const uint8_t *src = data;
+    int stride = width * 3;
+    if (meta) {
+        src = data + meta->offset[0];
+        stride = meta->stride[0];
+    }
+    convert_from_rgb(src, width, height, stride, dst_format, dst, tag);
+}
+
+static void handle_i420(const uint8_t *data, GstVideoMeta *meta, int width,
+                        int height, const gchar *dst_format, uint8_t **dst,
+                        const char *tag) {
+    const uint8_t *y = data + (meta ? meta->offset[0] : 0);
+    const uint8_t *u = data + (meta ? meta->offset[1] : width * height);
+    const uint8_t *v =
+        data +
+        (meta ? meta->offset[2] : width * height + (width / 2) * (height / 2));
+    int strideY = meta ? meta->stride[0] : width;
+    int strideU = meta ? meta->stride[1] : width / 2;
+    int strideV = meta ? meta->stride[2] : width / 2;
+
+    convert_from_i420(y, u, v, strideY, strideU, strideV, width, height,
+                      dst_format, dst, tag);
+}
+
+static void handle_nv12(const uint8_t *data, GstVideoMeta *meta, int width,
+                        int height, const gchar *dst_format, uint8_t **dst,
+                        const char *tag) {
+    const uint8_t *y = data + (meta ? meta->offset[0] : 0);
+    const uint8_t *uv = data + (meta ? meta->offset[1] : width * height);
+    int strideY = meta ? meta->stride[0] : width;
+    int strideUV = meta ? meta->stride[1] : width;
+
+    convert_from_nv12(y, uv, strideY, strideUV, width, height, dst_format, dst,
+                      tag);
+}
+
 void CvtColor(GstBuffer *buf, uint8_t **dst, int width, int height,
               const gchar *src_format, const gchar *dst_format) {
-
-    GstMapInfo map;
-    if (!gst_buffer_map(buf, &map, GST_MAP_READ)) {
-        g_error("CvtColor(buffer): Failed to map GstBuffer\n");
-    }
-    GstVideoMeta *meta = gst_buffer_get_video_meta(buf);
-    int result = 0;
+    const char *tag = "CvtColor(buffer)";
     if (width <= 0 || height <= 0) {
-        g_error("CvtColor(buffer): Invalid crop dimensions\n");
-        gst_buffer_unmap(buf, &map);
+        g_error("%s: Invalid dimensions\n", tag);
         return;
     }
 
+    GstMapInfo map;
+    if (!map_buffer(buf, &map, tag))
+        return;
+
+    GstVideoMeta *meta = gst_buffer_get_video_meta(buf);
+
     if (g_strcmp0(src_format, "RGB") == 0) {
-        const uint8_t *src = map.data;
-        gint stride = width * 3;
-        if (meta) {
-            src = map.data + meta->offset[0];
-            stride = meta->stride[0];
-        }
-        if (g_strcmp0(dst_format, "RGB") == 0) {
-            if (!*dst) {
-                *dst = (uint8_t *)malloc(width * height * 3);
-            }
-            memcpy(*dst, src, width * height * 3);
-        } else if (g_strcmp0(dst_format, "BGR") == 0) {
-            if (!*dst) {
-                *dst = (uint8_t *)malloc(width * height * 3);
-            }
-            result =
-                libyuv::RAWToRGB24(src, stride, *dst, stride, width, height);
-        } else {
-            g_error("CvtColor(buffer): Not support color format \n");
-        }
+        handle_rgb(map.data, meta, width, height, dst_format, dst, tag);
     } else if (g_strcmp0(src_format, "I420") == 0) {
-        const uint8_t *src_y = map.data;
-        const uint8_t *src_u = src_y + width * height;
-        const uint8_t *src_v = src_u + (width / 2) * (height / 2);
-        gint strideY = width;
-        gint strideU = width / 2;
-        gint strideV = width / 2;
-        if (meta) {
-            src_y = map.data + meta->offset[0];
-            src_u = map.data + meta->offset[1];
-            src_v = map.data + meta->offset[2];
-            strideY = meta->stride[0];
-            strideU = meta->stride[1];
-            strideV = meta->stride[2];
-        }
-        if (g_strcmp0(dst_format, "RGB") == 0) {
-            if (!*dst) {
-                *dst = (uint8_t *)malloc(width * height * 3);
-            }
-            result = libyuv::I420ToRAW(src_y, strideY, src_u, strideU, src_v,
-                                       strideV, *dst, width * 3, width, height);
-        } else if (g_strcmp0(dst_format, "BGR") == 0) {
-            if (!*dst) {
-                *dst = (uint8_t *)malloc(width * height * 3);
-            }
-            result =
-                libyuv::I420ToRGB24(src_y, strideY, src_u, strideU, src_v,
-                                    strideV, *dst, width * 3, width, height);
-        } else {
-            g_error("CvtColor(buffer): Not support color format \n");
-        }
+        handle_i420(map.data, meta, width, height, dst_format, dst, tag);
     } else if (g_strcmp0(src_format, "NV12") == 0) {
-        const uint8_t *src_y = map.data;
-        const uint8_t *src_uv = map.data + width * height;
-        gint strideY = width;
-        gint strideUV = width;
-        if (meta) {
-            src_y = map.data + meta->offset[0];
-            src_uv = map.data + meta->offset[1];
-            strideY = meta->stride[0];
-            strideUV = meta->stride[1];
-        }
-        if (g_strcmp0(dst_format, "RGB") == 0) {
-            if (!*dst) {
-                *dst = (uint8_t *)malloc(width * height * 3);
-            }
-            result = libyuv::NV12ToRAW(src_y, strideY, src_uv, strideUV, *dst,
-                                       width * 3, width, height);
-        } else if (g_strcmp0(dst_format, "BGR") == 0) {
-            if (!*dst) {
-                *dst = (uint8_t *)malloc(width * height * 3);
-            }
-            result = libyuv::NV12ToRGB24(src_y, strideY, src_uv, strideUV, *dst,
-                                         width * 3, width, height);
-        } else {
-            g_error("CvtColor(buffer): Not support color format \n");
-        }
+        handle_nv12(map.data, meta, width, height, dst_format, dst, tag);
     } else {
-        g_error("CvtColor(buffer): Not support color format \n");
+        handle_unsupported_format(tag);
     }
-    if (result != 0) {
-        g_error("CvtColor(buffer): Failed to crop frame\n");
-    }
+
     gst_buffer_unmap(buf, &map);
 }
 
 void CvtColor(uint8_t *src, uint8_t **dst, int width, int height,
               const gchar *src_format, const gchar *dst_format) {
 
-    int ret = 1;
+    if (width <= 0 || height <= 0) {
+        g_error("CvtColor: Invalid dimensions\n");
+        return;
+    }
+
+    int ret = 0;
+
+    auto alloc_and_process = [&](int size) { allocate_dst_buffer(dst, size); };
+
     if (g_strcmp0(src_format, "RGB") == 0) {
+        alloc_and_process(width * height * 3);
+
         if (g_strcmp0(dst_format, "RGB") == 0) {
-            if (!*dst) {
-                *dst = (uint8_t *)malloc(width * height * 3);
-            }
             memcpy(*dst, src, width * height * 3);
-            ret = true;
         } else if (g_strcmp0(dst_format, "BGR") == 0) {
-            if (!*dst) {
-                *dst = (uint8_t *)malloc(width * height * 3);
-            }
             ret = libyuv::RAWToRGB24(src, width * 3, *dst, width * 3, width,
                                      height);
         } else {
-            g_error("CvtColor: Not support color format \n");
+            handle_unsupported_format("CvtColor");
+            return;
         }
     } else if (g_strcmp0(src_format, "I420") == 0) {
+        alloc_and_process(width * height * 3);
+
+        const uint8_t *src_y = src;
+        const uint8_t *src_u = src + width * height;
+        const uint8_t *src_v = src_u + (width / 2) * (height / 2);
+
         if (g_strcmp0(dst_format, "RGB") == 0) {
-            if (!*dst) {
-                *dst = (uint8_t *)malloc(width * height * 3);
-            }
-            ret = libyuv::I420ToRAW(src, width, src + width * height, width / 2,
-                                    (src + width * height) +
-                                        (width / 2) * (height / 2),
+            ret = libyuv::I420ToRAW(src_y, width, src_u, width / 2, src_v,
                                     width / 2, *dst, width * 3, width, height);
         } else if (g_strcmp0(dst_format, "BGR") == 0) {
-            if (!*dst) {
-                *dst = (uint8_t *)malloc(width * height * 3);
-            }
-            ret = libyuv::I420ToRGB24(
-                src, width, src + width * height, width / 2,
-                (src + width * height) + (width / 2) * (height / 2), width / 2,
-                *dst, width * 3, width, height);
+            ret =
+                libyuv::I420ToRGB24(src_y, width, src_u, width / 2, src_v,
+                                    width / 2, *dst, width * 3, width, height);
         } else {
-            g_error("CvtColor: Not support color format \n");
+            handle_unsupported_format("CvtColor");
+            return;
         }
     } else if (g_strcmp0(src_format, "NV12") == 0) {
+        alloc_and_process(width * height * 3);
+
+        const uint8_t *src_y = src;
+        const uint8_t *src_uv = src + width * height;
+
         if (g_strcmp0(dst_format, "RGB") == 0) {
-            if (!*dst) {
-                *dst = (uint8_t *)malloc(width * height * 3);
-            }
-            ret = libyuv::NV12ToRAW(src, width, src + width * height, width,
-                                    *dst, width * 3, width, height);
+            ret = libyuv::NV12ToRAW(src_y, width, src_uv, width, *dst,
+                                    width * 3, width, height);
         } else if (g_strcmp0(dst_format, "BGR") == 0) {
-            if (!*dst) {
-                *dst = (uint8_t *)malloc(width * height * 3);
-            }
-            ret = libyuv::NV12ToRGB24(src, width, src + width * height, width,
-                                      *dst, width * 3, width, height);
+            ret = libyuv::NV12ToRGB24(src_y, width, src_uv, width, *dst,
+                                      width * 3, width, height);
         } else {
-            g_error("CvtColor: Not support color format \n");
+            handle_unsupported_format("CvtColor");
+            return;
         }
     } else {
-        g_error("CvtColor: Not support color format \n");
+        handle_unsupported_format("CvtColor");
+        return;
     }
+
     if (ret != 0) {
-        g_error("CvtColor: Failed to Convert Color \n");
+        g_error("CvtColor: Failed to convert color\n");
     }
 }
 

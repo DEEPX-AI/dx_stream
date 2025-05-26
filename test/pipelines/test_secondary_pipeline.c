@@ -93,6 +93,10 @@ static GstPadProbeReturn probe_primary(GstPad *pad, GstPadProbeInfo *info,
             //         object_meta->_face_box[0], object_meta->_face_box[1],
             //         object_meta->_face_box[2], object_meta->_face_box[3]);
             if (object_meta->_confidence > max_conf) {
+                if (object_meta->_box[2] <= 0 ||
+                    object_meta->_face_box[2] <= 0) {
+                    continue;
+                }
                 max_conf = (float)object_meta->_confidence;
 
                 pred_box.push_back(object_meta->_box[0]);

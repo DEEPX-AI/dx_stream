@@ -27,10 +27,6 @@ enum {
     N_PROPERTIES
 };
 
-static GParamSpec *obj_properties[N_PROPERTIES] = {
-    NULL,
-};
-
 GST_DEBUG_CATEGORY_STATIC(gst_dxpreprocess_debug_category);
 #define GST_CAT_DEFAULT gst_dxpreprocess_debug_category
 
@@ -46,186 +42,109 @@ G_DEFINE_TYPE_WITH_CODE(
     GST_DEBUG_CATEGORY_INIT(gst_dxpreprocess_debug_category, "gst-dxpreprocess",
                             0, "debug category for gst-dxpreprocess element"))
 
-static GstElementClass *parent_class = NULL;
+static GstElementClass *parent_class = nullptr;
+
+static gboolean validate_roi(JsonArray *roi_array, gint *out_roi) {
+    if (!roi_array || json_array_get_length(roi_array) != 4) {
+        g_printerr("Error: ROI must have exactly 4 integer values.\n");
+        return FALSE;
+    }
+    for (guint i = 0; i < 4; i++) {
+        JsonNode *node = json_array_get_element(roi_array, i);
+        if (!JSON_NODE_HOLDS_VALUE(node) ||
+            json_node_get_value_type(node) != G_TYPE_INT) {
+            g_printerr("Error: ROI array must contain only integer values.\n");
+            return FALSE;
+        }
+        out_roi[i] = json_node_get_int(node);
+    }
+    return TRUE;
+}
 
 static void parse_config(GstDxPreprocess *self) {
-    if (g_file_test(self->_config_file_path, G_FILE_TEST_EXISTS)) {
-        JsonParser *parser = json_parser_new();
-        GError *error = NULL;
-        if (json_parser_load_from_file(parser, self->_config_file_path,
-                                       &error)) {
-            JsonNode *node = json_parser_get_root(parser);
-            JsonObject *object = json_node_get_object(node);
-            if (json_object_has_member(object, "library_file_path")) {
-                const gchar *library_file_path =
-                    json_object_get_string_member(object, "library_file_path");
-                g_object_set(self, "library-file-path", library_file_path,
-                             NULL);
-            }
-            if (json_object_has_member(object, "function_name")) {
-                const gchar *function_name =
-                    json_object_get_string_member(object, "function_name");
-                g_object_set(self, "function-name", function_name, NULL);
-            }
-            if (json_object_has_member(object, "preprocess_id")) {
-                gint int_value =
-                    json_object_get_int_member(object, "preprocess_id");
-                if (int_value < 0) {
-                    g_error("[dxpreprocess] Member preprocess_id has a "
-                            "negative value (%d) "
-                            "and cannot be "
-                            "converted to unsigned.",
-                            int_value);
-                }
-                self->_preprocess_id = (guint)int_value;
-            }
-            if (json_object_has_member(object, "color_format")) {
-                const gchar *color_format =
-                    json_object_get_string_member(object, "color_format");
-                if (g_strcmp0(color_format, "RGB") == 0 ||
-                    g_strcmp0(color_format, "BGR") == 0) {
-                    g_free(self->_color_format);
-                    self->_color_format = g_strdup(color_format);
-                } else {
-                    g_warning("Invalid color mode: %s. Use RGB or BGR",
-                              color_format);
-                }
-            }
-            if (json_object_has_member(object, "resize_width")) {
-                gint int_value =
-                    json_object_get_int_member(object, "resize_width");
-                if (int_value < 0) {
-                    g_error("[dxpreprocess] Member resize_width has a negative "
-                            "value (%d) and "
-                            "cannot be "
-                            "converted to unsigned.",
-                            int_value);
-                }
-                self->_resize_width = (guint)int_value;
-            }
-            if (json_object_has_member(object, "resize_height")) {
-                gint int_value =
-                    json_object_get_int_member(object, "resize_height");
-                if (int_value < 0) {
-                    g_error("[dxpreprocess] Member resize_height has a "
-                            "negative value (%d) "
-                            "and cannot be "
-                            "converted to unsigned.",
-                            int_value);
-                }
-                self->_resize_height = (guint)int_value;
-            }
-            if (json_object_has_member(object, "pad_value")) {
-                gint int_value =
-                    json_object_get_int_member(object, "pad_value");
-                if (int_value < 0) {
-                    g_error("[dxpreprocess] Member pad_value has a negative "
-                            "value (%d) and "
-                            "cannot be "
-                            "converted to unsigned.",
-                            int_value);
-                }
-                self->_pad_value = (guint)int_value;
-            }
-            if (json_object_has_member(object, "target_class_id")) {
-                self->_target_class_id =
-                    json_object_get_int_member(object, "target_class_id");
-            }
-            if (json_object_has_member(object, "min_object_width")) {
-                gint int_value =
-                    json_object_get_int_member(object, "min_object_width");
-                if (int_value < 0) {
-                    g_error("[dxpreprocess] Member min_object_width has a "
-                            "negative value (%d) "
-                            "and cannot be "
-                            "converted to unsigned.",
-                            int_value);
-                }
-                self->_min_object_width = (guint)int_value;
-            }
-            if (json_object_has_member(object, "min_object_height")) {
-                gint int_value =
-                    json_object_get_int_member(object, "min_object_height");
-                if (int_value < 0) {
-                    g_error("[dxpreprocess] Member min_object_height has a "
-                            "negative value "
-                            "(%d) and cannot be "
-                            "converted to unsigned.",
-                            int_value);
-                }
-                self->_min_object_height = (guint)int_value;
-            }
-            if (json_object_has_member(object, "interval")) {
-                gint int_value = json_object_get_int_member(object, "interval");
-                if (int_value < 0) {
-                    g_error("[dxpreprocess] Member interval has a negative "
-                            "value (%d) and "
-                            "cannot be "
-                            "converted to unsigned.",
-                            int_value);
-                }
-                self->_interval = (guint)int_value;
-            }
-            if (json_object_has_member(object, "keep_ratio")) {
-                self->_keep_ratio =
-                    json_object_get_boolean_member(object, "keep_ratio");
-            }
-            if (json_object_has_member(object, "secondary_mode")) {
-                self->_secondary_mode =
-                    json_object_get_boolean_member(object, "secondary_mode");
-            }
-            if (json_object_has_member(object, "pool_size")) {
-                gint int_value =
-                    json_object_get_int_member(object, "pool_size");
-                if (int_value < 0) {
-                    g_error("[dxpreprocess] Member pool_size has a negative "
-                            "value (%d) and "
-                            "cannot be "
-                            "converted to unsigned.",
-                            int_value);
-                }
-                self->_pool_size = (guint)int_value;
-            }
-            if (json_object_has_member(object, "roi")) {
-                JsonArray *roi_array =
-                    json_object_get_array_member(object, "roi");
-                if (!roi_array) {
-                    g_printerr("Error: 'roi' must be a JSON array.\n");
-                    return;
-                }
-                guint length = json_array_get_length(roi_array);
-                if (length != 4) {
-                    g_printerr("Error: ROI must have exactly 4 integer values "
-                               "(received %u values).\n",
-                               length);
-                    return;
-                }
-                gint temp_roi[4] = {-1, -1, -1, -1};
-                for (guint i = 0; i < length; i++) {
-                    JsonNode *node = json_array_get_element(roi_array, i);
-                    if (!JSON_NODE_HOLDS_VALUE(node)) {
-                        g_printerr(
-                            "Error: ROI array contains a non-value node.\n");
-                        return;
-                    }
-                    GType value_type = json_node_get_value_type(node);
-                    if (value_type != G_TYPE_INT) {
-                        g_printerr("Error: ROI array must contain only integer "
-                                   "values.\n");
-                        return;
-                    }
-                    temp_roi[i] = json_node_get_int(node);
-                }
-                for (guint i = 0; i < 4; i++) {
-                    self->_roi[i] = temp_roi[i];
-                }
-            }
-
-            g_object_unref(parser);
-        }
-    } else {
+    if (!g_file_test(self->_config_file_path, G_FILE_TEST_EXISTS)) {
         g_print("Config file does not exist: %s\n", self->_config_file_path);
+        return;
     }
+
+    JsonParser *parser = json_parser_new();
+    GError *error = nullptr;
+    if (!json_parser_load_from_file(parser, self->_config_file_path, &error)) {
+        g_error("[dxpreprocess] Failed to load config file: %s",
+                error->message);
+        g_object_unref(parser);
+        return;
+    }
+
+    JsonNode *node = json_parser_get_root(parser);
+    JsonObject *object = json_node_get_object(node);
+
+    auto set_string = [&](const char *json_key, const char *gobj_key) {
+        if (json_object_has_member(object, json_key)) {
+            const gchar *val = json_object_get_string_member(object, json_key);
+            g_object_set(self, gobj_key, val, nullptr);
+        }
+    };
+
+    auto set_uint = [&](const char *json_key, guint &target,
+                        const char *err_name) {
+        if (!json_object_has_member(object, json_key))
+            return;
+        gint val = json_object_get_int_member(object, json_key);
+        if (val < 0) {
+            g_error("[dxpreprocess] Member %s has a negative value (%d).",
+                    err_name, val);
+        }
+        target = static_cast<guint>(val);
+    };
+
+    auto set_boolean = [&](const char *json_key, gboolean &target) {
+        if (json_object_has_member(object, json_key)) {
+            target = json_object_get_boolean_member(object, json_key);
+        }
+    };
+
+    set_string("library_file_path", "library-file-path");
+    set_string("function_name", "function-name");
+
+    set_uint("preprocess_id", self->_preprocess_id, "preprocess_id");
+    set_uint("resize_width", self->_resize_width, "resize_width");
+    set_uint("resize_height", self->_resize_height, "resize_height");
+    set_uint("pad_value", self->_pad_value, "pad_value");
+    set_uint("min_object_width", self->_min_object_width, "min_object_width");
+    set_uint("min_object_height", self->_min_object_height,
+             "min_object_height");
+    set_uint("interval", self->_interval, "interval");
+    set_uint("pool_size", self->_pool_size, "pool_size");
+
+    if (json_object_has_member(object, "color_format")) {
+        const gchar *fmt =
+            json_object_get_string_member(object, "color_format");
+        if (g_strcmp0(fmt, "RGB") == 0 || g_strcmp0(fmt, "BGR") == 0) {
+            g_free(self->_color_format);
+            self->_color_format = g_strdup(fmt);
+        } else {
+            g_warning("Invalid color mode: %s. Use RGB or BGR", fmt);
+        }
+    }
+
+    if (json_object_has_member(object, "target_class_id")) {
+        self->_target_class_id =
+            json_object_get_int_member(object, "target_class_id");
+    }
+
+    if (json_object_has_member(object, "roi")) {
+        JsonArray *roi_array = json_object_get_array_member(object, "roi");
+        gint roi[4];
+        if (validate_roi(roi_array, roi)) {
+            memcpy(self->_roi, roi, sizeof(roi));
+        }
+    }
+
+    set_boolean("keep_ratio", self->_keep_ratio);
+    set_boolean("secondary_mode", self->_secondary_mode);
+
+    g_object_unref(parser);
 }
 
 static void dxpreprocess_set_property(GObject *object, guint property_id,
@@ -436,19 +355,19 @@ static void dxpreprocess_dispose(GObject *object) {
     GstDxPreprocess *self = GST_DXPREPROCESS(object);
     if (self->_config_file_path) {
         g_free(self->_config_file_path);
-        self->_config_file_path = NULL;
+        self->_config_file_path = nullptr;
     }
     if (self->_library_file_path) {
         g_free(self->_library_file_path);
-        self->_library_file_path = NULL;
+        self->_library_file_path = nullptr;
     }
     if (self->_function_name) {
         g_free(self->_function_name);
-        self->_function_name = NULL;
+        self->_function_name = nullptr;
     }
     if (self->_library_handle) {
         dlclose(self->_library_handle);
-        self->_library_handle = NULL;
+        self->_library_handle = nullptr;
     }
     g_free(self->_color_format);
 
@@ -533,19 +452,23 @@ static void gst_dxpreprocess_class_init(GstDxPreprocessClass *klass) {
     gobject_class->dispose = dxpreprocess_dispose;
     gobject_class->finalize = dxpreprocess_finalize;
 
+    static GParamSpec *obj_properties[N_PROPERTIES] = {
+        nullptr,
+    };
+
     obj_properties[PROP_CONFIG_FILE_PATH] = g_param_spec_string(
         "config-file-path", "Config File Path",
         "Path to the JSON config file containing the element's properties.",
-        NULL, G_PARAM_READWRITE);
+        nullptr, G_PARAM_READWRITE);
 
     obj_properties[PROP_LIBRARY_FILE_PATH] =
         g_param_spec_string("library-file-path", "Library File Path",
                             "Path to the custom preprocess library, if used",
-                            NULL, G_PARAM_READWRITE);
+                            nullptr, G_PARAM_READWRITE);
 
     obj_properties[PROP_FUNCTION_NAME] = g_param_spec_string(
         "function-name", "Function Name",
-        "Name of the custom preprocessing function to use. ", NULL,
+        "Name of the custom preprocessing function to use. ", nullptr,
         G_PARAM_READWRITE);
 
     obj_properties[PROP_PREPROCESS_ID] =
@@ -653,7 +576,7 @@ static void gst_dxpreprocess_class_init(GstDxPreprocessClass *klass) {
 }
 
 static void gst_dxpreprocess_init(GstDxPreprocess *self) {
-    self->_config_file_path = NULL;
+    self->_config_file_path = nullptr;
     self->_preprocess_id = 0;
     self->_color_format = g_strdup("RGB");
     self->_resize_width = 0;
@@ -700,16 +623,24 @@ static gboolean gst_dxpreprocess_start(GstBaseTransform *trans) {
         self->_library_handle = dlopen(self->_library_file_path, RTLD_LAZY);
         if (!self->_library_handle) {
             g_print("Error opening library: %s\n", dlerror());
+            return FALSE;
         }
         void *func_ptr = dlsym(self->_library_handle, self->_function_name);
         if (!func_ptr) {
             g_print("Error finding function: %s\n", dlerror());
-            dlclose(self->_library_handle);
-            self->_library_handle = NULL;
+            if (self->_library_handle) {
+                dlclose(self->_library_handle);
+                self->_library_handle = nullptr;
+            }
+            return FALSE;
         }
 
         self->_process_function =
             (bool (*)(DXFrameMeta *, DXObjectMeta *, void *))func_ptr;
+        if (!self->_process_function) {
+            g_print("Error: Process function is nullptr\n");
+            return FALSE;
+        }
     }
 
     self->_align_factor =
@@ -1021,7 +952,7 @@ static gboolean gst_dxpreprocess_src_event(GstBaseTransform *trans,
         GstQOSType type;
         GstClockTime timestamp;
         GstClockTimeDiff diff;
-        gst_event_parse_qos(event, &type, NULL, &diff, &timestamp);
+        gst_event_parse_qos(event, &type, nullptr, &diff, &timestamp);
 
         if (type == GST_QOS_TYPE_THROTTLE && diff > 0) {
             GST_OBJECT_LOCK(trans);
@@ -1137,7 +1068,7 @@ bool primary_process(GstDxPreprocess *self, DXFrameMeta *frame_meta) {
                  cv::Point(frame_meta->_roi[2], frame_meta->_roi[3]));
 
     if (self->_align_factor && self->_temp_output_buffer) {
-        if (self->_process_function != NULL) {
+        if (self->_process_function != nullptr) {
             if (!self->_process_function(frame_meta, nullptr,
                                          self->_temp_output_buffer)) {
                 ret = false;
@@ -1150,7 +1081,7 @@ bool primary_process(GstDxPreprocess *self, DXFrameMeta *frame_meta) {
         }
         add_dummy_data(self, self->_temp_output_buffer, tensor._data);
     } else {
-        if (self->_process_function != NULL) {
+        if (self->_process_function != nullptr) {
             if (!self->_process_function(frame_meta, nullptr, tensor._data)) {
                 ret = false;
             }
@@ -1170,80 +1101,78 @@ bool primary_process(GstDxPreprocess *self, DXFrameMeta *frame_meta) {
     return ret;
 }
 
+bool process_object(GstDxPreprocess *self, DXFrameMeta *frame_meta,
+                    DXObjectMeta *object_meta, int &preprocess_id) {
+    if (object_meta->_input_memory_pool.find(preprocess_id) !=
+        object_meta->_input_memory_pool.end()) {
+        g_error("Preprocess ID %d already exists in the object meta. check "
+                "your pipeline",
+                preprocess_id);
+        return false; // 에러지만 일단 false 리턴으로 처리
+    }
+
+    object_meta->_input_memory_pool[preprocess_id] = (MemoryPool *)&self->_pool;
+
+    if (!check_object(self, frame_meta, object_meta)) {
+        return false;
+    }
+
+    dxs::DXTensor tensor;
+    tensor._data = self->_pool.allocate();
+    tensor._type = dxs::DataType::UINT8;
+    tensor._name = "input";
+    tensor._shape = {self->_resize_height, self->_resize_width,
+                     self->_input_channel};
+    tensor._elemSize = 1;
+
+    cv::Rect roi(
+        cv::Point(std::max(int(object_meta->_box[0]), 0),
+                  std::max(int(object_meta->_box[1]), 0)),
+        cv::Point(std::min(int(object_meta->_box[2]), frame_meta->_width),
+                  std::min(int(object_meta->_box[3]), frame_meta->_height)));
+
+    bool ret = true;
+    if (self->_align_factor && self->_temp_output_buffer) {
+        if (self->_process_function) {
+            ret = self->_process_function(frame_meta, object_meta,
+                                          self->_temp_output_buffer);
+        } else {
+            ret = preprocess(self, frame_meta, self->_temp_output_buffer, &roi);
+        }
+        add_dummy_data(self, self->_temp_output_buffer, tensor._data);
+    } else {
+        if (self->_process_function) {
+            ret =
+                self->_process_function(frame_meta, object_meta, tensor._data);
+        } else {
+            ret = preprocess(self, frame_meta, tensor._data, &roi);
+        }
+    }
+
+    if (ret) {
+        object_meta->_input_tensor[preprocess_id] = tensor;
+    } else {
+        self->_pool.deallocate(tensor._data);
+        tensor._data = nullptr;
+        object_meta->_input_memory_pool[preprocess_id] = nullptr;
+    }
+    return ret;
+}
+
 bool secondary_process(GstDxPreprocess *self, DXFrameMeta *frame_meta) {
     if (self->_track_cnt.count(frame_meta->_stream_id) == 0) {
         self->_track_cnt[frame_meta->_stream_id] = std::map<int, int>();
     }
 
     int objects_size = g_list_length(frame_meta->_object_meta_list);
+    int preprocess_id = self->_preprocess_id;
+
     for (int o = 0; o < objects_size; o++) {
-        bool ret = true;
         DXObjectMeta *object_meta =
             (DXObjectMeta *)g_list_nth_data(frame_meta->_object_meta_list, o);
-
-        if (object_meta->_input_memory_pool.find(self->_preprocess_id) !=
-            object_meta->_input_memory_pool.end()) {
-            g_error("Preprocess ID %d already exists in the object meta. "
-                    "check your "
-                    "pipeline",
-                    self->_preprocess_id);
-        }
-        object_meta->_input_memory_pool[self->_preprocess_id] =
-            (MemoryPool *)&self->_pool;
-
-        if (!check_object(self, frame_meta, object_meta)) {
-            continue;
-        }
-
-        dxs::DXTensor tensor;
-        tensor._data = self->_pool.allocate();
-        tensor._type = dxs::DataType::UINT8;
-        tensor._name = "input";
-        tensor._shape.push_back(self->_resize_height);
-        tensor._shape.push_back(self->_resize_width);
-        tensor._shape.push_back(self->_input_channel);
-        tensor._elemSize = 1;
-
-        cv::Rect roi(
-            cv::Point(std::max(int(object_meta->_box[0]), 0),
-                      std::max(int(object_meta->_box[1]), 0)),
-            cv::Point(
-                std::min(int(object_meta->_box[2]), frame_meta->_width),
-                std::min(int(object_meta->_box[3]), frame_meta->_height)));
-
-        if (self->_align_factor && self->_temp_output_buffer) {
-            if (self->_process_function != NULL) {
-                if (!self->_process_function(frame_meta, object_meta,
-                                             self->_temp_output_buffer)) {
-                    ret = false;
-                }
-            } else {
-                if (!preprocess(self, frame_meta, self->_temp_output_buffer,
-                                &roi)) {
-                    ret = false;
-                }
-            }
-            add_dummy_data(self, self->_temp_output_buffer, tensor._data);
-        } else {
-            if (self->_process_function != NULL) {
-                if (!self->_process_function(frame_meta, object_meta,
-                                             tensor._data)) {
-                    ret = false;
-                }
-            } else {
-                if (!preprocess(self, frame_meta, tensor._data, &roi)) {
-                    ret = false;
-                }
-            }
-        }
-        if (ret) {
-            object_meta->_input_tensor[self->_preprocess_id] = tensor;
-        } else {
-            self->_pool.deallocate(tensor._data);
-            tensor._data = nullptr;
-            object_meta->_input_memory_pool[self->_preprocess_id] = nullptr;
-        }
+        process_object(self, frame_meta, object_meta, preprocess_id);
     }
+
     if (self->_cnt[frame_meta->_stream_id] < self->_interval) {
         self->_cnt[frame_meta->_stream_id] += 1;
     } else {
@@ -1301,8 +1230,8 @@ DXFrameMeta *get_frame_meta(GstBuffer *buf, GstBaseTransform *trans) {
         if (!gst_buffer_is_writable(buf)) {
             buf = gst_buffer_make_writable(buf);
         }
-        frame_meta =
-            (DXFrameMeta *)gst_buffer_add_meta(buf, DX_FRAME_META_INFO, NULL);
+        frame_meta = (DXFrameMeta *)gst_buffer_add_meta(buf, DX_FRAME_META_INFO,
+                                                        nullptr);
 
         GstPad *sinkpad = GST_BASE_TRANSFORM_SINK_PAD(trans);
         GstCaps *caps = gst_pad_get_current_caps(sinkpad);

@@ -33,37 +33,44 @@ KalmanBoxTracker::KalmanBoxTracker(Eigen::VectorXf bbox_, int cls_, int idx_,
 }
 
 void KalmanBoxTracker::update(Eigen::VectorXf *bbox_, int cls_, int idx_) {
-    if (bbox_ != nullptr) {
-        conf = (*bbox_)[4];
-        cls = cls_;
-        idx = idx_;
-        if (int(last_observation.sum()) >= 0) {
-            Eigen::VectorXf previous_box_tmp;
-            for (int i = 0; i < delta_t; ++i) {
-                int dt = delta_t - i;
-                if (observations.count(age - dt) > 0) {
-                    previous_box_tmp = observations[age - dt];
-                    break;
-                }
-            }
-            if (0 == previous_box_tmp.size()) {
-                previous_box_tmp = last_observation;
-            }
-            velocity = speed_direction(previous_box_tmp, *bbox_);
-        }
-        last_observation = *bbox_;
-        observations[age] = *bbox_;
-        history_observations.push_back(*bbox_);
-        time_since_update = 0;
-        history.clear();
-        hits += 1;
-        hit_streak += 1;
-        Eigen::VectorXf tmp = convert_bbox_to_z(*bbox_);
-        kf->update(tmp);
-    } else {
+    if (bbox_ == nullptr) {
         Eigen::VectorXf tmp;
         kf->update(tmp);
+        return;
     }
+
+    conf = (*bbox_)[4];
+    cls = cls_;
+    idx = idx_;
+
+    if (int(last_observation.sum()) >= 0) {
+        Eigen::VectorXf previous_box_tmp;
+
+        for (int i = 0; i < delta_t; ++i) {
+            int dt = delta_t - i;
+            if (observations.count(age - dt) > 0) {
+                previous_box_tmp = observations[age - dt];
+                break;
+            }
+        }
+
+        if (previous_box_tmp.size() == 0) {
+            previous_box_tmp = last_observation;
+        }
+
+        velocity = speed_direction(previous_box_tmp, *bbox_);
+    }
+
+    last_observation = *bbox_;
+    observations[age] = *bbox_;
+    history_observations.push_back(*bbox_);
+    time_since_update = 0;
+    history.clear();
+    hits += 1;
+    hit_streak += 1;
+
+    Eigen::VectorXf tmp = convert_bbox_to_z(*bbox_);
+    kf->update(tmp);
 }
 
 Eigen::RowVectorXf KalmanBoxTracker::predict() {

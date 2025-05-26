@@ -15,12 +15,9 @@ g++ -g -o "$SCRIPT_DIR/bin/test_dxpreprocess" test_dxpreprocess.c $(pkg-config -
 g++ -g -o "$SCRIPT_DIR/bin/test_dxinfer" test_dxinfer.c $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
 g++ -g -o "$SCRIPT_DIR/bin/test_dxpostprocess" test_dxpostprocess.c $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
 g++ -g -o "$SCRIPT_DIR/bin/test_dxosd" test_dxosd.c $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
-g++ -g -o "$SCRIPT_DIR/bin/test_dxtiler" test_dxtiler.c $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
 g++ -g -o "$SCRIPT_DIR/bin/test_dxtracker" test_dxtracker.c $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
 g++ -g -o "$SCRIPT_DIR/bin/test_dxmsgconv" test_dxmsgconv.c $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
 # g++ -g -o "$SCRIPT_DIR/bin/test_dxmsgbroker" test_dxmsgbroker.c $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
-g++ -g -o "$SCRIPT_DIR/bin/test_dxrouter" test_dxrouter.c $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
-g++ -g -o "$SCRIPT_DIR/bin/test_dxmuxer" test_dxmuxer.c $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
 g++ -g -o "$SCRIPT_DIR/bin/test_dxrate" test_dxrate.c $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
 g++ -g -o "$SCRIPT_DIR/bin/test_dxgather" test_dxgather.c $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
 
@@ -31,12 +28,9 @@ binaries=(
     "test_dxinfer"
     "test_dxpostprocess"
     "test_dxosd"
-    "test_dxtiler"
     "test_dxtracker"
     "test_dxmsgconv"
     # "test_dxmsgbroker"
-    "test_dxrouter"
-    "test_dxmuxer"
     "test_dxrate"
     "test_dxgather"
 )

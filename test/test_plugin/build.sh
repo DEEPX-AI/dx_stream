@@ -1,7 +1,6 @@
 #!/bin/bash
 SCRIPT_DIR=$(realpath "$(dirname "$0")")
-PROJECT_ROOT=$(realpath -s "${SCRIPT_DIR}/../../..")
-
+PROJECT_ROOT=$(realpath -s "${SCRIPT_DIR}/../..")
 BUILD_TYPE="release"
 SONAR_MODE_ARG=""
 NATIVE_FILE_ARG=""

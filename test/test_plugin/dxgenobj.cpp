@@ -12,7 +12,7 @@ enum {
 };
 
 static GParamSpec *obj_properties[N_PROPERTIES] = {
-    NULL,
+    nullptr,
 };
 
 GST_DEBUG_CATEGORY_STATIC(gst_dxgenobj_debug_category);
@@ -32,7 +32,7 @@ G_DEFINE_TYPE_WITH_CODE(
     GST_DEBUG_CATEGORY_INIT(gst_dxgenobj_debug_category, "gst-dxgenobj", 0,
                             "debug category for gst-dxgenobj element"))
 
-static GstElementClass *parent_class = NULL;
+static GstElementClass *parent_class = nullptr;
 
 static void gst_dxgenobj_set_property(GObject *object, guint property_id,
                                       const GValue *value, GParamSpec *pspec) {

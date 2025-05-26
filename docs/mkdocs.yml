@@ -1,4 +1,4 @@
-site_name: DX-Stream Documentation
+site_name: DXNN Streamer (DX-STREAM) User Manual
 use_directory_urls: false
 docs_dir: source # markdown 원문 폴더
 site_dir: docs # html로 변환된 폴더
@@ -34,42 +34,39 @@ theme:
      - content.tabs.link
      - content.code.copy
 nav:
-  - Overview: docs/overview.md
-  - Installation: docs/installation.md
+  - DXNN SDK Overview: docs/01_DXNN_Streamer_Overview.md
+  - DX-STREAM Installation: docs/02_DX-STREAM_Installation.md
   - Elements:
-      - DxMuxer: docs/elements/dxmuxer.md
-      - DxPreprocess: docs/elements/dxpreprocess.md
-      - DxInfer: docs/elements/dxinfer.md
-      - DxTracker: docs/elements/dxtracker.md
-      - DxOsd: docs/elements/dxosd.md
-      - DxTiler: docs/elements/dxtiler.md
-      - DxGather: docs/elements/dxgather.md
-      - DxRate: docs/elements/dxrate.md
-      - DxMsgConv: docs/elements/dxmsgconv.md
-      - DxMsgBroker: docs/elements/dxmsgbroker.md
-  - Writing your own Application: docs/writing_your_own_application.md
-  - Pipelines:
-      - Pipeline Example Object Detection: docs/pipelines/object_detection.md
-      - Pipeline Example with Object Tracking: docs/pipelines/object_detection_mot.md
-      - Pipeline Example for RTSP Streaming: docs/pipelines/rtsp.md
-      - Pipeline Example for RTSP Streaming with Frame Rate Control: docs/pipelines/rtsp_throttling.md
-      - Pipeline Example for Multi-Stream Processing: docs/pipelines/multi_stream_object_detection.md
-      - Pipeline Example for Multi-Stream RTSP Processing with Frame Rate Control: docs/pipelines/multi_stream_rtsp_throttling.md
-      - Pipeline Example for MsgBroker: docs/pipelines/msgconv_broker.md
-      - MQTT: docs/pipelines/broker_mqtt.md
-      - Kafka: docs/pipelines/broker_kafka.md
-  - Troubleshooting and FAQ: docs/troubleshooting_and_faq.md
+      - DxPreprocess: docs/Elements/03_01_DxPreprocess.md      
+      - DxInfer: docs/Elements/03_02_DxInfer.md
+      - DxPostprocess: docs/Elements/03_03_DxPostprocess.md
+      - DxTracker: docs/Elements/03_04_DxTracker.md
+      - DxOsd: docs/Elements/03_05_DxOsd.md
+      - DxGather: docs/Elements/03_06_DxGather.md
+      - DxInputSelector: docs/Elements/03_07_DxInputSelector.md
+      - DxOutputSelector: docs/Elements/03_08_DxOutputSelector.md
+      - DxRate: docs/Elements/03_09_DxRate.md
+      - DxMsgConv: docs/Elements/03_10_DxMsgConv.md
+      - DxMsgBroker: docs/Elements/03_11_DxMsgBroker.md
+  - Writing Your Own Application: docs/04_Writing_Your_Own_Application.md
+  - Pipeline Example:
+      - Single Stream Pipeline: docs/Pipeline_Example/05_01_Single-Stream.md
+      - Multi Stream Pipeline: docs/Pipeline_Example/05_02_Multi-Stream.md      
+      - Secondary Inference Pipeline: docs/Pipeline_Example/05_03_Secondary-Inference.md
+      - MsgBroker Pipeline: docs/Pipeline_Example/05_04_MsgBroker.md
+  - Troubleshooting and FAQ: docs/06_Troubleshooting_and_FAQ.md
+  - Change Log: docs/Appendix_Change_Log.md
 
 plugins:
   - search
   - with-pdf:
       author: DEEPX.ai
-      copyright: ⓒ Copyright 2025- DEEPX All Rights Reserved.
+      copyright: ⓒ Copyright 2025 DEEPX All Rights Reserved.
       #
       #cover: false
-      #cover_title: TITLE TEXT
-      cover_subtitle: 2025/04/10
-      cover_logo : img/deepx.png
+      cover_title: DXNN Streamer (DX-STREAM) User Manual
+      cover_subtitle: 2025/05/23
+      cover_logo: img/deepx.png
       custom_template_path: docs/stylesheets
       #back_cover: true
       #
@@ -94,7 +91,7 @@ plugins:
       #render_js: true
       #headless_chrome_path: headless-chromium
       #
-      output_path: ../DX-Stream v1.3.0.pdf
+      output_path: ../DEEPX_DX-STREAM_UM_250523.pdf
       #enabled_if_env: ENABLE_PDF_EXPORT
       #
       #debug_html: true
@@ -148,4 +145,4 @@ extra_javascript:
   - javascripts/mathjax.js
   - https://polyfill.io/v3/polyfill.min.js?features=es6
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
-copyright: ⓒ Copyright 2022 <a href="http://deepx.ai">DEEPX</a>. All Rights Reserved.
+copyright: ⓒ Copyright 2025 <a href="http://deepx.ai">DEEPX</a>. All Rights Reserved.

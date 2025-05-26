@@ -9,12 +9,12 @@
 namespace dxs {
 
 struct SegClsMap {
-    unsigned char *data;
-    int width;
-    int height;
+    std::vector<unsigned char> data;
+    int width = 0;
+    int height = 0;
 
-    SegClsMap() : data(nullptr), width(0), height(0) {}
-    ~SegClsMap() {}
+    SegClsMap() = default;
+    ~SegClsMap() = default;
 };
 
 template <typename _T> struct Point_ {
@@ -46,15 +46,15 @@ typedef Point_<float> Point_f;
 
 enum DataType {
     NONE_TYPE = 0,
-	FLOAT,   ///< 32bit float
-    UINT8,   ///< 8bit unsigned integer
-	INT8,    ///< 8bit signed integer
-    UINT16,  ///< 16it unsigned integer
-	INT16,   ///< 16bit signed integer
-	INT32,   ///< 32bit signed integer
-	INT64,   ///< 64bit signed integer
-    UINT32,  ///< 32bit unsigned integer
-    UINT64,  ///< 64bit unsigned integer
+    FLOAT,  ///< 32bit float
+    UINT8,  ///< 8bit unsigned integer
+    INT8,   ///< 8bit signed integer
+    UINT16, ///< 16it unsigned integer
+    INT16,  ///< 16bit signed integer
+    INT32,  ///< 32bit signed integer
+    INT64,  ///< 64bit signed integer
+    UINT32, ///< 32bit unsigned integer
+    UINT64, ///< 64bit unsigned integer
     BBOX,   ///< custom structure for bounding boxes from device
     FACE,   ///< custom structure for faces from device
     POSE,   ///< custom structure for poses boxes from device
@@ -121,30 +121,10 @@ typedef struct _DXTensor {
     uint32_t _elemSize = 0;
     DataType _type = dxs::DataType::NONE_TYPE;
 
-    _DXTensor()
-        : _name(""), _shape(), _phyAddr(0), _data(nullptr), _elemSize(0),
-          _type(dxs::DataType::NONE_TYPE) {}
-
-    _DXTensor(const _DXTensor &other)
-        : _name(other._name), _shape(other._shape), _phyAddr(other._phyAddr),
-          _data(other._data), _elemSize(other._elemSize), _type(other._type) {}
-
-    _DXTensor &operator=(const _DXTensor &other) {
-        _name = other._name;
-        _shape = other._shape;
-        _phyAddr = other._phyAddr;
-        _data = other._data;
-        _elemSize = other._elemSize;
-        _type = other._type;
-        return *this;
-    }
-
-    ~_DXTensor() {
-        if (_data) {
-            _data = nullptr;
-        }
-        _shape.clear();
-    }
+    _DXTensor() = default;
+    _DXTensor(const _DXTensor &) = default;
+    _DXTensor &operator=(const _DXTensor &) = default;
+    ~_DXTensor() = default;
 } DXTensor;
 
 } // namespace dxs

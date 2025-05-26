@@ -116,106 +116,134 @@ Eigen::MatrixXf giou_batch(const Eigen::MatrixXf &bboxes1,
     }
 }
 
+void collectSimpleMatches(
+    const Eigen::MatrixXf &a,
+    Eigen::Matrix<float, Eigen::Dynamic, 2> &matched_indices) {
+    for (int i = 0; i < a.rows(); ++i) {
+        for (int j = 0; j < a.cols(); ++j) {
+            if (a(i, j) > 0) {
+                Eigen::RowVectorXf row(2);
+                row << i, j;
+                matched_indices.conservativeResize(matched_indices.rows() + 1,
+                                                   Eigen::NoChange);
+                matched_indices.row(matched_indices.rows() - 1) = row;
+            }
+        }
+    }
+}
+
+void fillCostIouMatrix(const Eigen::MatrixXf &cost_matrix,
+                       std::vector<std::vector<float>> &cost_iou_matrix) {
+    for (int i = 0; i < cost_matrix.rows(); ++i) {
+        for (int j = 0; j < cost_matrix.cols(); ++j) {
+            cost_iou_matrix[i][j] = -cost_matrix(i, j);
+        }
+    }
+}
+
+void collectHungarianMatches(
+    const std::vector<int> &rowsol, const std::vector<int> &colsol,
+    Eigen::Matrix<float, Eigen::Dynamic, 2> &matched_indices) {
+    for (size_t i = 0; i < rowsol.size(); ++i) {
+        if (rowsol[i] >= 0) {
+            Eigen::RowVectorXf row(2);
+            row << colsol[rowsol[i]], rowsol[i];
+            matched_indices.conservativeResize(matched_indices.rows() + 1,
+                                               Eigen::NoChange);
+            matched_indices.row(matched_indices.rows() - 1) = row;
+        }
+    }
+}
+
 std::tuple<std::vector<Eigen::Matrix<int, 1, 2>>, std::vector<int>,
            std::vector<int>>
 associate(Eigen::MatrixXf detections, Eigen::MatrixXf trackers,
           float iou_threshold, Eigen::MatrixXf velocities,
           Eigen::MatrixXf previous_obs_, float vdc_weight) {
+
     if (trackers.rows() == 0) {
-        std::vector<int> unmatched_dets;
-        for (int i = 0; i < detections.rows(); i++) {
-            unmatched_dets.push_back(i);
+        std::vector<int> unmatched_dets(detections.rows());
+        for (int i = 0; i < detections.rows(); ++i) {
+            unmatched_dets[i] = i;
         }
         return std::make_tuple(std::vector<Eigen::Matrix<int, 1, 2>>(),
                                unmatched_dets, std::vector<int>());
     }
+
     Eigen::MatrixXf Y, X;
-    auto result = speed_direction_batch(detections, previous_obs_);
-    Y = std::get<0>(result);
-    X = std::get<1>(result);
+    std::tie(Y, X) = speed_direction_batch(detections, previous_obs_);
+
     Eigen::MatrixXf inertia_Y = velocities.col(0);
     Eigen::MatrixXf inertia_X = velocities.col(1);
     Eigen::MatrixXf inertia_Y_ = inertia_Y.replicate(1, Y.cols());
     Eigen::MatrixXf inertia_X_ = inertia_X.replicate(1, X.cols());
+
     Eigen::MatrixXf diff_angle_cos =
         inertia_X_.array() * X.array() + inertia_Y_.array() * Y.array();
-    diff_angle_cos = (diff_angle_cos.array().min(1).max(-1)).matrix();
+    diff_angle_cos = diff_angle_cos.array().min(1).max(-1).matrix();
+
     Eigen::MatrixXf diff_angle = Eigen::acos(diff_angle_cos.array());
-    diff_angle = (PI / 2.0 - diff_angle.array().abs()).array() / (PI);
+    diff_angle = ((PI / 2.0f - diff_angle.array().abs()) / PI).matrix();
+
     Eigen::Array<bool, 1, Eigen::Dynamic> valid_mask =
         Eigen::Array<bool, Eigen::Dynamic, 1>::Ones(previous_obs_.rows());
-    valid_mask = valid_mask.array() *
-                 ((previous_obs_.col(4).array() >= 0).transpose()).array();
+    valid_mask *= (previous_obs_.col(4).array() >= 0).transpose();
+
     Eigen::MatrixXf iou_matrix = iou_batch(detections, trackers);
+
     Eigen::MatrixXf scores =
         detections.col(detections.cols() - 2).replicate(1, trackers.rows());
+
     Eigen::Matrix<bool, Eigen::Dynamic, Eigen::Dynamic> valid_mask_ =
-        (valid_mask.transpose()).replicate(1, X.cols());
+        valid_mask.transpose().replicate(1, X.cols());
+
     Eigen::MatrixXf angle_diff_cost =
-        ((((valid_mask_.cast<float>()).array() * diff_angle.array()).array() *
-          vdc_weight)
-             .transpose())
+        ((valid_mask_.cast<float>().array() * diff_angle.array()) * vdc_weight)
+            .transpose()
             .array() *
         scores.array();
+
     Eigen::Matrix<float, Eigen::Dynamic, 2> matched_indices(0, 2);
-    if (std::min(iou_matrix.cols(), iou_matrix.rows()) > 0) {
+
+    if (iou_matrix.rows() == 0 || iou_matrix.cols() == 0) {
+        matched_indices.resize(0, 2);
+    } else {
         Eigen::MatrixXf a = (iou_matrix.array() > iou_threshold).cast<float>();
-        float sum1 = (a.rowwise().sum()).maxCoeff();
-        float sum0 = (a.colwise().sum()).maxCoeff();
-        if ((fabs(sum1 - 1) < 1e-12) && (fabs(sum0 - 1) < 1e-12)) {
-            for (int i = 0; i < a.rows(); i++) {
-                for (int j = 0; j < a.cols(); j++) {
-                    if (a(i, j) > 0) {
-                        Eigen::RowVectorXf row(2);
-                        row << i, j;
-                        matched_indices.conservativeResize(
-                            matched_indices.rows() + 1, Eigen::NoChange);
-                        matched_indices.row(matched_indices.rows() - 1) = row;
-                    }
-                }
-            }
+        float sum1 = a.rowwise().sum().maxCoeff();
+        float sum0 = a.colwise().sum().maxCoeff();
+
+        if (std::abs(sum1 - 1) < 1e-12f && std::abs(sum0 - 1) < 1e-12f) {
+            collectSimpleMatches(a, matched_indices);
         } else {
-            Eigen::MatrixXf cost_matrix =
-                iou_matrix.array() + angle_diff_cost.array();
+            Eigen::MatrixXf cost_matrix = iou_matrix + angle_diff_cost;
             std::vector<std::vector<float>> cost_iou_matrix(
                 cost_matrix.rows(), std::vector<float>(cost_matrix.cols()));
-            for (int i = 0; i < cost_matrix.rows(); i++) {
-                for (int j = 0; j < cost_matrix.cols(); j++) {
-                    cost_iou_matrix[i][j] = -cost_matrix(i, j);
-                }
-            }
+            fillCostIouMatrix(cost_matrix, cost_iou_matrix);
+
             std::vector<int> rowsol, colsol;
-            // float MIN_cost =
-            execLapjv(cost_iou_matrix, rowsol, colsol, true, 0.01, true);
-            for (size_t i = 0; i < (size_t)rowsol.size(); i++) {
-                if (rowsol.at(i) >= 0) {
-                    Eigen::RowVectorXf row(2);
-                    row << colsol.at(rowsol.at(i)), rowsol.at(i);
-                    matched_indices.conservativeResize(
-                        matched_indices.rows() + 1, Eigen::NoChange);
-                    matched_indices.row(matched_indices.rows() - 1) = row;
-                }
-            }
+            execLapjv(cost_iou_matrix, rowsol, colsol, true, 0.01f, true);
+
+            collectHungarianMatches(rowsol, colsol, matched_indices);
         }
-    } else {
-        matched_indices = Eigen::MatrixXf(0, 2);
     }
+
     std::vector<int> unmatched_detections;
-    for (int i = 0; i < detections.rows(); i++) {
+    for (int i = 0; i < detections.rows(); ++i) {
         if ((matched_indices.col(0).array() == i).sum() == 0) {
             unmatched_detections.push_back(i);
         }
     }
+
     std::vector<int> unmatched_trackers;
-    for (int i = 0; i < trackers.rows(); i++) {
+    for (int i = 0; i < trackers.rows(); ++i) {
         if ((matched_indices.col(1).array() == i).sum() == 0) {
             unmatched_trackers.push_back(i);
         }
     }
+
     std::vector<Eigen::Matrix<int, 1, 2>> matches;
-    Eigen::Matrix<int, 1, 2> tmp;
-    for (int i = 0; i < matched_indices.rows(); i++) {
-        tmp = (matched_indices.row(i)).cast<int>();
+    for (int i = 0; i < matched_indices.rows(); ++i) {
+        Eigen::Matrix<int, 1, 2> tmp = matched_indices.row(i).cast<int>();
         if (iou_matrix(tmp(0), tmp(1)) < iou_threshold) {
             unmatched_detections.push_back(tmp(0));
             unmatched_trackers.push_back(tmp(1));
@@ -223,9 +251,11 @@ associate(Eigen::MatrixXf detections, Eigen::MatrixXf trackers,
             matches.push_back(tmp);
         }
     }
-    if (matches.size() == 0) {
+
+    if (matches.empty()) {
         matches.clear();
     }
+
     return std::make_tuple(matches, unmatched_detections, unmatched_trackers);
 }
 } // namespace ocsort

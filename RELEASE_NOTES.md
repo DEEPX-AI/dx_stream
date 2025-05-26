@@ -1,5 +1,13 @@
 # RELEASE_NOTES
 
+## v1.6.1 / 2025-05-21
+### 1. Changed
+- None
+### 2. Fixed
+- Fix a potential out-of-bounds memory access bug.
+### 3. Added
+- None
+
 ## v1.6.0 / 2025-05-09
 ### 1. Changed
 - None

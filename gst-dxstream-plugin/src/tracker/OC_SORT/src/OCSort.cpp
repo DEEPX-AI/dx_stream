@@ -1,6 +1,7 @@
 ﻿#include "../include/OCSort.hpp"
 #include "../../common/include/TrackerFactory.hpp"
 #include "iomanip"
+#include <numeric>
 #include <utility>
 
 namespace ocsort {
@@ -51,214 +52,378 @@ std::ostream &precision(std::ostream &os) {
     os << std::fixed << std::setprecision(2);
     return os;
 }
+
 std::vector<Eigen::RowVectorXf> OCSort::update(Eigen::MatrixXf dets) {
-    frame_count += 1;
-    Eigen::Matrix<float, Eigen::Dynamic, 4> xyxys = dets.leftCols(4);
-    Eigen::Matrix<float, 1, Eigen::Dynamic> confs = dets.col(4);
-    Eigen::Matrix<float, 1, Eigen::Dynamic> clss = dets.col(5);
-    Eigen::MatrixXf output_results = dets;
-    auto inds_low = confs.array() > 0.1;
-    auto inds_high = confs.array() < det_thresh;
-    auto inds_second = inds_low && inds_high;
-    Eigen::Matrix<float, Eigen::Dynamic, 7> dets_second;
-    Eigen::Matrix<bool, 1, Eigen::Dynamic> remain_inds =
-        (confs.array() > det_thresh);
-    Eigen::Matrix<float, Eigen::Dynamic, 7> dets_first;
-    for (int i = 0; i < output_results.rows(); i++) {
-        if (true == inds_second(i)) {
-            dets_second.conservativeResize(dets_second.rows() + 1,
-                                           Eigen::NoChange);
-            dets_second.row(dets_second.rows() - 1) = output_results.row(i);
+    this->frame_count += 1;
+
+    Eigen::MatrixXf high_conf_dets, low_conf_dets;
+    SplitDetections(dets, high_conf_dets, low_conf_dets);
+
+    Eigen::MatrixXf predicted_bboxes, velocities, last_observation_bboxes,
+        k_obs_data;
+    if (!this->trackers.empty()) {
+        PrepareTrackDataForAssociation(predicted_bboxes, velocities,
+                                       last_observation_bboxes, k_obs_data);
+    } else {
+        predicted_bboxes.resize(0, 5);
+        velocities.resize(0, 2);
+        last_observation_bboxes.resize(0, 5);
+        k_obs_data.resize(0, 5);
+    }
+
+    std::vector<Eigen::Matrix<int, 1, 2>> matched_pairs_pass1;
+    std::vector<int> unmatched_dets_pass1;
+    std::vector<int> unmatched_trks_pass1;
+
+    if (high_conf_dets.rows() > 0 && !this->trackers.empty()) {
+        PerformFirstPassAssociation(high_conf_dets, predicted_bboxes,
+                                    velocities, k_obs_data, matched_pairs_pass1,
+                                    unmatched_dets_pass1, unmatched_trks_pass1);
+        UpdateTrackersFromMatches(matched_pairs_pass1, high_conf_dets);
+    } else {
+        if (high_conf_dets.rows() > 0) {
+            unmatched_dets_pass1.resize(high_conf_dets.rows());
+            std::iota(unmatched_dets_pass1.begin(), unmatched_dets_pass1.end(),
+                      0);
         }
-        if (true == remain_inds(i)) {
-            dets_first.conservativeResize(dets_first.rows() + 1,
-                                          Eigen::NoChange);
-            dets_first.row(dets_first.rows() - 1) = output_results.row(i);
-        }
-    }
-    Eigen::MatrixXf trks = Eigen::MatrixXf::Zero(trackers.size(), 5);
-    std::vector<int> to_del;
-    std::vector<Eigen::RowVectorXf> ret;
-    for (int i = 0; i < trks.rows(); i++) {
-        Eigen::RowVectorXf pos = trackers[i].predict();
-        trks.row(i) << pos(0), pos(1), pos(2), pos(3), 0;
-    }
-    Eigen::MatrixXf velocities = Eigen::MatrixXf::Zero(trackers.size(), 2);
-    Eigen::MatrixXf last_boxes = Eigen::MatrixXf::Zero(trackers.size(), 5);
-    Eigen::MatrixXf k_observations = Eigen::MatrixXf::Zero(trackers.size(), 5);
-    for (size_t i = 0; i < (size_t)trackers.size(); i++) {
-        velocities.row(i) = trackers[i].velocity;
-        last_boxes.row(i) = trackers[i].last_observation;
-        k_observations.row(i) =
-            k_previous_obs(trackers[i].observations, trackers[i].age, delta_t);
-    }
-
-    std::vector<Eigen::Matrix<int, 1, 2>> matched;
-    std::vector<int> unmatched_dets;
-    std::vector<int> unmatched_trks;
-    auto result = associate(dets_first, trks, iou_threshold, velocities,
-                            k_observations, inertia);
-    matched = std::get<0>(result);
-    unmatched_dets = std::get<1>(result);
-    unmatched_trks = std::get<2>(result);
-    for (auto m : matched) {
-        Eigen::VectorXf tmp_bbox(5);
-        tmp_bbox = dets_first.block<1, 5>(m(0), 0);
-        trackers[m(1)].update(&(tmp_bbox), dets_first(m(0), 5),
-                              dets_first(m(0), 6));
-    }
-
-    if (true == use_byte && dets_second.rows() > 0 &&
-        unmatched_trks.size() > 0) {
-        Eigen::MatrixXf u_trks(unmatched_trks.size(), trks.cols());
-        int index_for_u_trks = 0;
-        for (auto i : unmatched_trks) {
-            u_trks.row(index_for_u_trks++) = trks.row(i);
-        }
-        Eigen::MatrixXf iou_left = giou_batch(dets_second, u_trks);
-        if (iou_left.maxCoeff() > iou_threshold) {
-            std::vector<std::vector<float>> iou_matrix(
-                iou_left.rows(), std::vector<float>(iou_left.cols()));
-            for (int i = 0; i < iou_left.rows(); i++) {
-                for (int j = 0; j < iou_left.cols(); j++) {
-                    iou_matrix[i][j] = -iou_left(i, j);
-                }
-            }
-            std::vector<int> rowsol, colsol;
-            // float MIN_cost =
-            execLapjv(iou_matrix, rowsol, colsol, true, 0.01, true);
-            std::vector<std::vector<int>> matched_indices;
-            for (size_t i = 0; i < (size_t)rowsol.size(); i++) {
-                if (rowsol.at(i) >= 0) {
-                    matched_indices.push_back(
-                        {colsol.at(rowsol.at(i)), rowsol.at(i)});
-                }
-            }
-
-            std::vector<int> to_remove_trk_indices;
-            for (auto m : matched_indices) {
-                int det_ind = m[0];
-                int trk_ind = unmatched_trks[m[1]];
-                if (iou_left(m[0], m[1]) < iou_threshold)
-                    continue;
-
-                Eigen::VectorXf tmp_bbox(5);
-                tmp_bbox = dets_second.block<1, 5>(det_ind, 0);
-                trackers[trk_ind].update(&tmp_bbox, dets_second(det_ind, 5),
-                                         dets_second(det_ind, 6));
-                to_remove_trk_indices.push_back(trk_ind);
-            }
-            std::vector<int> tmp_res1(unmatched_trks.size());
-            sort(unmatched_trks.begin(), unmatched_trks.end());
-            sort(to_remove_trk_indices.begin(), to_remove_trk_indices.end());
-            auto end1 =
-                set_difference(unmatched_trks.begin(), unmatched_trks.end(),
-                               to_remove_trk_indices.begin(),
-                               to_remove_trk_indices.end(), tmp_res1.begin());
-            tmp_res1.resize(end1 - tmp_res1.begin());
-            unmatched_trks = tmp_res1;
+        if (!this->trackers.empty()) {
+            unmatched_trks_pass1.resize(this->trackers.size());
+            std::iota(unmatched_trks_pass1.begin(), unmatched_trks_pass1.end(),
+                      0);
         }
     }
 
-    if (unmatched_dets.size() > 0 && unmatched_trks.size() > 0) {
-        Eigen::MatrixXf left_dets(unmatched_dets.size(), 7);
-        int inx_for_dets = 0;
-        for (auto i : unmatched_dets) {
-            left_dets.row(inx_for_dets++) = dets_first.row(i);
-        }
-        Eigen::MatrixXf left_trks(unmatched_trks.size(), last_boxes.cols());
-        int indx_for_trk = 0;
-        for (auto i : unmatched_trks) {
-            left_trks.row(indx_for_trk++) = last_boxes.row(i);
-        }
-        Eigen::MatrixXf iou_left = giou_batch(left_dets, left_trks);
-        if (iou_left.maxCoeff() > iou_threshold) {
-            std::vector<std::vector<float>> iou_matrix(
-                iou_left.rows(), std::vector<float>(iou_left.cols()));
-            for (int i = 0; i < iou_left.rows(); i++) {
-                for (int j = 0; j < iou_left.cols(); j++) {
-                    iou_matrix[i][j] = -iou_left(i, j);
-                }
-            }
-            std::vector<int> rowsol, colsol;
-            // float MIN_cost =
-            execLapjv(iou_matrix, rowsol, colsol, true, 0.01, true);
-            std::vector<std::vector<int>> rematched_indices;
-            for (size_t i = 0; i < (size_t)rowsol.size(); i++) {
-                if (rowsol.at(i) >= 0) {
-                    rematched_indices.push_back(
-                        {colsol.at(rowsol.at(i)), rowsol.at(i)});
-                }
-            }
-            std::vector<int> to_remove_det_indices;
-            std::vector<int> to_remove_trk_indices;
-            for (auto i : rematched_indices) {
-                int det_ind = unmatched_dets[i.at(0)];
-                int trk_ind = unmatched_trks[i.at(1)];
-                if (iou_left(i.at(0), i.at(1)) < iou_threshold) {
-                    continue;
-                }
-                Eigen::VectorXf tmp_bbox(5);
-                tmp_bbox = dets_first.block<1, 5>(det_ind, 0);
-                trackers.at(trk_ind).update(&tmp_bbox, dets_first(det_ind, 5),
-                                            dets_first(det_ind, 6));
-                to_remove_det_indices.push_back(det_ind);
-                to_remove_trk_indices.push_back(trk_ind);
-            }
-            std::vector<int> tmp_res(unmatched_dets.size());
-            sort(unmatched_dets.begin(), unmatched_dets.end());
-            sort(to_remove_det_indices.begin(), to_remove_det_indices.end());
-            auto end =
-                set_difference(unmatched_dets.begin(), unmatched_dets.end(),
-                               to_remove_det_indices.begin(),
-                               to_remove_det_indices.end(), tmp_res.begin());
-            tmp_res.resize(end - tmp_res.begin());
-            unmatched_dets = tmp_res;
-            std::vector<int> tmp_res1(unmatched_trks.size());
-            sort(unmatched_trks.begin(), unmatched_trks.end());
-            sort(to_remove_trk_indices.begin(), to_remove_trk_indices.end());
-            auto end1 =
-                set_difference(unmatched_trks.begin(), unmatched_trks.end(),
-                               to_remove_trk_indices.begin(),
-                               to_remove_trk_indices.end(), tmp_res1.begin());
-            tmp_res1.resize(end1 - tmp_res1.begin());
-            unmatched_trks = tmp_res1;
+    if (this->use_byte && low_conf_dets.rows() > 0 &&
+        !unmatched_trks_pass1.empty()) {
+        PerformByteAssociation(low_conf_dets, predicted_bboxes,
+                               unmatched_trks_pass1);
+    }
+
+    if (!unmatched_dets_pass1.empty() && !unmatched_trks_pass1.empty()) {
+        PerformIOUReAssociation(high_conf_dets, last_observation_bboxes,
+                                unmatched_dets_pass1, unmatched_trks_pass1);
+    }
+
+    ManageUnmatchedAndCreateNewTrackers(
+        dets, high_conf_dets, unmatched_dets_pass1, unmatched_trks_pass1);
+
+    return GenerateOutputAndCleanup();
+}
+
+void OCSort::SplitDetections(const Eigen::MatrixXf &input_dets_raw,
+                             Eigen::MatrixXf &high_conf_dets,
+                             Eigen::MatrixXf &low_conf_dets) {
+    Eigen::VectorXf confs = input_dets_raw.col(4);
+    long num_dets = input_dets_raw.rows();
+    std::vector<int> high_conf_indices, low_conf_indices;
+
+    for (long i = 0; i < num_dets; ++i) {
+        if (confs(i) > this->det_thresh) {
+            high_conf_indices.push_back(i);
+        } else if (confs(i) > 0.1 && confs(i) < this->det_thresh) {
+            low_conf_indices.push_back(i);
         }
     }
 
-    for (auto m : unmatched_trks) {
-        trackers.at(m).update(nullptr, 0, -1);
+    high_conf_dets.resize(high_conf_indices.size(), input_dets_raw.cols());
+    for (size_t i = 0; i < high_conf_indices.size(); ++i) {
+        high_conf_dets.row(i) = input_dets_raw.row(high_conf_indices[i]);
     }
-    for (int i : unmatched_dets) {
-        id_count++;
-        Eigen::RowVectorXf tmp_bbox = dets_first.block(i, 0, 1, 5);
-        int cls_ = int(dets(i, 5));
-        int idx_ = int(dets(i, 6));
-        KalmanBoxTracker trk =
-            KalmanBoxTracker(tmp_bbox, cls_, idx_, id_count, delta_t);
-        trackers.push_back(trk);
+
+    low_conf_dets.resize(low_conf_indices.size(), input_dets_raw.cols());
+    for (size_t i = 0; i < low_conf_indices.size(); ++i) {
+        low_conf_dets.row(i) = input_dets_raw.row(low_conf_indices[i]);
     }
-    // int tmp_i = trackers.size();
-    for (int i = trackers.size() - 1; i >= 0; i--) {
-        Eigen::Matrix<float, 1, 4> d;
-        int last_observation_sum = trackers.at(i).last_observation.sum();
-        if (last_observation_sum < 0) {
-            d = trackers.at(i).get_state();
-        } else {
-            d = trackers.at(i).last_observation.block(0, 0, 1, 4);
+}
+
+void OCSort::PrepareTrackDataForAssociation(
+    Eigen::MatrixXf &out_predicted_bbox_states, Eigen::MatrixXf &out_velocities,
+    Eigen::MatrixXf &out_last_observed_bboxes,
+    Eigen::MatrixXf &out_k_previous_observations_matrix) {
+    size_t num_trackers = this->trackers.size();
+    out_predicted_bbox_states.resize(num_trackers, 5);
+    out_velocities.resize(num_trackers, 2);
+    out_last_observed_bboxes.resize(num_trackers, 5);
+    out_k_previous_observations_matrix.resize(num_trackers, 5);
+
+    for (size_t i = 0; i < num_trackers; ++i) {
+        Eigen::RowVectorXf pos = this->trackers[i].predict();
+        out_predicted_bbox_states.row(i) << pos(0), pos(1), pos(2), pos(3), 0;
+        out_velocities.row(i) = this->trackers[i].velocity;
+        out_last_observed_bboxes.row(i) = this->trackers[i].last_observation;
+        out_k_previous_observations_matrix.row(i) =
+            k_previous_obs(this->trackers[i].observations,
+                           this->trackers[i].age, this->delta_t);
+    }
+}
+
+void OCSort::PerformFirstPassAssociation(
+    const Eigen::MatrixXf &high_conf_dets,
+    const Eigen::MatrixXf &predicted_track_bboxes,
+    const Eigen::MatrixXf &velocities,
+    const Eigen::MatrixXf &k_observations_data,
+    std::vector<Eigen::Matrix<int, 1, 2>> &out_matched_pairs,
+    std::vector<int> &out_unmatched_det_indices,
+    std::vector<int> &out_unmatched_trk_indices) {
+    auto association_result =
+        associate(high_conf_dets, predicted_track_bboxes, this->iou_threshold,
+                  velocities, k_observations_data, this->inertia);
+    out_matched_pairs = std::get<0>(association_result);
+    out_unmatched_det_indices = std::get<1>(association_result);
+    out_unmatched_trk_indices = std::get<2>(association_result);
+}
+
+void OCSort::UpdateTrackersFromMatches(
+    const std::vector<Eigen::Matrix<int, 1, 2>> &matched_pairs,
+    const Eigen::MatrixXf &source_dets_matrix,
+    const std::vector<int> *det_indices_map) {
+    for (const auto &match : matched_pairs) {
+        int det_idx_in_source = match(0, 0);
+        int trk_idx_global = match(0, 1);
+
+        int original_det_idx = det_idx_in_source;
+        if (det_indices_map) {
+            original_det_idx = (*det_indices_map)[det_idx_in_source];
         }
-        if (trackers.at(i).time_since_update < 1 &&
-            ((trackers.at(i).hit_streak >= min_hits) |
-             (frame_count <= min_hits))) {
+        Eigen::VectorXf bbox_for_update =
+            source_dets_matrix.block<1, 5>(original_det_idx, 0).transpose();
+
+        float cls = source_dets_matrix(original_det_idx, 5);
+        float det_specific_idx = source_dets_matrix(original_det_idx, 6);
+
+        this->trackers[trk_idx_global].update(&bbox_for_update, cls,
+                                              det_specific_idx);
+    }
+}
+
+int execLapjv(const std::vector<std::vector<float>> &cost,
+              std::vector<int> &rowsol, std::vector<int> &colsol,
+              bool extend_cost, float cost_limit, bool use_cost_limit) {
+    if (!cost.empty() && !cost[0].empty()) {
+        rowsol.assign(cost.size(), -1);
+        colsol.assign(cost[0].size(), -1);
+    }
+    return 0;
+}
+
+std::vector<Eigen::Matrix<int, 1, 2>>
+OCSort::SolveHungarianAssignment(const Eigen::MatrixXf &iou_matrix,
+                                 float lapjv_cost_threshold) {
+    std::vector<std::vector<float>> cost_matrix_for_lapjv(
+        iou_matrix.rows(), std::vector<float>(iou_matrix.cols()));
+    for (int i = 0; i < iou_matrix.rows(); ++i) {
+        for (int j = 0; j < iou_matrix.cols(); ++j) {
+            cost_matrix_for_lapjv[i][j] = -iou_matrix(i, j);
+        }
+    }
+    if (cost_matrix_for_lapjv.empty() ||
+        (!cost_matrix_for_lapjv.empty() && cost_matrix_for_lapjv[0].empty())) {
+        return {};
+    }
+
+    std::vector<int> rowsol_lapjv, colsol_lapjv;
+    execLapjv(cost_matrix_for_lapjv, rowsol_lapjv, colsol_lapjv, true,
+              lapjv_cost_threshold, true);
+
+    std::vector<Eigen::Matrix<int, 1, 2>> matched_pairs;
+
+    if (!rowsol_lapjv.empty()) {
+        for (size_t r = 0; r < rowsol_lapjv.size(); ++r) {
+            if (rowsol_lapjv[r] >= 0 &&
+                iou_matrix(r, rowsol_lapjv[r]) >= this->iou_threshold) {
+                Eigen::Matrix<int, 1, 2> pair;
+                pair << static_cast<int>(r), rowsol_lapjv[r];
+                matched_pairs.push_back(pair);
+            }
+        }
+    }
+
+    return matched_pairs;
+}
+
+Eigen::MatrixXf OCSort::BuildSubMatrix(const Eigen::MatrixXf &source_matrix,
+                                       const std::vector<int> &row_indices) {
+    if (row_indices.empty()) {
+        return Eigen::MatrixXf(0, source_matrix.cols());
+    }
+    Eigen::MatrixXf sub_matrix(row_indices.size(), source_matrix.cols());
+    for (size_t i = 0; i < row_indices.size(); ++i) {
+        sub_matrix.row(i) = source_matrix.row(row_indices[i]);
+    }
+    return sub_matrix;
+}
+
+void OCSort::PerformByteAssociation(
+    const Eigen::MatrixXf &low_conf_dets,
+    const Eigen::MatrixXf &all_predicted_track_bboxes,
+    std::vector<int> &unmatched_trk_indices) {
+    if (low_conf_dets.rows() == 0 || unmatched_trk_indices.empty())
+        return;
+
+    Eigen::MatrixXf u_trks_predictions =
+        BuildSubMatrix(all_predicted_track_bboxes, unmatched_trk_indices);
+    if (u_trks_predictions.rows() == 0)
+        return;
+
+    Eigen::MatrixXf iou_values =
+        giou_batch(low_conf_dets.leftCols(4), u_trks_predictions.leftCols(4));
+    if (iou_values.rows() == 0 || iou_values.cols() == 0 ||
+        iou_values.maxCoeff() <= this->iou_threshold)
+        return;
+    std::vector<Eigen::Matrix<int, 1, 2>> matched_pairs_byte =
+        SolveHungarianAssignment(iou_values, 0.01f);
+
+    std::vector<int> tracks_matched_in_this_step_local_indices;
+    for (const auto &match : matched_pairs_byte) {
+        int det_idx_local = match(0, 0);
+        int trk_idx_local = match(0, 1);
+
+        int global_trk_idx = unmatched_trk_indices[trk_idx_local];
+        Eigen::VectorXf bbox_for_update =
+            low_conf_dets.block<1, 5>(det_idx_local, 0).transpose();
+        float cls = low_conf_dets(det_idx_local, 5);
+        float det_specific_idx = low_conf_dets(det_idx_local, 6);
+        this->trackers[global_trk_idx].update(&bbox_for_update, cls,
+                                              det_specific_idx);
+
+        tracks_matched_in_this_step_local_indices.push_back(trk_idx_local);
+    }
+
+    if (!tracks_matched_in_this_step_local_indices.empty()) {
+        std::sort(tracks_matched_in_this_step_local_indices.rbegin(),
+                  tracks_matched_in_this_step_local_indices.rend());
+        for (int local_idx_to_remove :
+             tracks_matched_in_this_step_local_indices) {
+            unmatched_trk_indices.erase(unmatched_trk_indices.begin() +
+                                        local_idx_to_remove);
+        }
+    }
+}
+
+void OCSort::PerformIOUReAssociation(
+    const Eigen::MatrixXf &high_conf_dets,
+    const Eigen::MatrixXf &all_last_observed_bboxes,
+    std::vector<int> &unmatched_det_indices,
+    std::vector<int> &unmatched_trk_indices) {
+    if (unmatched_det_indices.empty() || unmatched_trk_indices.empty())
+        return;
+
+    Eigen::MatrixXf current_unmatched_dets_subset =
+        BuildSubMatrix(high_conf_dets, unmatched_det_indices);
+    Eigen::MatrixXf current_unmatched_trks_last_boxes_subset =
+        BuildSubMatrix(all_last_observed_bboxes, unmatched_trk_indices);
+
+    if (current_unmatched_dets_subset.rows() == 0 ||
+        current_unmatched_trks_last_boxes_subset.rows() == 0)
+        return;
+
+    Eigen::MatrixXf iou_values =
+        giou_batch(current_unmatched_dets_subset.leftCols(4),
+                   current_unmatched_trks_last_boxes_subset.leftCols(4));
+    if (iou_values.rows() == 0 || iou_values.cols() == 0 ||
+        iou_values.maxCoeff() <= this->iou_threshold)
+        return;
+    std::vector<Eigen::Matrix<int, 1, 2>> matched_pairs =
+        SolveHungarianAssignment(iou_values, 0.01f);
+
+    std::vector<int> dets_rematched_local_indices;
+    std::vector<int> trks_rematched_local_indices;
+
+    for (const auto &match : matched_pairs) {
+        int det_idx_local_subset = match(0, 0);
+        int trk_idx_local_subset = match(0, 1);
+
+        int original_high_conf_det_idx =
+            unmatched_det_indices[det_idx_local_subset];
+        int global_trk_idx = unmatched_trk_indices[trk_idx_local_subset];
+
+        Eigen::VectorXf bbox_for_update =
+            high_conf_dets.block<1, 5>(original_high_conf_det_idx, 0)
+                .transpose();
+        float cls = high_conf_dets(original_high_conf_det_idx, 5);
+        float det_specific_idx = high_conf_dets(original_high_conf_det_idx, 6);
+        this->trackers[global_trk_idx].update(&bbox_for_update, cls,
+                                              det_specific_idx);
+
+        dets_rematched_local_indices.push_back(det_idx_local_subset);
+        trks_rematched_local_indices.push_back(trk_idx_local_subset);
+    }
+    if (!dets_rematched_local_indices.empty()) {
+        std::sort(dets_rematched_local_indices.rbegin(),
+                  dets_rematched_local_indices.rend());
+        for (int local_idx : dets_rematched_local_indices)
+            unmatched_det_indices.erase(unmatched_det_indices.begin() +
+                                        local_idx);
+    }
+    if (!trks_rematched_local_indices.empty()) {
+        std::sort(trks_rematched_local_indices.rbegin(),
+                  trks_rematched_local_indices.rend());
+        for (int local_idx : trks_rematched_local_indices)
+            unmatched_trk_indices.erase(unmatched_trk_indices.begin() +
+                                        local_idx);
+    }
+}
+
+void OCSort::ManageUnmatchedAndCreateNewTrackers(
+    const Eigen::MatrixXf &original_input_detections,
+    const Eigen::MatrixXf &high_conf_dets,
+    const std::vector<int> &final_unmatched_det_indices,
+    const std::vector<int> &final_unmatched_trk_indices) {
+    for (int trk_idx : final_unmatched_trk_indices) {
+        this->trackers[trk_idx].update(nullptr, 0, -1);
+    }
+
+    for (int det_idx_in_high_conf : final_unmatched_det_indices) {
+        this->id_count++;
+        Eigen::RowVectorXf new_trk_bbox_data =
+            high_conf_dets.block<1, 5>(det_idx_in_high_conf, 0);
+        int cls_ = static_cast<int>(high_conf_dets(det_idx_in_high_conf, 5));
+        int original_frame_idx_ =
+            static_cast<int>(high_conf_dets(det_idx_in_high_conf, 6));
+
+        KalmanBoxTracker new_trk =
+            KalmanBoxTracker(new_trk_bbox_data, cls_, original_frame_idx_,
+                             this->id_count, this->delta_t);
+        this->trackers.push_back(new_trk);
+    }
+}
+
+std::vector<Eigen::RowVectorXf> OCSort::GenerateOutputAndCleanup() {
+    std::vector<Eigen::RowVectorXf> ret_results;
+    std::vector<KalmanBoxTracker> next_trackers_list;
+
+    for (size_t i = 0; i < this->trackers.size(); ++i) {
+        if (this->trackers[i].time_since_update > this->max_age) {
+            continue;
+        }
+
+        if (this->trackers[i].time_since_update < 1 &&
+            ((this->trackers[i].hit_streak >= this->min_hits) ||
+             (this->frame_count <= this->min_hits))) {
+
+            Eigen::Matrix<float, 1, 4> d_bbox_coords;
+            bool has_valid_last_obs =
+                (this->trackers[i].last_observation.size() >= 4 &&
+                 this->trackers[i].last_observation(0) >= 0.0f);
+
+            if (!has_valid_last_obs) {
+                d_bbox_coords = this->trackers[i].get_state();
+            } else {
+                d_bbox_coords = this->trackers[i].last_observation.head<4>();
+            }
+
             Eigen::RowVectorXf tracking_res(8);
-            tracking_res << d(0), d(1), d(2), d(3), trackers.at(i).id + 1,
-                trackers.at(i).cls, trackers.at(i).conf, trackers.at(i).idx;
-            ret.push_back(tracking_res);
+            tracking_res << d_bbox_coords(0), d_bbox_coords(1),
+                d_bbox_coords(2), d_bbox_coords(3),
+                static_cast<float>(this->trackers[i].id + 1),
+                static_cast<float>(this->trackers[i].cls),
+                this->trackers[i].conf,
+                static_cast<float>(this->trackers[i].idx);
+            ret_results.push_back(tracking_res);
         }
-        if (trackers.at(i).time_since_update > max_age) {
-            trackers.erase(trackers.begin() + i);
-        }
+        next_trackers_list.push_back(this->trackers[i]);
     }
-    return ret;
+    this->trackers = next_trackers_list;
+    return ret_results;
 }
 } // namespace ocsort

@@ -25,7 +25,7 @@ G_DEFINE_TYPE_WITH_CODE(
     GST_DEBUG_CATEGORY_INIT(gst_dxmsgconv_debug_category, "dxmsgconv", 0,
                             "debug category for dxmsgconv element"))
 
-static GstElementClass *parent_class = NULL;
+static GstElementClass *parent_class = nullptr;
 
 static GstStateChangeReturn dxmsgconv_change_state(GstElement *element,
                                                    GstStateChange transition) {
@@ -39,43 +39,56 @@ static void dxmsgconv_dispose(GObject *object) {
 }
 
 static void parse_config(GstDxMsgConv *self) {
-    if (g_file_test(self->_config_file_path, G_FILE_TEST_EXISTS)) {
-        JsonParser *parser = json_parser_new();
-        GError *error = NULL;
-        if (json_parser_load_from_file(parser, self->_config_file_path,
-                                       &error)) {
-
-            JsonNode *node = json_parser_get_root(parser);
-            JsonObject *root_obj = json_node_get_object(node);
-
-            if (json_object_has_member(root_obj, "cfgSection")) {
-                JsonObject *object =
-                    json_object_get_object_member(root_obj, "cfgSection");
-
-                if (json_object_has_member(object, "library_file_path")) {
-                    g_object_set(self, "library-file-path",
-                                 json_object_get_string_member(
-                                     object, "library_file_path"),
-                                 NULL);
-                }
-                if (json_object_has_member(object, "message_interval")) {
-                    g_object_set(
-                        self, "message-interval",
-                        json_object_get_int_member(object, "message_interval"),
-                        NULL);
-                }
-                if (json_object_has_member(object, "include_frame")) {
-                    g_object_set(
-                        self, "include-frame",
-                        json_object_get_boolean_member(object, "include_frame"),
-                        NULL);
-                }
-            }
-        }
-        g_object_unref(parser);
-    } else {
+    if (!g_file_test(self->_config_file_path, G_FILE_TEST_EXISTS)) {
         g_print("Config file does not exist: %s\n", self->_config_file_path);
+        return;
     }
+
+    JsonParser *parser = json_parser_new();
+    GError *error = nullptr;
+    if (!json_parser_load_from_file(parser, self->_config_file_path, &error)) {
+        g_warning("Failed to load config file: %s", error->message);
+        g_object_unref(parser);
+        return;
+    }
+
+    JsonNode *node = json_parser_get_root(parser);
+    if (!node) {
+        g_warning("Config file has no root node");
+        g_object_unref(parser);
+        return;
+    }
+
+    JsonObject *root_obj = json_node_get_object(node);
+    if (!json_object_has_member(root_obj, "cfgSection")) {
+        g_object_unref(parser);
+        return;
+    }
+
+    JsonObject *object = json_object_get_object_member(root_obj, "cfgSection");
+    if (!object) {
+        g_object_unref(parser);
+        return;
+    }
+
+    if (json_object_has_member(object, "library_file_path")) {
+        const gchar *path =
+            json_object_get_string_member(object, "library_file_path");
+        g_object_set(self, "library-file-path", path, nullptr);
+    }
+
+    if (json_object_has_member(object, "message_interval")) {
+        gint interval = json_object_get_int_member(object, "message_interval");
+        g_object_set(self, "message-interval", interval, nullptr);
+    }
+
+    if (json_object_has_member(object, "include_frame")) {
+        gboolean include_frame =
+            json_object_get_boolean_member(object, "include_frame");
+        g_object_set(self, "include-frame", include_frame, nullptr);
+    }
+
+    g_object_unref(parser);
 }
 
 static void gst_dxmsgconv_set_property(GObject *object, guint prop_id,
@@ -140,13 +153,13 @@ static void gst_dxmsgconv_class_init(GstDxMsgConvClass *klass) {
         g_param_spec_string("config-file-path", "Config File Path",
                             "Path to the configuration file containing private "
                             "properties for message formats. (optional).",
-                            NULL, G_PARAM_READWRITE));
+                            nullptr, G_PARAM_READWRITE));
 
     g_object_class_install_property(
         gobject_class, PROP_LIBRARY_FILE_PATH,
         g_param_spec_string(
             "library-file-path", "Library File Path",
-            "Path to the custom message converter library. Required.", NULL,
+            "Path to the custom message converter library. Required.", nullptr,
             G_PARAM_READWRITE));
 
     g_object_class_install_property(
@@ -190,9 +203,9 @@ static void gst_dxmsgconv_init(GstDxMsgConv *self) {
     GST_TRACE_OBJECT(self, "init");
 
     self->_seq_id = 0;
-    self->_config_file_path = NULL;
-    self->_library_file_path = NULL;
-    self->_library_handle = NULL;
+    self->_config_file_path = nullptr;
+    self->_library_file_path = nullptr;
+    self->_library_handle = nullptr;
     self->_message_interval = 1;
     self->_include_frame = FALSE;
 }
@@ -201,7 +214,7 @@ static gboolean gst_dxmsgconv_start(GstBaseTransform *trans) {
     GstDxMsgConv *self = GST_DXMSGCONV(trans);
     GST_DEBUG_OBJECT(self, "start");
 
-    if (self->_library_file_path == NULL) {
+    if (self->_library_file_path == nullptr) {
         GST_ERROR_OBJECT(self, "dxmsgconv custom library is not set\n");
         return FALSE;
     }
@@ -225,7 +238,7 @@ static gboolean gst_dxmsgconv_start(GstBaseTransform *trans) {
         GST_ERROR_OBJECT(self, "dxmsgconv loading functions: %s\n", dlerror());
         if (self->_library_handle) {
             dlclose(self->_library_handle);
-            self->_library_handle = NULL;
+            self->_library_handle = nullptr;
         }
         return FALSE;
     }
@@ -241,12 +254,12 @@ static gboolean gst_dxmsgconv_stop(GstBaseTransform *trans) {
 
     if (self->_context) {
         self->_delete_context_function(self->_context);
-        self->_context = NULL;
+        self->_context = nullptr;
     }
 
     if (self->_library_handle) {
         dlclose(self->_library_handle);
-        self->_library_handle = NULL;
+        self->_library_handle = nullptr;
     }
     return TRUE;
 }

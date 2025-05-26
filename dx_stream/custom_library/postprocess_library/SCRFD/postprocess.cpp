@@ -49,15 +49,13 @@ struct BoundingBox {
     float score;
     std::vector<float> box;
     std::vector<float> kpt;
-    ~BoundingBox(void);
-    BoundingBox(void);
+
+    ~BoundingBox() = default;
+    BoundingBox() = default;
     BoundingBox(unsigned int _label, std::string _labelname, float _score,
                 float data1, float data2, float data3, float data4,
                 std::vector<dxs::Point_f> keypoints, int numKeypoints);
 };
-
-BoundingBox::~BoundingBox(void) {}
-BoundingBox::BoundingBox(void) {}
 
 BoundingBox::BoundingBox(unsigned int _label, std::string _labelname,
                          float _score, float data1, float data2, float data3,
@@ -124,46 +122,50 @@ float calcIoU(BBox a, BBox b) {
     return overlap_area / (a_area + b_area - overlap_area);
 }
 
+void suppressOverlappingBoxes(std::vector<BBox> &rawBoxes,
+                              std::vector<std::pair<float, int>> &scores,
+                              float IouThreshold) {
+    for (size_t j = 0; j < scores.size(); j++) {
+        if (scores[j].first == 0.0f)
+            continue;
+
+        for (size_t k = j + 1; k < scores.size(); k++) {
+            if (scores[k].first == 0.0f)
+                continue;
+
+            float iou =
+                calcIoU(rawBoxes[scores[j].second], rawBoxes[scores[k].second]);
+            if (iou >= IouThreshold) {
+                scores[k].first = 0.0f;
+            }
+        }
+    }
+}
+
 void nms(std::vector<BBox> rawBoxes,
          std::vector<std::vector<std::pair<float, int>>> &scoreIndices,
          float IouThreshold, std::vector<std::string> &ClassNames,
          int numKeypoints, std::vector<BoundingBox> &Result) {
-    for (size_t idx = 0; idx < scoreIndices.size(); idx++) // class
-    {
-        auto &_indices = scoreIndices[idx];
-        for (size_t j = 0; j < _indices.size(); j++) {
-            if (_indices[j].first == 0.0f)
+
+    for (auto &scores : scoreIndices) {
+        suppressOverlappingBoxes(rawBoxes, scores, IouThreshold);
+    }
+
+    for (size_t cls = 0; cls < scoreIndices.size(); cls++) {
+        const auto &scores = scoreIndices[cls];
+        for (const auto &scoreIdx : scores) {
+            if (scoreIdx.first <= 0.0f)
                 continue;
 
-            for (size_t k = j + 1; k < _indices.size(); k++) {
-                if (_indices[k].first == 0.f)
-                    continue;
-                float iou = calcIoU(rawBoxes[_indices[j].second],
-                                    rawBoxes[_indices[k].second]);
-                if (iou >= IouThreshold) {
-                    _indices[k].first = 0.0f;
-                }
-            }
+            const BBox &box = rawBoxes[scoreIdx.second];
+            Result.emplace_back(BoundingBox(
+                cls, ClassNames[cls], scoreIdx.first, box._xmin, box._ymin,
+                box._xmax, box._ymax, box._kpts, numKeypoints));
         }
     }
-    for (size_t cls = 0; cls < scoreIndices.size(); cls++) {
-        auto _indices = scoreIndices[cls];
-        for (size_t i = 0; i < _indices.size(); i++) {
-            if (_indices[i].first > 00.f) {
-                auto box = BoundingBox(cls, (char *)ClassNames[cls].c_str(),
-                                       scoreIndices[cls][i].first,
-                                       rawBoxes[_indices[i].second]._xmin,
-                                       rawBoxes[_indices[i].second]._ymin,
-                                       rawBoxes[_indices[i].second]._xmax,
-                                       rawBoxes[_indices[i].second]._ymax,
-                                       rawBoxes[_indices[i].second]._kpts,
-                                       numKeypoints);
-                Result.emplace_back(box);
-            }
-        }
-    }
-    sort(Result.begin(), Result.end(), compare);
-};
+
+    std::sort(Result.begin(), Result.end(), compare);
+}
 
 extern "C" void SCRFDPostProcess(std::vector<dxs::DXTensor> outputs,
                                  DXFrameMeta *frame_meta,
@@ -220,7 +222,8 @@ extern "C" void SCRFDPostProcess(std::vector<dxs::DXTensor> outputs,
     nms(rawBoxes, ScoreIndices, params.iouThreshold, params.classNames,
         params.numKeypoints, result);
 
-    for (auto &ret : result) {
+    if (result.size() > 0) {
+        BoundingBox ret = result[0];
         int origin_w = object_meta->_box[2] - object_meta->_box[0];
         int origin_h = object_meta->_box[3] - object_meta->_box[1];
 
@@ -258,7 +261,6 @@ extern "C" void SCRFDPostProcess(std::vector<dxs::DXTensor> outputs,
         object_meta->_face_box[1] = y1 + object_meta->_box[1];
         object_meta->_face_box[2] = x2 + object_meta->_box[0];
         object_meta->_face_box[3] = y2 + object_meta->_box[1];
-        break;
     }
 }
 

@@ -12,9 +12,6 @@ enum {
     PROP_SECONDARY_MODE,
     N_PROPERTIES
 };
-static GParamSpec *obj_properties[N_PROPERTIES] = {
-    NULL,
-};
 
 GST_DEBUG_CATEGORY_STATIC(gst_dxpostprocess_debug_category);
 #define GST_CAT_DEFAULT gst_dxpostprocess_debug_category
@@ -36,48 +33,53 @@ G_DEFINE_TYPE_WITH_CODE(
                             "gst-dxpostprocess", 0,
                             "debug category for gst-dxpostprocess element"))
 
-static GstElementClass *parent_class = NULL;
+static GstElementClass *parent_class = nullptr;
 
 static void parse_config(GstDxPostprocess *self) {
-    if (g_file_test(self->_config_file_path, G_FILE_TEST_EXISTS)) {
-        JsonParser *parser = json_parser_new();
-        GError *error = NULL;
-        if (json_parser_load_from_file(parser, self->_config_file_path,
-                                       &error)) {
-            JsonNode *node = json_parser_get_root(parser);
-            JsonObject *object = json_node_get_object(node);
-            if (json_object_has_member(object, "library_file_path")) {
-                const gchar *library_file_path =
-                    json_object_get_string_member(object, "library_file_path");
-                g_object_set(self, "library-file-path", library_file_path,
-                             NULL);
-            }
-            if (json_object_has_member(object, "function_name")) {
-                const gchar *function_name =
-                    json_object_get_string_member(object, "function_name");
-                g_object_set(self, "function-name", function_name, NULL);
-            }
-            if (json_object_has_member(object, "inference_id")) {
-                gint int_value =
-                    json_object_get_int_member(object, "inference_id");
-                if (int_value < 0) {
-                    g_error("[dxpostprocess] Member inference_id has a "
-                            "negative value (%d) and "
-                            "cannot be "
-                            "converted to unsigned.",
-                            int_value);
-                }
-                self->_infer_id = (guint)int_value;
-            }
-            if (json_object_has_member(object, "secondary_mode")) {
-                self->_secondary_mode =
-                    json_object_get_boolean_member(object, "secondary_mode");
-            }
-            g_object_unref(parser);
-        }
-    } else {
+    if (!g_file_test(self->_config_file_path, G_FILE_TEST_EXISTS)) {
         g_print("Config file does not exist: %s\n", self->_config_file_path);
+        return;
     }
+
+    JsonParser *parser = json_parser_new();
+    GError *error = nullptr;
+
+    if (!json_parser_load_from_file(parser, self->_config_file_path, &error)) {
+        g_error("[dxpostprocess] Failed to load config file: %s",
+                error->message);
+        g_object_unref(parser);
+        return;
+    }
+
+    JsonNode *node = json_parser_get_root(parser);
+    JsonObject *object = json_node_get_object(node);
+
+    auto set_string_property = [&](const char *json_key, const char *gobj_key) {
+        if (json_object_has_member(object, json_key)) {
+            const gchar *val = json_object_get_string_member(object, json_key);
+            g_object_set(self, gobj_key, val, nullptr);
+        }
+    };
+
+    set_string_property("library_file_path", "library-file-path");
+    set_string_property("function_name", "function-name");
+
+    if (json_object_has_member(object, "inference_id")) {
+        gint val = json_object_get_int_member(object, "inference_id");
+        if (val < 0) {
+            g_error("[dxpostprocess] Member inference_id has a negative value "
+                    "(%d) and cannot be converted to unsigned.",
+                    val);
+        }
+        self->_infer_id = static_cast<guint>(val);
+    }
+
+    if (json_object_has_member(object, "secondary_mode")) {
+        self->_secondary_mode =
+            json_object_get_boolean_member(object, "secondary_mode");
+    }
+
+    g_object_unref(parser);
 }
 
 static void dxpostprocess_set_property(GObject *object, guint property_id,
@@ -169,7 +171,7 @@ dxpostprocess_change_state(GstElement *element, GstStateChange transition) {
             if (!func_ptr) {
                 g_error("Error finding function: %s\n", dlerror());
                 dlclose(self->_library_handle);
-                self->_library_handle = NULL;
+                self->_library_handle = nullptr;
             }
             self->_postproc_function =
                 (void (*)(std::vector<dxs::DXTensor>, DXFrameMeta *,
@@ -201,19 +203,19 @@ static void dxpostprocess_dispose(GObject *object) {
     GstDxPostprocess *self = GST_DXPOSTPROCESS(object);
     if (self->_config_file_path) {
         g_free(self->_config_file_path);
-        self->_config_file_path = NULL;
+        self->_config_file_path = nullptr;
     }
     if (self->_library_file_path) {
         g_free(self->_library_file_path);
-        self->_library_file_path = NULL;
+        self->_library_file_path = nullptr;
     }
     if (self->_function_name) {
         g_free(self->_function_name);
-        self->_function_name = NULL;
+        self->_function_name = nullptr;
     }
     if (self->_library_handle) {
         dlclose(self->_library_handle);
-        self->_library_handle = NULL;
+        self->_library_handle = nullptr;
     }
     G_OBJECT_CLASS(parent_class)->dispose(object);
 }
@@ -227,17 +229,21 @@ static void gst_dxpostprocess_class_init(GstDxPostprocessClass *klass) {
     gobject_class->get_property = dxpostprocess_get_property;
     gobject_class->dispose = dxpostprocess_dispose;
 
+    static GParamSpec *obj_properties[N_PROPERTIES] = {
+        nullptr,
+    };
+
     obj_properties[PROP_CONFIG_FILE_PATH] = g_param_spec_string(
         "config-file-path", "Config File Path",
-        "Path to the configuration file", NULL, G_PARAM_READWRITE);
+        "Path to the configuration file", nullptr, G_PARAM_READWRITE);
 
     obj_properties[PROP_LIBRARY_FILE_PATH] = g_param_spec_string(
         "library-file-path", "Library File Path",
-        "Path to the shared library file", NULL, G_PARAM_READWRITE);
+        "Path to the shared library file", nullptr, G_PARAM_READWRITE);
 
     obj_properties[PROP_FUNCTION_NAME] = g_param_spec_string(
         "function-name", "Function Name", "Name of the function to be used",
-        NULL, G_PARAM_READWRITE);
+        nullptr, G_PARAM_READWRITE);
 
     obj_properties[PROP_INFER_ID] =
         g_param_spec_uint("inference-id", "inference id", "set inference id", 0,
@@ -271,11 +277,11 @@ static void gst_dxpostprocess_class_init(GstDxPostprocessClass *klass) {
 }
 
 static void gst_dxpostprocess_init(GstDxPostprocess *self) {
-    self->_config_file_path = NULL;
-    self->_library_file_path = NULL;
-    self->_function_name = NULL;
-    self->_library_handle = NULL;
-    self->_postproc_function = NULL;
+    self->_config_file_path = nullptr;
+    self->_library_file_path = nullptr;
+    self->_function_name = nullptr;
+    self->_library_handle = nullptr;
+    self->_postproc_function = nullptr;
 
     self->_acc_fps = 0;
     self->_frame_count_for_fps = 0;
@@ -291,6 +297,29 @@ static gboolean gst_dxpostprocess_stop(GstBaseTransform *trans) {
     return TRUE;
 }
 
+static void process_object_meta(DXObjectMeta *object_meta,
+                                GstDxPostprocess *self,
+                                DXFrameMeta *frame_meta) {
+    auto iter = object_meta->_output_tensor.find(self->_infer_id);
+    if (iter == object_meta->_output_tensor.end())
+        return;
+
+    if (iter->second.size() == 0)
+        return;
+
+    self->_postproc_function(iter->second, frame_meta, object_meta);
+}
+
+static void process_secondary_mode(DXFrameMeta *frame_meta,
+                                   GstDxPostprocess *self) {
+    int objects_size = g_list_length(frame_meta->_object_meta_list);
+    for (int o = 0; o < objects_size; o++) {
+        DXObjectMeta *object_meta =
+            (DXObjectMeta *)g_list_nth_data(frame_meta->_object_meta_list, o);
+        process_object_meta(object_meta, self, frame_meta);
+    }
+}
+
 static GstFlowReturn gst_dxpostprocess_transform_ip(GstBaseTransform *trans,
                                                     GstBuffer *buf) {
     GstDxPostprocess *self = GST_DXPOSTPROCESS(trans);
@@ -302,50 +331,14 @@ static GstFlowReturn gst_dxpostprocess_transform_ip(GstBaseTransform *trans,
         return GST_FLOW_OK;
     }
 
-    // bool processed = false;
-    // auto start = std::chrono::high_resolution_clock::now();
     if (self->_secondary_mode) {
-        int objects_size = g_list_length(frame_meta->_object_meta_list);
-        for (int o = 0; o < objects_size; o++) {
-            DXObjectMeta *object_meta = (DXObjectMeta *)g_list_nth_data(
-                frame_meta->_object_meta_list, o);
-            auto iter = object_meta->_output_tensor.find(self->_infer_id);
-            if (iter != object_meta->_output_tensor.end()) {
-                if (iter->second.size() == 0) {
-                    std::cout << "!@#!@#!@#!@#" << std::endl;
-                }
-                self->_postproc_function(iter->second, frame_meta, object_meta);
-                // processed = true;
-            }
-        }
+        process_secondary_mode(frame_meta, self);
     } else {
         auto iter = frame_meta->_output_tensor.find(self->_infer_id);
         if (iter != frame_meta->_output_tensor.end()) {
             self->_postproc_function(iter->second, frame_meta, nullptr);
-            // processed = true;
         }
     }
-
-    // auto end = std::chrono::high_resolution_clock::now();
-    // if (processed) {
-    //     auto frameDuration =
-    //         std::chrono::duration_cast<std::chrono::microseconds>(end -
-    //         start);
-    //     double frameTimeSec = frameDuration.count() / 1000000.0;
-    //     self->_acc_fps += 1.0 / frameTimeSec;
-    //     self->_frame_count_for_fps++;
-
-    //     if (self->_frame_count_for_fps % 100 == 0 &&
-    //         self->_frame_count_for_fps != 0) {
-    //         gchar *name = NULL;
-    //         g_object_get(G_OBJECT(self), "name", &name, NULL);
-    //         g_print("[%s]\tFPS : %f \n", name,
-    //                 self->_acc_fps / self->_frame_count_for_fps);
-    //         self->_acc_fps = 0;
-    //         self->_frame_count_for_fps = 0;
-    //         g_free(name);
-    //     }
-    // }
 
     return GST_FLOW_OK;
 }

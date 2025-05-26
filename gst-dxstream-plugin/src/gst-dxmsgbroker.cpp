@@ -32,8 +32,8 @@ static GstFlowReturn gst_dxmsgbroker_render_list(GstBaseSink *sink,
                                                  GstBufferList *list);
 static gboolean gst_dxmsgbroker_event(GstBaseSink *sink, GstEvent *event);
 
-#define DXMSG_BAL_BROKER_NAME_MQTT "mqtt"
-#define DXMSG_BAL_BROKER_NAME_KAFKA "kafka"
+constexpr char DXMSG_BAL_BROKER_NAME_MQTT[] = "mqtt";
+constexpr char DXMSG_BAL_BROKER_NAME_KAFKA[] = "kafka";
 
 /////////////////////////////////////////////////////////////////////////
 
@@ -59,21 +59,21 @@ static void gst_dxmsgbroker_class_init(GstDxMsgBrokerClass *klass) {
         gobject_class, PROP_CONN_INFO,
         g_param_spec_string(
             "conn-info", "Connection Info",
-            "Connection info in the format host:port. Required.", NULL,
+            "Connection info in the format host:port. Required.", nullptr,
             G_PARAM_READWRITE));
 
     g_object_class_install_property(
         gobject_class, PROP_CONFIG,
         g_param_spec_string(
             "config", "Config",
-            "Path to the broker configuration file. (optional).", NULL,
+            "Path to the broker configuration file. (optional).", nullptr,
             G_PARAM_READWRITE));
 
     g_object_class_install_property(
         gobject_class, PROP_TOPIC,
         g_param_spec_string("topic", "Topic",
                             "The topic name for publishing messages. Required.",
-                            NULL, G_PARAM_READWRITE));
+                            nullptr, G_PARAM_READWRITE));
 
     gst_element_class_add_pad_template(
         GST_ELEMENT_CLASS(klass),
@@ -99,16 +99,16 @@ static void gst_dxmsgbroker_class_init(GstDxMsgBrokerClass *klass) {
 static void gst_dxmsgbroker_init(GstDxMsgBroker *self) {
     GST_TRACE_OBJECT(self, "|JCP|");
 
-    self->_conn_info = NULL;
-    self->_config = NULL;
-    self->_topic = NULL;
+    self->_conn_info = nullptr;
+    self->_config = nullptr;
+    self->_topic = nullptr;
     self->_msgbroker_count = 0;
 
-    self->_handle = NULL;
+    self->_handle = nullptr;
     self->_broker_name = g_strdup(DXMSG_BAL_BROKER_NAME_MQTT);
-    self->_connect_function = NULL;
-    self->_send_function = NULL;
-    self->_disconnect_function = NULL;
+    self->_connect_function = nullptr;
+    self->_send_function = nullptr;
+    self->_disconnect_function = nullptr;
 }
 
 static void gst_dxmsgbroker_set_property(GObject *object, guint prop_id,
@@ -179,19 +179,19 @@ static void gst_dxmsgbroker_finalize(GObject *object) {
 
     if (self->_broker_name) {
         g_free(self->_broker_name);
-        self->_broker_name = NULL;
+        self->_broker_name = nullptr;
     }
     if (self->_conn_info) {
         g_free(self->_conn_info);
-        self->_conn_info = NULL;
+        self->_conn_info = nullptr;
     }
     if (self->_config) {
         g_free(self->_config);
-        self->_config = NULL;
+        self->_config = nullptr;
     }
     if (self->_topic) {
         g_free(self->_topic);
-        self->_topic = NULL;
+        self->_topic = nullptr;
     }
 }
 
@@ -288,7 +288,7 @@ static gboolean gst_dxmsgbroker_stop(GstBaseSink *sink) {
         GST_ERROR_OBJECT(self, "Failed to disconnect from broker\n");
         return FALSE;
     }
-    self->_handle = NULL;
+    self->_handle = nullptr;
 
     return TRUE;
 }
@@ -312,11 +312,11 @@ static GstFlowReturn gst_dxmsgbroker_render(GstBaseSink *sink,
 
     if (meta) {
         DxMsg_Bal_Error_t error;
-        gchar *topic = (gchar *)(self->_topic ? self->_topic : "test_topic");
+        const gchar *topic = self->_topic ? self->_topic : "test_topic";
         DxMsgPayload *payload = (DxMsgPayload *)meta->_payload;
 
-        error = self->_send_function(self->_handle, topic, payload->_data,
-                                     payload->_size);
+        error = self->_send_function(self->_handle, const_cast<char *>(topic),
+                                     payload->_data, payload->_size);
         if (error != DXMSG_BAL_OK) {
             GST_ERROR_OBJECT(self, "Failed to publish message\n");
             return GST_FLOW_ERROR;

@@ -17,7 +17,7 @@ GstBuffer *read_image_to_buffer(const gchar *file_path) {
     FILE *file = fopen(file_path, "rb");
     if (!file) {
         GST_ERROR("Can't not found image file: %s", file_path);
-        return NULL;
+        return nullptr;
     }
 
     fseek(file, 0, SEEK_END);
@@ -28,7 +28,7 @@ GstBuffer *read_image_to_buffer(const gchar *file_path) {
     fread(buffer_data, 1, file_size, file);
     fclose(file);
 
-    GstBuffer *buffer = gst_buffer_new_allocate(NULL, file_size, NULL);
+    GstBuffer *buffer = gst_buffer_new_allocate(nullptr, file_size, nullptr);
     gst_buffer_fill(buffer, 0, buffer_data, file_size);
     g_free(buffer_data);
 
@@ -127,7 +127,8 @@ static void gst_dxgenbuffer_class_init(GstDxGenBufferClass *klass) {
     g_object_class_install_property(
         gobject_class, PROP_IMAGE_PATH,
         g_param_spec_string("image-path", "Image Path",
-                            "Path to the image file", NULL, G_PARAM_READWRITE));
+                            "Path to the image file", nullptr,
+                            G_PARAM_READWRITE));
 
     g_object_class_install_property(
         gobject_class, PROP_FRAMERATE,
