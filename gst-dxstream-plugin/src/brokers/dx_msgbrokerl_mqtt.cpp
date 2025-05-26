@@ -14,7 +14,7 @@ GST_DEBUG_CATEGORY_STATIC(broker);
 #define GST_CAT_DEFAULT broker
 
 /* Local */
-#define MAX_MQTT_FIELD_LEN 1024
+constexpr int MAX_MQTT_FIELD_LEN = 1024;
 typedef struct {
     struct mosquitto *_mosq;
 
@@ -116,9 +116,20 @@ static bool dxmsg_bal_is_valid_connInfo_mqtt(const char *conn_info,
     return true;
 }
 
+static void cleanup_mqtt(MqttClientInfo_t *pClient, bool destroy_client,
+                         bool lib_cleanup) {
+    if (destroy_client && pClient->_mosq) {
+        mosquitto_destroy(pClient->_mosq);
+    }
+    if (lib_cleanup) {
+        mosquitto_lib_cleanup();
+    }
+    g_free(pClient);
+}
+
 DxMsg_Bal_Handle_t dxmsg_bal_connect_mqtt(char *conn_info, char *cfg_path) {
     MqttClientInfo_t *pClient = g_new0(MqttClientInfo_t, 1);
-    std::string host = "";
+    std::string host;
     int port = 1883;
     int rc;
 
@@ -126,99 +137,87 @@ DxMsg_Bal_Handle_t dxmsg_bal_connect_mqtt(char *conn_info, char *cfg_path) {
                             "broker category for dxmsgbroker element");
     GST_TRACE("|JCP|\n");
 
-    /* conn_info => host, port */
     if (!dxmsg_bal_is_valid_connInfo_mqtt(conn_info, host, &port)) {
         GST_ERROR("Error, Invalid connection info: %s\n", conn_info);
-        g_free(pClient);
+        cleanup_mqtt(pClient, false, false);
         return nullptr;
     }
 
-    /* read config file */
-    if (cfg_path != nullptr) {
-        if (dxmsg_bal_read_config_mqtt((DxMsg_Bal_Handle_t)pClient, cfg_path) !=
+    if (cfg_path != nullptr &&
+        dxmsg_bal_read_config_mqtt((DxMsg_Bal_Handle_t)pClient, cfg_path) !=
             DXMSG_BAL_OK) {
-            GST_ERROR("Error, Failed to read config file: %s\n", cfg_path);
-            g_free(pClient);
-            return nullptr;
-        }
+        GST_ERROR("Error, Failed to read config file: %s\n", cfg_path);
+        cleanup_mqtt(pClient, false, false);
+        return nullptr;
     }
 
-    /* mosquitto_lib_init */
     rc = mosquitto_lib_init();
     if (rc != MOSQ_ERR_SUCCESS) {
         GST_ERROR("Error, mosquitto_lib_init() failed: %s\n",
                   mosquitto_strerror(rc));
-        g_free(pClient);
+        cleanup_mqtt(pClient, false, false);
         return nullptr;
     }
 
-    /* mosquitto_new */
-    if (pClient->_clientid[0] != '\0') {
-        pClient->_mosq = mosquitto_new(pClient->_clientid, true, NULL);
-    } else {
-        pClient->_mosq = mosquitto_new(NULL, true, NULL);
-    }
-    if (pClient->_mosq == NULL) {
-        GST_ERROR("Error, mosquitto_new() failed: %s\n",
-                  mosquitto_strerror(rc));
-        mosquitto_lib_cleanup();
-        g_free(pClient);
+    pClient->_mosq = (pClient->_clientid[0] != '\0')
+                         ? mosquitto_new(pClient->_clientid, true, nullptr)
+                         : mosquitto_new(nullptr, true, nullptr);
+
+    if (pClient->_mosq == nullptr) {
+        GST_ERROR("Error, mosquitto_new() failed\n");
+        cleanup_mqtt(pClient, false, true);
         return nullptr;
     }
 
-    /* mosquitto_tls_set */
     if (pClient->_tls_enable) {
-        char *cafile = pClient->_tls_cafile[0] ? pClient->_tls_cafile : NULL;
-        char *capath = pClient->_tls_capath[0] ? pClient->_tls_capath : NULL;
+        char *cafile = pClient->_tls_cafile[0] ? pClient->_tls_cafile : nullptr;
+        char *capath = pClient->_tls_capath[0] ? pClient->_tls_capath : nullptr;
         char *certfile =
-            pClient->_tls_certfile[0] ? pClient->_tls_certfile : NULL;
-        char *keyfile = pClient->_tls_keyfile[0] ? pClient->_tls_keyfile : NULL;
+            pClient->_tls_certfile[0] ? pClient->_tls_certfile : nullptr;
+        char *keyfile =
+            pClient->_tls_keyfile[0] ? pClient->_tls_keyfile : nullptr;
+
         rc = mosquitto_tls_set(pClient->_mosq, cafile, capath, certfile,
-                               keyfile, NULL);
+                               keyfile, nullptr);
         if (rc != MOSQ_ERR_SUCCESS) {
             GST_ERROR("Error, Failed to set TLS: %s\n", mosquitto_strerror(rc));
-            goto Error;
-        } else {
-            GST_DEBUG("Set TLS: %s, %s, %s, %s\n", cafile, capath, certfile,
-                      keyfile);
+            cleanup_mqtt(pClient, true, true);
+            return nullptr;
         }
+        GST_DEBUG("Set TLS: %s, %s, %s, %s\n", cafile ? cafile : "(null)",
+                  capath ? capath : "(null)", certfile ? certfile : "(null)",
+                  keyfile ? keyfile : "(null)");
     }
 
-    /* mosquitto_username_pw_set */
     if (pClient->_username[0] != 0 && pClient->_password[0] != 0) {
         rc = mosquitto_username_pw_set(pClient->_mosq, pClient->_username,
                                        pClient->_password);
         if (rc != MOSQ_ERR_SUCCESS) {
             GST_ERROR("Error, Failed to set username and password: %s\n",
                       mosquitto_strerror(rc));
-            goto Error;
-        } else {
-            GST_DEBUG("Set username and password: %s\n", pClient->_username);
+            cleanup_mqtt(pClient, true, true);
+            return nullptr;
         }
+        GST_DEBUG("Set username and password: %s\n", pClient->_username);
     }
 
-    /* mosquitto_connect_async */
     rc = mosquitto_connect_async(pClient->_mosq, host.c_str(), port, 60);
     if (rc != MOSQ_ERR_SUCCESS) {
         GST_ERROR("Error, Failed to connect to MQTT broker: %s\n",
                   mosquitto_strerror(rc));
-        goto Error;
+        cleanup_mqtt(pClient, true, true);
+        return nullptr;
     }
 
     rc = mosquitto_loop_start(pClient->_mosq);
     if (rc != MOSQ_ERR_SUCCESS) {
         GST_ERROR("Error, Failed to start Mosquitto loop: %s\n",
                   mosquitto_strerror(rc));
-        goto Error;
+        cleanup_mqtt(pClient, true, true);
+        return nullptr;
     }
 
     return (DxMsg_Bal_Handle_t)pClient;
-
-Error:
-    mosquitto_destroy(pClient->_mosq);
-    mosquitto_lib_cleanup();
-    g_free(pClient);
-    return nullptr;
 }
 
 DxMsg_Bal_Error_t dxmsg_bal_send_mqtt(DxMsg_Bal_Handle_t handle, char *topic,
@@ -235,8 +234,8 @@ DxMsg_Bal_Error_t dxmsg_bal_send_mqtt(DxMsg_Bal_Handle_t handle, char *topic,
         return DXMSG_BAL_ERR_INVALID;
     }
 
-    rc = mosquitto_publish(pClient->_mosq, NULL, topic, payload_len, payload, 0,
-                           false);
+    rc = mosquitto_publish(pClient->_mosq, nullptr, topic, payload_len, payload,
+                           0, false);
     if (rc != MOSQ_ERR_SUCCESS) {
         GST_ERROR("Error, Failed to publish message: %s\n",
                   mosquitto_strerror(rc));

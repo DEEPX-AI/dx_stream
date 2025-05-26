@@ -31,7 +31,6 @@ for INPUT_VIDEO_PATH in "${INPUT_VIDEO_PATH_LIST[@]}"; do
                     dxpreprocess config-file-path=$SRC_DIR/configs/Object_Detection/YoloV7/preprocess_config.json ! queue ! \
                     dxinfer config-file-path=$SRC_DIR/configs/Object_Detection/YoloV7/inference_config.json ! queue ! \
                     dxpostprocess config-file-path=$SRC_DIR/configs/Object_Detection/YoloV7/postprocess_config.json ! queue ! \
-                    dxosd ! queue ! \
                     dxmsgconv config-file-path=$SRC_DIR/configs/msgconv_config.json ! queue ! \
                     dxmsgbroker broker-name=kafka conn-info=localhost:9092 topic=test config=$SRC_DIR/configs/broker_kafka.cfg
 done

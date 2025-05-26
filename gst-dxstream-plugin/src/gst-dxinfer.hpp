@@ -15,7 +15,8 @@ G_BEGIN_DECLS
 #define GST_TYPE_DXINFER (gst_dxinfer_get_type())
 G_DECLARE_FINAL_TYPE(GstDxInfer, gst_dxinfer, GST, DXINFER, GstElement)
 
-const int MAX_QUEUE_SIZE = 3;
+const int MAX_BUFFER_QUEUE_SIZE = 5;
+const int MAX_PUSH_QUEUE_SIZE = 3;
 
 typedef struct _GstDxInfer {
     GstElement _parent_instance;
@@ -46,7 +47,11 @@ typedef struct _GstDxInfer {
     std::condition_variable _cv;
     std::condition_variable _push_cv;
 
-    bool _get_eos;
+    std::mutex _eos_lock;
+    bool _global_eos;
+    void *_global_last_buffer;
+    std::map<int, bool> _eos_list;
+    std::map<int, void *> _last_input_buffer;
 
     MemoryPool _pool;
     guint _pool_size;

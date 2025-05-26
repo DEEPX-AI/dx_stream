@@ -10,7 +10,7 @@ static gboolean dx_frame_meta_transform(GstBuffer *dest, GstMeta *meta,
 
 GType dx_frame_meta_api_get_type(void) {
     static GType type;
-    static const gchar *tags[] = {"dx_frame_meta", NULL};
+    static const gchar *tags[] = {"dx_frame_meta", nullptr};
 
     if (g_once_init_enter(&type)) {
         GType _type = gst_meta_api_type_register("DXFrameMetaAPI", tags);
@@ -21,7 +21,7 @@ GType dx_frame_meta_api_get_type(void) {
 }
 
 const GstMetaInfo *dx_frame_meta_get_info(void) {
-    static const GstMetaInfo *meta_info = NULL;
+    static const GstMetaInfo *meta_info = nullptr;
 
     if (g_once_init_enter(&meta_info)) {
         const GstMetaInfo *mi = gst_meta_register(
@@ -37,8 +37,8 @@ const GstMetaInfo *dx_frame_meta_get_info(void) {
 static gboolean dx_frame_meta_init(GstMeta *meta, gpointer params,
                                    GstBuffer *buffer) {
     DXFrameMeta *dx_meta = (DXFrameMeta *)meta;
-    dx_meta->_buf = NULL;
-    dx_meta->_object_meta_list = NULL;
+    dx_meta->_buf = nullptr;
+    dx_meta->_object_meta_list = nullptr;
     dx_meta->_stream_id = -1;
     dx_meta->_width = -1;
     dx_meta->_height = -1;
@@ -60,9 +60,9 @@ static void dx_frame_meta_free(GstMeta *meta, GstBuffer *buffer) {
     DXFrameMeta *dx_meta = (DXFrameMeta *)meta;
 
     g_list_free(dx_meta->_object_meta_list);
-    dx_meta->_object_meta_list = NULL;
+    dx_meta->_object_meta_list = nullptr;
 
-    dx_meta->_buf = NULL;
+    dx_meta->_buf = nullptr;
 
     for (auto &tmp : dx_meta->_input_memory_pool) {
         MemoryPool *pool = (MemoryPool *)tmp.second;
@@ -141,7 +141,7 @@ void copy_tensor(DXFrameMeta *src_meta, DXFrameMeta *dst_meta) {
 
 void dx_frame_meta_copy(GstBuffer *src_buffer, DXFrameMeta *src_frame_meta,
                         GstBuffer *dst_buffer, DXFrameMeta *dst_frame_meta) {
-    dst_frame_meta->_object_meta_list = NULL;
+    dst_frame_meta->_object_meta_list = nullptr;
 
     dst_frame_meta->_stream_id = src_frame_meta->_stream_id;
     dst_frame_meta->_width = src_frame_meta->_width;
@@ -169,7 +169,7 @@ static gboolean dx_frame_meta_transform(GstBuffer *dest, GstMeta *meta,
         return FALSE;
     }
     DXFrameMeta *dst_frame_meta =
-        (DXFrameMeta *)gst_buffer_add_meta(dest, DX_FRAME_META_INFO, NULL);
+        (DXFrameMeta *)gst_buffer_add_meta(dest, DX_FRAME_META_INFO, nullptr);
     dx_frame_meta_copy(buffer, src_frame_meta, dest, dst_frame_meta);
     dst_frame_meta->_buf = dest;
     return TRUE;

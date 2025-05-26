@@ -11,16 +11,13 @@
 #define DEFAULT_THROTTLE FALSE
 
 enum { PROP_0, PROP_THROTTLE, PROP_FRAMERATE, N_PROPERTIES };
-static GParamSpec *obj_properties[N_PROPERTIES] = {
-    NULL,
-};
 
 GST_DEBUG_CATEGORY_STATIC(gst_dxrate_debug_category);
 #define GST_CAT_DEFAULT gst_dxrate_debug_category
 
 #define THROTTLE_DELAY_RATIO (0.999)
 
-#define MAGIC_LIMIT 25
+constexpr int MAGIC_LIMIT = 25;
 
 static GstFlowReturn gst_dxrate_transform_ip(GstBaseTransform *trans,
                                              GstBuffer *buf);
@@ -38,7 +35,7 @@ G_DEFINE_TYPE_WITH_CODE(
     GST_DEBUG_CATEGORY_INIT(gst_dxrate_debug_category, "gst-dxrate", 0,
                             "debug category for gst-dxrate element"))
 
-static GstElementClass *parent_class = NULL;
+static GstElementClass *parent_class = nullptr;
 
 static void dxrate_set_property(GObject *object, guint property_id,
                                 const GValue *value, GParamSpec *pspec) {
@@ -118,6 +115,10 @@ static void gst_dxrate_class_init(GstDxRateClass *klass) {
     gobject_class->set_property = dxrate_set_property;
     gobject_class->get_property = dxrate_get_property;
     gobject_class->dispose = dxrate_dispose;
+
+    static GParamSpec *obj_properties[N_PROPERTIES] = {
+        nullptr,
+    };
 
     obj_properties[PROP_THROTTLE] =
         g_param_spec_boolean("throttle", "Throttle",
@@ -223,7 +224,7 @@ static void gst_dxrate_swap_prev(GstDxRate *self, GstBuffer *buffer,
 
     if (self->_prevbuf)
         gst_buffer_unref(self->_prevbuf);
-    self->_prevbuf = buffer != NULL ? gst_buffer_ref(buffer) : NULL;
+    self->_prevbuf = buffer != nullptr ? gst_buffer_ref(buffer) : nullptr;
     self->_prev_ts = time;
 }
 
@@ -236,7 +237,7 @@ static void gst_dxrate_reset(GstDxRate *self) {
     self->_next_ts = GST_CLOCK_TIME_NONE;
     self->_last_ts = GST_CLOCK_TIME_NONE;
 
-    gst_dxrate_swap_prev(self, NULL, 0);
+    gst_dxrate_swap_prev(self, nullptr, 0);
 }
 
 static void gst_dxrate_init(GstDxRate *self) {
@@ -247,6 +248,22 @@ static void gst_dxrate_init(GstDxRate *self) {
     self->_framerate = 0;
 
     gst_segment_init(&self->_segment, GST_FORMAT_TIME);
+}
+
+static gboolean flush_loop(GstDxRate *self, GstClockTime limit) {
+    gint count = 0;
+    GstFlowReturn res = GST_FLOW_OK;
+
+    while (res == GST_FLOW_OK && count <= MAGIC_LIMIT &&
+           ((GST_CLOCK_TIME_IS_VALID(limit) &&
+             GST_CLOCK_TIME_IS_VALID(self->_next_ts) &&
+             self->_next_ts - self->_segment.base < limit) ||
+            count < 1)) {
+        res = gst_dxrate_flush_prev(self, count > 0, GST_CLOCK_TIME_NONE);
+        count++;
+    }
+
+    return res == GST_FLOW_OK;
 }
 
 static gboolean gst_dxrate_sink_event(GstBaseTransform *trans,
@@ -262,22 +279,10 @@ static gboolean gst_dxrate_sink_event(GstBaseTransform *trans,
         if (segment.format != GST_FORMAT_TIME) {
             return FALSE;
         }
-        if (self->_prevbuf) {
-            gint count = 0;
-            GstFlowReturn res;
 
-            res = GST_FLOW_OK;
-            while (
-                res == GST_FLOW_OK && count <= MAGIC_LIMIT &&
-                ((GST_CLOCK_TIME_IS_VALID(self->_segment.stop) &&
-                  GST_CLOCK_TIME_IS_VALID(self->_next_ts) &&
-                  self->_next_ts - self->_segment.base < self->_segment.stop) ||
-                 count < 1)) {
-                res =
-                    gst_dxrate_flush_prev(self, count > 0, GST_CLOCK_TIME_NONE);
-                count++;
-            }
-            gst_dxrate_swap_prev(self, NULL, 0);
+        if (self->_prevbuf) {
+            flush_loop(self, self->_segment.stop);
+            gst_dxrate_swap_prev(self, nullptr, 0);
         }
 
         self->_base_ts = 0;
@@ -295,39 +300,17 @@ static gboolean gst_dxrate_sink_event(GstBaseTransform *trans,
     }
     case GST_EVENT_SEGMENT_DONE:
     case GST_EVENT_EOS: {
-        gint count = 0;
-        GstFlowReturn res = GST_FLOW_OK;
-
         if (GST_CLOCK_TIME_IS_VALID(self->_segment.stop)) {
-            while (res == GST_FLOW_OK && count <= MAGIC_LIMIT &&
-                   (GST_CLOCK_TIME_IS_VALID(self->_segment.stop) &&
-                    GST_CLOCK_TIME_IS_VALID(self->_next_ts) &&
-                    (self->_next_ts - self->_segment.base <
-                     self->_segment.stop))) {
-                res =
-                    gst_dxrate_flush_prev(self, count > 0, GST_CLOCK_TIME_NONE);
-                count++;
-            }
+            flush_loop(self, self->_segment.stop);
         } else if (self->_prevbuf) {
             if (GST_BUFFER_DURATION_IS_VALID(self->_prevbuf)) {
                 GstClockTime end_ts =
                     self->_next_ts + GST_BUFFER_DURATION(self->_prevbuf);
-
-                while (res == GST_FLOW_OK && count <= MAGIC_LIMIT &&
-                       ((GST_CLOCK_TIME_IS_VALID(self->_segment.stop) &&
-                         GST_CLOCK_TIME_IS_VALID(self->_next_ts) &&
-                         self->_next_ts - self->_segment.base < end_ts) ||
-                        count < 1)) {
-                    res = gst_dxrate_flush_prev(self, count > 0,
-                                                GST_CLOCK_TIME_NONE);
-                    count++;
-                }
+                flush_loop(self, end_ts);
             } else {
-                res = gst_dxrate_flush_prev(self, FALSE, GST_CLOCK_TIME_NONE);
-                count = 1;
+                gst_dxrate_flush_prev(self, FALSE, GST_CLOCK_TIME_NONE);
             }
         }
-
         break;
     }
     case GST_EVENT_FLUSH_STOP:
@@ -339,6 +322,7 @@ static gboolean gst_dxrate_sink_event(GstBaseTransform *trans,
     default:
         break;
     }
+
     return GST_BASE_TRANSFORM_CLASS(parent_class)->sink_event(trans, event);
 }
 

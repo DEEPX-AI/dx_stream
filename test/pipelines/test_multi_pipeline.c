@@ -217,8 +217,10 @@ GST_START_TEST(test_multi_pipeline) {
 
     // ----------------------- Inference pipeline -----------------------//
 
-    GstElement *muxer = gst_element_factory_make("dxmuxer", NULL);
-    fail_unless(muxer != NULL, "Failed to create GstDxMuxer element");
+    GstElement *inputselector =
+        gst_element_factory_make("dxinputselector", NULL);
+    fail_unless(inputselector != NULL,
+                "Failed to create GstDxInputSelector element");
 
     GstElement *preprocess = gst_element_factory_make("dxpreprocess", NULL);
     fail_unless(preprocess != NULL, "Failed to create GstDxPreprocess element");
@@ -245,17 +247,17 @@ GST_START_TEST(test_multi_pipeline) {
     GstElement *fakesink = gst_element_factory_make("fakesink", NULL);
     fail_unless(fakesink != NULL, "Failed to create fakesink element");
 
-    gst_bin_add_many(GST_BIN(pipeline), muxer, preprocess, infer, postprocess,
-                     fakesink, NULL);
-    fail_unless(gst_element_link_many(muxer, preprocess, infer, postprocess,
-                                      fakesink, NULL),
+    gst_bin_add_many(GST_BIN(pipeline), inputselector, preprocess, infer,
+                     postprocess, fakesink, NULL);
+    fail_unless(gst_element_link_many(inputselector, preprocess, infer,
+                                      postprocess, fakesink, NULL),
                 "Failed to link");
 
     // -------------------------- LINK -----------------------//
-    link_static_src_to_dynamic_sink(jpegdec0, muxer);
-    link_static_src_to_dynamic_sink(jpegdec1, muxer);
-    link_static_src_to_dynamic_sink(jpegdec2, muxer);
-    link_static_src_to_dynamic_sink(jpegdec3, muxer);
+    link_static_src_to_dynamic_sink(jpegdec0, inputselector);
+    link_static_src_to_dynamic_sink(jpegdec1, inputselector);
+    link_static_src_to_dynamic_sink(jpegdec2, inputselector);
+    link_static_src_to_dynamic_sink(jpegdec3, inputselector);
 
     GstPad *sink_pad = gst_element_get_static_pad(fakesink, "sink");
     gst_pad_add_probe(sink_pad, GST_PAD_PROBE_TYPE_BUFFER, probe_primary, NULL,

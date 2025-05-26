@@ -2,16 +2,17 @@
 #include "gst-dxmeta.hpp"
 
 #include <cmath>
+#include <cstdio>
 #include <json-glib/json-glib.h>
 #include <opencv2/opencv.hpp>
 
-static std::vector<std::vector<int>> skeleton = {
+static const std::vector<std::vector<int>> skeleton = {
     {15, 13}, {13, 11}, {16, 14}, {14, 12}, {11, 12}, {5, 11}, {6, 12},
     {5, 6},   {5, 7},   {6, 8},   {7, 9},   {8, 10},  {1, 2},  {0, 1},
     {0, 2},   {1, 3},   {2, 4},   {3, 5},   {4, 6},
 };
 
-static std::vector<cv::Scalar> pose_limb_color = {
+static const std::vector<cv::Scalar> pose_limb_color = {
     cv::Scalar(51, 153, 255), cv::Scalar(51, 153, 255),
     cv::Scalar(51, 153, 255), cv::Scalar(51, 153, 255),
     cv::Scalar(255, 51, 255), cv::Scalar(255, 51, 255),
@@ -24,7 +25,7 @@ static std::vector<cv::Scalar> pose_limb_color = {
     cv::Scalar(0, 255, 0),
 };
 
-static std::vector<cv::Scalar> pose_kpt_color = {
+static const std::vector<cv::Scalar> pose_kpt_color = {
     cv::Scalar(0, 255, 0),    cv::Scalar(0, 255, 0),
     cv::Scalar(0, 255, 0),    cv::Scalar(0, 255, 0),
     cv::Scalar(0, 255, 0),    cv::Scalar(255, 128, 0),
@@ -36,7 +37,7 @@ static std::vector<cv::Scalar> pose_kpt_color = {
     cv::Scalar(51, 153, 255),
 };
 
-std::vector<cv::Scalar> COLORS = {
+static const std::vector<cv::Scalar> COLORS = {
     cv::Scalar(106, 15, 95),   // Deep Magenta
     cv::Scalar(54, 68, 113),   // Muted Blue
     cv::Scalar(25, 102, 10),   // Forest Green
@@ -141,10 +142,6 @@ std::vector<cv::Scalar> COLORS = {
 
 enum { PROP_0, PROP_WIDTH, PROP_HEIGHT, N_PROPERTIES };
 
-static GParamSpec *obj_properties[N_PROPERTIES] = {
-    NULL,
-};
-
 GST_DEBUG_CATEGORY_STATIC(gst_dxosd_debug_category);
 #define GST_CAT_DEFAULT gst_dxosd_debug_category
 
@@ -169,7 +166,7 @@ static GstFlowReturn gst_dxosd_chain(GstPad *pad, GstObject *parent,
 
 G_DEFINE_TYPE(GstDxOsd, gst_dxosd, GST_TYPE_ELEMENT);
 
-static GstElementClass *parent_class = NULL;
+static GstElementClass *parent_class = nullptr;
 
 static void dxosd_set_property(GObject *object, guint property_id,
                                const GValue *value, GParamSpec *pspec) {
@@ -238,6 +235,10 @@ static void gst_dxosd_class_init(GstDxOsdClass *klass) {
     gobject_class->get_property = dxosd_get_property;
     gobject_class->dispose = dxosd_dispose;
 
+    static GParamSpec *obj_properties[N_PROPERTIES] = {
+        nullptr,
+    };
+
     obj_properties[PROP_WIDTH] = g_param_spec_int(
         "width", "Width", "Sets the width of each tile in the grid.", 0, 10000,
         640, G_PARAM_READWRITE);
@@ -263,123 +264,122 @@ static void gst_dxosd_class_init(GstDxOsdClass *klass) {
     element_class->change_state = dxosd_change_state;
 }
 
+static gboolean parse_input_caps(GstDxOsd *self, GstCaps *incaps) {
+    if (!gst_video_info_from_caps(&self->_input_info, incaps)) {
+        GST_ERROR_OBJECT(self,
+                         "Failed to parse input caps or format not supported");
+        return FALSE;
+    }
+
+    GST_INFO_OBJECT(self, "Input format: %s, %dx%d",
+                    gst_video_format_to_string(self->_input_info.finfo->format),
+                    GST_VIDEO_INFO_WIDTH(&self->_input_info),
+                    GST_VIDEO_INFO_HEIGHT(&self->_input_info));
+    return TRUE;
+}
+
+static GstCaps *create_and_fixate_output_caps(GstDxOsd *self, GstCaps *incaps) {
+    if (self->_width <= 0 || self->_height <= 0) {
+        GST_ERROR_OBJECT(self, "Output width/height property not set!");
+        return nullptr;
+    }
+
+    GstCaps *outcaps = gst_caps_copy(incaps);
+    gst_caps_set_simple(outcaps, "format", G_TYPE_STRING, "BGR", "width",
+                        G_TYPE_INT, self->_width, "height", G_TYPE_INT,
+                        self->_height, nullptr);
+
+    GstCaps *fixed = gst_caps_fixate(outcaps);
+    if (fixed != outcaps)
+        gst_caps_unref(outcaps);
+
+    if (!fixed) {
+        GST_ERROR_OBJECT(self, "Failed to fixate generated output caps!");
+        return nullptr;
+    }
+
+    GST_INFO_OBJECT(self, "Fixated output CAPS %" GST_PTR_FORMAT, fixed);
+    return fixed;
+}
+
+static gboolean parse_output_info(GstDxOsd *self) {
+    if (!self->_output_caps || !gst_caps_is_fixed(self->_output_caps)) {
+        GST_ERROR_OBJECT(
+            self, "Output caps are null or not fixed before parsing info!");
+        return FALSE;
+    }
+
+    if (!gst_video_info_from_caps(&self->_output_info, self->_output_caps)) {
+        GST_ERROR_OBJECT(self, "Failed to parse generated output caps!");
+        return FALSE;
+    }
+
+    GST_INFO_OBJECT(
+        self, "Output info: %s, %dx%d, size: %" G_GSIZE_FORMAT,
+        gst_video_format_to_string(self->_output_info.finfo->format),
+        GST_VIDEO_INFO_WIDTH(&self->_output_info),
+        GST_VIDEO_INFO_HEIGHT(&self->_output_info), self->_output_info.size);
+    return TRUE;
+}
+
+static gboolean push_caps_event(GstDxOsd *self) {
+    GST_INFO_OBJECT(
+        self, "Pushing new CAPS %" GST_PTR_FORMAT " downstream via src pad",
+        self->_output_caps);
+    GstEvent *new_caps_event = gst_event_new_caps(self->_output_caps);
+    if (!gst_pad_push_event(self->_srcpad, new_caps_event)) {
+        GST_ERROR_OBJECT(self, "Failed to push new CAPS event downstream.");
+        return FALSE;
+    }
+    GST_INFO_OBJECT(self, "Successfully pushed new CAPS event downstream.");
+    return TRUE;
+}
+
 static gboolean gst_dxosd_sink_event(GstPad *pad, GstObject *parent,
                                      GstEvent *event) {
     GstDxOsd *self = GST_DXOSD(parent);
-    gboolean ret = TRUE;
-
     GST_DEBUG_OBJECT(self, "Received event %s on sink pad",
                      GST_EVENT_TYPE_NAME(event));
 
-    switch (GST_EVENT_TYPE(event)) {
-    case GST_EVENT_CAPS: {
-        GstCaps *incaps = NULL;
-        GstCaps *outcaps = NULL;
-        GstCaps *fixed_outcaps = NULL;
-        gboolean success = TRUE;
-
+    if (GST_EVENT_TYPE(event) == GST_EVENT_CAPS) {
+        GstCaps *incaps = nullptr;
+        GstCaps *fixed = nullptr; // <-- 선언 위치 이동
         gst_event_parse_caps(event, &incaps);
         GST_INFO_OBJECT(self, "Received CAPS %" GST_PTR_FORMAT, incaps);
 
-        if (success && !gst_video_info_from_caps(&self->_input_info, incaps)) {
-            GST_ERROR_OBJECT(
-                self, "Failed to parse input caps or format not supported");
-            success = FALSE;
-        }
-        if (success) {
-            GST_INFO_OBJECT(
-                self, "Input format: %s, %dx%d",
-                gst_video_format_to_string(self->_input_info.finfo->format),
-                GST_VIDEO_INFO_WIDTH(&self->_input_info),
-                GST_VIDEO_INFO_HEIGHT(&self->_input_info));
-        }
-        if (success && (self->_width <= 0 || self->_height <= 0)) {
-            GST_ERROR_OBJECT(self, "Output width/height property not set!");
-            success = FALSE;
-        }
-        if (success) {
-            outcaps = gst_caps_copy(incaps);
-            gst_caps_set_simple(outcaps, "format", G_TYPE_STRING, "BGR",
-                                "width", G_TYPE_INT, self->_width, "height",
-                                G_TYPE_INT, self->_height, NULL);
-        }
-        if (success) {
-            fixed_outcaps = gst_caps_fixate(outcaps);
-            if (fixed_outcaps != outcaps) {
-                gst_caps_unref(outcaps);
-                outcaps = NULL;
-            }
-            if (!fixed_outcaps) {
-                GST_ERROR_OBJECT(self,
-                                 "Failed to fixate generated output caps!");
-                success = FALSE;
-            } else {
-                GST_INFO_OBJECT(self, "Fixated output CAPS %" GST_PTR_FORMAT,
-                                fixed_outcaps);
-                if (self->_output_caps) {
-                    gst_caps_unref(self->_output_caps);
-                }
-                self->_output_caps = fixed_outcaps;
-            }
-        } else if (outcaps) {
-            gst_caps_unref(outcaps);
-            outcaps = NULL;
-        }
-        if (success) {
-            if (!self->_output_caps || !gst_caps_is_fixed(self->_output_caps)) {
-                GST_ERROR_OBJECT(
-                    self,
-                    "Output caps are null or not fixed before parsing info!");
-                success = FALSE;
-            } else if (!gst_video_info_from_caps(&self->_output_info,
-                                                 self->_output_caps)) {
-                GST_ERROR_OBJECT(self,
-                                 "Failed to parse generated output caps!");
-                success = FALSE;
-            }
+        if (!parse_input_caps(self, incaps))
+            goto fail;
 
-            if (success) {
-                GST_INFO_OBJECT(
-                    self, "Output info: %s, %dx%d, size: %" G_GSIZE_FORMAT,
-                    gst_video_format_to_string(
-                        self->_output_info.finfo->format),
-                    GST_VIDEO_INFO_WIDTH(&self->_output_info),
-                    GST_VIDEO_INFO_HEIGHT(&self->_output_info),
-                    self->_output_info.size);
-            } else {
-                if (self->_output_caps) {
-                    gst_caps_unref(self->_output_caps);
-                    self->_output_caps = NULL;
-                }
-            }
-        }
-        if (success) {
-            GST_INFO_OBJECT(self,
-                            "Pushing new CAPS %" GST_PTR_FORMAT
-                            " downstream via src pad",
-                            self->_output_caps);
-            GstEvent *new_caps_event = gst_event_new_caps(self->_output_caps);
-            if (!gst_pad_push_event(self->_srcpad, new_caps_event)) {
-                GST_ERROR_OBJECT(self,
-                                 "Failed to push new CAPS event downstream.");
-                success = FALSE;
-            } else {
-                GST_INFO_OBJECT(
-                    self, "Successfully pushed new CAPS event downstream.");
-            }
+        fixed = create_and_fixate_output_caps(self, incaps);
+        if (!fixed)
+            goto fail;
+
+        if (self->_output_caps)
+            gst_caps_unref(self->_output_caps);
+        self->_output_caps = fixed;
+
+        if (!parse_output_info(self))
+            goto fail;
+
+        if (!push_caps_event(self))
+            goto fail;
+
+        gst_event_unref(event);
+        return TRUE;
+
+    fail:
+        if (self->_output_caps) {
+            gst_caps_unref(self->_output_caps);
+            self->_output_caps = nullptr;
         }
         gst_event_unref(event);
-        ret = success;
-        break;
-    }
-    default:
-        GST_DEBUG_OBJECT(self, "Forwarding event %s to default handler",
-                         GST_EVENT_TYPE_NAME(event));
-        ret = gst_pad_event_default(pad, parent, event);
-        break;
+        return FALSE;
     }
 
-    return ret;
+    // default case
+    GST_DEBUG_OBJECT(self, "Forwarding event %s to default handler",
+                     GST_EVENT_TYPE_NAME(event));
+    return gst_pad_event_default(pad, parent, event);
 }
 
 static gboolean gst_dxosd_src_query(GstPad *pad, GstObject *parent,
@@ -458,149 +458,123 @@ static void gst_dxosd_init(GstDxOsd *self) {
     self->_width = 640;
     self->_height = 360;
 
-    self->_output_caps = NULL;
+    self->_output_caps = nullptr;
 #ifdef HAVE_LIBRGA
 #else
     self->_resized_frame = std::map<int, uint8_t *>();
 #endif
 }
 
-void draw_object_meta(cv::Mat &img, DXObjectMeta *obj_meta,
-                      float scale_factor_x, float scale_factor_y) {
-    if (obj_meta->_seg_cls_map.data != nullptr) {
-        cv::Mat seg_vis_map(obj_meta->_seg_cls_map.height,
-                            obj_meta->_seg_cls_map.width, CV_8UC3);
-        for (int h = 0; h < obj_meta->_seg_cls_map.height; h++) {
-            for (int w = 0; w < obj_meta->_seg_cls_map.width; w++) {
-                int cls = obj_meta->_seg_cls_map
-                              .data[obj_meta->_seg_cls_map.width * h + w];
-                cv::Scalar cls_color = COLORS[cls % COLORS.size()];
-                seg_vis_map.at<cv::Vec3b>(h, w) =
-                    cv::Vec3b(cls_color[0], cls_color[1], cls_color[2]);
-            }
-        }
+void draw_segmentation(cv::Mat &img, const DXObjectMeta *meta) {
+    if (meta->_seg_cls_map.data.empty())
+        return;
 
-        cv::Mat add;
-        cv::resize(seg_vis_map, add, cv::Size(img.cols, img.rows), 0, 0,
-                   cv::INTER_LINEAR);
-        cv::addWeighted(img, 1.0, add, 1.0, 0.0, img);
-    }
-
-    if (obj_meta->_keypoints.size() > 0) {
-
-        std::vector<cv::Point> points;
-        for (int k = 0; k < 17; k++) {
-            float kx = obj_meta->_keypoints[k * 3 + 0] / scale_factor_x;
-            float ky = obj_meta->_keypoints[k * 3 + 1] / scale_factor_y;
-            float ks = obj_meta->_keypoints[k * 3 + 2];
-            if (ks > 0.5) {
-                points.emplace_back(cv::Point(kx, ky));
-            } else {
-                points.emplace_back(cv::Point(-1, -1));
-            }
-        }
-
-        for (int index = 0; index < (int)skeleton.size(); index++) {
-            auto pp = skeleton[index];
-            auto kp0 = points[pp[0]];
-            auto kp1 = points[pp[1]];
-            if (kp0.x >= 0 && kp1.x >= 0)
-                cv::line(img, kp0, kp1, pose_limb_color[index], 2, cv::LINE_AA);
-        }
-
-        for (int index = 0; index < (int)points.size(); index++) {
-            cv::circle(img, points[index], 3, pose_kpt_color[index], -1,
-                       cv::LINE_AA);
+    cv::Mat seg_vis(meta->_seg_cls_map.height, meta->_seg_cls_map.width,
+                    CV_8UC3);
+    for (int h = 0; h < meta->_seg_cls_map.height; ++h) {
+        for (int w = 0; w < meta->_seg_cls_map.width; ++w) {
+            int cls = meta->_seg_cls_map.data[meta->_seg_cls_map.width * h + w];
+            cv::Scalar color = COLORS[cls % COLORS.size()];
+            seg_vis.at<cv::Vec3b>(h, w) =
+                cv::Vec3b(color[0], color[1], color[2]);
         }
     }
 
-    for (auto &landmark : obj_meta->_face_landmarks) {
-        cv::circle(img,
-                   cv::Point(int(landmark._x / scale_factor_x),
-                             int(landmark._y / scale_factor_y)),
-                   3, cv::Scalar(0, 255, 0), -1, cv::LINE_AA);
+    cv::Mat resized;
+    cv::resize(seg_vis, resized, img.size(), 0, 0, cv::INTER_LINEAR);
+    cv::addWeighted(img, 1.0, resized, 1.0, 0.0, img);
+}
+
+void draw_keypoints(cv::Mat &img, const DXObjectMeta *meta, float sx,
+                    float sy) {
+    if (meta->_keypoints.empty())
+        return;
+
+    std::vector<cv::Point> pts;
+    for (int i = 0; i < 17; ++i) {
+        float x = meta->_keypoints[i * 3] / sx;
+        float y = meta->_keypoints[i * 3 + 1] / sy;
+        float s = meta->_keypoints[i * 3 + 2];
+        pts.emplace_back((s > 0.5f) ? cv::Point(x, y) : cv::Point(-1, -1));
     }
 
-    if (obj_meta->_face_box[0] || obj_meta->_face_box[1] ||
-        obj_meta->_face_box[2] || obj_meta->_face_box[3]) {
+    for (size_t i = 0; i < skeleton.size(); ++i) {
+        auto &p = skeleton[i];
+        if (pts[p[0]].x >= 0 && pts[p[1]].x >= 0)
+            cv::line(img, pts[p[0]], pts[p[1]], pose_limb_color[i], 2,
+                     cv::LINE_AA);
+    }
+
+    for (size_t i = 0; i < pts.size(); ++i)
+        cv::circle(img, pts[i], 3, pose_kpt_color[i], -1, cv::LINE_AA);
+}
+
+void draw_face(cv::Mat &img, const DXObjectMeta *meta, float sx, float sy) {
+    for (const auto &lm : meta->_face_landmarks) {
+        cv::circle(img, cv::Point(int(lm._x / sx), int(lm._y / sy)), 3,
+                   cv::Scalar(0, 255, 0), -1, cv::LINE_AA);
+    }
+
+    if (meta->_face_box[2] > meta->_face_box[0] &&
+        meta->_face_box[3] > meta->_face_box[1]) {
         cv::rectangle(
             img,
-            cv::Rect(cv::Point(int(obj_meta->_face_box[0] / scale_factor_x),
-                               int(obj_meta->_face_box[1] / scale_factor_y)),
-                     cv::Point(int(obj_meta->_face_box[2] / scale_factor_x),
-                               int(obj_meta->_face_box[3] / scale_factor_y))),
+            cv::Rect(
+                cv::Point(meta->_face_box[0] / sx, meta->_face_box[1] / sy),
+                cv::Point(meta->_face_box[2] / sx, meta->_face_box[3] / sy)),
             cv::Scalar(255, 0, 0), 2);
     }
+}
 
-    // visualize track id
-    if (obj_meta->_box[2] - obj_meta->_box[0] <= 0 ||
-        obj_meta->_box[3] - obj_meta->_box[1] <= 0) {
+void draw_label_or_id(cv::Mat &img, const DXObjectMeta *meta, float sx,
+                      float sy) {
+    if (meta->_box[2] - meta->_box[0] <= 0 ||
+        meta->_box[3] - meta->_box[1] <= 0)
         return;
+
+    int id = meta->_track_id;
+    bool has_id = (id != -1);
+    int label = meta->_label;
+    bool has_label = (!has_id && label != -1);
+
+    if (!has_id && !has_label)
+        return;
+
+    std::string text;
+    cv::Scalar color;
+    if (has_id) {
+        text = std::to_string(id);
+        color = COLORS[id % COLORS.size()];
+    } else {
+        text = cv::format("%s=%.2f", meta->_label_name->str, meta->_confidence);
+        color = COLORS[label % COLORS.size()];
     }
-    if (obj_meta->_track_id != -1) {
-        int baseline = 0;
-        char text[50];
-        double font_scale = 0.00075 * std::min(img.cols, img.rows);
-        sprintf(text, "%d", obj_meta->_track_id);
-        auto textSize = cv::getTextSize(text, cv::FONT_HERSHEY_SIMPLEX,
-                                        font_scale, 1, &baseline);
 
-        cv::rectangle(
-            img,
-            cv::Rect(cv::Point(int(obj_meta->_box[0] / scale_factor_x),
-                               int(obj_meta->_box[1] / scale_factor_y)),
-                     cv::Point(int(obj_meta->_box[2] / scale_factor_x),
-                               int(obj_meta->_box[3] / scale_factor_y))),
-            COLORS[(obj_meta->_track_id) % COLORS.size()], 2);
+    double font_scale = 0.00075 * std::min(img.cols, img.rows);
+    int baseline = 0;
+    auto text_size = cv::getTextSize(text, cv::FONT_HERSHEY_SIMPLEX, font_scale,
+                                     1, &baseline);
 
-        cv::rectangle(
-            img,
-            cv::Rect(cv::Point(int(obj_meta->_box[0] / scale_factor_x),
-                               int((obj_meta->_box[1] / scale_factor_y) -
-                                   textSize.height)),
-                     cv::Point(int((obj_meta->_box[0] / scale_factor_x) +
-                                   textSize.width),
-                               int(obj_meta->_box[1] / scale_factor_y))),
-            COLORS[(obj_meta->_track_id) % COLORS.size()], cv::FILLED);
+    int x = int(meta->_box[0] / sx);
+    int y = int(meta->_box[1] / sy);
+    int x2 = int(meta->_box[2] / sx);
+    int y2 = int(meta->_box[3] / sy);
 
-        cv::putText(img, text,
-                    cv::Point(int(obj_meta->_box[0] / scale_factor_x),
-                              int(obj_meta->_box[1] / scale_factor_y)),
-                    cv::FONT_HERSHEY_SIMPLEX, font_scale,
-                    cv::Scalar(255, 255, 255));
-    } else if (obj_meta->_label != -1) {
-        int baseline = 0;
-        char text[50];
-        double font_scale = 0.00075 * std::min(img.cols, img.rows);
-        sprintf(text, "%s=%.2f", obj_meta->_label_name->str,
-                (double)obj_meta->_confidence);
-        auto textSize = cv::getTextSize(text, cv::FONT_HERSHEY_SIMPLEX,
-                                        font_scale, 1, &baseline);
+    cv::rectangle(img, cv::Rect(cv::Point(x, y), cv::Point(x2, y2)), color, 2);
+    cv::rectangle(img,
+                  cv::Rect(cv::Point(x, y - text_size.height),
+                           cv::Point(x + text_size.width, y)),
+                  color, cv::FILLED);
+    cv::putText(img, text, cv::Point(x, y), cv::FONT_HERSHEY_SIMPLEX,
+                font_scale, cv::Scalar(255, 255, 255));
+}
 
-        cv::rectangle(
-            img,
-            cv::Rect(cv::Point(int(obj_meta->_box[0] / scale_factor_x),
-                               int(obj_meta->_box[1] / scale_factor_y)),
-                     cv::Point(int(obj_meta->_box[2] / scale_factor_x),
-                               int(obj_meta->_box[3] / scale_factor_y))),
-            COLORS[obj_meta->_label % COLORS.size()], 2);
-
-        cv::rectangle(
-            img,
-            cv::Rect(cv::Point(int(obj_meta->_box[0] / scale_factor_x),
-                               int((obj_meta->_box[1] / scale_factor_y) -
-                                   textSize.height)),
-                     cv::Point(int((obj_meta->_box[0] / scale_factor_x) +
-                                   textSize.width),
-                               int(obj_meta->_box[1] / scale_factor_y))),
-            COLORS[obj_meta->_label % COLORS.size()], cv::FILLED);
-
-        cv::putText(img, text,
-                    cv::Point(int(obj_meta->_box[0] / scale_factor_x),
-                              int(obj_meta->_box[1] / scale_factor_y)),
-                    cv::FONT_HERSHEY_SIMPLEX, font_scale,
-                    cv::Scalar(255, 255, 255));
-    }
+void draw_object_meta(cv::Mat &img, DXObjectMeta *meta, float scale_x,
+                      float scale_y) {
+    draw_segmentation(img, meta);
+    draw_keypoints(img, meta, scale_x, scale_y);
+    draw_face(img, meta, scale_x, scale_y);
+    draw_label_or_id(img, meta, scale_x, scale_y);
 }
 
 bool calculate_strides(int w, int h, int wa, int ha, int *ws, int *hs) {
@@ -749,11 +723,11 @@ static GstFlowReturn gst_dxosd_chain(GstPad *pad, GstObject *parent,
                                      GstBuffer *buf) {
     GstDxOsd *self = GST_DXOSD(parent);
 
-    GstBuffer *outbuf = NULL;
+    GstBuffer *outbuf = nullptr;
     GstFlowReturn ret = GST_FLOW_OK;
 
     gsize out_size = self->_output_info.size;
-    outbuf = gst_buffer_new_allocate(NULL, out_size, NULL);
+    outbuf = gst_buffer_new_allocate(nullptr, out_size, nullptr);
 
     if (!gst_buffer_copy_into(outbuf, buf,
                               (GstBufferCopyFlags)(GST_BUFFER_COPY_FLAGS |

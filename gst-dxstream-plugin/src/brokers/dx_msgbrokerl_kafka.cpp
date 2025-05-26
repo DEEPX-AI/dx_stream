@@ -17,7 +17,7 @@ GST_DEBUG_CATEGORY_STATIC(broker);
 #define GST_CAT_DEFAULT broker
 
 /* Local */
-#define MAX_KAFKA_FIELD_LEN 1024
+constexpr int MAX_KAFKA_FIELD_LEN = 1024;
 typedef struct {
     rd_kafka_t *_rk; /* Kafka producer instance handle */
 
@@ -51,12 +51,62 @@ static DxMsg_Bal_Error_t dxmsg_bal_setconf_kafka(rd_kafka_conf_t *conf,
     }
 }
 
+static void process_config_line(
+    const std::string &line, std::string &currentSection,
+    std::map<std::string, std::map<std::string, std::string>> &config) {
+    std::string trimmedLine = line;
+    trim(trimmedLine);
+    if (trimmedLine.empty() || trimmedLine[0] == '#')
+        return;
+
+    size_t commentPos = trimmedLine.find('#');
+    if (commentPos != std::string::npos) {
+        trimmedLine.erase(commentPos);
+        trim(trimmedLine);
+        if (trimmedLine.empty())
+            return;
+    }
+
+    if (trimmedLine.front() == '[' && trimmedLine.back() == ']') {
+        currentSection = trimmedLine.substr(1, trimmedLine.size() - 2);
+        trim(currentSection);
+    } else {
+        size_t delimiterPos = trimmedLine.find('=');
+        if (delimiterPos == std::string::npos)
+            return;
+
+        std::string key = trimmedLine.substr(0, delimiterPos);
+        std::string value = trimmedLine.substr(delimiterPos + 1);
+        trim(key);
+        trim(value);
+
+        if (!value.empty() && value.front() == '"' && value.back() == '"') {
+            value = value.substr(1, value.size() - 2);
+        }
+
+        config[currentSection][key] = value;
+    }
+}
+
+static void log_section(const std::string &sectionName,
+                        const std::map<std::string, std::string> &kvs,
+                        rd_kafka_conf_t *conf) {
+    GST_INFO("[%s]\n", sectionName.c_str());
+
+    for (const auto &kv : kvs) {
+        const std::string &key = kv.first;
+        const std::string &value = kv.second;
+        GST_INFO("%s = %s\n", key.c_str(), value.c_str());
+
+        if (sectionName == "kafka") {
+            dxmsg_bal_setconf_kafka(conf, key.c_str(), value.c_str());
+        }
+    }
+}
+
 static DxMsg_Bal_Error_t dxmsg_bal_read_config_kafka(DxMsg_Bal_Handle_t handle,
                                                      const char *cfg_file,
                                                      rd_kafka_conf_t *conf) {
-    /* for updating pClient from  msgbroker global config */
-    // KafkaClientInfo_t *pClient = (KafkaClientInfo_t *)handle;
-
     g_return_val_if_fail(handle != nullptr, DXMSG_BAL_ERR_INVALID);
     g_return_val_if_fail(cfg_file != nullptr, DXMSG_BAL_ERR_INVALID);
     g_return_val_if_fail(conf != nullptr, DXMSG_BAL_ERR_INVALID);
@@ -70,56 +120,13 @@ static DxMsg_Bal_Error_t dxmsg_bal_read_config_kafka(DxMsg_Bal_Handle_t handle,
     std::map<std::string, std::map<std::string, std::string>> config;
 
     while (std::getline(file, line)) {
-        trim(line);
-        if (line.empty() || line[0] == '#') {
-            continue;
-        }
-
-        size_t commentPos = line.find('#');
-        if (commentPos != std::string::npos) {
-            line = line.substr(0, commentPos);
-            trim(line);
-        }
-
-        if (line.front() == '[' && line.back() == ']') {
-            currentSection = line.substr(1, line.size() - 2);
-            trim(currentSection);
-        } else {
-            size_t delimiterPos = line.find('=');
-            if (delimiterPos != std::string::npos) {
-                std::string key = line.substr(0, delimiterPos);
-                std::string value = line.substr(delimiterPos + 1);
-                trim(key);
-                trim(value);
-
-                if (value.front() == '"' && value.back() == '"') {
-                    value = value.substr(1, value.size() - 2);
-                }
-
-                config[currentSection][key] = value;
-            }
-        }
+        process_config_line(line, currentSection, config);
     }
 
-    for (const auto &section : config) {
-        GST_INFO("[%s]\n", section.first.c_str());
-        /*kafka client config*/
-        if (section.first == "kafka") {
-            for (const auto &kv : section.second) {
-                GST_INFO("%s = %s\n", kv.first.c_str(), kv.second.c_str());
-                dxmsg_bal_setconf_kafka(conf, kv.first.c_str(),
-                                        kv.second.c_str());
-            }
-        }
-        /*msgbroker global config*/
-        else {
-            for (const auto &kv : section.second) {
-                GST_INFO("%s = %s\n", kv.first.c_str(), kv.second.c_str());
-            }
-        }
+    for (const auto &sectionPair : config) {
+        log_section(sectionPair.first, sectionPair.second, conf);
     }
 
-    file.close();
     return DXMSG_BAL_OK;
 }
 
@@ -236,7 +243,7 @@ DxMsg_Bal_Handle_t dxmsg_bal_connect_kafka(char *conn_info, char *cfg_path) {
 
     char broker_list[1024];
     snprintf(broker_list, sizeof(broker_list), "%s:%d", host.c_str(), port);
-    if (rd_kafka_conf_set(conf, "bootstrap.servers", broker_list, NULL, 0) !=
+    if (rd_kafka_conf_set(conf, "bootstrap.servers", broker_list, nullptr, 0) !=
         RD_KAFKA_CONF_OK) {
         GST_ERROR("Error, Failed to set broker list\n");
         rd_kafka_conf_destroy(conf);
@@ -248,7 +255,7 @@ DxMsg_Bal_Handle_t dxmsg_bal_connect_kafka(char *conn_info, char *cfg_path) {
     rd_kafka_conf_set_error_cb(conf, error_cb);
 
     /* create Kafka producer */
-    pClient->_rk = rd_kafka_new(RD_KAFKA_PRODUCER, conf, NULL, 0);
+    pClient->_rk = rd_kafka_new(RD_KAFKA_PRODUCER, conf, nullptr, 0);
     if (pClient->_rk == nullptr) {
         GST_ERROR("Error, Failed to create Kafka producer\n");
         rd_kafka_conf_destroy(conf);
@@ -287,8 +294,8 @@ DxMsg_Bal_Error_t dxmsg_bal_send_kafka(DxMsg_Bal_Handle_t handle, char *topic,
     err = (rd_kafka_resp_err_t)rd_kafka_producev(
         pClient->_rk, RD_KAFKA_V_TOPIC(topic),
         RD_KAFKA_V_MSGFLAGS(RD_KAFKA_MSG_F_COPY),
-        RD_KAFKA_V_VALUE((void *)payload, payload_len), RD_KAFKA_V_OPAQUE(NULL),
-        RD_KAFKA_V_END);
+        RD_KAFKA_V_VALUE((void *)payload, payload_len),
+        RD_KAFKA_V_OPAQUE(nullptr), RD_KAFKA_V_END);
     if (err) {
         if (err == RD_KAFKA_RESP_ERR__QUEUE_FULL) {
             GST_WARNING("Queue full, discarding message...\n");
