@@ -14,6 +14,8 @@ GST_START_TEST(test_element_state_change) {
 
     GstElement *element = gst_element_factory_make("dxinfer", NULL);
     fail_unless(element != NULL, "Failed to create GstDxInfer element");
+    g_object_set(element, "model-path",
+                 "./../../../dx_stream/samples/models/YOLOV5S_1.dxnn", NULL);
 
     ret = gst_element_set_state(element, GST_STATE_READY);
     fail_unless(ret != GST_STATE_CHANGE_FAILURE,
