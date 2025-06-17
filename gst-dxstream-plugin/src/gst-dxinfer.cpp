@@ -223,8 +223,11 @@ convert_tensor(std::vector<shared_ptr<dxrt::Tensor>> src) {
 }
 
 static void handle_null_to_ready(GstDxInfer *self) {
-    if (self->_model_path == nullptr)
+    if (self->_model_path == nullptr) {
+        g_error("[dxinfer] Model Path Must be setted : %s\n",
+                self->_model_path);
         return;
+    }
 
     self->_ie = std::make_shared<dxrt::InferenceEngine>(self->_model_path);
 
@@ -290,7 +293,9 @@ static void handle_paused_to_ready(GstDxInfer *self) {
         self->_cv.notify_all();
         g_thread_join(self->_thread);
 
-        self->_ie->Wait(self->_last_req_id);
+        if (self->_ie) {
+            self->_ie->Wait(self->_last_req_id);
+        }
 
         if (self->_push_running) {
             self->_push_running = FALSE;
@@ -608,6 +613,7 @@ void send_logical_eos(GstDxInfer *self, GstBuffer *push_buf) {
         (DXFrameMeta *)gst_buffer_get_meta(push_buf, DX_FRAME_META_API_TYPE);
     if (!frame_meta) {
         GST_ERROR_OBJECT(self, "No DXFrameMeta in GstBuffer \n");
+        return;
     }
     if (self->_eos_list.find(frame_meta->_stream_id) != self->_eos_list.end() &&
         self->_eos_list[frame_meta->_stream_id]) {
@@ -632,6 +638,7 @@ void send_logical_eos(GstDxInfer *self, GstBuffer *push_buf) {
             self->_eos_list[frame_meta->_stream_id] = false;
         }
     }
+    return;
 }
 
 static gpointer push_thread_func(GstDxInfer *self) {

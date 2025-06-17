@@ -63,7 +63,8 @@ static gboolean validate_roi(JsonArray *roi_array, gint *out_roi) {
 
 static void parse_config(GstDxPreprocess *self) {
     if (!g_file_test(self->_config_file_path, G_FILE_TEST_EXISTS)) {
-        g_print("Config file does not exist: %s\n", self->_config_file_path);
+        g_error("[dxpreprocess] Config file does not exist: %s\n",
+                self->_config_file_path);
         return;
     }
 
