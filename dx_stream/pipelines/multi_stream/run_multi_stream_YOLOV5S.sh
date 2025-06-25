@@ -75,7 +75,7 @@ for i in $(seq 0 $((num_pipelines - 1))); do
     compositor_props+=" sink_${i}::xpos=${xpos} sink_${i}::ypos=${ypos} sink_${i}::width=${STREAM_WIDTH} sink_${i}::height=${STREAM_HEIGHT}"
 done
 
-launch_cmd="gst-launch-1.0 -e ${pipeline_str} compositor name=comp ${compositor_props} ! videoconvert ! fpsdisplaysink"
+launch_cmd="gst-launch-1.0 -e ${pipeline_str} compositor name=comp ${compositor_props} ! videoconvert ! fpsdisplaysink sync=false"
 echo "--------------------------------------------------"
 echo "Generated gst-launch-1.0 command:"
 echo "${launch_cmd}"

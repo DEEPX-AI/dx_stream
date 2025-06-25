@@ -1,4 +1,10 @@
 # RELEASE_NOTES
+## v1.6.3 / 2025-06-25
+### 1. Changed
+### 2. Fixed
+- Display Crash in Orange Pi 5+ fixed
+### 3. Added
+
 
 ## v1.6.1 / 2025-05-21
 ### 1. Changed
