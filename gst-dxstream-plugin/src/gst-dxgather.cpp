@@ -96,9 +96,16 @@ static gboolean gst_dxgather_sink_event(GstPad *pad, GstObject *parent,
                                         GstEvent *event) {
     GstDxGather *self = GST_DXGATHER(parent);
 
+    gint stream_id = 0;
+    if (g_str_has_prefix(GST_PAD_NAME(pad), "sink_")) {
+        stream_id = atoi(GST_PAD_NAME(pad) + 5);
+    }
+
     switch (GST_EVENT_TYPE(event)) {
     case GST_EVENT_EOS:
-        break;
+        self->_eos_list[stream_id] = true;
+        self->_cv.notify_all();
+        return TRUE;
     case GST_EVENT_CAPS: {
         gboolean result = gst_pad_push_event(self->_srcpad, event);
         if (!result) {
@@ -153,6 +160,8 @@ static void gst_dxgather_init(GstDxGather *self) {
     self->_sinkpads.clear();
     self->_buffers.clear();
 
+    self->_eos_list = std::map<int, bool>();
+
     self->_thread = nullptr;
     self->_running = FALSE;
 }
@@ -181,6 +190,7 @@ static GstPad *gst_dxgather_request_new_pad(GstElement *element,
 
     self->_sinkpads[stream_id] = GST_PAD(gst_object_ref(sinkpad));
     self->_buffers[stream_id] = nullptr;
+    self->_eos_list[stream_id] = false;
 
     return sinkpad;
 }
@@ -517,6 +527,22 @@ static gpointer gather_push_thread_func(GstDxGather *self) {
 
             if (ret != GST_FLOW_OK) {
                 GST_ERROR_OBJECT(self, "Failed to push buffer: %d\n", ret);
+            }
+        }
+
+        bool all_eos = true;
+        for (std::map<int, bool>::const_iterator it = self->_eos_list.begin(); it != self->_eos_list.end(); ++it) {
+            if (!it->second) {
+                all_eos = false;
+                break;
+            }
+        }
+        if (all_eos) {
+            GstEvent *eos_event = gst_event_new_eos();
+            if (!gst_pad_push_event(self->_srcpad, eos_event)) {
+                GST_ERROR_OBJECT(self, "Failed to push EOS Event\n");
+                gst_event_unref(eos_event);
+                break;
             }
         }
     }

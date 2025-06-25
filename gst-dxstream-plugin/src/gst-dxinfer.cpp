@@ -27,7 +27,6 @@ static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE(
 
 static GstFlowReturn gst_dxinfer_chain(GstPad *pad, GstObject *parent,
                                        GstBuffer *buf);
-static gpointer inference_thread_func(GstDxInfer *self);
 
 static gpointer push_thread_func(GstDxInfer *self);
 
@@ -168,6 +167,11 @@ static void dxinfer_dispose(GObject *object) {
         self->_model_path = nullptr;
     }
 
+    while (!self->_push_queue.empty()) {    
+        gst_buffer_unref(self->_push_queue.front());
+        self->_push_queue.erase(self->_push_queue.begin());
+    }
+
     self->_pool.deinitialize();
 
     G_OBJECT_CLASS(parent_class)->dispose(object);
@@ -253,7 +257,7 @@ static void handle_null_to_ready(GstDxInfer *self) {
                         callback_input->self->_push_lock);
                     callback_input->self->_push_queue.push_back(
                         callback_input->frame_meta->_buf);
-                    callback_input->self->_push_cv.notify_all();
+                    callback_input->self->_cv.notify_all();
                 }
             }
             delete shared_ptr_ptr;
@@ -272,12 +276,6 @@ static void handle_ready_to_paused(GstDxInfer *self) {
     if (self->_secondary_mode)
         return;
 
-    if (!self->_running) {
-        self->_running = TRUE;
-        self->_thread = g_thread_new("inference-thread",
-                                     (GThreadFunc)inference_thread_func, self);
-    }
-
     if (!self->_push_running) {
         self->_push_running = TRUE;
         self->_push_thread =
@@ -285,37 +283,29 @@ static void handle_ready_to_paused(GstDxInfer *self) {
     }
 }
 
+static void handle_playing_to_paused(GstDxInfer *self) {
+    if (self->_secondary_mode)
+        return;
+
+    if (self->_ie && self->_last_req_id != 0) {
+        self->_ie->Wait(self->_last_req_id);
+    }
+
+    self->_push_running = FALSE;
+    self->_cv.notify_all();
+}
+
 static void handle_paused_to_ready(GstDxInfer *self) {
-    if (!self->_secondary_mode) {
-        if (self->_running) {
-            self->_running = FALSE;
-        }
-        self->_cv.notify_all();
-        g_thread_join(self->_thread);
+    if (self->_secondary_mode)
+        return;
 
-        if (self->_ie) {
-            self->_ie->Wait(self->_last_req_id);
-        }
+    g_thread_join(self->_push_thread);
 
-        if (self->_push_running) {
-            self->_push_running = FALSE;
-        }
-        self->_push_cv.notify_one();
-        g_thread_join(self->_push_thread);
+    if (self->_ie && self->_last_req_id != 0) {
+        self->_ie->Wait(self->_last_req_id);
     }
 
-    while (!self->_buffer_queue.empty()) {
-        gst_buffer_unref(self->_buffer_queue.front());
-        self->_buffer_queue.pop();
-    }
-
-    while (!self->_push_queue.empty()) {
-        gst_buffer_unref(self->_push_queue.front());
-        self->_push_queue.erase(self->_push_queue.begin());
-    }
-
-    self->_cv.notify_one();
-    self->_push_cv.notify_one();
+    self->_cv.notify_all();
 }
 
 static void handle_paused_to_playing(GstDxInfer *self) {
@@ -339,6 +329,7 @@ static GstStateChangeReturn dxinfer_change_state(GstElement *element,
         handle_paused_to_playing(self);
         break;
     case GST_STATE_CHANGE_PLAYING_TO_PAUSED:
+        handle_playing_to_paused(self);
         break;
     case GST_STATE_CHANGE_PAUSED_TO_READY:
         handle_paused_to_ready(self);
@@ -414,27 +405,15 @@ static void gst_dxinfer_class_init(GstDxInferClass *klass) {
 static gboolean gst_dxinfer_sink_event(GstPad *pad, GstObject *parent,
                                        GstEvent *event) {
     GstDxInfer *self = GST_DXINFER(parent);
-    // GST_LOG("Received event: %s", GST_EVENT_TYPE_NAME(event));
+    // g_print("Received event: %s \n", GST_EVENT_TYPE_NAME(event));
     gboolean res = TRUE;
     switch (GST_EVENT_TYPE(event)) {
     case GST_EVENT_EOS: {
-        self->_global_eos = true;
         if (!self->_secondary_mode) {
-            {
-                std::unique_lock<std::mutex> lock(self->_queue_lock);
-                self->_cv.wait(
-                    lock, [self] { return self->_buffer_queue.size() == 0; });
-                self->_cv.notify_all();
-            }
-            g_usleep(100);
-            {
-                std::unique_lock<std::mutex> lock(self->_push_lock);
-                self->_push_cv.wait(
-                    lock, [self] { return self->_push_queue.size() == 0; });
-                self->_push_cv.notify_all();
-            }
-            res = TRUE;
-            gst_event_unref(event);
+            self->_ie->Wait(self->_last_req_id);
+            self->_global_eos = true;
+            
+            self->_cv.notify_all();
         } else {
             res = gst_pad_push_event(self->_srcpad, event);
         }
@@ -449,7 +428,7 @@ static gboolean gst_dxinfer_sink_event(GstPad *pad, GstObject *parent,
                                    "application/x-dx-logical-stream-eos")) {
             int stream_id = -1;
             gst_structure_get_int(s_check, "stream-id", &stream_id);
-            self->_eos_list[stream_id] = true;
+            self->_stream_eos_arrived.insert(stream_id);
             res = TRUE;
             gst_event_unref(event);
         } else {
@@ -524,7 +503,6 @@ static void gst_dxinfer_init(GstDxInfer *self) {
     self->_ie = nullptr;
     self->_pool_size = 1;
 
-    self->_buffer_queue = std::queue<GstBuffer *>();
     self->_push_queue = std::vector<GstBuffer *>();
 
     self->_avg_latency = 0;
@@ -539,53 +517,9 @@ static void gst_dxinfer_init(GstDxInfer *self) {
     self->_qos_timestamp = 0;
     self->_qos_timediff = 0;
 
-    self->_eos_list.clear();
     self->_global_eos = false;
-    self->_global_last_buffer = nullptr;
-    self->_last_input_buffer.clear();
-}
-
-void inference_async(GstDxInfer *self, DXFrameMeta *frame_meta) {
-    if (self->_secondary_mode) {
-        int infer_objects_cnt = 0;
-        int objects_size = g_list_length(frame_meta->_object_meta_list);
-        for (int o = 0; o < objects_size; o++) {
-            DXObjectMeta *object_meta = (DXObjectMeta *)g_list_nth_data(
-                frame_meta->_object_meta_list, o);
-            auto iter = object_meta->_input_tensor.find(self->_preproc_id);
-            if (iter != object_meta->_input_tensor.end()) {
-                auto callback_input = std::make_shared<CallbackInput>(
-                    frame_meta, object_meta, self);
-                auto shared_ptr_ptr =
-                    new std::shared_ptr<CallbackInput>(callback_input);
-                object_meta->_output_memory_pool[self->_infer_id] =
-                    (MemoryPool *)&self->_pool;
-                self->_ie->Run(iter->second._data,
-                               static_cast<void *>(shared_ptr_ptr),
-                               self->_pool.allocate());
-                infer_objects_cnt++;
-            }
-        }
-    } else {
-        auto iter = frame_meta->_input_tensor.find(self->_preproc_id);
-        if (iter != frame_meta->_input_tensor.end()) {
-            auto callback_input =
-                std::make_shared<CallbackInput>(frame_meta, nullptr, self);
-            auto shared_ptr_ptr =
-                new std::shared_ptr<CallbackInput>(callback_input);
-            frame_meta->_output_memory_pool[self->_infer_id] =
-                (MemoryPool *)&self->_pool;
-            self->_last_req_id = self->_ie->RunAsync(
-                iter->second._data, static_cast<void *>(shared_ptr_ptr),
-                self->_pool.allocate());
-        } else {
-            self->_ie->Wait(self->_last_req_id);
-            std::unique_lock<std::mutex> lock(self->_push_lock);
-            if (self->_push_running) {
-                self->_push_queue.push_back(frame_meta->_buf);
-            }
-        }
-    }
+    self->_stream_eos_arrived.clear();
+    self->_stream_pending_buffers = std::map<int, int>();
 }
 
 gint64 calculate_average(GQueue *queue) {
@@ -608,68 +542,38 @@ gint64 calculate_average(GQueue *queue) {
     return (gint)(sum / count);
 }
 
-void send_logical_eos(GstDxInfer *self, GstBuffer *push_buf) {
-    DXFrameMeta *frame_meta =
-        (DXFrameMeta *)gst_buffer_get_meta(push_buf, DX_FRAME_META_API_TYPE);
-    if (!frame_meta) {
-        GST_ERROR_OBJECT(self, "No DXFrameMeta in GstBuffer \n");
-        return;
+void push_logical_eos(GstDxInfer *self, int stream_id) {
+    GstStructure *s =
+        gst_structure_new("application/x-dx-logical-stream-eos", "stream-id",
+                          G_TYPE_INT, stream_id, NULL);
+    GstEvent *logical_eos_event =
+        gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM, s);
+    gboolean res = gst_pad_push_event(self->_srcpad, logical_eos_event);
+    if (!res) {
+        gst_event_unref(logical_eos_event);
     }
-    if (self->_eos_list.find(frame_meta->_stream_id) != self->_eos_list.end() &&
-        self->_eos_list[frame_meta->_stream_id]) {
-        void *last_buffer = nullptr;
-        {
-            std::unique_lock<std::mutex> lock(self->_eos_lock);
-            if (self->_last_input_buffer.find(frame_meta->_stream_id) !=
-                self->_last_input_buffer.end()) {
-                last_buffer = self->_last_input_buffer[frame_meta->_stream_id];
-            }
-        }
-        if (last_buffer == push_buf) {
-            GstStructure *s = gst_structure_new(
-                "application/x-dx-logical-stream-eos", "stream-id", G_TYPE_INT,
-                frame_meta->_stream_id, NULL);
-            GstEvent *logical_eos_event =
-                gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM, s);
-            gboolean res = gst_pad_push_event(self->_srcpad, logical_eos_event);
-            if (!res) {
-                gst_event_unref(logical_eos_event);
-            }
-            self->_eos_list[frame_meta->_stream_id] = false;
-        }
-    }
-    return;
 }
 
 static gpointer push_thread_func(GstDxInfer *self) {
-    GstBuffer *last_pushed_buffer = nullptr;
     while (self->_push_running) {
         GstBuffer *push_buf = nullptr;
         {
             std::unique_lock<std::mutex> lock(self->_push_lock);
-            self->_push_cv.wait(lock, [self] {
-                return !self->_push_running || self->_global_eos ||
-                       self->_push_queue.size() >= MAX_PUSH_QUEUE_SIZE;
+            self->_cv.wait(lock, [self] {
+                return self->_global_eos || !self->_push_running ||
+                       !self->_push_queue.empty();
             });
 
-            if (!self->_push_running) {
-                self->_push_cv.notify_all();
-                break;
-            }
-
-            if (self->_global_eos && self->_push_queue.size() == 0 &&
-                last_pushed_buffer == self->_global_last_buffer) {
+            if (self->_global_eos && self->_push_queue.size() == 0) {
                 GstEvent *eos_event = gst_event_new_eos();
                 if (!gst_pad_push_event(self->_srcpad, eos_event)) {
                     GST_ERROR_OBJECT(self, "Failed to push EOS Event\n");
                 }
-                self->_push_cv.notify_all();
                 break;
             }
 
-            if (self->_push_queue.size() == 0) {
-                self->_push_cv.notify_all();
-                continue;
+            if (!self->_push_running && self->_push_queue.size() == 0) {
+                break;
             }
 
             auto smallest_it = std::min_element(
@@ -679,8 +583,11 @@ static gpointer push_thread_func(GstDxInfer *self) {
                 });
             push_buf = *smallest_it;
             self->_push_queue.erase(smallest_it);
-            self->_push_cv.notify_all();
+            self->_cv.notify_all();
         }
+
+        DXFrameMeta *frame_meta = (DXFrameMeta *)gst_buffer_get_meta(
+            push_buf, DX_FRAME_META_API_TYPE);
 
         if (push_buf) {
             GstFlowReturn ret = gst_pad_push(self->_srcpad, push_buf);
@@ -688,10 +595,20 @@ static gpointer push_thread_func(GstDxInfer *self) {
                 GST_ERROR_OBJECT(self, "Failed to push buffer:%d\n ", ret);
                 break;
             }
-            last_pushed_buffer = push_buf;
-            send_logical_eos(self, push_buf);
+
+            {
+                std::unique_lock<std::mutex> lock(self->_eos_lock);
+                self->_stream_pending_buffers[frame_meta->_stream_id] -= 1;
+                if (self->_stream_eos_arrived.count(frame_meta->_stream_id) &&
+                    self->_stream_pending_buffers[frame_meta->_stream_id] ==
+                        0) {
+                    self->_stream_eos_arrived.erase(frame_meta->_stream_id);
+                    push_logical_eos(self, frame_meta->_stream_id);
+                }
+            }
         }
     }
+    self->_cv.notify_all();
     return nullptr;
 }
 
@@ -731,101 +648,109 @@ static bool should_drop_buffer_due_to_throttling(GstDxInfer *self,
     return false;
 }
 
-static gpointer inference_thread_func(GstDxInfer *self) {
-    while (self->_running) {
-        GstBuffer *buf = nullptr;
-        {
-            std::unique_lock<std::mutex> lock(self->_queue_lock);
-            self->_cv.wait(lock, [self] {
-                return self->_global_eos || !self->_running ||
-                       !self->_buffer_queue.empty();
-            });
-            if (self->_global_eos && self->_buffer_queue.empty()) {
-                break;
-            }
-            if (!self->_running) {
-                break;
-            }
-            buf = self->_buffer_queue.front();
-            self->_buffer_queue.pop();
-            self->_cv.notify_all();
-        }
-
-        if (!buf) {
-            continue;
-        }
-
-        if (should_drop_buffer_due_to_qos(self, buf)) {
-            gst_buffer_unref(buf);
-            continue;
-        }
-
-        if (should_drop_buffer_due_to_throttling(self, buf)) {
-            gst_buffer_unref(buf);
-            continue;
-        }
-
-        DXFrameMeta *frame_meta =
-            (DXFrameMeta *)gst_buffer_get_meta(buf, DX_FRAME_META_API_TYPE);
-
-        self->_global_last_buffer = buf;
-
-        inference_async(self, frame_meta);
-
-        gint64 latency = (gint64)self->_ie->GetLatency();
-
-        if (g_queue_get_length(self->_recent_latencies) == 10) {
-            g_queue_pop_head(self->_recent_latencies);
-        }
-        g_queue_push_tail(self->_recent_latencies, GINT_TO_POINTER(latency));
-        self->_avg_latency = calculate_average(self->_recent_latencies);
-    }
-    self->_cv.notify_all();
-    return nullptr;
-}
-
 static GstFlowReturn gst_dxinfer_chain(GstPad *pad, GstObject *parent,
                                        GstBuffer *buf) {
     GstDxInfer *self = GST_DXINFER(parent);
 
+    if (should_drop_buffer_due_to_qos(self, buf)) {
+        gst_buffer_unref(buf);
+        return GST_FLOW_OK;
+    }
+
+    if (should_drop_buffer_due_to_throttling(self, buf)) {
+        gst_buffer_unref(buf);
+        return GST_FLOW_OK;
+    }
+
+    gint64 latency = (gint64)self->_ie->GetLatency();
+
+    if (g_queue_get_length(self->_recent_latencies) == 10) {
+        g_queue_pop_head(self->_recent_latencies);
+    }
+    g_queue_push_tail(self->_recent_latencies, GINT_TO_POINTER(latency));
+    self->_avg_latency = calculate_average(self->_recent_latencies);
+
     DXFrameMeta *frame_meta =
         (DXFrameMeta *)gst_buffer_get_meta(buf, DX_FRAME_META_API_TYPE);
+
     if (!frame_meta) {
         GST_ERROR_OBJECT(self, "No DXFrameMeta in GstBuffer \n");
         return GST_FLOW_ERROR;
     }
+
     {
         std::unique_lock<std::mutex> lock(self->_eos_lock);
-        self->_last_input_buffer[frame_meta->_stream_id] = buf;
+        self->_stream_pending_buffers[frame_meta->_stream_id]++;
     }
+
     if (self->_secondary_mode) {
-        inference_async(self, frame_meta);
+        int objects_size = g_list_length(frame_meta->_object_meta_list);
+        for (int o = 0; o < objects_size; o++) {
+            DXObjectMeta *object_meta = (DXObjectMeta *)g_list_nth_data(
+                frame_meta->_object_meta_list, o);
+            auto iter = object_meta->_input_tensor.find(self->_preproc_id);
+            if (iter != object_meta->_input_tensor.end()) {
+                auto callback_input = std::make_shared<CallbackInput>(
+                    frame_meta, object_meta, self);
+                auto shared_ptr_ptr =
+                    new std::shared_ptr<CallbackInput>(callback_input);
+                object_meta->_output_memory_pool[self->_infer_id] =
+                    (MemoryPool *)&self->_pool;
+                self->_ie->Run(iter->second._data,
+                               static_cast<void *>(shared_ptr_ptr),
+                               self->_pool.allocate());
+            }
+        }
+
         GstFlowReturn ret = gst_pad_push(self->_srcpad, buf);
         if (ret != GST_FLOW_OK) {
             GST_ERROR_OBJECT(self, "Failed to push buffer:%d\n ", ret);
         }
 
-        send_logical_eos(self, buf);
-
-        if (self->_global_eos) {
-            GstEvent *eos_event = gst_event_new_eos();
-            if (!gst_pad_push_event(self->_srcpad, eos_event)) {
-                GST_ERROR_OBJECT(self, "Failed to push EOS Event\n");
+        {
+            std::unique_lock<std::mutex> lock(self->_eos_lock);
+            self->_stream_pending_buffers[frame_meta->_stream_id] -= 1;
+            if (self->_stream_eos_arrived.count(frame_meta->_stream_id) &&
+                self->_stream_pending_buffers[frame_meta->_stream_id] == 0) {
+                self->_stream_eos_arrived.erase(frame_meta->_stream_id);
+                push_logical_eos(self, frame_meta->_stream_id);
             }
         }
+
         return ret;
     } else {
         {
-            std::unique_lock<std::mutex> lock(self->_queue_lock);
+            std::unique_lock<std::mutex> lock(self->_push_lock);
             self->_cv.wait(lock, [self] {
-                return self->_buffer_queue.size() < MAX_BUFFER_QUEUE_SIZE;
+                return self->_global_eos || !self->_push_running ||
+                       self->_push_queue.size() <= MAX_PUSH_QUEUE_SIZE;
             });
-            if (self->_running) {
-                self->_buffer_queue.push(buf);
-            }
             self->_cv.notify_all();
         }
-    }
 
+        if (!self->_push_running) {
+            gst_buffer_unref(buf);
+            return GST_FLOW_OK;
+        }
+
+        auto iter = frame_meta->_input_tensor.find(self->_preproc_id);
+        if (iter != frame_meta->_input_tensor.end()) {
+            auto callback_input =
+                std::make_shared<CallbackInput>(frame_meta, nullptr, self);
+            auto shared_ptr_ptr =
+                new std::shared_ptr<CallbackInput>(callback_input);
+            frame_meta->_output_memory_pool[self->_infer_id] =
+                (MemoryPool *)&self->_pool;
+            self->_last_req_id = self->_ie->RunAsync(
+                iter->second._data, static_cast<void *>(shared_ptr_ptr),
+                self->_pool.allocate());
+        } else {
+            self->_ie->Wait(self->_last_req_id);
+            std::unique_lock<std::mutex> lock(self->_push_lock);
+            if (self->_push_running) {
+                self->_push_queue.push_back(frame_meta->_buf);
+            }
+        }
+    }
     return GST_FLOW_OK;
 }

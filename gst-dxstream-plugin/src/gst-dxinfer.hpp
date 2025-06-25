@@ -6,17 +6,18 @@
 #include <condition_variable>
 #include <dxrt/dxrt_api.h>
 #include <gst/gst.h>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <queue>
+#include <set>
 
 G_BEGIN_DECLS
 
 #define GST_TYPE_DXINFER (gst_dxinfer_get_type())
 G_DECLARE_FINAL_TYPE(GstDxInfer, gst_dxinfer, GST, DXINFER, GstElement)
 
-const int MAX_BUFFER_QUEUE_SIZE = 5;
-const int MAX_PUSH_QUEUE_SIZE = 3;
+const int MAX_PUSH_QUEUE_SIZE = 5;
 
 typedef struct _GstDxInfer {
     GstElement _parent_instance;
@@ -33,25 +34,16 @@ typedef struct _GstDxInfer {
     int _last_req_id;
     int _infer_count;
 
-    GThread *_thread;
-    gboolean _running;
-    std::queue<GstBuffer *> _buffer_queue;
-    std::mutex _queue_lock;
-
     GThread *_push_thread;
     gboolean _push_running;
     std::vector<GstBuffer *> _push_queue;
-    std::vector<GstBuffer *> _skip_queue;
     std::mutex _push_lock;
-
     std::condition_variable _cv;
-    std::condition_variable _push_cv;
 
     std::mutex _eos_lock;
     bool _global_eos;
-    void *_global_last_buffer;
-    std::map<int, bool> _eos_list;
-    std::map<int, void *> _last_input_buffer;
+    std::set<int> _stream_eos_arrived;
+    std::map<int, int> _stream_pending_buffers;
 
     MemoryPool _pool;
     guint _pool_size;

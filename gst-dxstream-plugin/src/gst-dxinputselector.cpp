@@ -104,6 +104,13 @@ dxinputselector_change_state(GstElement *element, GstStateChange transition) {
             self->_push_cv.notify_all();
         }
         g_thread_join(self->_thread);
+
+        for (auto &pair : self->_buffer_queue) {
+            if (pair.second) {
+                gst_buffer_unref(pair.second);
+                pair.second = nullptr;
+            }
+        }
     } break;
     case GST_STATE_CHANGE_READY_TO_NULL:
         break;
@@ -354,8 +361,12 @@ static GstFlowReturn gst_dxinputselector_chain(GstPad *pad, GstObject *parent,
     {
         std::unique_lock<std::mutex> lock(self->_buffer_lock);
         self->_aquire_cv.wait(lock, [self, stream_id]() {
-            return self->_buffer_queue[stream_id] == nullptr;
+            return !self->_running || self->_buffer_queue[stream_id] == nullptr;
         });
+        if (!self->_running) {
+            gst_buffer_unref(buf);
+            return GST_FLOW_OK;
+        }
         self->_buffer_queue[stream_id] = buf;
         self->_push_cv.notify_one();
     }

@@ -98,6 +98,20 @@ setup_assets() {
     else
         echo -e "${TAG_INFO} Video directory found. ($VIDEO_REAL_PATH)"
     fi
+
+    TARGET_VIDEO_NAME="crowded_in_subway.mp4"
+    TARGET_VIDEO_PATH="${VIDEO_PATH}/${TARGET_VIDEO_NAME}"
+
+    if [ -f "$TARGET_VIDEO_PATH" ]; then
+        rm -f "$TARGET_VIDEO_PATH"
+        if [ $? -eq 0 ]; then
+            echo -e "${TAG_INFO} ${TARGET_VIDEO_NAME} deleted."
+        else
+            echo -e "${TAG_ERR} ${TARGET_VIDEO_NAME} deletion failed."
+        fi
+    else
+        echo -e "${TAG_INFO} ${TARGET_VIDEO_NAME} not found."
+    fi
 }
 
 main() {
