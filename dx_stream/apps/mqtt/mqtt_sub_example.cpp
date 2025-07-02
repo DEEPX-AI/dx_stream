@@ -1,3 +1,4 @@
+#include <cstdio>
 #include <mosquitto.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,7 +22,7 @@ void on_connect(struct mosquitto *mosq, void *obj, int reason_code) {
         mosquitto_disconnect(mosq);
     }
 
-    rc = mosquitto_subscribe(mosq, NULL, myData->topic, 0);
+    rc = mosquitto_subscribe(mosq, nullptr, myData->topic, 0);
     if (rc != MOSQ_ERR_SUCCESS) {
         fprintf(stderr, "Error subscribing: %s\n", mosquitto_strerror(rc));
         mosquitto_disconnect(mosq);
@@ -54,8 +55,7 @@ void on_message(struct mosquitto *mosq, void *obj,
     // printf("%s %d %s\n", msg->topic, msg->qos, (char *)msg->payload);
     JsonParser *parser;
     JsonNode *root;
-    JsonObject *object;
-    GError *error = NULL;
+    GError *error = nullptr;
 
     parser = json_parser_new();
     if (!json_parser_load_from_data(parser, payload, -1, &error)) {
@@ -67,22 +67,20 @@ void on_message(struct mosquitto *mosq, void *obj,
 
     root = json_parser_get_root(parser);
     if (JSON_NODE_HOLDS_OBJECT(root)) {
-        object = json_node_get_object(root);
         /* print whole json */
-        if (1) {
-            char *formatted = json_to_string(root, true);
-            printf("Received JSON payload: %s\n", formatted);
-            g_free(formatted);
-        }
+        char *formatted = json_to_string(root, true);
+        printf("Received JSON payload: %s\n", formatted);
+        g_free(formatted);
 
-        /* print only seqId */
-        if (0 && json_object_has_member(object, "seqId")) {
-            JsonNode *seqId_node = json_object_get_member(object, "seqId");
-            if (JSON_NODE_HOLDS_VALUE(seqId_node)) {
-                int seqId = json_node_get_int(seqId_node);
-                printf("seqId: %d\n", seqId);
-            }
-        }
+        // /* print only seqId */
+        // JsonObject *object = json_node_get_object(root);
+        // if (0 && json_object_has_member(object, "seqId")) {
+        //     JsonNode *seqId_node = json_object_get_member(object, "seqId");
+        //     if (JSON_NODE_HOLDS_VALUE(seqId_node)) {
+        //         int seqId = json_node_get_int(seqId_node);
+        //         printf("seqId: %d\n", seqId);
+        //     }
+        // }
     } else {
         fprintf(stderr, "Received payload is not a JSON object.\n");
     }
@@ -99,8 +97,8 @@ bool parse_args(int argc, char *argv[], char **hostname, char **topic,
     int opt;
     bool ret = true;
 
-    *hostname = NULL;
-    *topic = NULL;
+    *hostname = nullptr;
+    *topic = nullptr;
     *port = 1883; // default port
 
     while ((opt = getopt(argc, argv, "h:t:p:")) != -1) {
@@ -120,7 +118,7 @@ bool parse_args(int argc, char *argv[], char **hostname, char **topic,
         }
     }
 
-    if (*hostname == NULL || *topic == NULL) {
+    if (*hostname == nullptr || *topic == nullptr) {
         print_usage();
         ret = false;
     }
@@ -142,13 +140,13 @@ int main(int argc, char *argv[]) {
 
     mosquitto_lib_init();
 
-    mosq = mosquitto_new(NULL, true, NULL);
-    if (mosq == NULL) {
+    mosq = mosquitto_new(nullptr, true, nullptr);
+    if (mosq == nullptr) {
         fprintf(stderr, "Error: Out of memory.\n");
         return 1;
     }
 
-    strncpy(data.topic, topic, sizeof(data.topic) - 1);
+    snprintf(data.topic, sizeof(data.topic), "%s", topic);
     data.topic[sizeof(data.topic) - 1] = '\0';
     mosquitto_user_data_set(mosq, &data);
 

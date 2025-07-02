@@ -6,21 +6,25 @@
 #include <condition_variable>
 #include <dxrt/dxrt_api.h>
 #include <gst/gst.h>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <queue>
+#include <set>
 
 G_BEGIN_DECLS
 
 #define GST_TYPE_DXINFER (gst_dxinfer_get_type())
 G_DECLARE_FINAL_TYPE(GstDxInfer, gst_dxinfer, GST, DXINFER, GstElement)
 
-const int MAX_QUEUE_SIZE = 10;
+const int MAX_PUSH_QUEUE_SIZE = 5;
 
 typedef struct _GstDxInfer {
     GstElement _parent_instance;
     GstPad *_srcpad;
+
     guint _preproc_id;
+    guint _infer_id;
 
     gboolean _secondary_mode;
     gchar *_model_path;
@@ -28,25 +32,18 @@ typedef struct _GstDxInfer {
 
     std::shared_ptr<dxrt::InferenceEngine> _ie;
     int _last_req_id;
-
-    GThread *_thread;
-    gboolean _running;
-    std::queue<GstBuffer *> _buffer_queue;
-    std::mutex _queue_lock;
+    int _infer_count;
 
     GThread *_push_thread;
     gboolean _push_running;
     std::vector<GstBuffer *> _push_queue;
     std::mutex _push_lock;
-
     std::condition_variable _cv;
-    std::condition_variable _push_cv;
 
-    gchar *_library_file_path;
-    gchar *_function_name;
-    void *_library_handle;
-    void (*_postproc_function)(std::vector<shared_ptr<dxrt::Tensor>>,
-                               DXFrameMeta *, DXObjectMeta *);
+    std::mutex _eos_lock;
+    bool _global_eos;
+    std::set<int> _stream_eos_arrived;
+    std::map<int, int> _stream_pending_buffers;
 
     MemoryPool _pool;
     guint _pool_size;
@@ -62,6 +59,9 @@ typedef struct _GstDxInfer {
     GstClockTimeDiff _qos_timediff;
 
     guint _buffer_cnt;
+
+    std::chrono::time_point<std::chrono::high_resolution_clock> _start_time;
+    guint _frame_count_for_fps;
 
 } GstDxInfer;
 

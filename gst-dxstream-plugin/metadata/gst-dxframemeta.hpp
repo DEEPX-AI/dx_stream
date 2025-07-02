@@ -6,7 +6,6 @@
 #include <glib.h>
 #include <gst/gst.h>
 #include <map>
-#include <opencv2/opencv.hpp>
 #include <vector>
 
 G_BEGIN_DECLS
@@ -26,21 +25,24 @@ struct _DXFrameMeta {
     gint _height;
     const gchar *_format;
     const gchar *_name;
-
-    cv::Mat _rgb_surface;
-
     gfloat _frame_rate;
 
     int _roi[4];
 
     GList *_object_meta_list;
 
-    MemoryPool *_surface_pool;
-
     std::map<int, MemoryPool *> _input_memory_pool;
+    std::map<int, MemoryPool *> _output_memory_pool;
 
-    std::map<int, dxs::DXNetworkInput> _input_tensor;
-    std::map<int, std::map<void *, dxs::DXNetworkInput>> _input_object_tensor;
+    std::map<int, dxs::DXTensor> _input_tensor;
+    std::map<int, std::vector<dxs::DXTensor>> _output_tensor;
+
+    // std::map<int, dxs::DXNetworkInput> _input_tensor;
+    // std::map<int, std::map<void *, dxs::DXNetworkInput>>
+    // _input_object_tensor;
+
+    // std::map<int, dxrt::TensorPtrs> _output_tensor;
+    // std::map<int, std::map<void *, dxrt::TensorPtrs>> _output_object_tensor;
 };
 
 GType dx_frame_meta_api_get_type(void);

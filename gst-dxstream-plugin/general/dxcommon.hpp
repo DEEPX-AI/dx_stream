@@ -9,12 +9,12 @@
 namespace dxs {
 
 struct SegClsMap {
-    unsigned char *data;
-    int width;
-    int height;
+    std::vector<unsigned char> data;
+    int width = 0;
+    int height = 0;
 
-    SegClsMap() : data(nullptr), width(0), height(0) {}
-    ~SegClsMap() {}
+    SegClsMap() = default;
+    ~SegClsMap() = default;
 };
 
 template <typename _T> struct Point_ {
@@ -44,33 +44,89 @@ template <typename _T> struct Point_ {
 typedef Point_<int> Point;
 typedef Point_<float> Point_f;
 
-typedef struct _DXNetworkInput {
-    uint8_t *_data;
-    size_t _element_size;
+enum DataType {
+    NONE_TYPE = 0,
+    FLOAT,  ///< 32bit float
+    UINT8,  ///< 8bit unsigned integer
+    INT8,   ///< 8bit signed integer
+    UINT16, ///< 16it unsigned integer
+    INT16,  ///< 16bit signed integer
+    INT32,  ///< 32bit signed integer
+    INT64,  ///< 64bit signed integer
+    UINT32, ///< 32bit unsigned integer
+    UINT64, ///< 64bit unsigned integer
+    BBOX,   ///< custom structure for bounding boxes from device
+    FACE,   ///< custom structure for faces from device
+    POSE,   ///< custom structure for poses boxes from device
+    MAX_TYPE,
+};
 
-    _DXNetworkInput() : _data(nullptr), _element_size(0) {}
+typedef struct _DeviceBoundingBox {
+    float x;
+    float y;
+    float w;
+    float h;
+    uint8_t grid_y;
+    uint8_t grid_x;
+    uint8_t box_idx;
+    uint8_t layer_idx;
+    float score;
+    uint32_t label;
+    char padding[4];
+} DeviceBoundingBox_t;
 
-    _DXNetworkInput(size_t _size, void *_ptr) : _element_size(_size) {
-        _data = static_cast<uint8_t *>(_ptr);
-    }
+/// @cond
+/** \brief face detection data format from device
+ * \headerfile "dxrt/dxrt_api.h"
+ */
+/// @endcond
+typedef struct _DeviceFace {
+    float x;
+    float y;
+    float w;
+    float h;
+    uint8_t grid_y;
+    uint8_t grid_x;
+    uint8_t box_idx;
+    uint8_t layer_idx;
+    float score;
+    float kpts[5][2];
+} DeviceFace_t;
 
-    _DXNetworkInput(const _DXNetworkInput &other)
-        : _element_size(other._element_size), _data(other._data) {}
+/// @cond
+/** \brief pose estimation data format from device
+ * \headerfile "dxrt/dxrt_api.h"
+ */
+/// @endcond
+typedef struct _DevicePose {
+    float x;
+    float y;
+    float w;
+    float h;
+    uint8_t grid_y;
+    uint8_t grid_x;
+    uint8_t box_idx;
+    uint8_t layer_idx;
+    float score;
+    uint32_t label;
+    float kpts[17][3];
+    char padding[24];
+} DevicePose_t;
 
-    _DXNetworkInput &operator=(const _DXNetworkInput &other) {
-        _element_size = other._element_size;
-        _data = other._data;
-        return *this;
-    }
+typedef struct _DXTensor {
+    std::string _name;
+    std::vector<int64_t> _shape;
+    uint64_t _phyAddr = 0;
+    void *_data = nullptr;
+    uint32_t _elemSize = 0;
+    DataType _type = dxs::DataType::NONE_TYPE;
 
-    ~_DXNetworkInput() {
-        if (_data) {
-            _data = nullptr;
-        }
-        _element_size = 0;
-    }
+    _DXTensor() = default;
+    _DXTensor(const _DXTensor &) = default;
+    _DXTensor &operator=(const _DXTensor &) = default;
+    ~_DXTensor() = default;
+} DXTensor;
 
-} DXNetworkInput;
 } // namespace dxs
 
 #endif /* DXCOMMON_H */

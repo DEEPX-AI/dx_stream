@@ -1,7 +1,6 @@
 {
     "preprocess_id": 3,
-    "model_path" : "./dx_stream/samples/models/osnet_x0_5_market_256x128.dxnn",
+    "inference_id": 3,
     "secondary_mode": true,
-    "library_file_path": "/usr/share/dx-stream/lib/libpostprocess_reid.so",
-    "function_name": "PostProcess"
+    "model_path" : "./dx_stream/samples/models/osnet_x0_5_market_256x128.dxnn"
 }

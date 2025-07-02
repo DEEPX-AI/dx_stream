@@ -1,12 +1,23 @@
 #ifndef GST_DXPREPROCESS_H
 #define GST_DXPREPROCESS_H
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include "dxcommon.hpp"
 #include "gst-dxmeta.hpp"
 #include "memory_pool.hpp"
 #include <gst/base/gstbasetransform.h>
 #include <gst/gst.h>
 #include <opencv2/opencv.hpp>
+
+#ifdef HAVE_LIBRGA
+#include "rga/RgaUtils.h"
+#include "rga/im2d.hpp"
+#else
+#include "libyuv_transform/libyuv_transform.hpp"
+#endif
 
 G_BEGIN_DECLS
 
@@ -18,7 +29,6 @@ struct _GstDxPreprocess {
     GstBaseTransform _parent_instance;
 
     MemoryPool _pool;
-    std::map<int, MemoryPool> _surface_pool;
 
     guint _pool_size;
     gchar *_config_file_path;
@@ -34,6 +44,8 @@ struct _GstDxPreprocess {
     guint _pad_value;
     guint _align_factor;
 
+    void *_temp_output_buffer;
+
     gboolean _secondary_mode;
     gint _target_class_id;
     guint _min_object_width;
@@ -42,7 +54,9 @@ struct _GstDxPreprocess {
     int _roi[4];
 
     guint _interval;
-    guint _cnt;
+    std::map<int, guint> _cnt;
+    guint _frame_count_for_fps;
+    double _acc_fps;
 
     GstClockTime _qos_timestamp;
     GstClockTimeDiff _qos_timediff;
@@ -51,7 +65,14 @@ struct _GstDxPreprocess {
     std::map<int, std::map<int, int>> _track_cnt;
 
     void *_library_handle;
-    void (*_process_function)(cv::Mat, dxs::DXNetworkInput &, DXObjectMeta *);
+    bool (*_process_function)(DXFrameMeta *, DXObjectMeta *, void *);
+
+#ifdef HAVE_LIBRGA
+#else
+    std::map<int, uint8_t *> _crop_frame;
+    std::map<int, uint8_t *> _convert_frame;
+    std::map<int, uint8_t *> _resized_frame;
+#endif
 };
 
 G_END_DECLS

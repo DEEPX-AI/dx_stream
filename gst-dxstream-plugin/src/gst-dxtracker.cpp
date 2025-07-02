@@ -1,15 +1,10 @@
 #include "gst-dxtracker.hpp"
 #include "TrackerFactory.hpp"
 #include "gst-dxmeta.hpp"
-#include "utils.hpp"
 #include <glib.h>
 #include <json-glib/json-glib.h>
 
 enum { PROP_0, PROP_CONFIG_FILE_PATH, PROP_TRACKER_NAME, N_PROPERTIES };
-
-static GParamSpec *obj_properties[N_PROPERTIES] = {
-    NULL,
-};
 
 GST_DEBUG_CATEGORY_STATIC(gst_dxtracker_debug_category);
 #define GST_CAT_DEFAULT gst_dxtracker_debug_category
@@ -24,66 +19,83 @@ G_DEFINE_TYPE_WITH_CODE(
     GST_DEBUG_CATEGORY_INIT(gst_dxtracker_debug_category, "gst-dxtracker", 0,
                             "debug category for gst-dxtracker element"))
 
-static GstElementClass *parent_class = NULL;
+static GstElementClass *parent_class = nullptr;
+
+static void process_param(GstDxTracker *self, JsonObject *params,
+                          const gchar *key) {
+    JsonNode *value_node = json_object_get_member(params, key);
+    GType value_type = json_node_get_value_type(value_node);
+    gchar *value_str = nullptr;
+
+    g_print("Processing key: %s, Type: %s\n", key, g_type_name(value_type));
+
+    switch (value_type) {
+    case G_TYPE_STRING:
+        value_str = g_strdup(json_node_get_string(value_node));
+        break;
+    case G_TYPE_INT:
+    case G_TYPE_INT64:
+        value_str = g_strdup_printf("%ld", json_node_get_int(value_node));
+        break;
+    case G_TYPE_FLOAT:
+    case G_TYPE_DOUBLE:
+        value_str = g_strdup_printf("%f", json_node_get_double(value_node));
+        break;
+    case G_TYPE_BOOLEAN:
+        value_str =
+            g_strdup(json_node_get_boolean(value_node) ? "true" : "false");
+        break;
+    default:
+        return; // 지원하지 않는 타입은 무시
+    }
+
+    if (value_str) {
+        self->_params[std::string(key)] = std::string(value_str);
+        g_free(value_str);
+    }
+}
 
 static void parse_config(GstDxTracker *self) {
-    if (g_file_test(self->_config_file_path, G_FILE_TEST_EXISTS)) {
-        JsonParser *parser = json_parser_new();
-        GError *error = NULL;
-        if (json_parser_load_from_file(parser, self->_config_file_path,
-                                       &error)) {
-            JsonNode *node = json_parser_get_root(parser);
-            JsonObject *object = json_node_get_object(node);
-
-            if (json_object_has_member(object, "tracker_name")) {
-                const gchar *tracker_name =
-                    json_object_get_string_member(object, "tracker_name");
-                g_object_set(self, "tracker-name", tracker_name, NULL);
-            }
-            if (json_object_has_member(object, "params")) {
-                JsonObject *params =
-                    json_object_get_object_member(object, "params");
-
-                GList *members = json_object_get_members(params);
-                for (GList *l = members; l != nullptr; l = l->next) {
-                    const gchar *key = static_cast<const gchar *>(l->data);
-                    JsonNode *tmp_node = json_object_get_member(params, key);
-                    gchar *value_str = nullptr;
-
-                    GType value_type = json_node_get_value_type(tmp_node);
-
-                    g_print("Processing key: %s, Type: %s\n", key,
-                            g_type_name(value_type));
-
-                    if (value_type == G_TYPE_STRING) {
-                        value_str = g_strdup(json_node_get_string(tmp_node));
-                    } else if (value_type == G_TYPE_INT ||
-                               value_type == G_TYPE_INT64) {
-                        value_str =
-                            g_strdup_printf("%d", json_node_get_int(tmp_node));
-                    } else if (value_type == G_TYPE_FLOAT ||
-                               value_type == G_TYPE_DOUBLE) {
-                        value_str = g_strdup_printf(
-                            "%f", json_node_get_double(tmp_node));
-                    } else if (value_type == G_TYPE_BOOLEAN) {
-                        value_str = g_strdup(
-                            json_node_get_boolean(tmp_node) ? "true" : "false");
-                    }
-
-                    if (value_str != nullptr) {
-                        std::string key_string(key);
-                        std::string value_string(value_str);
-                        self->_params[key_string] = value_string;
-                        g_free(value_str);
-                    }
-                }
-                g_list_free(members);
-            }
-            g_object_unref(parser);
-        }
-    } else {
+    if (!g_file_test(self->_config_file_path, G_FILE_TEST_EXISTS)) {
         g_print("Config file does not exist: %s\n", self->_config_file_path);
+        return;
     }
+
+    JsonParser *parser = json_parser_new();
+    GError *error = nullptr;
+
+    if (!json_parser_load_from_file(parser, self->_config_file_path, &error)) {
+        g_print("Failed to parse config file: %s\n",
+                error ? error->message : "unknown error");
+        g_error_free(error);
+        g_object_unref(parser);
+        return;
+    }
+
+    JsonNode *root_node = json_parser_get_root(parser);
+    JsonObject *root_object = json_node_get_object(root_node);
+
+    if (json_object_has_member(root_object, "tracker_name")) {
+        const gchar *tracker_name =
+            json_object_get_string_member(root_object, "tracker_name");
+        g_object_set(self, "tracker-name", tracker_name, nullptr);
+    }
+
+    if (!json_object_has_member(root_object, "params")) {
+        g_object_unref(parser);
+        return;
+    }
+
+    JsonObject *params_object =
+        json_object_get_object_member(root_object, "params");
+    GList *keys = json_object_get_members(params_object);
+
+    for (GList *iter = keys; iter != nullptr; iter = iter->next) {
+        const gchar *key = static_cast<const gchar *>(iter->data);
+        process_param(self, params_object, key);
+    }
+    g_list_free(keys);
+    g_object_unref(parser);
 }
 
 static void dxtracker_set_property(GObject *object, guint property_id,
@@ -141,8 +153,9 @@ static void dxtracker_dispose(GObject *object) {
     GstDxTracker *self = GST_DXTRACKER(object);
     if (self->_config_file_path) {
         g_free(self->_config_file_path);
-        self->_config_file_path = NULL;
+        self->_config_file_path = nullptr;
     }
+    g_free(self->_tracker_name);
 
     G_OBJECT_CLASS(parent_class)->dispose(object);
 }
@@ -156,15 +169,19 @@ static void gst_dxtracker_class_init(GstDxTrackerClass *klass) {
     gobject_class->get_property = dxtracker_get_property;
     gobject_class->dispose = dxtracker_dispose;
 
+    static GParamSpec *obj_properties[N_PROPERTIES] = {
+        nullptr,
+    };
+
     obj_properties[PROP_CONFIG_FILE_PATH] =
         g_param_spec_string("config-file-path", "Config File Path",
                             "Path to the JSON config file containing the "
                             "tracking algorithm and parameters.",
-                            NULL, G_PARAM_READWRITE);
+                            nullptr, G_PARAM_READWRITE);
 
     obj_properties[PROP_TRACKER_NAME] = g_param_spec_string(
         "tracker-name", "Tracker Name",
-        "Specifies the name of the tracking algorithm to use.", NULL,
+        "Specifies the name of the tracking algorithm to use.", nullptr,
         G_PARAM_READWRITE);
 
     g_object_class_install_properties(gobject_class, N_PROPERTIES,
@@ -195,8 +212,8 @@ static void gst_dxtracker_class_init(GstDxTrackerClass *klass) {
 }
 
 static void gst_dxtracker_init(GstDxTracker *self) {
-    self->_config_file_path = NULL;
-    self->_tracker_name = "OC_SORT";
+    self->_config_file_path = nullptr;
+    self->_tracker_name = g_strdup("OC_SORT");
     self->_first_frame_processed = FALSE;
     self->_params.clear();
     self->_trackers.clear();
@@ -219,8 +236,8 @@ Vector2Matrix(std::vector<std::vector<float>> data) {
     Eigen::Matrix<float, Eigen::Dynamic, 7> matrix(data.size(), data[0].size());
 
     // Iterate over the rows and columns of the data vector
-    for (int i = 0; i < data.size(); ++i) {
-        for (int j = 0; j < data[0].size(); ++j) {
+    for (size_t i = 0; i < (size_t)data.size(); ++i) {
+        for (size_t j = 0; j < (size_t)data[0].size(); ++j) {
             // Assign the value at position (i, j) of the matrix to the
             // corresponding value from the data vector
             matrix(i, j) = data[i][j];
@@ -291,7 +308,8 @@ static GstFlowReturn gst_dxtracker_transform_ip(GstBaseTransform *trans,
     DXFrameMeta *frame_meta =
         (DXFrameMeta *)gst_buffer_get_meta(buf, DX_FRAME_META_API_TYPE);
     if (!frame_meta) {
-        g_error("No DXFrameMeta in GstBuffer \n");
+        GST_WARNING_OBJECT(self, "No DXFrameMeta in GstBuffer \n");
+        return GST_FLOW_OK;
     }
     track(self, frame_meta, buf);
 

@@ -19,10 +19,18 @@ INPUT_VIDEO_PATH_LIST=(
     "$SRC_DIR/samples/videos/snowboard.mp4"
 )
 
+# check 'vaapidecodebin'
+if gst-inspect-1.0 vaapidecodebin &>/dev/null; then
+    DECODE_PIPELINE="qtdemux ! vaapidecodebin"
+else
+    DECODE_PIPELINE="decodebin"
+fi
+
 for INPUT_VIDEO_PATH in "${INPUT_VIDEO_PATH_LIST[@]}"; do
-    gst-launch-1.0 urisourcebin uri=file://$INPUT_VIDEO_PATH ! decodebin ! \
-                    dxpreprocess config-file-path=$SRC_DIR/configs/Object_Detection/YOLOV7_640/preprocess_config.json ! queue ! \
-                    dxinfer config-file-path=$SRC_DIR/configs/Object_Detection/YOLOV7_640/inference_config.json ! queue ! \
-                    dxosd ! queue ! \
-                    fpsdisplaysink sync=false
+    gst-launch-1.0 urisourcebin uri=file://$INPUT_VIDEO_PATH ! $DECODE_PIPELINE ! \
+                    dxpreprocess config-file-path=$SRC_DIR/configs/Object_Detection/YoloV7/preprocess_config.json ! queue ! \
+                    dxinfer config-file-path=$SRC_DIR/configs/Object_Detection/YoloV7/inference_config.json ! queue ! \
+                    dxpostprocess config-file-path=$SRC_DIR/configs/Object_Detection/YoloV7/postprocess_config.json ! queue ! \
+                    dxosd width=1280 height=720 ! queue ! \
+                    videoconvert ! fpsdisplaysink sync=false
 done

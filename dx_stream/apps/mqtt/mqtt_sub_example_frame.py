@@ -65,40 +65,45 @@ def on_message(client, userdata, msg):
 def process_message_thread(userdata):
     buffer = userdata['buffer']
     while True:
-        if not buffer.isEmpty():
-            message = buffer.deQueue()
-            if message:
-                if buffer.isAvailable() < 5:
-                    print(f"Process message, seqId: {message.get('seqId')}, Available: {buffer.isAvailable()}")
-                    ###print("Received message: ", message)
-                    if 'frameData' in message and message['frameData']:
-                        ##print("Received message: ", message)
-                        # Decode the base64 encoded frame data
-                        frame_data = base64.b64decode(message['frameData'])
-                        # Convert the bytes to a numpy array
-                        np_arr = np.frombuffer(frame_data, np.uint8)
-                        # Decode the numpy array to an image
-                        img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        if buffer.isEmpty():
+            time.sleep(0.01)
+            continue
 
-                        # color space BGR to RGB 
-                        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-                        '''
-                        # Save the image to a file
-                        if seqId is not None:
-                            filename = f"./images/image_{int(seqId):03d}.jpg"
-                        else:
-                            filename = "./images/image_xxx.jpg"
-                        cv2.imwrite(filename, img)
-                        '''
+        message = buffer.deQueue()
+        if not message:
+            time.sleep(0.01)
+            continue
 
-                        # Display the image using OpenCV
-                        img = cv2.resize(img, (userdata['width'], userdata['height']))
-                        cv2.imshow('Slideshow', img)
-                        cv2.waitKey(1)
+        available = buffer.isAvailable()
+        seq_id = message.get('seqId')
 
-                else:
-                    print(f"    ~~~ Skip process, seqId: {message.get('seqId')}, Available: {buffer.isAvailable()}")
+        if available >= 5:
+            print(f"    ~~~ Skip process, seqId: {seq_id}, Available: {available}")
+            time.sleep(0.01)
+            continue
+
+        print(f"Process message, seqId: {seq_id}, Available: {available}")
+
+        frame_data_b64 = message.get('frameData')
+        if not frame_data_b64:
+            time.sleep(0.01)
+            continue
+
+        frame_data = base64.b64decode(frame_data_b64)
+        np_arr = np.frombuffer(frame_data, np.uint8)
+        img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+
+        if img is None:
+            time.sleep(0.01)
+            continue
+
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img = cv2.resize(img, (userdata['width'], userdata['height']))
+        cv2.imshow('Slideshow', img)
+        cv2.waitKey(1)
+
         time.sleep(0.01)
+
 
 
 if __name__ == "__main__":

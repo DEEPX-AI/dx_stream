@@ -4,46 +4,32 @@
 
 #include "gst-dxgather.hpp"
 #include "gst-dxinfer.hpp"
-#include "gst-dxmuxer.hpp"
+#include "gst-dxinputselector.hpp"
+#include "gst-dxmsgbroker.hpp"
+#include "gst-dxmsgconv.hpp"
 #include "gst-dxosd.hpp"
+#include "gst-dxoutputselector.hpp"
+#include "gst-dxpostprocess.hpp"
 #include "gst-dxpreprocess.hpp"
 #include "gst-dxrate.hpp"
-#include "gst-dxrouter.hpp"
-#include "gst-dxtiler.hpp"
 #include "gst-dxtracker.hpp"
 #include <gst/gst.h>
 
-#include "gst-dxmsgbroker.hpp"
-#include "gst-dxmsgconv.hpp"
-
 static gboolean plugin_init(GstPlugin *plugin) {
-    if (!gst_element_register(plugin, "dxinfer", GST_RANK_NONE,
-                              GST_TYPE_DXINFER)) {
+    // Pipeline Design Elements
+    if (!gst_element_register(plugin, "dxoutputselector", GST_RANK_NONE,
+                              GST_TYPE_DXOUTPUTSELECTOR)) {
         return FALSE;
     }
-    if (!gst_element_register(plugin, "dxmuxer", GST_RANK_NONE,
-                              GST_TYPE_DXMUXER)) {
+    if (!gst_element_register(plugin, "dxinputselector", GST_RANK_NONE,
+                              GST_TYPE_DXINPUTSELECTOR)) {
         return FALSE;
     }
-    if (!gst_element_register(plugin, "dxpreprocess", GST_RANK_NONE,
-                              GST_TYPE_DXPREPROCESS)) {
+    if (!gst_element_register(plugin, "dxgather", GST_RANK_NONE,
+                              GST_TYPE_DXGATHER)) {
         return FALSE;
     }
-    if (!gst_element_register(plugin, "dxosd", GST_RANK_NONE, GST_TYPE_DXOSD)) {
-        return FALSE;
-    }
-    if (!gst_element_register(plugin, "dxtiler", GST_RANK_NONE,
-                              GST_TYPE_DXTILER)) {
-        return FALSE;
-    }
-    if (!gst_element_register(plugin, "dxtracker", GST_RANK_NONE,
-                              GST_TYPE_DXTRACKER)) {
-        return FALSE;
-    }
-    if (!gst_element_register(plugin, "dxrate", GST_RANK_NONE,
-                              GST_TYPE_DXRATE)) {
-        return FALSE;
-    }
+    // Utility Elements
     if (!gst_element_register(plugin, "dxmsgconv", GST_RANK_NONE,
                               GST_TYPE_DXMSGCONV)) {
         return FALSE;
@@ -52,12 +38,28 @@ static gboolean plugin_init(GstPlugin *plugin) {
                               GST_TYPE_DXMSGBROKER)) {
         return FALSE;
     }
-    if (!gst_element_register(plugin, "dxgather", GST_RANK_NONE,
-                              GST_TYPE_DXGATHER)) {
+    if (!gst_element_register(plugin, "dxrate", GST_RANK_NONE,
+                              GST_TYPE_DXRATE)) {
         return FALSE;
     }
-    if (!gst_element_register(plugin, "dxrouter", GST_RANK_NONE,
-                              GST_TYPE_DXROUTER)) {
+    if (!gst_element_register(plugin, "dxosd", GST_RANK_NONE, GST_TYPE_DXOSD)) {
+        return FALSE;
+    }
+    if (!gst_element_register(plugin, "dxtracker", GST_RANK_NONE,
+                              GST_TYPE_DXTRACKER)) {
+        return FALSE;
+    }
+    // Inference Core Elements
+    if (!gst_element_register(plugin, "dxpostprocess", GST_RANK_NONE,
+                              GST_TYPE_DXPOSTPROCESS)) {
+        return FALSE;
+    }
+    if (!gst_element_register(plugin, "dxinfer", GST_RANK_NONE,
+                              GST_TYPE_DXINFER)) {
+        return FALSE;
+    }
+    if (!gst_element_register(plugin, "dxpreprocess", GST_RANK_NONE,
+                              GST_TYPE_DXPREPROCESS)) {
         return FALSE;
     }
     return TRUE;

@@ -2,7 +2,5 @@
     "inference_id": 2,
     "preprocess_id": 2,
     "secondary_mode": true,
-    "model_path" : "./dx_stream/samples/models/EfficientNetB0_8.dxnn",
-    "library_file_path": "/usr/share/dx-stream/lib/libpostproc_classification.so",
-    "function_name": "PostProcess"
+    "model_path" : "./dx_stream/samples/models/EfficientNetB0_8.dxnn"
 }

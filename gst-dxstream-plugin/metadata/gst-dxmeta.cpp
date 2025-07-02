@@ -2,19 +2,19 @@
 
 DXFrameMeta *dx_create_frame_meta(GstBuffer *buffer) {
     if (!gst_buffer_is_writable(buffer)) {
-        gst_buffer_make_writable(buffer);
+        buffer = gst_buffer_make_writable(buffer);
     }
     DXFrameMeta *frame_meta =
-        (DXFrameMeta *)gst_buffer_add_meta(buffer, DX_FRAME_META_INFO, NULL);
+        (DXFrameMeta *)gst_buffer_add_meta(buffer, DX_FRAME_META_INFO, nullptr);
     return frame_meta;
 }
 
 DXObjectMeta *dx_create_object_meta(GstBuffer *buffer) {
     if (!gst_buffer_is_writable(buffer)) {
-        gst_buffer_make_writable(buffer);
+        buffer = gst_buffer_make_writable(buffer);
     }
-    DXObjectMeta *object_meta =
-        (DXObjectMeta *)gst_buffer_add_meta(buffer, DX_OBJECT_META_INFO, NULL);
+    DXObjectMeta *object_meta = (DXObjectMeta *)gst_buffer_add_meta(
+        buffer, DX_OBJECT_META_INFO, nullptr);
     return object_meta;
 }
 

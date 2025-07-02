@@ -15,14 +15,13 @@ class KalmanBoxTracker {
     /*method*/
     KalmanBoxTracker() {};
     KalmanBoxTracker(Eigen::VectorXf bbox_, int cls_, int idx_,
-                     int delta_t_ = 3);
-    void update(Eigen::Matrix<float, 5, 1> *bbox_, int cls_, int idx_);
+                     uint64_t id_count_, int delta_t_ = 3);
+    void update(Eigen::VectorXf *bbox_, int cls_, int idx_);
     Eigen::RowVectorXf predict();
     Eigen::VectorXf get_state();
 
   public:
     /*variable*/
-    static int count;
     Eigen::VectorXf bbox; // [5,1]
     KalmanFilterNew *kf;
     int time_since_update;

@@ -10,10 +10,18 @@ INPUT_VIDEO_PATH_LIST=(
     "$SRC_DIR/samples/videos/dance-solo.mov"
 )
 
+# check 'vaapidecodebin'
+if gst-inspect-1.0 vaapidecodebin &>/dev/null; then
+    DECODE_PIPELINE="qtdemux ! vaapidecodebin"
+else
+    DECODE_PIPELINE="decodebin"
+fi
+
 for INPUT_VIDEO_PATH in "${INPUT_VIDEO_PATH_LIST[@]}"; do
-    gst-launch-1.0 urisourcebin uri=file://$INPUT_VIDEO_PATH ! decodebin ! \
+    gst-launch-1.0 urisourcebin uri=file://$INPUT_VIDEO_PATH ! $DECODE_PIPELINE ! \
                     dxpreprocess config-file-path=$SRC_DIR/configs/Segmentation/DeepLabV3PlusMobileNetV2_2/preprocess_config.json ! queue ! \
                     dxinfer config-file-path=$SRC_DIR/configs/Segmentation/DeepLabV3PlusMobileNetV2_2/inference_config.json ! queue ! \
-                    dxosd ! queue ! \
-                    fpsdisplaysink sync=false
+                    dxpostprocess config-file-path=$SRC_DIR/configs/Segmentation/DeepLabV3PlusMobileNetV2_2/postprocess_config.json ! queue ! \
+                    dxosd width=1280 height=720 ! queue ! \
+                    videoconvert ! fpsdisplaysink sync=false
 done

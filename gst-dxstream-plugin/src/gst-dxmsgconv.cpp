@@ -1,7 +1,6 @@
 #include "gst-dxmsgconv.hpp"
 #include "gst-dxmeta.hpp"
 #include "gst-dxmsgmeta.hpp"
-#include "utils.hpp"
 #include <dlfcn.h>
 #include <json-glib/json-glib.h>
 
@@ -26,7 +25,7 @@ G_DEFINE_TYPE_WITH_CODE(
     GST_DEBUG_CATEGORY_INIT(gst_dxmsgconv_debug_category, "dxmsgconv", 0,
                             "debug category for dxmsgconv element"))
 
-static GstElementClass *parent_class = NULL;
+static GstElementClass *parent_class = nullptr;
 
 static GstStateChangeReturn dxmsgconv_change_state(GstElement *element,
                                                    GstStateChange transition) {
@@ -40,43 +39,56 @@ static void dxmsgconv_dispose(GObject *object) {
 }
 
 static void parse_config(GstDxMsgConv *self) {
-    if (g_file_test(self->_config_file_path, G_FILE_TEST_EXISTS)) {
-        JsonParser *parser = json_parser_new();
-        GError *error = NULL;
-        if (json_parser_load_from_file(parser, self->_config_file_path,
-                                       &error)) {
-
-            JsonNode *node = json_parser_get_root(parser);
-            JsonObject *root_obj = json_node_get_object(node);
-
-            if (json_object_has_member(root_obj, "cfgSection")) {
-                JsonObject *object =
-                    json_object_get_object_member(root_obj, "cfgSection");
-
-                if (json_object_has_member(object, "library_file_path")) {
-                    g_object_set(self, "library-file-path",
-                                 json_object_get_string_member(
-                                     object, "library_file_path"),
-                                 NULL);
-                }
-                if (json_object_has_member(object, "message_interval")) {
-                    g_object_set(
-                        self, "message-interval",
-                        json_object_get_int_member(object, "message_interval"),
-                        NULL);
-                }
-                if (json_object_has_member(object, "include_frame")) {
-                    g_object_set(
-                        self, "include-frame",
-                        json_object_get_boolean_member(object, "include_frame"),
-                        NULL);
-                }
-            }
-        }
-        g_object_unref(parser);
-    } else {
+    if (!g_file_test(self->_config_file_path, G_FILE_TEST_EXISTS)) {
         g_print("Config file does not exist: %s\n", self->_config_file_path);
+        return;
     }
+
+    JsonParser *parser = json_parser_new();
+    GError *error = nullptr;
+    if (!json_parser_load_from_file(parser, self->_config_file_path, &error)) {
+        g_warning("Failed to load config file: %s", error->message);
+        g_object_unref(parser);
+        return;
+    }
+
+    JsonNode *node = json_parser_get_root(parser);
+    if (!node) {
+        g_warning("Config file has no root node");
+        g_object_unref(parser);
+        return;
+    }
+
+    JsonObject *root_obj = json_node_get_object(node);
+    if (!json_object_has_member(root_obj, "cfgSection")) {
+        g_object_unref(parser);
+        return;
+    }
+
+    JsonObject *object = json_object_get_object_member(root_obj, "cfgSection");
+    if (!object) {
+        g_object_unref(parser);
+        return;
+    }
+
+    if (json_object_has_member(object, "library_file_path")) {
+        const gchar *path =
+            json_object_get_string_member(object, "library_file_path");
+        g_object_set(self, "library-file-path", path, nullptr);
+    }
+
+    if (json_object_has_member(object, "message_interval")) {
+        gint interval = json_object_get_int_member(object, "message_interval");
+        g_object_set(self, "message-interval", interval, nullptr);
+    }
+
+    if (json_object_has_member(object, "include_frame")) {
+        gboolean include_frame =
+            json_object_get_boolean_member(object, "include_frame");
+        g_object_set(self, "include-frame", include_frame, nullptr);
+    }
+
+    g_object_unref(parser);
 }
 
 static void gst_dxmsgconv_set_property(GObject *object, guint prop_id,
@@ -141,26 +153,28 @@ static void gst_dxmsgconv_class_init(GstDxMsgConvClass *klass) {
         g_param_spec_string("config-file-path", "Config File Path",
                             "Path to the configuration file containing private "
                             "properties for message formats. (optional).",
-                            NULL, G_PARAM_READWRITE));
+                            nullptr, G_PARAM_READWRITE));
 
     g_object_class_install_property(
         gobject_class, PROP_LIBRARY_FILE_PATH,
-        g_param_spec_string("library-file-path", "Library File Path",
-                            "Path to the custom message converter library. Required.",
-                            NULL, G_PARAM_READWRITE));
+        g_param_spec_string(
+            "library-file-path", "Library File Path",
+            "Path to the custom message converter library. Required.", nullptr,
+            G_PARAM_READWRITE));
 
     g_object_class_install_property(
         gobject_class, PROP_MESSAGE_INTERVAL,
-        g_param_spec_int("message-interval", "Message Interval",
-                         "Frame interval at which message is converted (optional).", 1,
-                         10000, 1, G_PARAM_READWRITE));
+        g_param_spec_int(
+            "message-interval", "Message Interval",
+            "Frame interval at which message is converted (optional).", 1,
+            10000, 1, G_PARAM_READWRITE));
 
     g_object_class_install_property(
         gobject_class, PROP_INCLUDE_FRAME,
         g_param_spec_boolean(
             "include-frame", "Include Frame",
-            "Flag whether to include frame data in the message. (optional).", FALSE,
-            G_PARAM_READWRITE));
+            "Flag whether to include frame data in the message. (optional).",
+            FALSE, G_PARAM_READWRITE));
 
     gst_element_class_add_pad_template(
         GST_ELEMENT_CLASS(klass),
@@ -189,9 +203,9 @@ static void gst_dxmsgconv_init(GstDxMsgConv *self) {
     GST_TRACE_OBJECT(self, "init");
 
     self->_seq_id = 0;
-    self->_config_file_path = NULL;
-    self->_library_file_path = NULL;
-    self->_library_handle = NULL;
+    self->_config_file_path = nullptr;
+    self->_library_file_path = nullptr;
+    self->_library_handle = nullptr;
     self->_message_interval = 1;
     self->_include_frame = FALSE;
 }
@@ -200,14 +214,14 @@ static gboolean gst_dxmsgconv_start(GstBaseTransform *trans) {
     GstDxMsgConv *self = GST_DXMSGCONV(trans);
     GST_DEBUG_OBJECT(self, "start");
 
-    if (self->_library_file_path == NULL) {
-        g_print("Error, dxmsgconv custom library is not set\n");
+    if (self->_library_file_path == nullptr) {
+        GST_ERROR_OBJECT(self, "dxmsgconv custom library is not set\n");
         return FALSE;
     }
 
     self->_library_handle = dlopen(self->_library_file_path, RTLD_LAZY);
     if (!self->_library_handle) {
-        g_print("Error, dxmsgconv custom library: %s\n", dlerror());
+        GST_ERROR_OBJECT(self, "dxmsgconv custom library: %s\n", dlerror());
         return FALSE;
     }
     self->_create_context_function = (DxMsg_CreateContextFptr)dlsym(
@@ -221,10 +235,10 @@ static gboolean gst_dxmsgconv_start(GstBaseTransform *trans) {
 
     if (!self->_create_context_function || !self->_delete_context_function ||
         !self->_convert_payload_function || !self->_release_payload_function) {
-        g_print("Error, dxmsgconv loading functions: %s\n", dlerror());
+        GST_ERROR_OBJECT(self, "dxmsgconv loading functions: %s\n", dlerror());
         if (self->_library_handle) {
             dlclose(self->_library_handle);
-            self->_library_handle = NULL;
+            self->_library_handle = nullptr;
         }
         return FALSE;
     }
@@ -240,12 +254,12 @@ static gboolean gst_dxmsgconv_stop(GstBaseTransform *trans) {
 
     if (self->_context) {
         self->_delete_context_function(self->_context);
-        self->_context = NULL;
+        self->_context = nullptr;
     }
 
     if (self->_library_handle) {
         dlclose(self->_library_handle);
-        self->_library_handle = NULL;
+        self->_library_handle = nullptr;
     }
     return TRUE;
 }
@@ -267,7 +281,7 @@ void convert(GstDxMsgConv *self, DXFrameMeta *frame_meta, GstBuffer *buf) {
         // GST_INFO_OBJECT(self, "|JSON-Conv(%p)| %s", payload,
         //                 (gchar *)payload->_data);
 
-        GstDxMsgMeta *dxmsg_meta = gst_buffer_add_dxmsg_meta(buf, payload);
+        gst_buffer_add_dxmsg_meta(buf, payload);
         /* currently use gst_dxmsg_meta_free instead of this */
         // self->_release_payload_function(self->_context, payload);
 
@@ -281,14 +295,13 @@ static GstFlowReturn gst_dxmsgconv_transform_ip(GstBaseTransform *trans,
                                                 GstBuffer *buf) {
     GstDxMsgConv *self = GST_DXMSGCONV(trans);
 
-    const gchar *media_type = get_buffer_meta_type(GST_ELEMENT(trans));
-
     self->_seq_id++;
 
     DXFrameMeta *frame_meta =
         (DXFrameMeta *)gst_buffer_get_meta(buf, DX_FRAME_META_API_TYPE);
     if (!frame_meta) {
-        g_error("No DXFrameMeta in GstBuffer \n");
+        GST_WARNING_OBJECT(self, "No DXFrameMeta in GstBuffer \n");
+        return GST_FLOW_OK;
     }
     convert(self, frame_meta, buf);
 
