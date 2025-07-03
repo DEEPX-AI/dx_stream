@@ -7,15 +7,25 @@ VENV_PATH=${PROJECT_ROOT}/venv-dx_stream
 # Determine the architecture
 ARCH=$(uname -m)
 
-# Set the plugin directory based on the architecture
-if [ "$ARCH" == "x86_64" ]; then
-    GSTREAMER_PLUGIN_DIR="/usr/lib/x86_64-linux-gnu/gstreamer-1.0"
-elif [ "$ARCH" == "aarch64" ]; then
-    GSTREAMER_PLUGIN_DIR="/usr/lib/aarch64-linux-gnu/gstreamer-1.0"
-else
-    echo "Error: Unsupported architecture '$ARCH'."
-    exit 1
+# Set the plugin directory based on pkg-config
+GSTREAMER_PLUGIN_DIR=$(pkg-config --variable=pluginsdir gstreamer-1.0 2>/dev/null)
+
+if [ -z "$GSTREAMER_PLUGIN_DIR" ]; then
+    echo "Warning: Could not determine GStreamer plugin directory from pkg-config."
+    echo "Falling back to architecture-based path..."
+    
+    # Fallback to architecture-based path
+    if [ "$ARCH" == "x86_64" ]; then
+        GSTREAMER_PLUGIN_DIR="/usr/lib/x86_64-linux-gnu/gstreamer-1.0"
+    elif [ "$ARCH" == "aarch64" ]; then
+        GSTREAMER_PLUGIN_DIR="/usr/lib/aarch64-linux-gnu/gstreamer-1.0"
+    else
+        echo "Error: Unsupported architecture '$ARCH'."
+        exit 1
+    fi
 fi
+
+echo "Using GStreamer plugin directory: $GSTREAMER_PLUGIN_DIR"
 
 # Define variables
 WRC=$PWD
@@ -23,8 +33,6 @@ BUILD_DIR=builddir
 BUILD_TYPE="release"
 DEBUG_ARG=""
 SONAR_MODE_ARG=""
-NATIVE_FILE_ARG=""
-
 
 show_help() {
   echo "Usage: $(basename "$0") [--debug] [--uninstall] [--help]"
@@ -41,28 +49,6 @@ show_help() {
     exit 1
   fi
   exit 0
-}
-
-set_native_file_arg(){
-    local gcc_version=$(gcc -dumpversion | cut -f1 -d.)
-    local gpp_version=$(g++ -dumpversion | cut -f1 -d.)
-
-    echo "Current GCC version: $gcc_version"
-    echo "Current G++ version: $gpp_version"
-
-    # If version is less than 11, install gcc-11 and g++-11
-    if [ "$gcc_version" -lt 11 ] || [ "$gpp_version" -lt 11 ]; then
-        # Check if gcc-11 is installed
-        if dpkg -s gcc-11 >/dev/null 2>&1; then
-            NATIVE_FILE_ARG="--native-file ${PROJECT_ROOT}/gcc11.ini"
-            echo "GCC/G++ version 11 is already installed"
-        else
-            echo "Error: GCC/G++ version 11 or higher are required. Please run install.sh to install them and try again..."
-            exit 1
-        fi
-    else
-        echo "GCC/G++ 11 or higher is already installed."
-    fi
 }
 
 __print_clean_result() {
@@ -114,12 +100,10 @@ clean() {
 
 build() {
     clean "clean"
-    
-    set_native_file_arg
 
     echo "Starting build process... build_type(${BUILD_TYPE})"
     cd gst-dxstream-plugin
-    meson setup ${BUILD_DIR} --buildtype=${BUILD_TYPE} ${NATIVE_FILE_ARG}
+    meson setup ${BUILD_DIR} --buildtype=${BUILD_TYPE}
     if [ $? -ne 0 ]; then
         echo -e "Error: meson setup failed"
         exit 1
@@ -206,7 +190,7 @@ for i in "$@"; do
     shift
 done
 
-activate_venv
+# activate_venv
 build
 
 exit 0

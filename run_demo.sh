@@ -18,7 +18,7 @@ case $select in
     1)$WRC/dx_stream/pipelines/single_network/face_detection/run_YOLOFACE.sh;;
     2)$WRC/dx_stream/pipelines/tracking/run_YOLOV5S_tracker.sh;;
     3)$WRC/dx_stream/pipelines/single_network/pose_estimation/run_YOLOPOSE.sh;;
-    4)$WRC/dx_stream/pipelines/single_network/semantic_segmentation/run_PIDNET.sh;;
+    4)$WRC/dx_stream/pipelines/single_network/semantic_segmentation/run_DeepLabV3PlusMobileNetV2.sh;;
     5)$WRC/dx_stream/pipelines/multi_stream/run_multi_stream_YOLOV5S.sh;;
     6)$WRC/dx_stream/pipelines/rtsp/run_RTSP.sh;;
     7)$WRC/dx_stream/pipelines/secondary_mode/run_secondary_mode.sh;;

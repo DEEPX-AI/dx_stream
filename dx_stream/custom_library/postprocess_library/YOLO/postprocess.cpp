@@ -74,7 +74,7 @@ struct YoloParam {
     float iouThreshold;
     int numBoxes;
     int numClasses;
-    int numKeypoints;
+    int numKeypoints=0;
     std::vector<YoloLayerParam> layers;
     std::vector<std::string> classNames;
 };
@@ -328,14 +328,15 @@ void ProcessBoxesForGridCell(
     const YoloLayerParam &layer, int strideX, int strideY, float rawThreshold,
     float confThreshold, YoloParam &param,
     std::vector<std::vector<std::pair<float, int>>> &ScoreIndices,
-    std::vector<float> &Boxes, int &boxIdx) {
+    std::vector<float> &Boxes, std::vector<float> &Keypoints, int &boxIdx) {
     uint32_t inc = outputTensor._shape[3] * outputTensor._elemSize;
+
+    int box_element_size = 4 + 1 + param.numClasses + 2 * param.numKeypoints;
 
     for (int box = 0; box < layer.numBoxes; box++) {
         auto *data = reinterpret_cast<float *>(
             const_cast<uint8_t *>(basePtr) + gY * outputTensor._shape[2] * inc +
-            gX * inc +
-            outputTensor._elemSize * (box * (4 + 1 + param.numClasses)));
+            gX * inc + outputTensor._elemSize * (box * box_element_size));
 
         if (data[4] <= rawThreshold)
             continue;
@@ -380,6 +381,21 @@ void ProcessBoxesForGridCell(
         Boxes.emplace_back(x + w / 2.0f);
         Boxes.emplace_back(y + h / 2.0f);
 
+        if (param.numKeypoints > 0) {
+            int kpt_offset = 4 + param.numClasses;
+            for (int k = 0; k < param.numKeypoints; k++) {
+                float kpt_x, kpt_y;
+                kpt_x = (data[kpt_offset + 2 * k] * layer.anchorWidth[box]) +
+                        (gX * strideX);
+                kpt_y =
+                    (data[kpt_offset + 2 * k + 1] * layer.anchorHeight[box]) +
+                    (gY * strideY);
+                Keypoints.emplace_back(kpt_x);
+                Keypoints.emplace_back(kpt_y);
+                Keypoints.emplace_back(0.5f);
+            }
+        }
+
         boxIdx++;
     }
 }
@@ -387,7 +403,8 @@ void ProcessBoxesForGridCell(
 void ProcessMultiOutput(
     const std::vector<dxs::DXTensor> &outputs,
     std::vector<std::vector<std::pair<float, int>>> &ScoreIndices,
-    std::vector<float> &Boxes, YoloParam &param, int &boxIdx) {
+    std::vector<float> &Boxes, std::vector<float> &Keypoints, YoloParam &param,
+    int &boxIdx) {
     float confThreshold = param.confThreshold;
     float rawThreshold = std::log(confThreshold / (1 - confThreshold));
 
@@ -406,7 +423,7 @@ void ProcessMultiOutput(
                 ProcessBoxesForGridCell(basePtr, gY, gX, outputs[tensorIdx],
                                         layer, strideX, strideY, rawThreshold,
                                         confThreshold, param, ScoreIndices,
-                                        Boxes, boxIdx);
+                                        Boxes, Keypoints, boxIdx);
             }
         }
     }
@@ -451,7 +468,8 @@ void FilterWithSort(
             return; // Unknown type
         }
     } else if (outputs.size() == 3) {
-        ProcessMultiOutput(outputs, ScoreIndices, Boxes, param, boxIdx);
+        ProcessMultiOutput(outputs, ScoreIndices, Boxes, Keypoints, param,
+                           boxIdx);
     } else {
         g_error("Post-process: Not supported format\n");
         return;
@@ -646,10 +664,10 @@ void YOLOFacePostProcess(std::vector<dxs::DXTensor> network_output,
         object_meta->_confidence = ret.score;
         object_meta->_label = ret.label;
         object_meta->_label_name = g_string_new(ret.labelname.c_str());
-        object_meta->_box[0] = x1;
-        object_meta->_box[1] = y1;
-        object_meta->_box[2] = x2;
-        object_meta->_box[3] = y2;
+        object_meta->_face_box[0] = x1;
+        object_meta->_face_box[1] = y1;
+        object_meta->_face_box[2] = x2;
+        object_meta->_face_box[3] = y2;
 
         for (int k = 0; k < param.numKeypoints; k++) {
             float kx = (ret.kpts[k * 3 + 0] - w_pad) / r;
@@ -692,25 +710,23 @@ const std::vector<std::string> COCO_CLASSES = {
 extern "C" void YOLOV5S_1(std::vector<dxs::DXTensor> network_output,
                           DXFrameMeta *frame_meta, DXObjectMeta *object_meta) {
 
-    YoloParam param = {
-        .height = 512,
-        .width = 512,
-        .confThreshold = 0.25,
-        .scoreThreshold = 0.3,
-        .iouThreshold = 0.4,
-        .numBoxes = -1, // check from layer info.
-        .numClasses = 80,
-        .layers =
-            {
-                createYoloLayerParam(64, 64, 3, {10.0, 16.0, 33.0},
-                                     {13.0, 30.0, 23.0}, {0}),
-                createYoloLayerParam(32, 32, 3, {30.0, 62.0, 59.0},
-                                     {61.0, 45.0, 119.0}, {1}),
-                createYoloLayerParam(16, 16, 3, {116.0, 156.0, 373.0},
-                                     {90.0, 198.0, 326.0}, {2}),
-            },
-        .classNames = COCO_CLASSES,
+    YoloParam param;
+    param.height = 512;
+    param.width = 512;
+    param.confThreshold = 0.25;
+    param.scoreThreshold = 0.3;
+    param.iouThreshold = 0.4;
+    param.numBoxes = -1; // check from layer info.
+    param.numClasses = 80;
+    param.layers = {
+        createYoloLayerParam(64, 64, 3, {10.0, 16.0, 33.0},
+                             {13.0, 30.0, 23.0}, {0}),
+        createYoloLayerParam(32, 32, 3, {30.0, 62.0, 59.0},
+                             {61.0, 45.0, 119.0}, {1}),
+        createYoloLayerParam(16, 16, 3, {116.0, 156.0, 373.0},
+                             {90.0, 198.0, 326.0}, {2}),
     };
+    param.classNames = COCO_CLASSES;
 
     YOLOPostProcess(network_output, frame_meta, param);
 }
@@ -718,25 +734,23 @@ extern "C" void YOLOV5S_1(std::vector<dxs::DXTensor> network_output,
 extern "C" void YOLOV5S_3(std::vector<dxs::DXTensor> network_output,
                           DXFrameMeta *frame_meta, DXObjectMeta *object_meta) {
 
-    YoloParam param = {
-        .height = 512,
-        .width = 512,
-        .confThreshold = 0.25,
-        .scoreThreshold = 0.3,
-        .iouThreshold = 0.4,
-        .numBoxes = -1, // check from layer info.
-        .numClasses = 80,
-        .layers =
-            {
-                createYoloLayerParam(64, 64, 3, {10.0, 16.0, 33.0},
-                                     {13.0, 30.0, 23.0}, {0}),
-                createYoloLayerParam(32, 32, 3, {30.0, 62.0, 59.0},
-                                     {61.0, 45.0, 119.0}, {1}),
-                createYoloLayerParam(16, 16, 3, {116.0, 156.0, 373.0},
-                                     {90.0, 198.0, 326.0}, {2}),
-            },
-        .classNames = COCO_CLASSES,
+    YoloParam param;
+    param.height = 512;
+    param.width = 512;
+    param.confThreshold = 0.25;
+    param.scoreThreshold = 0.3;
+    param.iouThreshold = 0.4;
+    param.numBoxes = -1; // check from layer info.
+    param.numClasses = 80;
+    param.layers = {
+        createYoloLayerParam(64, 64, 3, {10.0, 16.0, 33.0},
+                             {13.0, 30.0, 23.0}, {0}),
+        createYoloLayerParam(32, 32, 3, {30.0, 62.0, 59.0},
+                             {61.0, 45.0, 119.0}, {1}),
+        createYoloLayerParam(16, 16, 3, {116.0, 156.0, 373.0},
+                             {90.0, 198.0, 326.0}, {2}),
     };
+    param.classNames = COCO_CLASSES;
 
     YOLOPostProcess(network_output, frame_meta, param);
 }
@@ -744,24 +758,21 @@ extern "C" void YOLOV5S_3(std::vector<dxs::DXTensor> network_output,
 extern "C" void YOLOV5S_4(std::vector<dxs::DXTensor> network_output,
                           DXFrameMeta *frame_meta, DXObjectMeta *object_meta) {
 
-    YoloParam param = {
-        .height = 320,
-        .width = 320,
-        .confThreshold = 0.25,
-        .scoreThreshold = 0.3,
-        .iouThreshold = 0.4,
-        .numBoxes = -1, // check from layer info.
-        .numClasses = 80,
-        .layers = {createYoloLayerParam(40, 40, 3, {10.0, 16.0, 33.0},
+    YoloParam param;
+    param.height = 320;
+    param.width = 320;
+    param.confThreshold = 0.25;
+    param.scoreThreshold = 0.3;
+    param.iouThreshold = 0.4;
+    param.numBoxes = -1; // check from layer info.
+    param.numClasses = 80;
+    param.layers = {createYoloLayerParam(40, 40, 3, {10.0, 16.0, 33.0},
                                         {13.0, 30.0, 23.0}, {0}),
                    createYoloLayerParam(20, 20, 3, {30.0, 62.0, 59.0},
                                         {61.0, 45.0, 119.0}, {1}),
                    createYoloLayerParam(10, 10, 3, {116.0, 156.0, 373.0},
-                                        {90.0, 198.0, 326.0}, {2})
-
-        },
-        .classNames = COCO_CLASSES,
-    };
+                                        {90.0, 198.0, 326.0}, {2})};
+    param.classNames = COCO_CLASSES;
 
     YOLOPostProcess(network_output, frame_meta, param);
 }
@@ -769,22 +780,21 @@ extern "C" void YOLOV5S_4(std::vector<dxs::DXTensor> network_output,
 extern "C" void YOLOV5S_6(std::vector<dxs::DXTensor> network_output,
                           DXFrameMeta *frame_meta, DXObjectMeta *object_meta) {
 
-    YoloParam param = {
-        .height = 640,
-        .width = 640,
-        .confThreshold = 0.25,
-        .scoreThreshold = 0.3,
-        .iouThreshold = 0.4,
-        .numBoxes = -1, // check from layer info.
-        .numClasses = 80,
-        .layers = {createYoloLayerParam(80, 80, 3, {10.0, 16.0, 33.0},
+    YoloParam param;
+    param.height = 640;
+    param.width = 640;
+    param.confThreshold = 0.25;
+    param.scoreThreshold = 0.3;
+    param.iouThreshold = 0.4;
+    param.numBoxes = -1; // check from layer info.
+    param.numClasses = 80;
+    param.layers = {createYoloLayerParam(80, 80, 3, {10.0, 16.0, 33.0},
                                         {13.0, 30.0, 23.0}, {0}),
                    createYoloLayerParam(40, 40, 3, {30.0, 62.0, 59.0},
                                         {61.0, 45.0, 119.0}, {1}),
                    createYoloLayerParam(20, 20, 3, {116.0, 156.0, 373.0},
-                                        {90.0, 198.0, 326.0}, {2})},
-        .classNames = COCO_CLASSES,
-    };
+                                        {90.0, 198.0, 326.0}, {2})};
+    param.classNames = COCO_CLASSES;
 
     YOLOPostProcess(network_output, frame_meta, param);
 }
@@ -793,15 +803,22 @@ extern "C" void YOLOV5S_Face(std::vector<dxs::DXTensor> network_output,
                              DXFrameMeta *frame_meta,
                              DXObjectMeta *object_meta) {
 
-    YoloParam param = {
-        .height = 640,
-        .width = 640,
-        .scoreThreshold = 0.25,
-        .iouThreshold = 0.4,
-        .numClasses = 1,
-        .numKeypoints = 5,
-        .classNames = {"person"},
-    };
+    YoloParam param;
+    param.height = 640;
+    param.width = 640;
+    param.confThreshold = 0.0f; // not used for face
+    param.scoreThreshold = 0.25;
+    param.iouThreshold = 0.4;
+    param.numBoxes = -1;
+    param.numClasses = 1;
+    param.numKeypoints = 5;
+    param.layers = {createYoloLayerParam(80, 80, 3, {4.0, 8.0, 13.0},
+                                        {5.0, 10.0, 16.0}, {0}),
+                   createYoloLayerParam(40, 40, 3, {23.0, 43.0, 73.0},
+                                        {29.0, 55.0, 105.0}, {1}),
+                   createYoloLayerParam(20, 20, 3, {146.0, 231.0, 335.0},
+                                        {217.0, 300.0, 433.0}, {2})};
+    param.classNames = {"person"};
 
     YOLOFacePostProcess(network_output, frame_meta, param);
 }
@@ -809,22 +826,21 @@ extern "C" void YOLOV5S_Face(std::vector<dxs::DXTensor> network_output,
 extern "C" void YOLOV5X_2(std::vector<dxs::DXTensor> network_output,
                           DXFrameMeta *frame_meta, DXObjectMeta *object_meta) {
 
-    YoloParam param = {
-        .height = 640,
-        .width = 640,
-        .confThreshold = 0.25,
-        .scoreThreshold = 0.3,
-        .iouThreshold = 0.4,
-        .numBoxes = -1, // check from layer info.
-        .numClasses = 80,
-        .layers = {createYoloLayerParam(80, 80, 3, {10.0, 16.0, 33.0},
+    YoloParam param;
+    param.height = 640;
+    param.width = 640;
+    param.confThreshold = 0.25;
+    param.scoreThreshold = 0.3;
+    param.iouThreshold = 0.4;
+    param.numBoxes = -1; // check from layer info.
+    param.numClasses = 80;
+    param.layers = {createYoloLayerParam(80, 80, 3, {10.0, 16.0, 33.0},
                                         {13.0, 30.0, 23.0}, {0}),
                    createYoloLayerParam(40, 40, 3, {30.0, 62.0, 59.0},
                                         {61.0, 45.0, 119.0}, {1}),
                    createYoloLayerParam(20, 20, 3, {116.0, 156.0, 373.0},
-                                        {90.0, 198.0, 326.0}, {2})},
-        .classNames = COCO_CLASSES,
-    };
+                                        {90.0, 198.0, 326.0}, {2})};
+    param.classNames = COCO_CLASSES;
 
     YOLOPostProcess(network_output, frame_meta, param);
 }
@@ -833,25 +849,24 @@ extern "C" void YOLOV5Pose_1(std::vector<dxs::DXTensor> network_output,
                              DXFrameMeta *frame_meta,
                              DXObjectMeta *object_meta) {
 
-    YoloParam param = {
-        .height = 640,
-        .width = 640,
-        .confThreshold = 0.3,
-        .scoreThreshold = 0.5,
-        .iouThreshold = 0.4,
-        .numBoxes = -1, // check from layer info.
-        .numClasses = 1,
-        .numKeypoints = 17,
-        .layers = {createYoloLayerParam(80, 80, 3, {19.0, 44.0, 38.0},
+    YoloParam param;
+    param.height = 640;
+    param.width = 640;
+    param.confThreshold = 0.3;
+    param.scoreThreshold = 0.5;
+    param.iouThreshold = 0.4;
+    param.numBoxes = -1; // check from layer info.
+    param.numClasses = 1;
+    param.numKeypoints = 17;
+    param.layers = {createYoloLayerParam(80, 80, 3, {19.0, 44.0, 38.0},
                                         {27.0, 40.0, 94.0}, {1, 0}),
                    createYoloLayerParam(40, 40, 3, {96.0, 86.0, 180.0},
                                         {68.0, 152.0, 137.0}, {3, 2}),
                    createYoloLayerParam(20, 20, 3, {140.0, 303.0, 238.0},
                                         {301.0, 264.0, 542.0}, {5, 4}),
                    createYoloLayerParam(10, 10, 3, {436.0, 739.0, 925.0},
-                                        {615.0, 380.0, 792.0}, {7, 6})},
-        .classNames = {"person"},
-    };
+                                        {615.0, 380.0, 792.0}, {7, 6})};
+    param.classNames = {"person"};
 
     YOLOPostProcess(network_output, frame_meta, param);
 }
@@ -859,22 +874,21 @@ extern "C" void YOLOV5Pose_1(std::vector<dxs::DXTensor> network_output,
 extern "C" void YOLOV7_512(std::vector<dxs::DXTensor> network_output,
                            DXFrameMeta *frame_meta, DXObjectMeta *object_meta) {
 
-    YoloParam param = {
-        .height = 512,
-        .width = 512,
-        .confThreshold = 0.25,
-        .scoreThreshold = 0.3,
-        .iouThreshold = 0.4,
-        .numBoxes = -1, // check from layer info.
-        .numClasses = 80,
-        .layers = {createYoloLayerParam(64, 64, 3, {12.0, 19.0, 40.0},
+    YoloParam param;
+    param.height = 512;
+    param.width = 512;
+    param.confThreshold = 0.25;
+    param.scoreThreshold = 0.3;
+    param.iouThreshold = 0.4;
+    param.numBoxes = -1; // check from layer info.
+    param.numClasses = 80;
+    param.layers = {createYoloLayerParam(64, 64, 3, {12.0, 19.0, 40.0},
                                         {16.0, 36.0, 28.0}, {0}),
                    createYoloLayerParam(32, 32, 3, {36.0, 76.0, 72.0},
                                         {75.0, 55.0, 146.0}, {1}),
                    createYoloLayerParam(16, 16, 3, {142.0, 192.0, 459.0},
-                                        {110.0, 243.0, 401.0}, {2})},
-        .classNames = COCO_CLASSES,
-    };
+                                        {110.0, 243.0, 401.0}, {2})};
+    param.classNames = COCO_CLASSES;
 
     YOLOPostProcess(network_output, frame_meta, param);
 }
@@ -882,22 +896,21 @@ extern "C" void YOLOV7_512(std::vector<dxs::DXTensor> network_output,
 extern "C" void YOLOV7_640(std::vector<dxs::DXTensor> network_output,
                            DXFrameMeta *frame_meta, DXObjectMeta *object_meta) {
 
-    YoloParam param = {
-        .height = 640,
-        .width = 640,
-        .confThreshold = 0.25,
-        .scoreThreshold = 0.3,
-        .iouThreshold = 0.4,
-        .numBoxes = -1, // check from layer info.
-        .numClasses = 80,
-        .layers = {createYoloLayerParam(80, 80, 3, {12.0, 19.0, 40.0},
+    YoloParam param;
+    param.height = 640;
+    param.width = 640;
+    param.confThreshold = 0.25;
+    param.scoreThreshold = 0.3;
+    param.iouThreshold = 0.4;
+    param.numBoxes = -1; // check from layer info.
+    param.numClasses = 80;
+    param.layers = {createYoloLayerParam(80, 80, 3, {12.0, 19.0, 40.0},
                                         {16.0, 36.0, 28.0}, {0}),
                    createYoloLayerParam(40, 40, 3, {36.0, 76.0, 72.0},
                                         {75.0, 55.0, 146.0}, {1}),
                    createYoloLayerParam(20, 20, 3, {142.0, 192.0, 459.0},
-                                        {110.0, 243.0, 401.0}, {2})},
-        .classNames = COCO_CLASSES,
-    };
+                                        {110.0, 243.0, 401.0}, {2})};
+    param.classNames = COCO_CLASSES;
 
     YOLOPostProcess(network_output, frame_meta, param);
 }
@@ -905,13 +918,21 @@ extern "C" void YOLOV7_640(std::vector<dxs::DXTensor> network_output,
 extern "C" void YOLOV8N(std::vector<dxs::DXTensor> network_output,
                         DXFrameMeta *frame_meta, DXObjectMeta *object_meta) {
 
-    YoloParam param = {
-        .height = 640,
-        .width = 640,
-        .scoreThreshold = 0.3,
-        .numClasses = 80,
-        .classNames = COCO_CLASSES,
-    };
+    YoloParam param;
+    param.height = 640;
+    param.width = 640;
+    param.confThreshold = 0.25;
+    param.scoreThreshold = 0.3;
+    param.iouThreshold = 0.4;
+    param.numBoxes = -1; // check from layer info.
+    param.numClasses = 80;
+    param.layers = {createYoloLayerParam(80, 80, 3, {10.0, 16.0, 33.0},
+                                        {13.0, 30.0, 23.0}, {0}),
+                   createYoloLayerParam(40, 40, 3, {30.0, 62.0, 59.0},
+                                        {61.0, 45.0, 119.0}, {1}),
+                   createYoloLayerParam(20, 20, 3, {116.0, 156.0, 373.0},
+                                        {90.0, 198.0, 326.0}, {2})};
+    param.classNames = COCO_CLASSES;
 
     YOLOPostProcess(network_output, frame_meta, param);
 }
@@ -919,13 +940,21 @@ extern "C" void YOLOV8N(std::vector<dxs::DXTensor> network_output,
 extern "C" void YOLOV9S(std::vector<dxs::DXTensor> network_output,
                         DXFrameMeta *frame_meta, DXObjectMeta *object_meta) {
 
-    YoloParam param = {
-        .height = 640,
-        .width = 640,
-        .scoreThreshold = 0.3,
-        .numClasses = 80,
-        .classNames = COCO_CLASSES,
-    };
+    YoloParam param;
+    param.height = 640;
+    param.width = 640;
+    param.confThreshold = 0.25;
+    param.scoreThreshold = 0.3;
+    param.iouThreshold = 0.4;
+    param.numBoxes = -1; // check from layer info.
+    param.numClasses = 80;
+    param.layers = {createYoloLayerParam(80, 80, 3, {10.0, 16.0, 33.0},
+                                        {13.0, 30.0, 23.0}, {0}),
+                   createYoloLayerParam(40, 40, 3, {30.0, 62.0, 59.0},
+                                        {61.0, 45.0, 119.0}, {1}),
+                   createYoloLayerParam(20, 20, 3, {116.0, 156.0, 373.0},
+                                        {90.0, 198.0, 326.0}, {2})};
+    param.classNames = COCO_CLASSES;
 
     YOLOPostProcess(network_output, frame_meta, param);
 }

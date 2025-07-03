@@ -78,7 +78,10 @@ static gboolean dx_object_meta_init(GstMeta *meta, gpointer params,
     dx_meta->_face_box[3] = 0;
 
     // segmentation
-    dx_meta->_seg_cls_map = dxs::SegClsMap();
+    new (&dx_meta->_seg_cls_map) dxs::SegClsMap();
+    // dx_meta->_seg_cls_map.data.clear();
+    // dx_meta->_seg_cls_map.width = 0;
+    // dx_meta->_seg_cls_map.height = 0;
 
     new (&dx_meta->_input_memory_pool) std::map<int, MemoryPool *>();
     new (&dx_meta->_output_memory_pool) std::map<int, MemoryPool *>();
@@ -95,11 +98,17 @@ static void dx_object_meta_free(GstMeta *meta, GstBuffer *buffer) {
         g_string_free(dx_meta->_label_name, TRUE);
         dx_meta->_label_name = nullptr;
     }
-    dx_meta->_keypoints.clear();
-    dx_meta->_body_feature.clear();
-
-    dx_meta->_face_landmarks.clear();
-    dx_meta->_face_feature.clear();
+    
+    using point_f_vec = std::vector<dxs::Point_f>;
+    using float_vec = std::vector<float>;
+    using memory_pool_map = std::map<int, MemoryPool *>;
+    using input_tensor_map = std::map<int, dxs::DXTensor>;
+    using output_tensor_map = std::map<int, std::vector<dxs::DXTensor>>;
+    
+    dx_meta->_keypoints.~float_vec();
+    dx_meta->_body_feature.~float_vec();
+    dx_meta->_face_landmarks.~point_f_vec();
+    dx_meta->_face_feature.~float_vec();
 
     for (auto &tmp : dx_meta->_input_memory_pool) {
         MemoryPool *pool = (MemoryPool *)tmp.second;
@@ -109,9 +118,6 @@ static void dx_object_meta_free(GstMeta *meta, GstBuffer *buffer) {
             pool->deallocate(tensor->second._data);
         }
     }
-    dx_meta->_input_memory_pool.clear();
-    dx_meta->_input_tensor.clear();
-
     for (auto &tmp : dx_meta->_output_memory_pool) {
         MemoryPool *pool = (MemoryPool *)tmp.second;
         int preproc_id = tmp.first;
@@ -120,8 +126,13 @@ static void dx_object_meta_free(GstMeta *meta, GstBuffer *buffer) {
             pool->deallocate(tensor->second[0]._data);
         }
     }
-    dx_meta->_output_memory_pool.clear();
-    dx_meta->_output_tensor.clear();
+    
+    dx_meta->_input_memory_pool.~memory_pool_map();
+    dx_meta->_output_memory_pool.~memory_pool_map();
+    dx_meta->_input_tensor.~input_tensor_map();
+    dx_meta->_output_tensor.~output_tensor_map();
+
+    dx_meta->_seg_cls_map.~SegClsMap();
 }
 
 void copy_tensor(DXObjectMeta *src_meta, DXObjectMeta *dst_meta) {
