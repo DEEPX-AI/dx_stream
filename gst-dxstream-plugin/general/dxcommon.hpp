@@ -14,6 +14,8 @@ struct SegClsMap {
     int height = 0;
 
     SegClsMap() = default;
+    SegClsMap(const SegClsMap &) = default;
+    SegClsMap &operator=(const SegClsMap &) = default;
     ~SegClsMap() = default;
 };
 

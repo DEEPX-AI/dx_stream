@@ -20,14 +20,16 @@ cc = meson.get_compiler('cpp')
 
 extra_deps = []
 
-extra_deps += dependency(
+gstreamer_dep = dependency(
     'gstreamer-1.0', version : '>=1.14',
     required : true, fallback : ['gstreamer', 'gst_dep']
 )
-extra_deps += dependency(
+gstreamer_base_dep = dependency(
     'gstreamer-base-1.0', version : '>=1.14',
     fallback : ['gstreamer', 'gst_base_dep']
 )
+extra_deps += gstreamer_dep
+extra_deps += gstreamer_base_dep
 extra_deps += dependency('eigen3', required: true)
 extra_deps += dependency('gstreamer-video-1.0', version : '>=1.14')
 extra_deps += dependency('json-glib-1.0', version : '>= 1.0')

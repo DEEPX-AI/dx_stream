@@ -1,4 +1,11 @@
 # RELEASE_NOTES
+## v1.6.4 / 2025-07-03
+### 1. Changed
+- Auto dependency installation for Ubuntu 18.04 ()
+### 2. Fixed
+- memory issue in segmentation postprocess fixed
+### 3. Added
+
 ## v1.6.3 / 2025-06-25
 ### 1. Changed
 ### 2. Fixed
