@@ -7,10 +7,10 @@
 
 #include "dxcommon.hpp"
 #include "gst-dxmeta.hpp"
-#include "memory_pool.hpp"
 #include <gst/base/gstbasetransform.h>
 #include <gst/gst.h>
 #include <opencv2/opencv.hpp>
+#include <map>
 
 #ifdef HAVE_LIBRGA
 #include "rga/RgaUtils.h"
@@ -28,12 +28,12 @@ G_DECLARE_FINAL_TYPE(GstDxPreprocess, gst_dxpreprocess, GST, DXPREPROCESS,
 struct _GstDxPreprocess {
     GstBaseTransform _parent_instance;
 
-    MemoryPool _pool;
-
-    guint _pool_size;
     gchar *_config_file_path;
     gchar *_library_file_path;
     gchar *_function_name;
+
+    std::map<int, GstVideoInfo> _input_info;
+    int _last_stream_id;
 
     guint _preprocess_id;
     gchar *_color_format;

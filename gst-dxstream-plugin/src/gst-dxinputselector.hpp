@@ -7,6 +7,7 @@
 #include <mutex>
 #include <queue>
 #include <vector>
+#include <set>
 
 G_BEGIN_DECLS
 
@@ -19,16 +20,14 @@ struct _GstDxInputSelector {
     std::map<int, GstPad *> _sinkpads;
     GstPad *_srcpad;
 
-    std::map<int, std::queue<GstEvent *>> _events;
     std::mutex _event_mutex;
 
-    std::map<int, bool> _eos_list;
+    std::set<int> _stream_eos_arrived;
     bool _global_eos;
 
     GThread *_thread;
     bool _running;
     std::mutex _buffer_lock;
-    std::mutex _eos_lock;
     std::condition_variable _aquire_cv;
     std::condition_variable _push_cv;
     std::map<int, GstBuffer *> _buffer_queue;

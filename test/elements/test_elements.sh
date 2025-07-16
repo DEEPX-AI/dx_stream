@@ -11,15 +11,15 @@ export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$SCRIPT_DIR/../test_plugin/install"
 
 mkdir -p "$SCRIPT_DIR/bin"
 
-g++ -g -o "$SCRIPT_DIR/bin/test_dxpreprocess" test_dxpreprocess.c $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
-g++ -g -o "$SCRIPT_DIR/bin/test_dxinfer" test_dxinfer.c $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
-g++ -g -o "$SCRIPT_DIR/bin/test_dxpostprocess" test_dxpostprocess.c $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
-g++ -g -o "$SCRIPT_DIR/bin/test_dxosd" test_dxosd.c $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
-g++ -g -o "$SCRIPT_DIR/bin/test_dxtracker" test_dxtracker.c $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
-g++ -g -o "$SCRIPT_DIR/bin/test_dxmsgconv" test_dxmsgconv.c $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
-# g++ -g -o "$SCRIPT_DIR/bin/test_dxmsgbroker" test_dxmsgbroker.c $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
-g++ -g -o "$SCRIPT_DIR/bin/test_dxrate" test_dxrate.c $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
-g++ -g -o "$SCRIPT_DIR/bin/test_dxgather" test_dxgather.c $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
+g++ -g -o "$SCRIPT_DIR/bin/test_dxpreprocess" test_dxpreprocess.cpp $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
+g++ -g -o "$SCRIPT_DIR/bin/test_dxinfer" test_dxinfer.cpp $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
+g++ -g -o "$SCRIPT_DIR/bin/test_dxpostprocess" test_dxpostprocess.cpp $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
+g++ -g -o "$SCRIPT_DIR/bin/test_dxosd" test_dxosd.cpp $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
+g++ -g -o "$SCRIPT_DIR/bin/test_dxtracker" test_dxtracker.cpp $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
+g++ -g -o "$SCRIPT_DIR/bin/test_dxmsgconv" test_dxmsgconv.cpp $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
+# g++ -g -o "$SCRIPT_DIR/bin/test_dxmsgbroker" test_dxmsgbroker.cpp $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
+g++ -g -o "$SCRIPT_DIR/bin/test_dxrate" test_dxrate.cpp $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
+g++ -g -o "$SCRIPT_DIR/bin/test_dxgather" test_dxgather.cpp $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
 
 cd "$SCRIPT_DIR/bin"
 

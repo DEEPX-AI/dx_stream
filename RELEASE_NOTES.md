@@ -1,4 +1,20 @@
 # RELEASE_NOTES
+## v1.7.0 / 2025-07-16
+### 1. Changed
+- dxinfer : Improved the buffer queue management mechanism. Instead of locking inputs based on queue size within the push thread, the system now adds a req_id to the buffer and utilizes a wait function for more efficient processing.
+- feat: auto run setup script when a file not found error occurs during example execution
+- chore: apply colors and handle errors in scripts
+### 2. Fixed
+- dxpreprocess, dxosd: Resolved a video corruption issue that occurred in some streams. The problem was traced to incorrect stride and offset calculations from GstVideoMeta. The calculation now correctly uses GstVideoInfo included in the caps, ensuring stable video rendering.
+### 3. Added
+
+## v1.6.4 / 2025-07-03
+### 1. Changed
+- Auto dependency installation for Ubuntu 18.04 ()
+### 2. Fixed
+- memory issue in segmentation postprocess fixed
+### 3. Added
+
 ## v1.6.3 / 2025-06-25
 ### 1. Changed
 ### 2. Fixed

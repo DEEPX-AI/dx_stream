@@ -76,7 +76,7 @@ inference_pipe="dxinputselector name=in ! \
                 dxpostprocess config-file-path=${POSTPROCESS_CONFIG} ! queue max-size-buffers=10 ! \
                 dxoutputselector name=out"
 
-launch_cmd="gst-launch-1.0 -e ${src_pipe} ${inference_pipe} ${compositor_pipe} compositor name=comp ${compositor_props} ! videoconvert ! fpsdisplaysink"
+launch_cmd="gst-launch-1.0 -e ${src_pipe} ${inference_pipe} ${compositor_pipe} compositor name=comp ${compositor_props} ! videoconvert ! fpsdisplaysink sync=false"
 
 echo "--------------------------------------------------"
 echo "Generated gst-launch-1.0 command:"

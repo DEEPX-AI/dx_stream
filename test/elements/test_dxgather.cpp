@@ -79,7 +79,9 @@ GST_START_TEST(test_element_state_change) {
                 "State should be PLAYING but got different state");
 
     gst_element_set_state(element, GST_STATE_NULL);
-    gst_object_unref(element);
+    if (GST_IS_ELEMENT(element)) {
+        gst_object_unref(element);
+    }
 }
 GST_END_TEST
 

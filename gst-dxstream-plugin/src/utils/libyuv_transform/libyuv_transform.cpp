@@ -71,18 +71,15 @@ int RGBCrop(const uint8_t *src, int src_stride, int src_width, int src_height,
     return 0;
 }
 
-void Crop(GstBuffer *buf, uint8_t **dst, int src_width, int src_height,
+void Crop(GstBuffer *buf, GstVideoInfo *input_info, uint8_t **dst, int src_width, int src_height,
           int crop_x, int crop_y, int crop_width, int crop_height,
           const gchar *format) {
+    int result = 0;
 
     GstMapInfo map;
     if (!gst_buffer_map(buf, &map, GST_MAP_READ)) {
         g_error("Crop: Failed to map GstBuffer\n");
     }
-
-    GstVideoMeta *meta = gst_buffer_get_video_meta(buf);
-    int result = 0;
-
     if (crop_width <= 0 || crop_height <= 0) {
         g_error("Crop: Invalid crop dimensions\n");
     }
@@ -93,9 +90,9 @@ void Crop(GstBuffer *buf, uint8_t **dst, int src_width, int src_height,
         }
         const uint8_t *src = map.data;
         gint stride = src_width * 3;
-        if (meta) {
-            src = map.data + meta->offset[0];
-            stride = meta->stride[0];
+        if (input_info) {
+            src = map.data + input_info->offset[0];
+            stride = input_info->stride[0];
         }
         result = RGBCrop(src, stride, src_width, src_height, *dst, crop_width,
                          crop_height, crop_x, crop_y);
@@ -109,13 +106,13 @@ void Crop(GstBuffer *buf, uint8_t **dst, int src_width, int src_height,
         gint strideY = src_width;
         gint strideU = src_width / 2;
         gint strideV = src_width / 2;
-        if (meta) {
-            src_y = map.data + meta->offset[0];
-            src_u = map.data + meta->offset[1];
-            src_v = map.data + meta->offset[2];
-            strideY = meta->stride[0];
-            strideU = meta->stride[1];
-            strideV = meta->stride[2];
+        if (input_info) {
+            src_y = map.data + input_info->offset[0];
+            src_u = map.data + input_info->offset[1];
+            src_v = map.data + input_info->offset[2];
+            strideY = input_info->stride[0];
+            strideU = input_info->stride[1];
+            strideV = input_info->stride[2];
         }
         result =
             I420Crop(src_y, strideY, src_u, strideU, src_v, strideV, src_width,
@@ -129,11 +126,11 @@ void Crop(GstBuffer *buf, uint8_t **dst, int src_width, int src_height,
         const uint8_t *src_uv = map.data + src_width * src_height;
         gint strideY = src_width;
         gint strideUV = src_width / 2;
-        if (meta) {
-            src_y = map.data + meta->offset[0];
-            src_uv = map.data + meta->offset[1];
-            strideY = meta->stride[0];
-            strideUV = meta->stride[1];
+        if (input_info) {
+            src_y = map.data + input_info->offset[0];
+            src_uv = map.data + input_info->offset[1];
+            strideY = input_info->stride[0];
+            strideUV = input_info->stride[1];
         }
 
         result =
@@ -215,13 +212,12 @@ void Resize(uint8_t *src, uint8_t **dst, int src_width, int src_height,
     }
 }
 
-void Resize(GstBuffer *buf, uint8_t **dst, int src_width, int src_height,
+void Resize(GstBuffer *buf, GstVideoInfo *input_info, uint8_t **dst, int src_width, int src_height,
             int dst_width, int dst_height, const gchar *format) {
     GstMapInfo map;
     if (!gst_buffer_map(buf, &map, GST_MAP_READ)) {
         g_error("Resize(buffer): Failed to map GstBuffer\n");
     }
-    GstVideoMeta *meta = gst_buffer_get_video_meta(buf);
     int result = 0;
     if (dst_width <= 0 || dst_height <= 0) {
         g_error("Resize(buffer): Invalid crop dimensions\n");
@@ -231,8 +227,8 @@ void Resize(GstBuffer *buf, uint8_t **dst, int src_width, int src_height,
             *dst = (uint8_t *)malloc(dst_width * dst_height * 3);
         }
         uint8_t *src = map.data;
-        if (meta) {
-            src = map.data + meta->offset[0];
+        if (input_info) {
+            src = map.data + input_info->offset[0];
         }
         cv::Mat mat_src = cv::Mat(src_height, src_width, CV_8UC3, src);
         cv::Mat mat_dst = cv::Mat(dst_height, dst_width, CV_8UC3, *dst);
@@ -255,13 +251,13 @@ void Resize(GstBuffer *buf, uint8_t **dst, int src_width, int src_height,
         gint strideY = src_width;
         gint strideU = src_width / 2;
         gint strideV = src_width / 2;
-        if (meta) {
-            src_y = map.data + meta->offset[0];
-            src_u = map.data + meta->offset[1];
-            src_v = map.data + meta->offset[2];
-            strideY = meta->stride[0];
-            strideU = meta->stride[1];
-            strideV = meta->stride[2];
+        if (input_info) {
+            src_y = map.data + input_info->offset[0];
+            src_u = map.data + input_info->offset[1];
+            src_v = map.data + input_info->offset[2];
+            strideY = input_info->stride[0];
+            strideU = input_info->stride[1];
+            strideV = input_info->stride[2];
         }
         result = libyuv::I420Scale(
             src_y, strideY, src_u, strideU, src_v, strideV, src_width,
@@ -279,11 +275,11 @@ void Resize(GstBuffer *buf, uint8_t **dst, int src_width, int src_height,
         const uint8_t *src_uv = map.data + src_width * src_height;
         gint strideY = src_width;
         gint strideUV = src_width;
-        if (meta) {
-            src_y = map.data + meta->offset[0];
-            src_uv = map.data + meta->offset[1];
-            strideY = meta->stride[0];
-            strideUV = meta->stride[1];
+        if (input_info) {
+            src_y = map.data + input_info->offset[0];
+            src_uv = map.data + input_info->offset[1];
+            strideY = input_info->stride[0];
+            strideUV = input_info->stride[1];
         }
 
         result =
@@ -388,47 +384,47 @@ static bool map_buffer(GstBuffer *buf, GstMapInfo *map, const char *tag) {
     return true;
 }
 
-static void handle_rgb(const uint8_t *data, GstVideoMeta *meta, int width,
+static void handle_rgb(const uint8_t *data, GstVideoInfo *input_info, int width,
                        int height, const gchar *dst_format, uint8_t **dst,
                        const char *tag) {
     const uint8_t *src = data;
     int stride = width * 3;
-    if (meta) {
-        src = data + meta->offset[0];
-        stride = meta->stride[0];
+    if (input_info) {
+        src = data + input_info->offset[0];
+        stride = input_info->stride[0];
     }
     convert_from_rgb(src, width, height, stride, dst_format, dst, tag);
 }
 
-static void handle_i420(const uint8_t *data, GstVideoMeta *meta, int width,
+static void handle_i420(const uint8_t *data, GstVideoInfo *input_info, int width,
                         int height, const gchar *dst_format, uint8_t **dst,
                         const char *tag) {
-    const uint8_t *y = data + (meta ? meta->offset[0] : 0);
-    const uint8_t *u = data + (meta ? meta->offset[1] : width * height);
+    const uint8_t *y = data + (input_info ? input_info->offset[0] : 0);
+    const uint8_t *u = data + (input_info ? input_info->offset[1] : width * height);
     const uint8_t *v =
         data +
-        (meta ? meta->offset[2] : width * height + (width / 2) * (height / 2));
-    int strideY = meta ? meta->stride[0] : width;
-    int strideU = meta ? meta->stride[1] : width / 2;
-    int strideV = meta ? meta->stride[2] : width / 2;
+        (input_info ? input_info->offset[2] : width * height + (width / 2) * (height / 2));
+    int strideY = input_info ? input_info->stride[0] : width;
+    int strideU = input_info ? input_info->stride[1] : width / 2;
+    int strideV = input_info ? input_info->stride[2] : width / 2;
 
     convert_from_i420(y, u, v, strideY, strideU, strideV, width, height,
                       dst_format, dst, tag);
 }
 
-static void handle_nv12(const uint8_t *data, GstVideoMeta *meta, int width,
+static void handle_nv12(const uint8_t *data, GstVideoInfo *input_info, int width,
                         int height, const gchar *dst_format, uint8_t **dst,
                         const char *tag) {
-    const uint8_t *y = data + (meta ? meta->offset[0] : 0);
-    const uint8_t *uv = data + (meta ? meta->offset[1] : width * height);
-    int strideY = meta ? meta->stride[0] : width;
-    int strideUV = meta ? meta->stride[1] : width;
+    const uint8_t *y = data + (input_info ? input_info->offset[0] : 0);
+    const uint8_t *uv = data + (input_info ? input_info->offset[1] : width * height);
+    int strideY = input_info ? input_info->stride[0] : width;
+    int strideUV = input_info ? input_info->stride[1] : width;
 
     convert_from_nv12(y, uv, strideY, strideUV, width, height, dst_format, dst,
                       tag);
 }
 
-void CvtColor(GstBuffer *buf, uint8_t **dst, int width, int height,
+void CvtColor(GstBuffer *buf, GstVideoInfo *input_info, uint8_t **dst, int width, int height,
               const gchar *src_format, const gchar *dst_format) {
     const char *tag = "CvtColor(buffer)";
     if (width <= 0 || height <= 0) {
@@ -440,14 +436,12 @@ void CvtColor(GstBuffer *buf, uint8_t **dst, int width, int height,
     if (!map_buffer(buf, &map, tag))
         return;
 
-    GstVideoMeta *meta = gst_buffer_get_video_meta(buf);
-
     if (g_strcmp0(src_format, "RGB") == 0) {
-        handle_rgb(map.data, meta, width, height, dst_format, dst, tag);
+        handle_rgb(map.data, input_info, width, height, dst_format, dst, tag);
     } else if (g_strcmp0(src_format, "I420") == 0) {
-        handle_i420(map.data, meta, width, height, dst_format, dst, tag);
+        handle_i420(map.data, input_info, width, height, dst_format, dst, tag);
     } else if (g_strcmp0(src_format, "NV12") == 0) {
-        handle_nv12(map.data, meta, width, height, dst_format, dst, tag);
+        handle_nv12(map.data, input_info, width, height, dst_format, dst, tag);
     } else {
         handle_unsupported_format(tag);
     }
@@ -523,7 +517,7 @@ void CvtColor(uint8_t *src, uint8_t **dst, int width, int height,
     }
 }
 
-void RGB24toI420(DXFrameMeta *frame_meta, uint8_t *surface) {
+void RGB24toI420(DXFrameMeta *frame_meta, GstVideoInfo *input_info, uint8_t *surface) {
     GstMapInfo map;
     if (!gst_buffer_is_writable(frame_meta->_buf)) {
         frame_meta->_buf = gst_buffer_make_writable(frame_meta->_buf);
@@ -531,21 +525,20 @@ void RGB24toI420(DXFrameMeta *frame_meta, uint8_t *surface) {
     if (!gst_buffer_map(frame_meta->_buf, &map, GST_MAP_WRITE)) {
         g_error("RGB24toI420: Failed to map GstBuffer");
     }
-    GstVideoMeta *meta = gst_buffer_get_video_meta(frame_meta->_buf);
     uint8_t *dstY;
     uint8_t *dstU;
     uint8_t *dstV;
     gint strideY;
     gint strideU;
     gint strideV;
-    if (meta) {
-        dstY = map.data + meta->offset[0];
-        dstU = map.data + meta->offset[1];
-        dstV = map.data + meta->offset[2];
+    if (input_info) {
+        dstY = map.data + input_info->offset[0];
+        dstU = map.data + input_info->offset[1];
+        dstV = map.data + input_info->offset[2];
 
-        strideY = meta->stride[0];
-        strideU = meta->stride[1];
-        strideV = meta->stride[2];
+        strideY = input_info->stride[0];
+        strideU = input_info->stride[1];
+        strideV = input_info->stride[2];
     } else {
         dstY = map.data;
         dstU = map.data + frame_meta->_width * frame_meta->_height;
@@ -564,7 +557,7 @@ void RGB24toI420(DXFrameMeta *frame_meta, uint8_t *surface) {
     gst_buffer_unmap(frame_meta->_buf, &map);
 }
 
-void RGB24toNV12(DXFrameMeta *frame_meta, uint8_t *surface) {
+void RGB24toNV12(DXFrameMeta *frame_meta, GstVideoInfo *input_info, uint8_t *surface) {
     GstMapInfo map;
     if (!gst_buffer_is_writable(frame_meta->_buf)) {
         frame_meta->_buf = gst_buffer_make_writable(frame_meta->_buf);
@@ -572,17 +565,16 @@ void RGB24toNV12(DXFrameMeta *frame_meta, uint8_t *surface) {
     if (!gst_buffer_map(frame_meta->_buf, &map, GST_MAP_WRITE)) {
         g_error("RGB24 to NV12: Failed to map GstBuffer");
     }
-    GstVideoMeta *meta = gst_buffer_get_video_meta(frame_meta->_buf);
     uint8_t *dstY;
     uint8_t *dstUV;
     gint strideY;
     gint strideUV;
-    if (meta) {
-        dstY = map.data + meta->offset[0];
-        dstUV = map.data + meta->offset[1];
+    if (input_info) {
+        dstY = map.data + input_info->offset[0];
+        dstUV = map.data + input_info->offset[1];
 
-        strideY = meta->stride[0];
-        strideUV = meta->stride[1];
+        strideY = input_info->stride[0];
+        strideUV = input_info->stride[1];
     } else {
         dstY = map.data;
         dstUV = map.data + frame_meta->_width * frame_meta->_height;
@@ -610,7 +602,7 @@ void RGB24toNV12(DXFrameMeta *frame_meta, uint8_t *surface) {
     gst_buffer_unmap(frame_meta->_buf, &map);
 }
 
-void SurfaceToOrigin(DXFrameMeta *frame_meta, uint8_t *surface) {
+void SurfaceToOrigin(DXFrameMeta *frame_meta, GstVideoInfo *input_info, uint8_t *surface) {
     if (g_strcmp0(frame_meta->_format, "RGB") == 0) {
         GstMapInfo map_info;
         if (!gst_buffer_map(frame_meta->_buf, &map_info, GST_MAP_READ)) {
@@ -620,9 +612,9 @@ void SurfaceToOrigin(DXFrameMeta *frame_meta, uint8_t *surface) {
                3 * frame_meta->_height * frame_meta->_width);
         gst_buffer_unmap(frame_meta->_buf, &map_info);
     } else if (g_strcmp0(frame_meta->_format, "I420") == 0) {
-        RGB24toI420(frame_meta, surface);
+        RGB24toI420(frame_meta, input_info, surface);
     } else if (g_strcmp0(frame_meta->_format, "NV12") == 0) {
-        RGB24toNV12(frame_meta, surface);
+        RGB24toNV12(frame_meta, input_info, surface);
     } else {
         g_error("SurfaceToOrigin: Not support color format \n");
     }

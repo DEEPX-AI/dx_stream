@@ -26,7 +26,6 @@ sources = [
     'gst-dxgather.cpp',
     'gst-dxinputselector.cpp',
     'gst-dxoutputselector.cpp',
-    'utils/memory_pool.cpp',
     'brokers/dx_msgbrokerl_mqtt.cpp',
     'brokers/dx_msgbrokerl_kafka.cpp',
 
@@ -48,11 +47,14 @@ sources += [
     'utils/libyuv_transform/libyuv_transform.cpp'
   ]
 
+# Get GStreamer plugin directory from pkg-config
+gstreamer_plugin_dir = gstreamer_dep.get_pkgconfig_variable('pluginsdir')
+
 gstdxstream = library('gstdxstream',
     sources,
     cpp_args: common_args,
     include_directories: include_dirs,
     dependencies : extra_deps,
     install : true,
-    install_dir : '/usr/lib/' + arch + '-linux-gnu/gstreamer-1.0',
+    install_dir : gstreamer_plugin_dir,
 )

@@ -78,12 +78,13 @@ static gboolean dx_object_meta_init(GstMeta *meta, gpointer params,
     dx_meta->_face_box[3] = 0;
 
     // segmentation
-    dx_meta->_seg_cls_map = dxs::SegClsMap();
+    new (&dx_meta->_seg_cls_map) dxs::SegClsMap();
+    // dx_meta->_seg_cls_map.data.clear();
+    // dx_meta->_seg_cls_map.width = 0;
+    // dx_meta->_seg_cls_map.height = 0;
 
-    new (&dx_meta->_input_memory_pool) std::map<int, MemoryPool *>();
-    new (&dx_meta->_output_memory_pool) std::map<int, MemoryPool *>();
-    new (&dx_meta->_input_tensor) std::map<int, dxs::DXTensor>();
-    new (&dx_meta->_output_tensor) std::map<int, std::vector<dxs::DXTensor>>();
+    new (&dx_meta->_input_tensors) std::map<int, dxs::DXTensors>();
+    new (&dx_meta->_output_tensors) std::map<int, dxs::DXTensors>();
 
     return TRUE;
 }
@@ -95,84 +96,57 @@ static void dx_object_meta_free(GstMeta *meta, GstBuffer *buffer) {
         g_string_free(dx_meta->_label_name, TRUE);
         dx_meta->_label_name = nullptr;
     }
-    dx_meta->_keypoints.clear();
-    dx_meta->_body_feature.clear();
+    
+    using point_f_vec = std::vector<dxs::Point_f>;
+    using float_vec = std::vector<float>;
+    
+    dx_meta->_keypoints.~float_vec();
+    dx_meta->_body_feature.~float_vec();
+    dx_meta->_face_landmarks.~point_f_vec();
+    dx_meta->_face_feature.~float_vec();
 
-    dx_meta->_face_landmarks.clear();
-    dx_meta->_face_feature.clear();
-
-    for (auto &tmp : dx_meta->_input_memory_pool) {
-        MemoryPool *pool = (MemoryPool *)tmp.second;
-        int preproc_id = tmp.first;
-        auto tensor = dx_meta->_input_tensor.find(preproc_id);
-        if (tensor != dx_meta->_input_tensor.end()) {
-            pool->deallocate(tensor->second._data);
+    for (auto &tensors : dx_meta->_input_tensors) {
+        if (tensors.second._data) {
+            free(tensors.second._data);
+            tensors.second._data = nullptr;
         }
+        tensors.second._tensors.clear();
     }
-    dx_meta->_input_memory_pool.clear();
-    dx_meta->_input_tensor.clear();
-
-    for (auto &tmp : dx_meta->_output_memory_pool) {
-        MemoryPool *pool = (MemoryPool *)tmp.second;
-        int preproc_id = tmp.first;
-        auto tensor = dx_meta->_output_tensor.find(preproc_id);
-        if (tensor != dx_meta->_output_tensor.end()) {
-            pool->deallocate(tensor->second[0]._data);
+    for (auto &tensors : dx_meta->_output_tensors) {
+        if (tensors.second._data) {
+            free(tensors.second._data);
+            tensors.second._data = nullptr;
         }
+        tensors.second._tensors.clear();
     }
-    dx_meta->_output_memory_pool.clear();
-    dx_meta->_output_tensor.clear();
+
+    dx_meta->_seg_cls_map.~SegClsMap();
 }
 
 void copy_tensor(DXObjectMeta *src_meta, DXObjectMeta *dst_meta) {
-    // clear pool & tensor
-    dst_meta->_input_memory_pool.clear();
-    for (auto &pool : src_meta->_input_memory_pool) {
-        dst_meta->_input_memory_pool[pool.first] = pool.second;
-    }
-    dst_meta->_input_tensor.clear();
-
-    dst_meta->_output_memory_pool.clear();
-    for (auto &pool : src_meta->_output_memory_pool) {
-        dst_meta->_output_memory_pool[pool.first] = pool.second;
-    }
-    dst_meta->_output_tensor.clear();
-
     // copy tensor
-    for (auto &input_tensor : src_meta->_input_tensor) {
-        dxs::DXTensor new_tensor;
+    for (auto &input_tensors : src_meta->_input_tensors) {
+        dxs::DXTensors new_tensors;
 
-        new_tensor._name = input_tensor.second._name;
-        new_tensor._shape = input_tensor.second._shape;
-        new_tensor._type = input_tensor.second._type;
-        new_tensor._data =
-            dst_meta->_input_memory_pool[input_tensor.first]->allocate();
-        new_tensor._phyAddr = input_tensor.second._phyAddr;
-        new_tensor._elemSize = input_tensor.second._elemSize;
+        new_tensors._mem_size = input_tensors.second._mem_size;
+        new_tensors._data = malloc(new_tensors._mem_size);
+        memcpy(new_tensors._data, input_tensors.second._data,
+               new_tensors._mem_size);
+        new_tensors._tensors = input_tensors.second._tensors;
 
-        memcpy(
-            new_tensor._data, input_tensor.second._data,
-            dst_meta->_input_memory_pool[input_tensor.first]->get_block_size());
-
-        dst_meta->_input_tensor[input_tensor.first] = new_tensor;
+        dst_meta->_input_tensors[input_tensors.first] = new_tensors;
     }
 
-    for (auto &temp : src_meta->_output_tensor) {
-        void *data = dst_meta->_output_memory_pool[temp.first]->allocate();
-        memcpy(data, src_meta->_output_tensor[temp.first][0]._data,
-               dst_meta->_output_memory_pool[temp.first]->get_block_size());
-        dst_meta->_output_tensor[temp.first] = std::vector<dxs::DXTensor>();
-        for (auto &tensor : temp.second) {
-            dxs::DXTensor new_tensor;
-            new_tensor._name = tensor._name;
-            new_tensor._shape = tensor._shape;
-            new_tensor._type = tensor._type;
-            new_tensor._data = static_cast<void *>(
-                static_cast<uint8_t *>(data) + tensor._phyAddr);
-            new_tensor._phyAddr = tensor._phyAddr;
-            new_tensor._elemSize = tensor._elemSize;
-            dst_meta->_output_tensor[temp.first].push_back(new_tensor);
-        }
+    for (auto &output_tensors : src_meta->_output_tensors) {
+        dxs::DXTensors new_tensors;
+
+        new_tensors._mem_size = output_tensors.second._mem_size;
+        new_tensors._data = malloc(new_tensors._mem_size);
+        memcpy(new_tensors._data, output_tensors.second._data,
+               new_tensors._mem_size);
+        new_tensors._tensors = output_tensors.second._tensors;
+
+        dst_meta->_output_tensors[output_tensors.first] = new_tensors;
     }
 }
 

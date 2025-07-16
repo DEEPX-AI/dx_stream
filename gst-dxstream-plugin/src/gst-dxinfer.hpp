@@ -2,7 +2,6 @@
 #define GST_DXINFER_H
 
 #include "gst-dxmeta.hpp"
-#include "memory_pool.hpp"
 #include <condition_variable>
 #include <dxrt/dxrt_api.h>
 #include <gst/gst.h>
@@ -32,11 +31,12 @@ typedef struct _GstDxInfer {
 
     std::shared_ptr<dxrt::InferenceEngine> _ie;
     int _last_req_id;
-    int _infer_count;
+
+    int _output_tensor_size;
 
     GThread *_push_thread;
     gboolean _push_running;
-    std::vector<GstBuffer *> _push_queue;
+    std::queue<std::pair<int, GstBuffer *>> _push_queue;
     std::mutex _push_lock;
     std::condition_variable _cv;
 
@@ -44,9 +44,6 @@ typedef struct _GstDxInfer {
     bool _global_eos;
     std::set<int> _stream_eos_arrived;
     std::map<int, int> _stream_pending_buffers;
-
-    MemoryPool _pool;
-    guint _pool_size;
 
     gint64 _avg_latency;
     GQueue *_recent_latencies;
@@ -57,12 +54,6 @@ typedef struct _GstDxInfer {
 
     GstClockTime _qos_timestamp;
     GstClockTimeDiff _qos_timediff;
-
-    guint _buffer_cnt;
-
-    std::chrono::time_point<std::chrono::high_resolution_clock> _start_time;
-    guint _frame_count_for_fps;
-
 } GstDxInfer;
 
 G_END_DECLS

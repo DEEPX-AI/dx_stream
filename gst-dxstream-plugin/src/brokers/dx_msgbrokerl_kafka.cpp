@@ -194,8 +194,8 @@ static void error_cb(rd_kafka_t *rk, int err, const char *reason,
     GST_ERROR("Error(%d): %s: %s\n", err,
               rd_kafka_err2name((rd_kafka_resp_err_t)err), reason);
 
-    if (err == RD_KAFKA_RESP_ERR__FATAL) {
-        orig_err = rd_kafka_fatal_error(rk, errstr, sizeof(errstr));
+    if (err == RD_KAFKA_RESP_ERR__FAIL) {
+        orig_err = rd_kafka_last_error();
         GST_ERROR("FATAL ERROR: %s: %s\n", rd_kafka_err2name(orig_err), errstr);
     }
 

@@ -11,11 +11,11 @@ export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$SCRIPT_DIR/../test_plugin/install"
 
 mkdir -p "$SCRIPT_DIR/bin"
 
-g++ -g -o "$SCRIPT_DIR/bin/test_single_pipeline" test_single_pipeline.c $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
-g++ -g -o "$SCRIPT_DIR/bin/test_secondary_pipeline" test_secondary_pipeline.c $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
-g++ -g -o "$SCRIPT_DIR/bin/test_multi_pipeline" test_multi_pipeline.c $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
-g++ -g -o "$SCRIPT_DIR/bin/test_roi" test_roi.c $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
-g++ -g -o "$SCRIPT_DIR/bin/test_interval" test_interval.c $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
+g++ -g -o "$SCRIPT_DIR/bin/test_single_pipeline" test_single_pipeline.cpp $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
+g++ -g -o "$SCRIPT_DIR/bin/test_secondary_pipeline" test_secondary_pipeline.cpp $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
+g++ -g -o "$SCRIPT_DIR/bin/test_multi_pipeline" test_multi_pipeline.cpp $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
+g++ -g -o "$SCRIPT_DIR/bin/test_roi" test_roi.cpp $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
+g++ -g -o "$SCRIPT_DIR/bin/test_interval" test_interval.cpp $(pkg-config --cflags --libs gstreamer-check-1.0) -lgstdxstream
 
 cd "$SCRIPT_DIR/bin"
 

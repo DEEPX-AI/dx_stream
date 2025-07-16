@@ -23,7 +23,6 @@ enum {
     PROP_MIN_OBJECT_HEIGHT,
     PROP_INTERVAL,
     PROP_ROI,
-    PROP_POOL_SIZE,
     N_PROPERTIES
 };
 
@@ -36,6 +35,8 @@ static gboolean gst_dxpreprocess_start(GstBaseTransform *trans);
 static gboolean gst_dxpreprocess_stop(GstBaseTransform *trans);
 static gboolean gst_dxpreprocess_src_event(GstBaseTransform *trans,
                                            GstEvent *event);
+static gboolean gst_dxpreprocess_sink_event(GstBaseTransform *trans,
+                                            GstEvent *event);
 
 G_DEFINE_TYPE_WITH_CODE(
     GstDxPreprocess, gst_dxpreprocess, GST_TYPE_BASE_TRANSFORM,
@@ -116,7 +117,6 @@ static void parse_config(GstDxPreprocess *self) {
     set_uint("min_object_height", self->_min_object_height,
              "min_object_height");
     set_uint("interval", self->_interval, "interval");
-    set_uint("pool_size", self->_pool_size, "pool_size");
 
     if (json_object_has_member(object, "color_format")) {
         const gchar *fmt =
@@ -245,10 +245,6 @@ static void dxpreprocess_set_property(GObject *object, guint property_id,
         break;
     }
 
-    case PROP_POOL_SIZE:
-        self->_pool_size = g_value_get_uint(value);
-        break;
-
     default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
         break;
@@ -323,10 +319,6 @@ static void dxpreprocess_get_property(GObject *object, guint property_id,
         g_value_set_uint(value, self->_interval);
         break;
 
-    case PROP_POOL_SIZE:
-        g_value_set_uint(value, self->_pool_size);
-        break;
-
     case PROP_ROI: {
         gchar roi_str[50];
         g_snprintf(roi_str, sizeof(roi_str), "%d,%d,%d,%d", self->_roi[0],
@@ -373,7 +365,6 @@ static void dxpreprocess_dispose(GObject *object) {
     g_free(self->_color_format);
 
     self->_track_cnt.clear();
-    self->_pool.deinitialize();
 
     if (self->_temp_output_buffer) {
         free(self->_temp_output_buffer);
@@ -410,10 +401,6 @@ static void dxpreprocess_dispose(GObject *object) {
 }
 
 static void dxpreprocess_finalize(GObject *object) {
-    GstDxPreprocess *self = GST_DXPREPROCESS(object);
-
-    self->_pool.deinitialize();
-
     G_OBJECT_CLASS(parent_class)->finalize(object);
 }
 
@@ -441,6 +428,42 @@ static gboolean gst_dxpreprocess_set_caps(GstBaseTransform *trans,
         return FALSE;
     }
     return TRUE;
+}
+
+static gboolean gst_dxpreprocess_sink_event(GstBaseTransform *trans,
+                                            GstEvent *event) {
+    GstDxPreprocess *self = GST_DXPREPROCESS(trans);
+    GstPad *src_pad = GST_BASE_TRANSFORM_SRC_PAD(trans);
+    // g_print("Received event: %s \n", GST_EVENT_TYPE_NAME(event));
+    // gboolean res = TRUE;
+    switch (GST_EVENT_TYPE(event)) {
+    case GST_EVENT_CUSTOM_DOWNSTREAM: {
+        const GstStructure *s_check = gst_event_get_structure(event);
+        if (gst_structure_has_name(s_check, "application/x-dx-route-info")) {
+            int stream_id = -1;
+            gst_structure_get_int(s_check, "stream-id", &stream_id);
+            self->_last_stream_id = stream_id;
+        }
+    } break;
+    case GST_EVENT_CAPS: {
+        GstCaps *incaps = nullptr;
+        gst_event_parse_caps(event, &incaps);
+        // g_print("PREPROCESS_CAPS for stream %d: %s\n", self->_last_stream_id,
+        // gst_caps_to_string(incaps));
+        if (incaps) {
+            if (self->_input_info.find(self->_last_stream_id) ==
+                self->_input_info.end()) {
+                gst_video_info_init(&self->_input_info[self->_last_stream_id]);
+                gst_video_info_from_caps(
+                    &self->_input_info[self->_last_stream_id], incaps);
+            }
+            // gst_caps_unref(incaps);
+        }
+    } break;
+    default:
+        break;
+    }
+    return gst_pad_push_event(src_pad, event);
 }
 
 static void gst_dxpreprocess_class_init(GstDxPreprocessClass *klass) {
@@ -526,11 +549,6 @@ static void gst_dxpreprocess_class_init(GstDxPreprocessClass *klass) {
         "Specifies the interval for preprocessing frames or objects.", 0, 10000,
         0, G_PARAM_READWRITE);
 
-    obj_properties[PROP_POOL_SIZE] = g_param_spec_uint(
-        "pool-size", "Pool Size for Input Tensors",
-        "Number of preallocated memory blocks for input tensors.", 0, 1000, 0,
-        G_PARAM_READWRITE);
-
     obj_properties[PROP_ROI] = g_param_spec_string(
         "roi", "Region of Interest",
         "Defines the ROI as a comma-separated string (x1,y1,x2,y2)",
@@ -566,6 +584,8 @@ static void gst_dxpreprocess_class_init(GstDxPreprocessClass *klass) {
 
     base_transform_class->start = GST_DEBUG_FUNCPTR(gst_dxpreprocess_start);
     base_transform_class->stop = GST_DEBUG_FUNCPTR(gst_dxpreprocess_stop);
+    base_transform_class->sink_event =
+        GST_DEBUG_FUNCPTR(gst_dxpreprocess_sink_event);
     base_transform_class->transform_ip =
         GST_DEBUG_FUNCPTR(gst_dxpreprocess_transform_ip);
     base_transform_class->transform_caps =
@@ -601,6 +621,9 @@ static void gst_dxpreprocess_init(GstDxPreprocess *self) {
     self->_roi[3] = -1;
     self->_track_cnt.clear();
 
+    self->_last_stream_id = 0;
+    self->_input_info.clear();
+
     self->_qos_timestamp = 0;
     self->_qos_timediff = 0;
     self->_throttling_delay = 0;
@@ -613,7 +636,6 @@ static void gst_dxpreprocess_init(GstDxPreprocess *self) {
     self->_convert_frame = std::map<int, uint8_t *>();
     self->_resized_frame = std::map<int, uint8_t *>();
 #endif
-    self->_pool_size = 1;
 }
 
 static gboolean gst_dxpreprocess_start(GstBaseTransform *trans) {
@@ -646,12 +668,7 @@ static gboolean gst_dxpreprocess_start(GstBaseTransform *trans) {
 
     self->_align_factor =
         (64 - ((self->_resize_width * self->_input_channel) % 64)) % 64;
-    self->_pool.deinitialize();
     if (self->_resize_height > 0 && self->_resize_width > 0) {
-        self->_pool.initialize(
-            self->_resize_height * (self->_resize_width * self->_input_channel +
-                                    self->_align_factor),
-            self->_pool_size, static_cast<uint8_t>(self->_pad_value));
     } else {
         g_error("Invalid input size %d x %d", self->_resize_width,
                 self->_resize_height);
@@ -690,12 +707,6 @@ bool calculate_nv12_strides_short(int w, int h, int wa, int ha, int *ws,
 
 bool preprocess(GstDxPreprocess *self, DXFrameMeta *frame_meta, void *output,
                 cv::Rect *roi) {
-    GstVideoMeta *meta = gst_buffer_get_video_meta(frame_meta->_buf);
-    if (!meta) {
-        g_error("ERROR : video meta is nullptr! \n");
-        return false;
-    }
-
     if (self->_resize_width % 16 != 0 || self->_resize_height % 2 != 0) {
         g_error("ERROR : output W stride must be 16 (H stride 2) aligned ! \n");
         return true;
@@ -721,7 +732,8 @@ bool preprocess(GstDxPreprocess *self, DXFrameMeta *frame_meta, void *output,
                                  16, &wstride, &hstride);
     rga_buffer_t src_img = wrapbuffer_virtualaddr(
         reinterpret_cast<void *>(map.data), frame_meta->_width,
-        frame_meta->_height, RK_FORMAT_YCbCr_420_SP, meta->stride[0], hstride);
+        frame_meta->_height, RK_FORMAT_YCbCr_420_SP,
+        self->_input_info[frame_meta->_stream_id].stride[0], hstride);
     rga_buffer_t dst_img;
     if (g_strcmp0(self->_color_format, "RGB") == 0) {
         dst_img = wrapbuffer_virtualaddr(
@@ -860,9 +872,10 @@ bool preprocess(GstDxPreprocess *self, DXFrameMeta *frame_meta, void *output,
     }
 
     if (roi->width != 0 && roi->height != 0) {
-        Crop(frame_meta->_buf, &self->_crop_frame[frame_meta->_stream_id],
-             frame_meta->_width, frame_meta->_height, roi->x, roi->y,
-             roi->width, roi->height, frame_meta->_format);
+        Crop(frame_meta->_buf, &self->_input_info[frame_meta->_stream_id],
+             &self->_crop_frame[frame_meta->_stream_id], frame_meta->_width,
+             frame_meta->_height, roi->x, roi->y, roi->width, roi->height,
+             frame_meta->_format);
         width = roi->width;
         height = roi->height;
     }
@@ -886,7 +899,7 @@ bool preprocess(GstDxPreprocess *self, DXFrameMeta *frame_meta, void *output,
                    &self->_resized_frame[frame_meta->_stream_id], roi->width,
                    roi->height, newWidth, newHeight, frame_meta->_format);
         } else {
-            Resize(frame_meta->_buf,
+            Resize(frame_meta->_buf, &self->_input_info[frame_meta->_stream_id],
                    &self->_resized_frame[frame_meta->_stream_id],
                    frame_meta->_width, frame_meta->_height, newWidth, newHeight,
                    frame_meta->_format);
@@ -916,7 +929,7 @@ bool preprocess(GstDxPreprocess *self, DXFrameMeta *frame_meta, void *output,
                    self->_resize_width, self->_resize_height,
                    frame_meta->_format);
         } else {
-            Resize(frame_meta->_buf,
+            Resize(frame_meta->_buf, &self->_input_info[frame_meta->_stream_id],
                    &self->_resized_frame[frame_meta->_stream_id], width, height,
                    self->_resize_width, self->_resize_height,
                    frame_meta->_format);
@@ -1046,24 +1059,26 @@ bool primary_process(GstDxPreprocess *self, DXFrameMeta *frame_meta) {
         frame_meta->_roi[3] = std::min(self->_roi[3], frame_meta->_height - 1);
     }
 
-    if (frame_meta->_input_memory_pool.find(self->_preprocess_id) !=
-        frame_meta->_input_memory_pool.end()) {
+    if (frame_meta->_input_tensors.find(self->_preprocess_id) !=
+        frame_meta->_input_tensors.end()) {
         g_error("Preprocess ID %d already exists in the frame meta. check your "
                 "pipeline",
                 self->_preprocess_id);
         ret = false;
     }
-    frame_meta->_input_memory_pool[self->_preprocess_id] =
-        (MemoryPool *)&self->_pool;
 
+    dxs::DXTensors tensors;
+    tensors._mem_size =
+        self->_resize_height * self->_resize_width * self->_input_channel;
+    tensors._data = malloc(tensors._mem_size);
     dxs::DXTensor tensor;
-    tensor._data = self->_pool.allocate();
     tensor._type = dxs::DataType::UINT8;
     tensor._name = "input";
     tensor._shape.push_back(self->_resize_height);
     tensor._shape.push_back(self->_resize_width);
     tensor._shape.push_back(self->_input_channel);
     tensor._elemSize = 1;
+    tensors._tensors.push_back(tensor);
 
     cv::Rect roi(cv::Point(frame_meta->_roi[0], frame_meta->_roi[1]),
                  cv::Point(frame_meta->_roi[2], frame_meta->_roi[3]));
@@ -1080,51 +1095,53 @@ bool primary_process(GstDxPreprocess *self, DXFrameMeta *frame_meta) {
                 ret = false;
             }
         }
-        add_dummy_data(self, self->_temp_output_buffer, tensor._data);
+        add_dummy_data(self, self->_temp_output_buffer, tensors._data);
     } else {
         if (self->_process_function != nullptr) {
-            if (!self->_process_function(frame_meta, nullptr, tensor._data)) {
+            if (!self->_process_function(frame_meta, nullptr, tensors._data)) {
                 ret = false;
             }
         } else {
-            if (!preprocess(self, frame_meta, tensor._data, &roi)) {
+            if (!preprocess(self, frame_meta, tensors._data, &roi)) {
                 ret = false;
             }
         }
     }
     if (ret) {
-        frame_meta->_input_tensor[self->_preprocess_id] = tensor;
+        frame_meta->_input_tensors[self->_preprocess_id] = tensors;
     } else {
-        self->_pool.deallocate(tensor._data);
-        tensor._data = nullptr;
-        frame_meta->_input_memory_pool[self->_preprocess_id] = nullptr;
+        free(tensors._data);
+        tensors._data = nullptr;
     }
     return ret;
 }
 
 bool process_object(GstDxPreprocess *self, DXFrameMeta *frame_meta,
                     DXObjectMeta *object_meta, int &preprocess_id) {
-    if (object_meta->_input_memory_pool.find(preprocess_id) !=
-        object_meta->_input_memory_pool.end()) {
+    if (object_meta->_input_tensors.find(preprocess_id) !=
+        object_meta->_input_tensors.end()) {
         g_error("Preprocess ID %d already exists in the object meta. check "
                 "your pipeline",
                 preprocess_id);
         return false; // 에러지만 일단 false 리턴으로 처리
     }
 
-    object_meta->_input_memory_pool[preprocess_id] = (MemoryPool *)&self->_pool;
-
     if (!check_object(self, frame_meta, object_meta)) {
         return false;
     }
 
+    dxs::DXTensors tensors;
+    tensors._mem_size =
+        self->_resize_height * self->_resize_width * self->_input_channel;
+    tensors._data = malloc(tensors._mem_size);
     dxs::DXTensor tensor;
-    tensor._data = self->_pool.allocate();
     tensor._type = dxs::DataType::UINT8;
     tensor._name = "input";
-    tensor._shape = {self->_resize_height, self->_resize_width,
-                     self->_input_channel};
+    tensor._shape.push_back(self->_resize_height);
+    tensor._shape.push_back(self->_resize_width);
+    tensor._shape.push_back(self->_input_channel);
     tensor._elemSize = 1;
+    tensors._tensors.push_back(tensor);
 
     cv::Rect roi(
         cv::Point(std::max(int(object_meta->_box[0]), 0),
@@ -1140,22 +1157,21 @@ bool process_object(GstDxPreprocess *self, DXFrameMeta *frame_meta,
         } else {
             ret = preprocess(self, frame_meta, self->_temp_output_buffer, &roi);
         }
-        add_dummy_data(self, self->_temp_output_buffer, tensor._data);
+        add_dummy_data(self, self->_temp_output_buffer, tensors._data);
     } else {
         if (self->_process_function) {
             ret =
-                self->_process_function(frame_meta, object_meta, tensor._data);
+                self->_process_function(frame_meta, object_meta, tensors._data);
         } else {
-            ret = preprocess(self, frame_meta, tensor._data, &roi);
+            ret = preprocess(self, frame_meta, tensors._data, &roi);
         }
     }
 
     if (ret) {
-        object_meta->_input_tensor[preprocess_id] = tensor;
+        object_meta->_input_tensors[preprocess_id] = tensors;
     } else {
-        self->_pool.deallocate(tensor._data);
-        tensor._data = nullptr;
-        object_meta->_input_memory_pool[preprocess_id] = nullptr;
+        free(tensors._data);
+        tensors._data = nullptr;
     }
     return ret;
 }

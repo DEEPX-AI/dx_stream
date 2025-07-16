@@ -14,6 +14,8 @@ struct SegClsMap {
     int height = 0;
 
     SegClsMap() = default;
+    SegClsMap(const SegClsMap &) = default;
+    SegClsMap &operator=(const SegClsMap &) = default;
     ~SegClsMap() = default;
 };
 
@@ -126,6 +128,17 @@ typedef struct _DXTensor {
     _DXTensor &operator=(const _DXTensor &) = default;
     ~_DXTensor() = default;
 } DXTensor;
+
+typedef struct _DXTensors {
+    uint32_t _mem_size = 0;
+    void *_data = nullptr;
+    std::vector<DXTensor> _tensors;
+
+    _DXTensors() = default;
+    _DXTensors(const _DXTensors &) = default;
+    _DXTensors &operator=(const _DXTensors &) = default;
+    ~_DXTensors() = default;
+} DXTensors;
 
 } // namespace dxs
 
