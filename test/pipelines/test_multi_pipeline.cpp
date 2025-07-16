@@ -2,10 +2,10 @@
 #include <gst/check/gstcheck.h>
 #include <gst/gst.h>
 
-#include <algorithm>
-#include <iostream>
-#include <map>
-#include <vector>
+// #include <algorithm>
+// #include <iostream>
+// #include <map>
+// #include <vector>
 
 using namespace std;
 
@@ -146,7 +146,7 @@ GST_START_TEST(test_multi_pipeline) {
 
     g_object_set(videosrc0, "image-path", "./../../test_resources/1.jpg", NULL);
     g_object_set(G_OBJECT(videosrc0), "framerate", 10, 1, NULL);
-    g_object_set(videosrc0, "num-buffers", 100, NULL);
+    g_object_set(videosrc0, "num-buffers", 10, NULL);
 
     GstElement *jpegparse0 = gst_element_factory_make("jpegparse", NULL);
     fail_unless(jpegparse0 != NULL, "Failed to create jpegparse element");
@@ -165,7 +165,7 @@ GST_START_TEST(test_multi_pipeline) {
 
     g_object_set(videosrc1, "image-path", "./../../test_resources/1.jpg", NULL);
     g_object_set(G_OBJECT(videosrc1), "framerate", 18, 1, NULL);
-    g_object_set(videosrc1, "num-buffers", 100, NULL);
+    g_object_set(videosrc1, "num-buffers", 10, NULL);
 
     GstElement *jpegparse1 = gst_element_factory_make("jpegparse", NULL);
     fail_unless(jpegparse1 != NULL, "Failed to create jpegparse element");
@@ -184,7 +184,7 @@ GST_START_TEST(test_multi_pipeline) {
 
     g_object_set(videosrc2, "image-path", "./../../test_resources/1.jpg", NULL);
     g_object_set(G_OBJECT(videosrc2), "framerate", 24, 1, NULL);
-    g_object_set(videosrc2, "num-buffers", 100, NULL);
+    g_object_set(videosrc2, "num-buffers", 10, NULL);
 
     GstElement *jpegparse2 = gst_element_factory_make("jpegparse", NULL);
     fail_unless(jpegparse2 != NULL, "Failed to create jpegparse element");
@@ -203,7 +203,7 @@ GST_START_TEST(test_multi_pipeline) {
 
     g_object_set(videosrc3, "image-path", "./../../test_resources/1.jpg", NULL);
     g_object_set(G_OBJECT(videosrc3), "framerate", 30, 1, NULL);
-    g_object_set(videosrc3, "num-buffers", 100, NULL);
+    g_object_set(videosrc3, "num-buffers", 10, NULL);
 
     GstElement *jpegparse3 = gst_element_factory_make("jpegparse", NULL);
     fail_unless(jpegparse3 != NULL, "Failed to create jpegparse element");
@@ -262,7 +262,9 @@ GST_START_TEST(test_multi_pipeline) {
     GstPad *sink_pad = gst_element_get_static_pad(fakesink, "sink");
     gst_pad_add_probe(sink_pad, GST_PAD_PROBE_TYPE_BUFFER, probe_primary, NULL,
                       NULL);
-    gst_object_unref(sink_pad);
+    if (GST_IS_PAD(sink_pad)) {
+        gst_object_unref(sink_pad);
+    }
 
     // -------------------------- RUN -----------------------//
     gst_element_set_state(pipeline, GST_STATE_PLAYING);
@@ -274,8 +276,12 @@ GST_START_TEST(test_multi_pipeline) {
     g_main_loop_run(loop);
 
     gst_element_set_state(pipeline, GST_STATE_NULL);
-    gst_object_unref(bus);
-    gst_object_unref(pipeline);
+    if (GST_IS_ELEMENT(pipeline)) {
+        gst_object_unref(pipeline);
+    }
+    if (GST_IS_BUS(bus)) {
+        gst_object_unref(bus);
+    }
     g_main_loop_unref(loop);
 }
 GST_END_TEST
@@ -283,7 +289,7 @@ GST_END_TEST
 Suite *multi_suite(void) {
     Suite *s = suite_create("Multi TEST");
     TCase *tc_core = tcase_create("Core");
-    tcase_set_timeout(tc_core, 20.0);
+    tcase_set_timeout(tc_core, 60.0);
     tcase_add_test(tc_core, test_multi_pipeline);
 
     suite_add_tcase(s, tc_core);

@@ -26,6 +26,8 @@ static GstFlowReturn gst_dxpostprocess_transform_ip(GstBaseTransform *trans,
                                                     GstBuffer *buf);
 static gboolean gst_dxpostprocess_start(GstBaseTransform *trans);
 static gboolean gst_dxpostprocess_stop(GstBaseTransform *trans);
+static gboolean gst_dxpostprocess_sink_event(GstBaseTransform *trans,
+                                             GstEvent *event);
 
 G_DEFINE_TYPE_WITH_CODE(
     GstDxPostprocess, gst_dxpostprocess, GST_TYPE_BASE_TRANSFORM,
@@ -270,6 +272,7 @@ static void gst_dxpostprocess_class_init(GstDxPostprocessClass *klass) {
 
     base_transform_class->start = GST_DEBUG_FUNCPTR(gst_dxpostprocess_start);
     base_transform_class->stop = GST_DEBUG_FUNCPTR(gst_dxpostprocess_stop);
+    base_transform_class->sink_event = GST_DEBUG_FUNCPTR(gst_dxpostprocess_sink_event);
     base_transform_class->transform_ip =
         GST_DEBUG_FUNCPTR(gst_dxpostprocess_transform_ip);
     parent_class = GST_ELEMENT_CLASS(g_type_class_peek_parent(klass));
@@ -297,17 +300,32 @@ static gboolean gst_dxpostprocess_stop(GstBaseTransform *trans) {
     return TRUE;
 }
 
+static gboolean gst_dxpostprocess_sink_event(GstBaseTransform *trans,
+                                             GstEvent *event) {
+    GstDxPostprocess *self = GST_DXPOSTPROCESS(trans);
+    GstPad *src_pad = GST_BASE_TRANSFORM_SRC_PAD(trans);
+    // g_print("POSTPROCESS_RECEIVED_EVENT: %s \n", GST_EVENT_TYPE_NAME(event));
+    
+    gboolean res = gst_pad_push_event(src_pad, event);
+    
+    if (!res) {
+        GST_WARNING_OBJECT(self, "Failed to push event %s to src pad", GST_EVENT_TYPE_NAME(event));
+    }
+    
+    return res;
+}
+
 static void process_object_meta(DXObjectMeta *object_meta,
                                 GstDxPostprocess *self,
                                 DXFrameMeta *frame_meta) {
-    auto iter = object_meta->_output_tensor.find(self->_infer_id);
-    if (iter == object_meta->_output_tensor.end())
+    auto iter = object_meta->_output_tensors.find(self->_infer_id);
+    if (iter == object_meta->_output_tensors.end())
         return;
 
-    if (iter->second.size() == 0)
+    if (iter->second._tensors.empty())
         return;
 
-    self->_postproc_function(iter->second, frame_meta, object_meta);
+    self->_postproc_function(iter->second._tensors, frame_meta, object_meta);
 }
 
 static void process_secondary_mode(DXFrameMeta *frame_meta,
@@ -334,9 +352,9 @@ static GstFlowReturn gst_dxpostprocess_transform_ip(GstBaseTransform *trans,
     if (self->_secondary_mode) {
         process_secondary_mode(frame_meta, self);
     } else {
-        auto iter = frame_meta->_output_tensor.find(self->_infer_id);
-        if (iter != frame_meta->_output_tensor.end()) {
-            self->_postproc_function(iter->second, frame_meta, nullptr);
+        auto iter = frame_meta->_output_tensors.find(self->_infer_id);
+        if (iter != frame_meta->_output_tensors.end()) {
+            self->_postproc_function(iter->second._tensors, frame_meta, nullptr);
         }
     }
 

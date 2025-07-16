@@ -2,6 +2,7 @@
 #define __GST_DXMSGMETA_H__
 
 #include <gst/gst.h>
+#include <gst/video/video.h>
 
 G_BEGIN_DECLS
 
@@ -16,7 +17,7 @@ typedef struct _DxMsgContext {
 
 typedef struct _DxMsgMetaInfo {
     gpointer _frame_meta;
-
+    gpointer _input_info;
     gboolean _include_frame;
 
     /** debug purpose */

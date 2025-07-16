@@ -589,12 +589,6 @@ bool calculate_strides(int w, int h, int wa, int ha, int *ws, int *hs) {
 
 #ifdef HAVE_LIBRGA
 void draw_rga(GstDxOsd *self, DXFrameMeta *frame_meta, GstBuffer *outbuffer) {
-    GstVideoMeta *meta = gst_buffer_get_video_meta(frame_meta->_buf);
-    if (!meta) {
-        g_error("ERROR : video meta is nullptr! \n");
-        return;
-    }
-
     if (self->_width % 16 != 0) {
         g_error("ERROR : DXOSD output W stride must be 16 aligned ! \n");
         return;
@@ -643,7 +637,7 @@ void draw_rga(GstDxOsd *self, DXFrameMeta *frame_meta, GstBuffer *outbuffer) {
                       &hstride);
     rga_buffer_t src_img = wrapbuffer_virtualaddr(
         reinterpret_cast<void *>(input_map.data), frame_meta->_width,
-        frame_meta->_height, RK_FORMAT_YCbCr_420_SP, meta->stride[0], hstride);
+        frame_meta->_height, RK_FORMAT_YCbCr_420_SP, self->_input_info.stride[0], hstride);
     rga_buffer_t dst_img =
         wrapbuffer_virtualaddr(reinterpret_cast<void *>(output_map.data),
                                self->_width, self->_height, RK_FORMAT_BGR_888);
@@ -696,7 +690,7 @@ void draw(GstDxOsd *self, DXFrameMeta *frame_meta, GstBuffer *outbuffer) {
 
     unsigned int object_length = g_list_length(frame_meta->_object_meta_list);
 
-    Resize(frame_meta->_buf, &self->_resized_frame[frame_meta->_stream_id],
+    Resize(frame_meta->_buf, &self->_input_info, &self->_resized_frame[frame_meta->_stream_id],
            frame_meta->_width, frame_meta->_height, self->_width, self->_height,
            frame_meta->_format);
 

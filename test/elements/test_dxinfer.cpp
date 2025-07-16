@@ -72,11 +72,6 @@ GST_START_TEST(test_element_properties) {
                 "'model-path' properties not set correctly");
     g_free(model_path);
 
-    g_object_set(element, "pool-size", 31, NULL);
-    guint pool_size;
-    g_object_get(element, "pool-size", &pool_size, NULL);
-    fail_unless(pool_size == 31, "'pool-size' property not set correctly");
-
     g_object_set(element, "secondary-mode", TRUE, NULL);
     gboolean secondary_mode;
     g_object_get(element, "secondary-mode", &secondary_mode, NULL);

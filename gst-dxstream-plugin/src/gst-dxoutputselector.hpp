@@ -4,6 +4,7 @@
 #include <gst/gst.h>
 #include <map>
 #include <mutex>
+#include <set>
 
 G_BEGIN_DECLS
 
@@ -18,8 +19,8 @@ struct _GstDxOutputSelector {
     std::map<int, GstCaps *> _cached_caps_for_stream;
     GstPad *_sinkpad;
 
-    std::mutex _event_mutex;
-    std::mutex _caps_cache_mutex;
+    std::set<int> _eos_stream_id;
+
     int _last_stream_id;
 };
 

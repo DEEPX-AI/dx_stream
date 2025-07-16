@@ -10,8 +10,9 @@ extern "C" void PostProcess(std::vector<dxs::DXTensor> network_output,
     object_meta->_body_feature.clear();
 
     float norm = 0.0f;
+    int feature_length = network_output[0]._shape.size() - 1;
     float *vec = (float *)network_output[0]._data;
-    for (int i = 0; i < network_output[0]._shape[3]; i++) {
+    for (int i = 0; i < network_output[0]._shape[feature_length]; i++) {
         float v = *(vec + i);
         norm += v * v;
     }
@@ -26,7 +27,7 @@ extern "C" void PostProcess(std::vector<dxs::DXTensor> network_output,
     }
 
     // Normalize the vector
-    for (int i = 0; i < network_output[0]._shape[3]; i++) {
+    for (int i = 0; i < network_output[0]._shape[feature_length]; i++) {
         float v = *(vec + i);
         object_meta->_body_feature.push_back(v / norm);
     }

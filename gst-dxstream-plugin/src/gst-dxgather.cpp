@@ -44,7 +44,10 @@ static void gst_dxgather_finalize(GObject *object) {
          tmp++) {
         int stream_id = tmp->first;
         if (self->_buffers[stream_id]) {
-            gst_buffer_unref(self->_buffers[stream_id]);
+            if (GST_IS_BUFFER(self->_buffers[stream_id])) {
+                gst_buffer_unref(self->_buffers[stream_id]);
+            }
+            self->_buffers[stream_id] = nullptr;
         }
     }
     self->_buffers.clear();
@@ -199,26 +202,6 @@ static void gst_dxgather_release_pad(GstElement *element, GstPad *pad) {
     gst_element_remove_pad(element, pad);
 }
 
-using PoolType = std::shared_ptr<void>;
-
-static void merge_memory_pool(std::map<int, MemoryPool *> &dst,
-                              const std::map<int, MemoryPool *> &src) {
-    for (const auto &item : src) {
-        if (dst.find(item.first) == dst.end()) {
-            dst[item.first] = item.second;
-        }
-    }
-}
-
-static void copy_memory_pool(std::map<int, MemoryPool *> &dst,
-                             const std::map<int, MemoryPool *> &src) {
-    for (const auto &item : src) {
-        if (dst.find(item.first) == dst.end()) {
-            dst[item.first] = item.second;
-        }
-    }
-}
-
 static void copy_box(float dst[4], const float src[4]) {
     memcpy(dst, src, sizeof(float) * 4);
 }
@@ -237,60 +220,39 @@ static void copy_label_name(GString *&dst, const GString *src) {
 }
 
 static void copy_input_tensors(DXObjectMeta *dst, const DXObjectMeta *src) {
-    for (const auto &input_tensor : src->_input_tensor) {
-        const auto &key = input_tensor.first;
-        if (dst->_input_tensor.find(key) != dst->_input_tensor.end())
-            continue;
-        if (dst->_input_memory_pool.find(key) == dst->_input_memory_pool.end())
+    for (const auto &input_tensors : src->_input_tensors) {
+        const auto &key = input_tensors.first;
+        if (dst->_input_tensors.find(key) != dst->_input_tensors.end())
             continue;
 
-        dxs::DXTensor new_tensor;
-        new_tensor._name = input_tensor.second._name;
-        new_tensor._shape = input_tensor.second._shape;
-        new_tensor._type = input_tensor.second._type;
-        new_tensor._data = dst->_input_memory_pool[key]->allocate();
-        new_tensor._phyAddr = input_tensor.second._phyAddr;
-        new_tensor._elemSize = input_tensor.second._elemSize;
+        dxs::DXTensors new_tensors;
+        new_tensors._mem_size = input_tensors.second._mem_size;
+        new_tensors._data = malloc(new_tensors._mem_size);
+        memcpy(new_tensors._data, input_tensors.second._data,
+               new_tensors._mem_size);
+        new_tensors._tensors = input_tensors.second._tensors;
 
-        memcpy(new_tensor._data, input_tensor.second._data,
-               dst->_input_memory_pool[key]->get_block_size());
-
-        dst->_input_tensor[key] = new_tensor;
+        dst->_input_tensors[key] = new_tensors;
     }
 }
 
 static void copy_output_tensors(DXObjectMeta *dst, const DXObjectMeta *src) {
-    for (const auto &output_tensor : src->_output_tensor) {
-        const auto &key = output_tensor.first;
+    for (const auto &output_tensors : src->_output_tensors) {
+        const auto &key = output_tensors.first;
 
-        if (dst->_output_memory_pool.find(key) ==
-            dst->_output_memory_pool.end()) {
-            g_error("[dxgather] Can't not find Output memory pool \n");
-            continue;
-        }
-
-        if (dst->_output_tensor.find(key) != dst->_output_tensor.end()) {
+        if (dst->_output_tensors.find(key) != dst->_output_tensors.end()) {
             g_error("[dxgather] Output Tensor is Exist \n");
             continue;
         }
 
-        void *data = dst->_output_memory_pool[key]->allocate();
-        memcpy(data, output_tensor.second[0]._data,
-               dst->_output_memory_pool[key]->get_block_size());
+        dxs::DXTensors new_tensors;
+        new_tensors._mem_size = output_tensors.second._mem_size;
+        new_tensors._data = malloc(new_tensors._mem_size);
+        memcpy(new_tensors._data, output_tensors.second._data,
+               new_tensors._mem_size);
+        new_tensors._tensors = output_tensors.second._tensors;
 
-        dst->_output_tensor[key].clear();
-        for (const auto &tensor : output_tensor.second) {
-            dxs::DXTensor new_tensor;
-            new_tensor._name = tensor._name;
-            new_tensor._shape = tensor._shape;
-            new_tensor._type = tensor._type;
-            new_tensor._data = static_cast<void *>(
-                static_cast<uint8_t *>(data) + tensor._phyAddr);
-            new_tensor._phyAddr = tensor._phyAddr;
-            new_tensor._elemSize = tensor._elemSize;
-
-            dst->_output_tensor[key].push_back(new_tensor);
-        }
+        dst->_output_tensors[key] = new_tensors;
     }
 }
 
@@ -358,9 +320,6 @@ void copy_object_meta(DXObjectMeta *dst, DXObjectMeta *src) {
         dst->_seg_cls_map.height = src->_seg_cls_map.height;
     }
 
-    copy_memory_pool(dst->_input_memory_pool, src->_input_memory_pool);
-    copy_memory_pool(dst->_output_memory_pool, src->_output_memory_pool);
-
     copy_input_tensors(dst, src);
     copy_output_tensors(dst, src);
 }
@@ -389,9 +348,6 @@ void merge_object_meta(DXObjectMeta *dst, DXObjectMeta *src) {
         dst->_seg_cls_map.width = src->_seg_cls_map.width;
         dst->_seg_cls_map.height = src->_seg_cls_map.height;
     }
-
-    merge_memory_pool(dst->_input_memory_pool, src->_input_memory_pool);
-    merge_memory_pool(dst->_output_memory_pool, src->_output_memory_pool);
 
     copy_input_tensors(dst, src);
     copy_output_tensors(dst, src);

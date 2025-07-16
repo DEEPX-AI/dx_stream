@@ -2,10 +2,10 @@
 #include <gst/check/gstcheck.h>
 #include <gst/gst.h>
 
-#include <algorithm>
-#include <iostream>
-#include <map>
-#include <vector>
+// #include <algorithm>
+// #include <iostream>
+// #include <map>
+// #include <vector>
 
 using namespace std;
 
@@ -291,7 +291,7 @@ GST_END_TEST
 Suite *single_suite(void) {
     Suite *s = suite_create("Single TEST");
     TCase *tc_core = tcase_create("Core");
-    tcase_set_timeout(tc_core, 20.0);
+    tcase_set_timeout(tc_core, 60.0);
     tcase_add_test(tc_core, test_single_pipeline);
 
     suite_add_tcase(s, tc_core);

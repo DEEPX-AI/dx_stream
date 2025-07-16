@@ -46,9 +46,6 @@ User-defined preprocessing logic can be implemented by providing.
 
 This allows implementation of customized data handling tailored to specific AI models. 
 
-**Memory Management**  
-The `pool-size` property preallocates reusable memory blocks for input tensors. This improves memory efficiency and minimizes dynamic allocation overhead during runtime.
-
 **QoS Handling**  
 If the downstream sink element has `sync=true`, input buffers may be dropped based on their timestamps. This helps maintain real-time performance and avoids frame backlog under system load.
 
@@ -88,7 +85,7 @@ This table provides a complete reference to the properties of the **DxPreprocess
 | `interval`           | Specifies the interval for preprocessing frames or objects.                                         | Integer              | `0`                    |
 | `library-file-path`  | Path to the custom preprocess library, if used.                                                     | String               | `null`                 |
 | `function-name`      | Name of the custom preprocessing function to use.                                                   | String               | `null`                 |
-| `pool-size`          | Number of preallocated memory blocks for input tensors.                                             | Integer              | `1`                    |
+
 
 
 ### **Example JSON Configuration**

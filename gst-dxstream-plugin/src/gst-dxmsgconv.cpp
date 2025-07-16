@@ -267,23 +267,17 @@ static gboolean gst_dxmsgconv_stop(GstBaseTransform *trans) {
 void convert(GstDxMsgConv *self, DXFrameMeta *frame_meta, GstBuffer *buf) {
     if (self->_message_interval == 0 ||
         (self->_seq_id % self->_message_interval) == 0) {
-        // GST_INFO_OBJECT(self, "|JCP| [B-%d][Frame-%3d] ~~~ %p", b,
-        //                 self->_seq_id, frame_meta->_buf);
-
         DxMsgMetaInfo meta_info;
         meta_info._frame_meta = frame_meta;
         meta_info._seq_id = self->_seq_id;
         meta_info._include_frame = self->_include_frame;
+        meta_info._input_info = &self->_input_info;
 
         DxMsgPayload *payload =
             self->_convert_payload_function(self->_context, &meta_info);
 
-        // GST_INFO_OBJECT(self, "|JSON-Conv(%p)| %s", payload,
-        //                 (gchar *)payload->_data);
-
         gst_buffer_add_dxmsg_meta(buf, payload);
-        /* currently use gst_dxmsg_meta_free instead of this */
-        // self->_release_payload_function(self->_context, payload);
+        self->_release_payload_function(self->_context, payload);
 
     } else {
         GST_DEBUG_OBJECT(self, "skip seq:%lu, _message_interval: %d",
@@ -294,6 +288,8 @@ void convert(GstDxMsgConv *self, DXFrameMeta *frame_meta, GstBuffer *buf) {
 static GstFlowReturn gst_dxmsgconv_transform_ip(GstBaseTransform *trans,
                                                 GstBuffer *buf) {
     GstDxMsgConv *self = GST_DXMSGCONV(trans);
+
+    gst_video_info_from_caps(&self->_input_info, gst_pad_get_current_caps(GST_BASE_TRANSFORM_SINK_PAD(trans)));
 
     self->_seq_id++;
 

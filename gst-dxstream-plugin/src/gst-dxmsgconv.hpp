@@ -25,7 +25,7 @@ struct _GstDxMsgConv {
     guint64 _seq_id;
     guint _message_interval;
     gboolean _include_frame;
-
+    GstVideoInfo _input_info;
     gchar *_config_file_path;
     gchar *_library_file_path;
     void *_library_handle;

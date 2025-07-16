@@ -120,11 +120,6 @@ GST_START_TEST(test_element_properties) {
     g_object_get(element, "pad-value", &pad_value, NULL);
     fail_unless(pad_value == 231, "'pad-value' property not set correctly");
 
-    g_object_set(element, "pool-size", 222, NULL);
-    guint pool_size;
-    g_object_get(element, "pool-size", &pool_size, NULL);
-    fail_unless(pool_size == 222, "'pool-size' property not set correctly");
-
     g_object_set(element, "preprocess-id", 13, NULL);
     guint preprocess_id;
     g_object_get(element, "preprocess-id", &preprocess_id, NULL);
@@ -200,13 +195,13 @@ static GstPadProbeReturn probe_primary(GstPad *pad, GstPadProbeInfo *info,
         if (meta_type == DX_FRAME_META_API_TYPE) {
             DXFrameMeta *frame_meta = (DXFrameMeta *)meta;
             if (_interval == 3) {
-                fail_unless(frame_meta->_input_tensor.find(2) !=
-                                frame_meta->_input_tensor.end(),
+                fail_unless(frame_meta->_input_tensors.find(2) !=
+                                frame_meta->_input_tensors.end(),
                             "Preprocess ID Failed");
                 _interval = 0;
             } else {
-                fail_unless(frame_meta->_input_tensor.find(2) ==
-                                frame_meta->_input_tensor.end(),
+                fail_unless(frame_meta->_input_tensors.find(2) ==
+                                frame_meta->_input_tensors.end(),
                             "Preprocess ID Exist");
             }
         }

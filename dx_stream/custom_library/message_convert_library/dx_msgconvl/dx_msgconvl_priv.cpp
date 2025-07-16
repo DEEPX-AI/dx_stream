@@ -350,7 +350,7 @@ gchar *dxpayload_convert_to_json(DxMsgContext *context,
     if (meta_info->_include_frame) {
         std::vector<uchar> buf;
         uint8_t *rgb_buffer = nullptr;
-        CvtColor(frame_meta->_buf, &rgb_buffer, frame_meta->_width,
+        CvtColor(frame_meta->_buf, (GstVideoInfo*)meta_info->_input_info, &rgb_buffer, frame_meta->_width,
                  frame_meta->_height, frame_meta->_format, "RGB");
         cv::Mat rgb_surface = cv::Mat(frame_meta->_height, frame_meta->_width,
                                       CV_8UC3, rgb_buffer);

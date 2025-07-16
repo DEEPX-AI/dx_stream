@@ -22,9 +22,6 @@ If the downstream sink element has `sync-true`, input buffers may be dropped bas
 **Throttle QoS Events**  
 When **DxRate** sends a Throttle QoS Event, **DxInfer** delays inference by the `throttling_delay` interval. This avoids unnecessary NPU computation in low-framerate pipelines and promotes smooth and consistent streaming. 
 
-**Memory Management**  
-**DxInfer** reuses output tensor buffers based on the `pool-size` property to improve memory usage.  
-
 **JSON Configuration**  
 All properties can be configured through a JSON file using the `config-file-path` property. This enables reusable, clean, and scalable configuration of inference behavior. 
 
@@ -48,7 +45,7 @@ GObject
 | `preprocess-id`    | Specifies the ID of the input tensor to be used for **inference**.                                       | Integer   | `0`                |
 | `inference-id`     | Specifies the ID of the output tensor to be used for **postprocess**.                                                       | Integer   | `0`                |
 | `secondary-mode`   | Determines whether to operate in primary mode or secondary mode.                                     | Boolean   | `false`            |
-| `pool-size`        | Specifies the number of preallocated memory blocks for output tensors.                               | Integer   | `1`                |
+
 
 ### **Example JSON Configuration**
 

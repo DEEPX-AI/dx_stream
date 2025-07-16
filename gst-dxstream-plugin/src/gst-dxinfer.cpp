@@ -12,7 +12,6 @@ enum {
     PROP_SECONDARY_MODE,
     PROP_MODEL_PATH,
     PROP_CONFIG_PATH,
-    PROP_POOL_SIZE,
     N_PROPERTIES
 };
 
@@ -71,7 +70,6 @@ static void parse_config(GstDxInfer *self) {
 
     assign_uint_member("preprocess_id", self->_preproc_id);
     assign_uint_member("inference_id", self->_infer_id);
-    assign_uint_member("pool_size", self->_pool_size);
 
     if (json_object_has_member(object, "secondary_mode")) {
         self->_secondary_mode =
@@ -116,10 +114,6 @@ static void gst_dxinfer_set_property(GObject *object, guint property_id,
         self->_secondary_mode = g_value_get_boolean(value);
         break;
     }
-    case PROP_POOL_SIZE: {
-        self->_pool_size = g_value_get_uint(value);
-        break;
-    }
     default:
         break;
     }
@@ -148,9 +142,6 @@ static void gst_dxinfer_get_property(GObject *object, guint property_id,
     case PROP_SECONDARY_MODE:
         g_value_set_boolean(value, self->_secondary_mode);
         break;
-    case PROP_POOL_SIZE:
-        g_value_set_uint(value, self->_pool_size);
-        break;
     default:
         break;
     }
@@ -167,21 +158,22 @@ static void dxinfer_dispose(GObject *object) {
         self->_model_path = nullptr;
     }
 
-    while (!self->_push_queue.empty()) {    
-        gst_buffer_unref(self->_push_queue.front());
-        self->_push_queue.erase(self->_push_queue.begin());
+    if (self->_ie && self->_last_req_id != 0) {
+        self->_ie->Wait(self->_last_req_id);
     }
 
-    self->_pool.deinitialize();
+    while (!self->_push_queue.empty()) {
+        if (GST_IS_BUFFER(self->_push_queue.front().second)) {
+            gst_buffer_unref(self->_push_queue.front().second);
+        }
+        self->_push_queue.pop();
+    }
 
     G_OBJECT_CLASS(parent_class)->dispose(object);
 }
 
 static void dxinfer_finalize(GObject *object) {
     GstDxInfer *self = GST_DXINFER(object);
-
-    self->_pool.deinitialize();
-    self->_ie.reset();
 
     if (self->_recent_latencies) {
         g_queue_free(self->_recent_latencies);
@@ -209,9 +201,8 @@ struct CallbackInput {
     ~CallbackInput() = default;
 };
 
-std::vector<dxs::DXTensor>
-convert_tensor(std::vector<shared_ptr<dxrt::Tensor>> src) {
-    std::vector<dxs::DXTensor> output;
+void convert_tensor(std::vector<shared_ptr<dxrt::Tensor>> src,
+                    dxs::DXTensors &output) {
     for (size_t i = 0; i < src.size(); i++) {
         dxs::DXTensor new_tensor;
         new_tensor._name = src[i]->name();
@@ -220,10 +211,8 @@ convert_tensor(std::vector<shared_ptr<dxrt::Tensor>> src) {
         new_tensor._data = src[i]->data();
         new_tensor._phyAddr = src[i]->phy_addr();
         new_tensor._elemSize = src[i]->elem_size();
-        output.push_back(new_tensor);
+        output._tensors.push_back(new_tensor);
     }
-
-    return output;
 }
 
 static void handle_null_to_ready(GstDxInfer *self) {
@@ -234,42 +223,7 @@ static void handle_null_to_ready(GstDxInfer *self) {
     }
 
     self->_ie = std::make_shared<dxrt::InferenceEngine>(self->_model_path);
-
-    auto postProcCallBack =
-        [=](std::vector<std::shared_ptr<dxrt::Tensor>> outputs, void *arg) {
-            auto shared_ptr_ptr =
-                static_cast<std::shared_ptr<CallbackInput> *>(arg);
-            auto callback_input = *shared_ptr_ptr;
-
-            guint infer_id = callback_input->self->_infer_id;
-
-            if (callback_input->self->_secondary_mode) {
-                if (!callback_input->object_meta) {
-                    g_error("DXObjectMeta Not found in Inference Callback\n");
-                }
-                callback_input->object_meta->_output_tensor[infer_id] =
-                    convert_tensor(outputs);
-            } else {
-                callback_input->frame_meta->_output_tensor[infer_id] =
-                    convert_tensor(outputs);
-                {
-                    std::unique_lock<std::mutex> lock(
-                        callback_input->self->_push_lock);
-                    callback_input->self->_push_queue.push_back(
-                        callback_input->frame_meta->_buf);
-                    callback_input->self->_cv.notify_all();
-                }
-            }
-            delete shared_ptr_ptr;
-            return 0;
-        };
-
-    self->_ie->RegisterCallback(postProcCallBack);
-
-    if (self->_ie) {
-        self->_pool.deinitialize();
-        self->_pool.initialize(self->_ie->GetOutputSize(), self->_pool_size);
-    }
+    self->_output_tensor_size = self->_ie->GetOutputSize();
 }
 
 static void handle_ready_to_paused(GstDxInfer *self) {
@@ -287,30 +241,35 @@ static void handle_playing_to_paused(GstDxInfer *self) {
     if (self->_secondary_mode)
         return;
 
+    self->_push_running = FALSE;
+    self->_cv.notify_all();
+
     if (self->_ie && self->_last_req_id != 0) {
         self->_ie->Wait(self->_last_req_id);
     }
 
-    self->_push_running = FALSE;
-    self->_cv.notify_all();
+    {
+        std::unique_lock<std::mutex> lock(self->_push_lock);
+        while (!self->_push_queue.empty()) {
+            if (GST_IS_BUFFER(self->_push_queue.front().second)) {
+                gst_buffer_unref(self->_push_queue.front().second);
+            }
+            self->_push_queue.pop();
+        }
+    }
 }
 
 static void handle_paused_to_ready(GstDxInfer *self) {
     if (self->_secondary_mode)
         return;
 
-    g_thread_join(self->_push_thread);
-
-    if (self->_ie && self->_last_req_id != 0) {
-        self->_ie->Wait(self->_last_req_id);
-    }
-
     self->_cv.notify_all();
+    g_thread_join(self->_push_thread);
 }
 
 static void handle_paused_to_playing(GstDxInfer *self) {
-    self->_start_time = std::chrono::high_resolution_clock::now();
-    self->_frame_count_for_fps = 0;
+    self->_push_running = TRUE;
+    self->_cv.notify_all();
 }
 
 static GstStateChangeReturn dxinfer_change_state(GstElement *element,
@@ -375,11 +334,6 @@ static void gst_dxinfer_class_init(GstDxInferClass *klass) {
         "inference-id", "inference id",
         "Specifies the ID of the output tensor to be used for inference.", 0,
         10000, 0, G_PARAM_READWRITE);
-    obj_properties[PROP_POOL_SIZE] =
-        g_param_spec_uint("pool-size", "Output Tensor Memory Pool SIZE",
-                          "Specifies the number of preallocated memory blocks "
-                          "for output tensors.",
-                          0, 1000, 0, G_PARAM_READWRITE);
     obj_properties[PROP_SECONDARY_MODE] = g_param_spec_boolean(
         "secondary-mode", "secondary mode",
         "Determines whether to operate in primary mode or secondary mode.",
@@ -410,9 +364,7 @@ static gboolean gst_dxinfer_sink_event(GstPad *pad, GstObject *parent,
     switch (GST_EVENT_TYPE(event)) {
     case GST_EVENT_EOS: {
         if (!self->_secondary_mode) {
-            self->_ie->Wait(self->_last_req_id);
             self->_global_eos = true;
-            
             self->_cv.notify_all();
         } else {
             res = gst_pad_push_event(self->_srcpad, event);
@@ -501,18 +453,15 @@ static void gst_dxinfer_init(GstDxInfer *self) {
     self->_config_path = nullptr;
     self->_secondary_mode = FALSE;
     self->_ie = nullptr;
-    self->_pool_size = 1;
+    self->_output_tensor_size = 0;
 
-    self->_push_queue = std::vector<GstBuffer *>();
+    self->_push_queue = std::queue<std::pair<int, GstBuffer *>>();
 
     self->_avg_latency = 0;
     self->_recent_latencies = g_queue_new();
     self->_prev_ts = 0;
     self->_throttling_delay = 0;
     self->_throttling_accum = 0;
-    self->_buffer_cnt = 0;
-
-    self->_infer_count = 0;
 
     self->_qos_timestamp = 0;
     self->_qos_timediff = 0;
@@ -543,12 +492,24 @@ gint64 calculate_average(GQueue *queue) {
 }
 
 void push_logical_eos(GstDxInfer *self, int stream_id) {
-    GstStructure *s =
+    gboolean res = TRUE;
+    GstStructure *s_route_info =
+        gst_structure_new("application/x-dx-route-info", "stream-id",
+                          G_TYPE_INT, stream_id, NULL);
+    GstEvent *route_info = gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM, s_route_info);
+    // g_print("INFER PUSH_LOGICAL_EOS: %d \n", stream_id);
+    res = gst_pad_push_event(self->_srcpad, route_info);
+    if (!res) {
+        gst_event_unref(route_info); 
+        return;
+    }
+
+    GstStructure *s_logical_eos =
         gst_structure_new("application/x-dx-logical-stream-eos", "stream-id",
                           G_TYPE_INT, stream_id, NULL);
     GstEvent *logical_eos_event =
-        gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM, s);
-    gboolean res = gst_pad_push_event(self->_srcpad, logical_eos_event);
+        gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM, s_logical_eos);
+    res = gst_pad_push_event(self->_srcpad, logical_eos_event);
     if (!res) {
         gst_event_unref(logical_eos_event);
     }
@@ -557,6 +518,7 @@ void push_logical_eos(GstDxInfer *self, int stream_id) {
 static gpointer push_thread_func(GstDxInfer *self) {
     while (self->_push_running) {
         GstBuffer *push_buf = nullptr;
+        int req_id = -1;
         {
             std::unique_lock<std::mutex> lock(self->_push_lock);
             self->_cv.wait(lock, [self] {
@@ -576,24 +538,25 @@ static gpointer push_thread_func(GstDxInfer *self) {
                 break;
             }
 
-            auto smallest_it = std::min_element(
-                self->_push_queue.begin(), self->_push_queue.end(),
-                [](GstBuffer *a, GstBuffer *b) {
-                    return GST_BUFFER_PTS(a) < GST_BUFFER_PTS(b);
-                });
-            push_buf = *smallest_it;
-            self->_push_queue.erase(smallest_it);
+            push_buf = self->_push_queue.front().second;
+            req_id = self->_push_queue.front().first;
+            self->_push_queue.pop();
             self->_cv.notify_all();
         }
 
         DXFrameMeta *frame_meta = (DXFrameMeta *)gst_buffer_get_meta(
             push_buf, DX_FRAME_META_API_TYPE);
 
+        if (req_id != -1) {
+            auto outputs = self->_ie->Wait(req_id);
+            convert_tensor(outputs,
+                           frame_meta->_output_tensors[self->_infer_id]);
+        }
+
         if (push_buf) {
             GstFlowReturn ret = gst_pad_push(self->_srcpad, push_buf);
             if (ret != GST_FLOW_OK) {
                 GST_ERROR_OBJECT(self, "Failed to push buffer:%d\n ", ret);
-                break;
             }
 
             {
@@ -688,17 +651,19 @@ static GstFlowReturn gst_dxinfer_chain(GstPad *pad, GstObject *parent,
         for (int o = 0; o < objects_size; o++) {
             DXObjectMeta *object_meta = (DXObjectMeta *)g_list_nth_data(
                 frame_meta->_object_meta_list, o);
-            auto iter = object_meta->_input_tensor.find(self->_preproc_id);
-            if (iter != object_meta->_input_tensor.end()) {
-                auto callback_input = std::make_shared<CallbackInput>(
-                    frame_meta, object_meta, self);
-                auto shared_ptr_ptr =
-                    new std::shared_ptr<CallbackInput>(callback_input);
-                object_meta->_output_memory_pool[self->_infer_id] =
-                    (MemoryPool *)&self->_pool;
-                self->_ie->Run(iter->second._data,
-                               static_cast<void *>(shared_ptr_ptr),
-                               self->_pool.allocate());
+            auto iter = object_meta->_input_tensors.find(self->_preproc_id);
+            if (iter != object_meta->_input_tensors.end()) {
+                object_meta->_output_tensors[self->_infer_id] =
+                    dxs::DXTensors();
+                object_meta->_output_tensors[self->_infer_id]._mem_size =
+                    self->_output_tensor_size;
+                object_meta->_output_tensors[self->_infer_id]._data =
+                    malloc(self->_output_tensor_size);
+                auto outputs = self->_ie->Run(
+                    iter->second._data, nullptr,
+                    object_meta->_output_tensors[self->_infer_id]._data);
+                convert_tensor(outputs,
+                               object_meta->_output_tensors[self->_infer_id]);
             }
         }
 
@@ -719,37 +684,34 @@ static GstFlowReturn gst_dxinfer_chain(GstPad *pad, GstObject *parent,
 
         return ret;
     } else {
+        int req_id = -1;
+        auto iter = frame_meta->_input_tensors.find(self->_preproc_id);
+        if (iter != frame_meta->_input_tensors.end()) {
+            frame_meta->_output_tensors[self->_infer_id] = dxs::DXTensors();
+            frame_meta->_output_tensors[self->_infer_id]._mem_size =
+                self->_output_tensor_size;
+            frame_meta->_output_tensors[self->_infer_id]._data =
+                malloc(self->_output_tensor_size);
+            req_id = self->_ie->RunAsync(
+                iter->second._data, nullptr,
+                frame_meta->_output_tensors[self->_infer_id]._data);
+            self->_last_req_id = req_id;
+        }
+
         {
             std::unique_lock<std::mutex> lock(self->_push_lock);
             self->_cv.wait(lock, [self] {
                 return self->_global_eos || !self->_push_running ||
                        self->_push_queue.size() <= MAX_PUSH_QUEUE_SIZE;
             });
-            self->_cv.notify_all();
-        }
 
-        if (!self->_push_running) {
-            gst_buffer_unref(buf);
-            return GST_FLOW_OK;
-        }
-
-        auto iter = frame_meta->_input_tensor.find(self->_preproc_id);
-        if (iter != frame_meta->_input_tensor.end()) {
-            auto callback_input =
-                std::make_shared<CallbackInput>(frame_meta, nullptr, self);
-            auto shared_ptr_ptr =
-                new std::shared_ptr<CallbackInput>(callback_input);
-            frame_meta->_output_memory_pool[self->_infer_id] =
-                (MemoryPool *)&self->_pool;
-            self->_last_req_id = self->_ie->RunAsync(
-                iter->second._data, static_cast<void *>(shared_ptr_ptr),
-                self->_pool.allocate());
-        } else {
-            self->_ie->Wait(self->_last_req_id);
-            std::unique_lock<std::mutex> lock(self->_push_lock);
-            if (self->_push_running) {
-                self->_push_queue.push_back(frame_meta->_buf);
+            if (!self->_push_running) {
+                gst_buffer_unref(buf);
+                return GST_FLOW_OK;
             }
+
+            self->_push_queue.push(std::make_pair(req_id, buf));
+            self->_cv.notify_all();
         }
     }
     return GST_FLOW_OK;
