@@ -201,7 +201,7 @@ struct CallbackInput {
     ~CallbackInput() = default;
 };
 
-void convert_tensor(std::vector<shared_ptr<dxrt::Tensor>> src,
+void convert_tensor(std::vector<std::shared_ptr<dxrt::Tensor>> src,
                     dxs::DXTensors &output) {
     for (size_t i = 0; i < src.size(); i++) {
         dxs::DXTensor new_tensor;
