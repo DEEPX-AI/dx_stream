@@ -3,9 +3,19 @@
 #include "utils.hpp"
 #include <algorithm>
 #include <list>
+#include <utility>
 
 GST_DEBUG_CATEGORY_STATIC(gst_dxinputselector_debug_category);
 #define GST_CAT_DEFAULT gst_dxinputselector_debug_category
+
+enum { PROP_0, PROP_MAX_QUEUE_SIZE };
+
+static void gst_dxinputselector_set_property(GObject *object, guint prop_id,
+                                             const GValue *value,
+                                             GParamSpec *pspec);
+static void gst_dxinputselector_get_property(GObject *object, guint prop_id,
+                                             GValue *value,
+                                             GParamSpec *pspec);
 
 static GstFlowReturn gst_dxinputselector_chain(GstPad *pad, GstObject *parent,
                                                GstBuffer *buf);
@@ -22,75 +32,23 @@ G_DEFINE_TYPE(GstDxInputSelector, gst_dxinputselector, GST_TYPE_ELEMENT);
 
 static GstElementClass *parent_class = nullptr;
 
-bool all_buffer_values_are_valid(const std::map<int, GstBuffer *> &buffer_map, 
-                                const std::set<int> &eos_streams) {
-    for (const auto &pair : buffer_map) {
-        if (eos_streams.count(pair.first) > 0) {
-            continue;
-        }
-        if (pair.second == nullptr) {
-            return false;
-        }
-    }
-    return true;
-}
-
-void clear_buffer(std::map<int, GstBuffer *> &buffer_map, 
-                 const std::set<int> &eos_streams) {
+void clear_queues(std::map<int, std::queue<GstBuffer *>> &buffer_map) {
     for (auto &pair : buffer_map) {
-        if (eos_streams.count(pair.first) > 0) {
-            continue;
-        }
-        if (pair.second != nullptr) {
-            gst_buffer_unref(pair.second);
-            pair.second = nullptr;
+        while (!pair.second.empty()) {
+            gst_buffer_unref(pair.second.front());
+            pair.second.pop();
         }
     }
-}
-
-int get_key_of_buffer_with_smallest_pts(
-    const std::map<int, GstBuffer *> &buffer_map,
-    const std::set<int> &eos_streams) {
-    
-    GstClockTime min_pts = GST_CLOCK_TIME_NONE;
-    int key_with_min_pts = -1;
-    bool found_valid_pts = false;
-
-    for (const auto &pair : buffer_map) {
-        if (eos_streams.count(pair.first) > 0) {
-            continue;
-        }
-        
-        GstBuffer *buffer = pair.second;
-        int current_key = pair.first;
-
-        if (buffer == nullptr) {
-            return -1;
-        }
-
-        if (GST_BUFFER_PTS_IS_VALID(buffer)) {
-            GstClockTime current_pts = GST_BUFFER_PTS(buffer);
-            if (!found_valid_pts || current_pts < min_pts) {
-                min_pts = current_pts;
-                key_with_min_pts = current_key;
-                found_valid_pts = true;
-            }
-        }
-    }
-
-    return key_with_min_pts;
 }
 
 static void dxinputselector_dispose(GObject *object) {
     GstDxInputSelector *self = GST_DXINPUTSELECTOR(object);
 
-    for (auto &pair : self->_buffer_queue) {
-        if (GST_IS_BUFFER(pair.second)) {
-            gst_buffer_unref(pair.second);
-            pair.second = nullptr;
-        }
+    clear_queues(self->_buffer_queue);
+    while (!self->_pts_heap.empty()) {
+        self->_pts_heap.pop();
     }
-    
+
     self->_stream_eos_arrived.clear();
     self->_sinkpads.clear();
     self->_buffer_queue.clear();
@@ -121,6 +79,7 @@ dxinputselector_change_state(GstElement *element, GstStateChange transition) {
         if (self->_running) {
             self->_running = false;
             self->_push_cv.notify_all();
+            self->_aquire_cv.notify_all();
         }
         g_thread_join(self->_thread);
     } break;
@@ -142,8 +101,18 @@ static void gst_dxinputselector_class_init(GstDxInputSelectorClass *klass) {
 
     GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
     gobject_class->dispose = dxinputselector_dispose;
+    gobject_class->set_property = gst_dxinputselector_set_property;
+    gobject_class->get_property = gst_dxinputselector_get_property;
 
     GstElementClass *element_class = GST_ELEMENT_CLASS(klass);
+
+    g_object_class_install_property(
+        gobject_class, PROP_MAX_QUEUE_SIZE,
+        g_param_spec_uint(
+            "max-queue-size", "Max Queue Size",
+            "Maximum number of buffers per stream queue", 1, G_MAXUINT, 10,
+            (GParamFlags)(G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
+                          GST_PARAM_MUTABLE_READY)));
 
     gst_element_class_set_static_metadata(
         element_class, "DXInputSelector", "Generic",
@@ -173,14 +142,47 @@ static void gst_dxinputselector_init(GstDxInputSelector *self) {
     GST_PAD_SET_PROXY_CAPS(self->_srcpad);
     gst_element_add_pad(GST_ELEMENT(self), self->_srcpad);
 
-    self->_buffer_queue = std::map<int, GstBuffer *>();
+    self->_buffer_queue = std::map<int, std::queue<GstBuffer *>>();
+    self->_pts_heap =
+        std::priority_queue<std::pair<GstClockTime, int>,
+                            std::vector<std::pair<GstClockTime, int>>,
+                            std::greater<std::pair<GstClockTime, int>>>();
     self->_thread = nullptr;
     self->_running = false;
     self->_global_eos = false;
+    self->_max_queue_size = 10;
 
     self->_stream_eos_arrived.clear();
 
     self->_sinkpads.clear();
+}
+
+static void gst_dxinputselector_set_property(GObject *object, guint prop_id,
+                                             const GValue *value,
+                                             GParamSpec *pspec) {
+    GstDxInputSelector *self = GST_DXINPUTSELECTOR(object);
+    switch (prop_id) {
+    case PROP_MAX_QUEUE_SIZE:
+        self->_max_queue_size = g_value_get_uint(value);
+        break;
+    default:
+        G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+        break;
+    }
+}
+
+static void gst_dxinputselector_get_property(GObject *object, guint prop_id,
+                                             GValue *value,
+                                             GParamSpec *pspec) {
+    GstDxInputSelector *self = GST_DXINPUTSELECTOR(object);
+    switch (prop_id) {
+    case PROP_MAX_QUEUE_SIZE:
+        g_value_set_uint(value, self->_max_queue_size);
+        break;
+    default:
+        G_OBJECT_WARN_INVALID_PROPERTY_ID(object, prop_id, pspec);
+        break;
+    }
 }
 
 static gboolean gst_dxinputselector_sink_event(GstPad *pad, GstObject *parent,
@@ -199,27 +201,26 @@ static gboolean gst_dxinputselector_sink_event(GstPad *pad, GstObject *parent,
                 self->_stream_eos_arrived.size() == self->_sinkpads.size();
             GST_INFO_OBJECT(self, "Stream [%d] EOS set, global_eos: %d",
                             stream_id, self->_global_eos);
-            
-            if (self->_buffer_queue[stream_id] != nullptr) {
-                gst_buffer_unref(self->_buffer_queue[stream_id]);
-                self->_buffer_queue[stream_id] = nullptr;
+
+            while (!self->_buffer_queue[stream_id].empty()) {
+                gst_buffer_unref(self->_buffer_queue[stream_id].front());
+                self->_buffer_queue[stream_id].pop();
             }
         }
-        
-        GST_INFO_OBJECT(self, "push logical eos in inputselector : %d", stream_id);
+
+        gst_event_unref(event);
+
+        GST_INFO_OBJECT(self, "push logical eos in inputselector : %d",
+                        stream_id);
         GstStructure *s = gst_structure_new(
-            "application/x-dx-logical-stream-eos", "stream-id",
-            G_TYPE_INT, stream_id, NULL);
+            "application/x-dx-logical-stream-eos", "stream-id", G_TYPE_INT,
+            stream_id, NULL);
         GstEvent *logical_eos_event =
             gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM, s);
-        gboolean res = gst_pad_push_event(self->_srcpad, logical_eos_event);
-        if (!res) {
-            gst_event_unref(logical_eos_event);
-        }
-        
+
         self->_push_cv.notify_all();
         self->_aquire_cv.notify_all();
-        res = TRUE;
+        res = gst_pad_push_event(self->_srcpad, logical_eos_event);
     } break;
     default: {
         std::unique_lock<std::mutex> lock(self->_event_mutex);
@@ -230,9 +231,13 @@ static gboolean gst_dxinputselector_sink_event(GstPad *pad, GstObject *parent,
             gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM, s);
         res = gst_pad_push_event(self->_srcpad, route_info);
         if (!res) {
-            gst_event_unref(route_info);
+            gst_event_unref(event);
+            return FALSE;
         }
         res = gst_pad_push_event(self->_srcpad, event);
+        if (!res) {
+            return FALSE;
+        }
     } break;
     }
     return res;
@@ -259,7 +264,7 @@ static GstPad *gst_dxinputselector_request_new_pad(GstElement *element,
 
     self->_sinkpads[stream_id] = GST_PAD(gst_object_ref(sinkpad));
 
-    self->_buffer_queue[stream_id] = nullptr;
+    self->_buffer_queue[stream_id] = std::queue<GstBuffer *>();
     g_free(pad_name);
     return sinkpad;
 }
@@ -271,54 +276,60 @@ static void gst_dxinputselector_release_pad(GstElement *element, GstPad *pad) {
 static gpointer push_thread_func(GstDxInputSelector *self) {
     while (self->_running) {
         GstBuffer *buf = nullptr;
-        int smallest_stream_id = -1;
         {
             std::unique_lock<std::mutex> lock(self->_buffer_lock);
             self->_push_cv.wait(lock, [self]() {
+                size_t active_streams =
+                    self->_sinkpads.size() - self->_stream_eos_arrived.size();
                 return !self->_running || self->_global_eos ||
-                       all_buffer_values_are_valid(self->_buffer_queue, self->_stream_eos_arrived);
+                       (active_streams > 0 &&
+                        self->_pts_heap.size() >= active_streams);
             });
 
             if (!self->_running) {
-                clear_buffer(self->_buffer_queue, self->_stream_eos_arrived);
+                clear_queues(self->_buffer_queue);
+                while (!self->_pts_heap.empty())
+                    self->_pts_heap.pop();
                 self->_aquire_cv.notify_all();
                 break;
             }
 
-            for (auto it = self->_buffer_queue.begin(); it != self->_buffer_queue.end();) {
-                if (self->_stream_eos_arrived.count(it->first) > 0) {
-                    if (it->second != nullptr) {
-                        gst_buffer_unref(it->second);
-                    }
-                    it = self->_buffer_queue.erase(it);
-                } else {
-                    ++it;
-                }
-            }
-
             if (self->_global_eos) {
-                GST_INFO_OBJECT(self, "All streams reached EOS, pushing global EOS");
+                GST_INFO_OBJECT(self,
+                                "All streams reached EOS, pushing global EOS");
                 GstEvent *eos_event = gst_event_new_eos();
-                gboolean res = gst_pad_push_event(self->_srcpad, eos_event);
-                if (!res) {
-                    gst_event_unref(eos_event);
-                }
+                gst_pad_push_event(self->_srcpad, eos_event);
                 break;
             }
 
-            if (self->_buffer_queue.empty()) {
+            if (self->_pts_heap.empty()) {
                 continue;
             }
 
-            smallest_stream_id =
-                get_key_of_buffer_with_smallest_pts(self->_buffer_queue, self->_stream_eos_arrived);
-            if (smallest_stream_id < 0) {
-                GST_ERROR_OBJECT(self, "Invalid GstBuffer \n");
+            int smallest_stream_id = -1;
+            while (!self->_pts_heap.empty()) {
+                smallest_stream_id = self->_pts_heap.top().second;
+                self->_pts_heap.pop();
+
+                if (self->_stream_eos_arrived.count(smallest_stream_id) == 0) {
+                    break; 
+                }
+            }
+            
+            if (smallest_stream_id < 0 || self->_stream_eos_arrived.count(smallest_stream_id) > 0) {
                 continue;
             }
-            buf = gst_buffer_ref(self->_buffer_queue[smallest_stream_id]);
-            gst_buffer_unref(self->_buffer_queue[smallest_stream_id]);
-            self->_buffer_queue[smallest_stream_id] = nullptr;
+
+            buf = self->_buffer_queue[smallest_stream_id].front();
+            self->_buffer_queue[smallest_stream_id].pop();
+
+            if (!self->_buffer_queue[smallest_stream_id].empty()) {
+                GstBuffer *next_buf =
+                    self->_buffer_queue[smallest_stream_id].front();
+                self->_pts_heap.push(
+                    {GST_BUFFER_PTS(next_buf), smallest_stream_id});
+            }
+
             self->_aquire_cv.notify_all();
         }
         if (!buf) {
@@ -347,7 +358,6 @@ static GstFlowReturn gst_dxinputselector_chain(GstPad *pad, GstObject *parent,
         return GST_FLOW_OK;
     }
 
-    // add frame_meta
     DXFrameMeta *frame_meta =
         (DXFrameMeta *)gst_buffer_get_meta(buf, DX_FRAME_META_API_TYPE);
     if (!frame_meta) {
@@ -372,26 +382,26 @@ static GstFlowReturn gst_dxinputselector_chain(GstPad *pad, GstObject *parent,
 
     {
         std::unique_lock<std::mutex> lock(self->_buffer_lock);
-        
-        if (self->_stream_eos_arrived.count(stream_id) > 0) {
-            gst_buffer_unref(buf);
-            self->_push_cv.notify_all();
-            return GST_FLOW_OK;
-        }
-        
+
         self->_aquire_cv.wait(lock, [self, stream_id]() {
-            return !self->_running || 
-                   self->_buffer_queue[stream_id] == nullptr ||
+            return !self->_running ||
+                   self->_buffer_queue[stream_id].size() <
+                       self->_max_queue_size ||
                    self->_stream_eos_arrived.count(stream_id) > 0;
         });
-        
+
         if (!self->_running || self->_stream_eos_arrived.count(stream_id) > 0) {
             gst_buffer_unref(buf);
             self->_push_cv.notify_all();
             return GST_FLOW_OK;
         }
-        
-        self->_buffer_queue[stream_id] = buf;
+
+        bool was_empty = self->_buffer_queue[stream_id].empty();
+        self->_buffer_queue[stream_id].push(buf);
+
+        if (was_empty) {
+            self->_pts_heap.push({GST_BUFFER_PTS(buf), stream_id});
+        }
         self->_push_cv.notify_all();
     }
 

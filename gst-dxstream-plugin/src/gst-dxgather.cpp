@@ -108,6 +108,7 @@ static gboolean gst_dxgather_sink_event(GstPad *pad, GstObject *parent,
     case GST_EVENT_EOS:
         self->_eos_list[stream_id] = true;
         self->_cv.notify_all();
+        gst_event_unref(event);
         return TRUE;
     case GST_EVENT_CAPS: {
         gboolean result = gst_pad_push_event(self->_srcpad, event);
@@ -497,7 +498,6 @@ static gpointer gather_push_thread_func(GstDxGather *self) {
             GstEvent *eos_event = gst_event_new_eos();
             if (!gst_pad_push_event(self->_srcpad, eos_event)) {
                 GST_ERROR_OBJECT(self, "Failed to push EOS Event\n");
-                gst_event_unref(eos_event);
                 break;
             }
         }

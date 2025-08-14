@@ -1,5 +1,5 @@
 {
     "inference_id": 1,
-    "library_file_path": "/usr/share/dx-stream/lib/libpostprocess_yolo.so",
-    "function_name": "YOLOV7_512"
+    "library_file_path": "/usr/share/dx-stream/lib/libpostprocess_yolov7_512.so",
+    "function_name": "PostProcess"
 }

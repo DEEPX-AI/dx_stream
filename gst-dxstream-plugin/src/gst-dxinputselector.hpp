@@ -6,8 +6,9 @@
 #include <map>
 #include <mutex>
 #include <queue>
-#include <vector>
 #include <set>
+#include <utility> // For std::pair
+#include <vector>
 
 G_BEGIN_DECLS
 
@@ -30,7 +31,16 @@ struct _GstDxInputSelector {
     std::mutex _buffer_lock;
     std::condition_variable _aquire_cv;
     std::condition_variable _push_cv;
-    std::map<int, GstBuffer *> _buffer_queue;
+    std::map<int, std::queue<GstBuffer *>> _buffer_queue;
+
+    // A min-heap to store pairs of (PTS, stream_id).
+    // This allows finding the stream with the smallest PTS in O(log N) time.
+    std::priority_queue<std::pair<GstClockTime, int>,
+                        std::vector<std::pair<GstClockTime, int>>,
+                        std::greater<std::pair<GstClockTime, int>>>
+        _pts_heap;
+
+    guint _max_queue_size;
 };
 
 G_END_DECLS

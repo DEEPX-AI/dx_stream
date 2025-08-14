@@ -4,6 +4,8 @@
 #include <json-glib/json-glib.h>
 #include <map>
 #include <opencv2/opencv.hpp>
+#include <sstream>
+#include <vector>
 
 enum {
     PROP_0,
@@ -32,6 +34,44 @@ static gpointer push_thread_func(GstDxInfer *self);
 G_DEFINE_TYPE(GstDxInfer, gst_dxinfer, GST_TYPE_ELEMENT);
 
 static GstElementClass *parent_class = nullptr;
+
+// Helper function for semantic version comparison
+bool version_less_than(const std::string& version1, const std::string& version2) {
+    std::vector<int> v1_parts, v2_parts;
+    
+    // Parse version strings
+    std::stringstream ss1(version1), ss2(version2);
+    std::string part;
+    
+    while (std::getline(ss1, part, '.')) {
+        v1_parts.push_back(std::stoi(part));
+    }
+    
+    while (std::getline(ss2, part, '.')) {
+        v2_parts.push_back(std::stoi(part));
+    }
+    
+    // Pad with zeros if needed
+    while (v1_parts.size() < v2_parts.size()) {
+        v1_parts.push_back(0);
+    }
+    while (v2_parts.size() < v1_parts.size()) {
+        v2_parts.push_back(0);
+    }
+    
+    // Compare parts
+    for (size_t i = 0; i < v1_parts.size(); ++i) {
+        if (v1_parts[i] < v2_parts[i]) return true;
+        if (v1_parts[i] > v2_parts[i]) return false;
+    }
+    
+    return false; // versions are equal
+}
+
+// Helper function to check if version meets minimum requirement
+bool version_meets_minimum(const std::string& current_version, const std::string& minimum_version) {
+    return !version_less_than(current_version, minimum_version);
+}
 
 static void parse_config(GstDxInfer *self) {
     if (!g_file_test(self->_config_path, G_FILE_TEST_EXISTS)) {
@@ -183,24 +223,6 @@ static void dxinfer_finalize(GObject *object) {
     G_OBJECT_CLASS(parent_class)->finalize(object);
 }
 
-struct CallbackInput {
-    DXFrameMeta *frame_meta;
-    DXObjectMeta *object_meta;
-    GstDxInfer *self;
-
-    CallbackInput()
-        : frame_meta(nullptr), object_meta(nullptr), self(nullptr) {}
-
-    CallbackInput(DXFrameMeta *_frame_meta, DXObjectMeta *_object_meta,
-                  GstDxInfer *_self)
-        : frame_meta(_frame_meta), object_meta(_object_meta), self(_self) {}
-
-    CallbackInput(const CallbackInput &) = default;
-    CallbackInput &operator=(const CallbackInput &) = default;
-
-    ~CallbackInput() = default;
-};
-
 void convert_tensor(std::vector<std::shared_ptr<dxrt::Tensor>> src,
                     dxs::DXTensors &output) {
     for (size_t i = 0; i < src.size(); i++) {
@@ -224,6 +246,16 @@ static void handle_null_to_ready(GstDxInfer *self) {
 
     self->_ie = std::make_shared<dxrt::InferenceEngine>(self->_model_path);
     self->_output_tensor_size = self->_ie->GetOutputSize();
+    std::string version = dxrt::Configuration::GetInstance().GetVersion();
+    if (!version_meets_minimum(version, "3.0.0")) {
+        g_error("[dxinfer] DXRT library version is too low. (required: >= 3.0.0, current: %s)\n", version.c_str());
+        return;
+    }
+    std::string model_version = self->_ie->GetModelVersion();
+    if (!version_meets_minimum(model_version, "7")) {
+        g_error("[dxinfer] Model version is too low. (required: >= 7, current: %s , Use DX-COM v2.0.0 or higher)\n", model_version.c_str());
+        return;
+    }
 }
 
 static void handle_ready_to_paused(GstDxInfer *self) {

@@ -8,11 +8,9 @@ dx_stream_dep = declare_dependency(
 gst_dep = dependency('gstreamer-1.0', version : '>=1.14',
     required : true, fallback : ['gstreamer', 'gst_dep'])
 
-opencv_dep = dependency('opencv4', required: true)
-
-scrfd_postprocess_lib = shared_library('postprocess_scrfd', 
+shared_library('postprocess_scrfd', 
     'postprocess.cpp',
-    dependencies: [opencv_dep, gst_dep, dx_stream_dep],
+    dependencies: [gst_dep, dx_stream_dep],
     install: true,
     install_dir: '/usr/share/dx-stream/lib'
 )
