@@ -33,6 +33,7 @@ theme:
      - navigation.tabs.sticky
      - content.tabs.link
      - content.code.copy
+site_url: 'https://developer.deepx.ai/'
 nav:
   - DXNN SDK Overview: docs/01_DXNN_Streamer_Overview.md
   - DX-STREAM Installation: docs/02_DX-STREAM_Installation.md
@@ -99,6 +100,7 @@ plugins:
       #verbose: true
 #  - mkdocs-video
 extra:
+  homepage: https://developer.deepx.ai
 #  version:
 #    provider: mike
 #    default: stable

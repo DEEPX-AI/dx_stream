@@ -803,7 +803,7 @@ EOF
                 fi
                 cd libyuv
                 mkdir -p build && cd build
-                cmake .. -DCMAKE_BUILD_TYPE=Release
+                cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXE_LINKER_FLAGS="-pthread" -DCMAKE_C_FLAGS="-pthread" -DCMAKE_CXX_FLAGS="-pthread" | cat
                 make -j"$(nproc)"
                 sudo make install
                 sudo ldconfig

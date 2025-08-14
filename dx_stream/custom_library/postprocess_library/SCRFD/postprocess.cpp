@@ -1,281 +1,365 @@
-#include <algorithm>
-#include <map>
-#include <string>
-#include <vector>
-
-#include <functional>
-#include <iostream>
-
 #include "dxcommon.hpp"
 #include "gst-dxmeta.hpp"
+#include <algorithm>
+#include <cmath>
+#include <vector>
 
-template <typename _T> struct Size_ {
-    _T _width;
-    _T _height;
+// ============================================================================
+// SCRFD Face Detection Post-Processing Library for DX Stream
+// ============================================================================
+// This implementation handles SCRFD face detection model outputs.
+// 
+// Key Features:
+// - Multi-scale face detection (8x8, 16x16, 32x32 grids)
+// - Face bounding box detection
+// - Facial keypoint detection (5 points: eyes, nose, mouth corners)
+// - Non-Maximum Suppression (NMS)
+// - Configurable thresholds and parameters
 
-    bool operator==(const Size_ &a) {
-        if (_width == a._width && _height == a._height) {
-            return true;
-        } else {
-            return false;
-        }
-    };
-    Size_<_T>(_T width, _T height) {
-        this->_width = width;
-        this->_height = height;
-    };
-    Size_<_T>() {
-        this->_width = 0;
-        this->_height = 0;
-    };
-};
+// ============================================================================
+// Data Structures
+// ============================================================================
 
-typedef Size_<int> Size;
-typedef Size_<float> Size_f;
-
-struct BBox {
-    float _xmin;
-    float _ymin;
-    float _xmax;
-    float _ymax;
-    float _width;
-    float _height;
-    std::vector<dxs::Point_f> _kpts;
-};
-
-struct BoundingBox {
-    int label;
-    std::string labelname;
-    float score;
-    std::vector<float> box;
-    std::vector<float> kpt;
-
-    ~BoundingBox() = default;
-    BoundingBox() = default;
-    BoundingBox(unsigned int _label, std::string _labelname, float _score,
-                float data1, float data2, float data3, float data4,
-                std::vector<dxs::Point_f> keypoints, int numKeypoints);
-};
-
-BoundingBox::BoundingBox(unsigned int _label, std::string _labelname,
-                         float _score, float data1, float data2, float data3,
-                         float data4, std::vector<dxs::Point_f> keypoints,
-                         int numKeypoints)
-    : label(_label), score(_score) {
-    kpt.clear();
-    kpt = std::vector<float>(3 * numKeypoints);
-
-    box.clear();
-    box = std::vector<float>(4);
-    box[0] = data1;
-    box[1] = data2;
-    box[2] = data3;
-    box[3] = data4;
-
-    for (int i = 0; i < numKeypoints; i++) {
-        kpt[3 * i] = keypoints[i]._x;
-        kpt[3 * i + 1] = keypoints[i]._y;
-        kpt[3 * i + 2] = keypoints[i]._z;
+/**
+ * @brief Face detection result structure
+ */
+struct FaceDetection {
+    float x1, y1, x2, y2;      // Bounding box coordinates (left, top, right, bottom)
+    float confidence;           // Detection confidence (0.0 to 1.0)
+    std::vector<std::pair<float, float>> keypoints;  // 5 facial keypoints
+    
+    FaceDetection(float x1, float y1, float x2, float y2, float conf)
+        : x1(x1), y1(y1), x2(x2), y2(y2), confidence(conf) {
+        keypoints.resize(5);  // 5 facial keypoints
     }
-    labelname = _labelname;
-}
-
-struct SCRFDParams {
-    std::vector<std::string> classNames;
-    std::vector<int> layerStride;
-    float scoreThreshold;
-    float iouThreshold;
-    int numClasses;
-    int numKeypoints;
-    int input_width;
-    int input_height;
 };
 
-static bool scoreComapre(const std::pair<float, int> &a,
-                         const std::pair<float, int> &b) {
-    if (a.first > b.first)
-        return true;
-    else
-        return false;
+/**
+ * @brief Configuration structure for SCRFD post-processing
+ */
+struct SCRFDConfig {
+    // Model input dimensions
+    int input_width = 640;
+    int input_height = 640;
+    
+    // Detection thresholds
+    float conf_threshold = 0.5f;    // Minimum confidence for detection
+    float nms_threshold = 0.45f;    // IoU threshold for NMS
+    
+    // Anchor scales for different grid sizes
+    std::vector<float> anchor_scales = {8.0f, 16.0f, 32.0f};
+    
+    // Strides for different grid sizes
+    std::vector<int> strides = {8, 16, 32};
+    
+    // Number of anchors per grid cell
+    int num_anchors = 2;
 };
 
-static bool compare(const BoundingBox &r1, const BoundingBox &r2) {
-    return r1.score > r2.score;
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
+/**
+ * @brief Get the index of a tensor by its name
+ * @param network_output Vector of network output tensors
+ * @param tensor_name Name of the tensor to search for
+ * @return Index of the tensor if found, -1 otherwise
+ */
+ inline int get_index_by_tensor_name(const std::vector<dxs::DXTensor>& network_output, const std::string& tensor_name) {
+    for (size_t i = 0; i < network_output.size(); i++) {
+        if (network_output[i]._name == tensor_name) {
+            return static_cast<int>(i);
+        }
+    }
+    return -1;
 }
 
-float calcIoU(BBox a, BBox b) {
-    float a_w = a._xmax - a._xmin;
-    float a_h = a._ymax - a._ymin;
-    float b_w = b._xmax - b._xmin;
-    float b_h = b._ymax - b._ymin;
-    float overlap_w = std::min(a._xmax, b._xmax) - std::max(a._xmin, b._xmin);
-    if (overlap_w < 0)
-        overlap_w = 0.f;
-    float overlap_h = std::min(a._ymax, b._ymax) - std::max(a._ymin, b._ymin);
-    if (overlap_h < 0)
-        overlap_h = 0.f;
-
-    float overlap_area = overlap_w * overlap_h;
-    float a_area = a_w * a_h;
-    float b_area = b_w * b_h;
-
-    return overlap_area / (a_area + b_area - overlap_area);
+/**
+ * @brief Sigmoid activation function
+ */
+inline float sigmoid(float x) {
+    return 1.0f / (1.0f + std::exp(-x));
 }
 
-void suppressOverlappingBoxes(std::vector<BBox> &rawBoxes,
-                              std::vector<std::pair<float, int>> &scores,
-                              float IouThreshold) {
-    for (size_t j = 0; j < scores.size(); j++) {
-        if (scores[j].first == 0.0f)
+/**
+ * @brief Calculate Intersection over Union (IoU) between two bounding boxes
+ */
+float calculate_iou(const FaceDetection& box1, const FaceDetection& box2) {
+    // Calculate intersection rectangle
+    float x1 = std::max(box1.x1, box2.x1);
+    float y1 = std::max(box1.y1, box2.y1);
+    float x2 = std::min(box1.x2, box2.x2);
+    float y2 = std::min(box1.y2, box2.y2);
+    
+    // No intersection
+    if (x2 < x1 || y2 < y1) return 0.0f;
+    
+    // Calculate areas
+    float intersection = (x2 - x1) * (y2 - y1);
+    float area1 = (box1.x2 - box1.x1) * (box1.y2 - box1.y1);
+    float area2 = (box2.x2 - box2.x1) * (box2.y2 - box2.y1);
+    
+    return intersection / (area1 + area2 - intersection);
+}
+
+/**
+ * @brief Non-Maximum Suppression (NMS) to remove overlapping detections
+ */
+std::vector<FaceDetection> nms(std::vector<FaceDetection>& faces, float threshold) {
+    if (faces.empty()) return {};
+    
+    // Sort faces by confidence (highest first)
+    std::sort(faces.begin(), faces.end(), 
+              [](const FaceDetection& a, const FaceDetection& b) {
+                  return a.confidence > b.confidence;
+              });
+    
+    std::vector<bool> suppressed(faces.size(), false);
+    std::vector<FaceDetection> result;
+    
+    for (size_t i = 0; i < faces.size(); ++i) {
+        if (suppressed[i]) continue;
+        
+        // Keep the current face
+        result.push_back(faces[i]);
+        
+        // Check overlap with remaining faces
+        for (size_t j = i + 1; j < faces.size(); ++j) {
+            if (suppressed[j]) continue;
+            
+            if (calculate_iou(faces[i], faces[j]) > threshold) {
+                suppressed[j] = true;
+            }
+        }
+    }
+    
+    return result;
+}
+
+// ============================================================================
+// Output Parsing Function
+// ============================================================================
+
+/**
+ * @brief Parse SCRFD outputs
+ * 
+ * SCRFD outputs multiple tensors for different scales:
+ * - score_8: [B, N, 1] - confidence scores for 8x8 grid
+ * - bbox_8: [B, N, 4] - bounding boxes for 8x8 grid
+ * - kps_8: [B, N, 10] - keypoints for 8x8 grid
+ * - Similar for 16x16 and 32x32 grids
+ * 
+ * @param network_output Vector of network output tensors
+ * @param config Configuration parameters
+ * @return Vector of detected faces
+ */
+std::vector<FaceDetection> parse_scrfd_outputs(const std::vector<dxs::DXTensor>& network_output,
+                                              const SCRFDConfig& config) {
+    std::vector<FaceDetection> faces;
+    
+    // Process each scale (8, 16, 32)
+    for (size_t scale_idx = 0; scale_idx < config.anchor_scales.size(); ++scale_idx) {
+        float anchor_scale = config.anchor_scales[scale_idx];
+        int stride = config.strides[scale_idx];
+        
+        // Find tensors for current scale
+        const dxs::DXTensor* score_tensor = nullptr;
+        const dxs::DXTensor* bbox_tensor = nullptr;
+        const dxs::DXTensor* kps_tensor = nullptr;
+
+        int score_idx = get_index_by_tensor_name(network_output, "score_" + std::to_string(static_cast<int>(anchor_scale)));
+        int bbox_idx = get_index_by_tensor_name(network_output, "bbox_" + std::to_string(static_cast<int>(anchor_scale)));
+        int kps_idx = get_index_by_tensor_name(network_output, "kps_" + std::to_string(static_cast<int>(anchor_scale)));
+
+        if (score_idx == -1 || bbox_idx == -1 || kps_idx == -1) {
+            g_warning("Missing tensors for scale %d in SCRFD output\n", static_cast<int>(anchor_scale));
             continue;
+        }
+        
+        score_tensor = &network_output[score_idx];
+        bbox_tensor = &network_output[bbox_idx];
+        kps_tensor = &network_output[kps_idx];
+        
+        const float* score_data = static_cast<const float*>(score_tensor->_data);
+        const float* bbox_data = static_cast<const float*>(bbox_tensor->_data);
+        const float* kps_data = static_cast<const float*>(kps_tensor->_data);
+        
+        // Tensor shape: [B, N, features]
+        int num_detections = score_tensor->_shape[1];
 
-        for (size_t k = j + 1; k < scores.size(); k++) {
-            if (scores[k].first == 0.0f)
-                continue;
+        // Feature map size inferred from stride (H, W)
+        const int feature_map_width = config.input_width / stride;
+        const int feature_map_height = config.input_height / stride;
+        const int expected_num_detections = feature_map_width * feature_map_height * config.num_anchors;
+        if (num_detections != expected_num_detections) {
+            g_warning("SCRFD: num_detections(%d) != H(%d)*W(%d)*anchors(%d)=%d for stride %d\n",
+                      num_detections, feature_map_height, feature_map_width, config.num_anchors,
+                      expected_num_detections, stride);
+        }
+        
+        for (int det = 0; det < num_detections; ++det) {
+            // Get confidence score
+            if (score_data[det] <= config.conf_threshold) continue;
 
-            float iou =
-                calcIoU(rawBoxes[scores[j].second], rawBoxes[scores[k].second]);
-            if (iou >= IouThreshold) {
-                scores[k].first = 0.0f;
+            // --- 1. 중심점(Center Point) 계산 ---
+            // 1D 인덱스(det)에서 앵커 차원 분리 후 2D 그리드 좌표로 변환
+            const int loc_idx = det / config.num_anchors; // 위치 인덱스 (앵커 제거)
+            const int grid_x = loc_idx % feature_map_width;
+            const int grid_y = loc_idx / feature_map_width;
+            
+            // 그리드 기준점(cx, cy) 계산: 셀 중심이 아닌 좌상단 격자 기준
+            const float cx = static_cast<float>(grid_x * stride);
+            const float cy = static_cast<float>(grid_y * stride);
+
+            // --- 2. Bounding Box 디코딩 ---
+            // bbox_data는 (l, t, r, b) 거리 값을 의미
+            float l = bbox_data[det * 4 + 0];
+            float t = bbox_data[det * 4 + 1];
+            float r = bbox_data[det * 4 + 2];
+            float b = bbox_data[det * 4 + 3];
+
+            // 중심점과 거리를 이용해 실제 좌표(x1, y1, x2, y2) 계산
+            float x1 = cx - (l * stride);
+            float y1 = cy - (t * stride);
+            float x2 = cx + (r * stride);
+            float y2 = cy + (b * stride);
+
+            // Create face detection
+            FaceDetection face(x1, y1, x2, y2, score_data[det]);
+
+            // --- 3. Keypoints 디코딩 ---
+            for (int kp = 0; kp < 5; ++kp) {
+                // kps_data는 중심점에서의 (x, y) 오프셋을 의미
+                float kp_offset_x = kps_data[det * 10 + kp * 2];
+                float kp_offset_y = kps_data[det * 10 + kp * 2 + 1];
+
+                // 중심점과 오프셋을 이용해 실제 키포인트 좌표 계산
+                face.keypoints[kp].first = cx + (kp_offset_x * stride);
+                face.keypoints[kp].second = cy + (kp_offset_y * stride);
             }
+            
+            faces.push_back(face);
         }
     }
+    
+    return faces;
 }
 
-void nms(std::vector<BBox> rawBoxes,
-         std::vector<std::vector<std::pair<float, int>>> &scoreIndices,
-         float IouThreshold, std::vector<std::string> &ClassNames,
-         int numKeypoints, std::vector<BoundingBox> &Result) {
+// ============================================================================
+// Coordinate Transformation
+// ============================================================================
 
-    for (auto &scores : scoreIndices) {
-        suppressOverlappingBoxes(rawBoxes, scores, IouThreshold);
+/**
+ * @brief Scale face detection coordinates from model input size to original image size
+ */
+FaceDetection scale_face(const FaceDetection& face, int orig_width, int orig_height, 
+                        int model_width, int model_height) {
+    // Calculate scaling ratio (maintains aspect ratio)
+    float r = std::min(static_cast<float>(model_width) / orig_width,
+                       static_cast<float>(model_height) / orig_height);
+    
+    // Calculate padding that was added during preprocessing
+    float w_pad = (model_width - orig_width * r) / 2.0f;
+    float h_pad = (model_height - orig_height * r) / 2.0f;
+    
+    // Remove padding and scale to original image coordinates
+    float x1 = (face.x1 - w_pad) / r;
+    float y1 = (face.y1 - h_pad) / r;
+    float x2 = (face.x2 - w_pad) / r;
+    float y2 = (face.y2 - h_pad) / r;
+    
+    FaceDetection scaled_face(x1, y1, x2, y2, face.confidence);
+    scaled_face.keypoints = face.keypoints;
+    
+    // Scale keypoints
+    for (auto& keypoint : scaled_face.keypoints) {
+        keypoint.first = (keypoint.first - w_pad) / r;
+        keypoint.second = (keypoint.second - h_pad) / r;
     }
-
-    for (size_t cls = 0; cls < scoreIndices.size(); cls++) {
-        const auto &scores = scoreIndices[cls];
-        for (const auto &scoreIdx : scores) {
-            if (scoreIdx.first <= 0.0f)
-                continue;
-
-            const BBox &box = rawBoxes[scoreIdx.second];
-            Result.emplace_back(BoundingBox(
-                cls, ClassNames[cls], scoreIdx.first, box._xmin, box._ymin,
-                box._xmax, box._ymax, box._kpts, numKeypoints));
-        }
-    }
-
-    std::sort(Result.begin(), Result.end(), compare);
+    
+    return scaled_face;
 }
 
-extern "C" void SCRFDPostProcess(std::vector<dxs::DXTensor> outputs,
-                                 DXFrameMeta *frame_meta,
-                                 DXObjectMeta *object_meta,
-                                 SCRFDParams params) {
-    std::vector<std::vector<std::pair<float, int>>> ScoreIndices;
-    for (int i = 0; i < params.numClasses; i++) {
-        std::vector<std::pair<float, int>> v;
-        ScoreIndices.emplace_back(v);
-    }
+// ============================================================================
+// Main Post-Processing Function
+// ============================================================================
 
-    std::vector<BBox> rawBoxes;
-    rawBoxes.clear();
-
-    int boxIdx = 0;
-    for (int b_idx = 0; b_idx < outputs[0]._shape[1]; b_idx++) {
-        uint8_t *raw_data = (uint8_t *)outputs[0]._data + (b_idx * 64);
-        dxs::DeviceFace_t *data =
-            static_cast<dxs::DeviceFace_t *>((void *)raw_data);
-        int stride = params.layerStride[data->layer_idx];
-
-        if (data->score >= params.scoreThreshold) {
-
-            ScoreIndices[0].emplace_back(data->score, boxIdx);
-
-            BBox bbox = {(data->grid_x - data->x) * stride,
-                         (data->grid_y - data->y) * stride,
-                         (data->grid_x + data->w) * stride,
-                         (data->grid_y + data->h) * stride,
-                         2 * data->x * stride,
-                         2 * data->x * stride,
-                         {dxs::Point_f(-1, -1, -1)}};
-
-            bbox._width = bbox._xmax - bbox._xmin;
-            bbox._height = bbox._ymax - bbox._ymin;
-
-            bbox._kpts.clear();
-            for (int k_idx = 0; k_idx < params.numKeypoints; k_idx++) {
-                bbox._kpts.emplace_back(dxs::Point_f(
-                    (data->grid_x + data->kpts[k_idx][0]) * stride,
-                    (data->grid_y + data->kpts[k_idx][1]) * stride, 0.5f));
-            }
-
-            rawBoxes.emplace_back(bbox);
-            boxIdx += 1;
-        }
-    }
-
-    for (auto &indices : ScoreIndices) {
-        sort(indices.begin(), indices.end(), scoreComapre);
-    }
-
-    std::vector<BoundingBox> result;
-    nms(rawBoxes, ScoreIndices, params.iouThreshold, params.classNames,
-        params.numKeypoints, result);
-
-    if (result.size() > 0) {
-        BoundingBox ret = result[0];
-        int origin_w = object_meta->_box[2] - object_meta->_box[0];
-        int origin_h = object_meta->_box[3] - object_meta->_box[1];
-
-        float r, w_pad, h_pad, x1, y1, x2, y2, kx, ky, ks;
-
-        r = std::min(params.input_width / (float)origin_w,
-                     params.input_height / (float)origin_h);
-
-        w_pad = (params.input_width - origin_w * r) / 2.;
-        h_pad = (params.input_height - origin_h * r) / 2.;
-
-        x1 = (ret.box[0] - w_pad) / r;
-        y1 = (ret.box[1] - h_pad) / r;
-        x2 = (ret.box[2] - w_pad) / r;
-        y2 = (ret.box[3] - h_pad) / r;
-
-        x1 = std::min((float)origin_w, std::max((float)0.0, x1));
-        x2 = std::min((float)origin_w, std::max((float)0.0, x2));
-        y1 = std::min((float)origin_h, std::max((float)0.0, y1));
-        y2 = std::min((float)origin_h, std::max((float)0.0, y2));
-
-        object_meta->_face_landmarks.clear();
-        for (int k = 0; k < params.numKeypoints; k++) {
-
-            kx = (ret.kpt[k * 3 + 0] - w_pad) / r;
-            ky = (ret.kpt[k * 3 + 1] - h_pad) / r;
-            ks = ret.kpt[k * 3 + 2];
-
-            object_meta->_face_landmarks.push_back(dxs::Point_f(
-                kx + object_meta->_box[0], ky + object_meta->_box[1], ks));
-        }
-
-        object_meta->_face_confidence = ret.score;
-        object_meta->_face_box[0] = x1 + object_meta->_box[0];
-        object_meta->_face_box[1] = y1 + object_meta->_box[1];
-        object_meta->_face_box[2] = x2 + object_meta->_box[0];
-        object_meta->_face_box[3] = y2 + object_meta->_box[1];
-    }
-}
-
+/**
+ * @brief Main post-processing function for SCRFD
+ * 
+ * @param network_output Vector of network output tensors
+ * @param frame_meta Frame metadata containing image dimensions and ROI
+ * @param object_meta Object metadata (output parameter)
+ */
 extern "C" void PostProcess(std::vector<dxs::DXTensor> network_output,
-                            DXFrameMeta *frame_meta,
-                            DXObjectMeta *object_meta) {
-
-    SCRFDParams params = {.classNames = {"face"},
-                          .layerStride = {32, 16, 8}, /* layer re-ordering */
-                          .scoreThreshold = 0.5,
-                          .iouThreshold = 0.45,
-                          .numClasses = 1,
-                          .numKeypoints = 5,
-                          .input_width = 640,
-                          .input_height = 640};
-
-    SCRFDPostProcess(network_output, frame_meta, object_meta, params);
+                            DXFrameMeta *frame_meta, DXObjectMeta *object_meta) {
+    
+    // ============================================================================
+    // CONFIGURATION SETUP
+    // ============================================================================
+    SCRFDConfig config;
+    
+    // ============================================================================
+    // OUTPUT PARSING
+    // ============================================================================
+    if (network_output.empty()) {
+        g_error("No output tensors found for SCRFD\n");
+        return;
+    }
+    
+    // Parse face detections
+    auto faces = parse_scrfd_outputs(network_output, config);
+    
+    // ============================================================================
+    // NON-MAXIMUM SUPPRESSION
+    // ============================================================================
+    auto final_faces = nms(faces, config.nms_threshold);
+    
+    // ============================================================================
+    // COORDINATE SCALING
+    // ============================================================================
+    // Get original image dimensions
+    int orig_width = object_meta->_box[2] - object_meta->_box[0];
+    int orig_height = object_meta->_box[3] - object_meta->_box[1];
+    
+    // ============================================================================
+    // RESULT CONVERSION
+    // ============================================================================
+    // Convert face detections to DX Stream format
+    for (const auto& face : final_faces) {
+        // Scale coordinates to original image space
+        auto scaled_face = scale_face(face, orig_width, orig_height, 
+                                     config.input_width, config.input_height);
+        
+        // Clamp coordinates to image boundaries
+        scaled_face.x1 = std::max(0.0f, std::min(static_cast<float>(orig_width), scaled_face.x1));
+        scaled_face.y1 = std::max(0.0f, std::min(static_cast<float>(orig_height), scaled_face.y1));
+        scaled_face.x2 = std::max(0.0f, std::min(static_cast<float>(orig_width), scaled_face.x2));
+        scaled_face.y2 = std::max(0.0f, std::min(static_cast<float>(orig_height), scaled_face.y2));
+        
+        // Create DX Stream object metadata
+        object_meta->_confidence = scaled_face.confidence;
+        object_meta->_label = 0;  // Face class
+        object_meta->_label_name = g_string_new("face");
+        object_meta->_face_box[0] = scaled_face.x1 + object_meta->_box[0];
+        object_meta->_face_box[1] = scaled_face.y1 + object_meta->_box[1];
+        object_meta->_face_box[2] = scaled_face.x2 + object_meta->_box[0];
+        object_meta->_face_box[3] = scaled_face.y2 + object_meta->_box[1];
+        
+        // Add keypoints as additional metadata
+        object_meta->_face_landmarks.clear();
+        for (int k = 0; k < 5; k++) {  // 5 facial keypoints
+            float kx = scaled_face.keypoints[k].first;
+            float ky = scaled_face.keypoints[k].second;
+            float ks = 1.0f;  // Default confidence for keypoint
+            
+            // Clamp keypoint coordinates to image boundaries
+            kx = std::max(0.0f, std::min(static_cast<float>(orig_width), kx));
+            ky = std::max(0.0f, std::min(static_cast<float>(orig_height), ky));
+            
+            // Add to face landmarks
+            object_meta->_face_landmarks.push_back(dxs::Point_f(kx + object_meta->_box[0], ky + object_meta->_box[1], ks));
+        }
+    }
 }

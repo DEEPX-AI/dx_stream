@@ -1,4 +1,20 @@
 # RELEASE_NOTES
+## v2.0.0 / 2025-08-08
+
+### 1. Changed
+- Code Examples: The PostProcess examples have been separated and implemented on a per-model basis for clarity.
+- DX-RT v3.0.0 Compatibility: This version has been updated to ensure full compatibility with DX-RT v3.0.0.
+- Model Support: Inference is now restricted to models (DXNN v7) produced by DX-COM v2.0.0 and later versions.
+- Modified dx-gather event handling logic.
+- Removed unnecessary print statements.
+
+### 2. Fixed
+- Bug Fix: Addressed and alleviated a processing delay issue within the dx-inputselector.
+- Corrected a post-processing logic error in the SCRFD model when in secondary inference mode.
+- Fixed a bug in dx_rt that occurred when processing multi-tail models.
+
+### 3. Added
+
 ## v1.7.0 / 2025-07-16
 ### 1. Changed
 - dxinfer : Improved the buffer queue management mechanism. Instead of locking inputs based on queue size within the push thread, the system now adds a req_id to the buffer and utilizes a wait function for more efficient processing.
