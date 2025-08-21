@@ -32,5 +32,5 @@ for INPUT_VIDEO_PATH in "${INPUT_VIDEO_PATH_LIST[@]}"; do
                     dxinfer config-file-path=$SRC_DIR/configs/Object_Detection/YoloV8N/inference_config.json ! queue ! \
                     dxpostprocess config-file-path=$SRC_DIR/configs/Object_Detection/YoloV8N/postprocess_config.json ! queue ! \
                     dxosd width=1280 height=720 ! queue ! \
-                    videoconvert ! fpsdisplaysink sync=false
+                    videoconvert ! fpsdisplaysink sync=false $VIDEO_SINK_ARGS
 done

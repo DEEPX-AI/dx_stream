@@ -4,14 +4,21 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 SRC_DIR=$(dirname "$(dirname "$SCRIPT_DIR")")
 
-STREAM_WIDTH=640
-STREAM_HEIGHT=360
-PADDING=5
+OUTPUT_WIDTH=1280
+OUTPUT_HEIGHT=720
 VIDEO_DIR="${SRC_DIR}/samples/videos/"
 
 PREPROCESS_CONFIG="${SRC_DIR}/configs/Object_Detection/YOLOV5S_3/preprocess_config.json"
 INFER_CONFIG="${SRC_DIR}/configs/Object_Detection/YOLOV5S_3/inference_config.json"
 POSTPROCESS_CONFIG="${SRC_DIR}/configs/Object_Detection/YOLOV5S_3/postprocess_config.json"
+
+# check os version
+if [ "$(lsb_release -rs)" = "18.04" ]; then
+    echo -e "Using X11 video sink forcely on ubuntu 18.04"
+    VIDEO_SINK_ARGS="video-sink=ximagesink"
+else
+    VIDEO_SINK_ARGS=""
+fi
 
 # check 'vaapidecodebin'
 if gst-inspect-1.0 vaapidecodebin &>/dev/null; then
@@ -44,14 +51,16 @@ fi
 num_pipelines=4
 cols=1
 while [[ $((cols * cols)) -lt $num_pipelines ]]; do
-  cols=$((cols + 1))
+    cols=$((cols + 1))
 done
 rows=$(( (num_pipelines + cols - 1) / cols ))
 
+STREAM_WIDTH=$(( OUTPUT_WIDTH / cols ))
+STREAM_HEIGHT=$(( OUTPUT_HEIGHT / rows ))
+
 echo "Calculated grid: ${rows} rows x ${cols} columns"
-output_width=$(( cols * STREAM_WIDTH + (cols - 1) * PADDING ))
-output_height=$(( rows * STREAM_HEIGHT + (rows - 1) * PADDING ))
-echo "Estimated output resolution: ${output_width}x${output_height}"
+echo "Individual stream size: ${STREAM_WIDTH}x${STREAM_HEIGHT}"
+echo "Total output resolution: ${OUTPUT_WIDTH}x${OUTPUT_HEIGHT}"
 
 for i in $(seq 0 $((num_pipelines - 1))); do
     current_video_file="${video_files[$i]}"
@@ -62,8 +71,8 @@ for i in $(seq 0 $((num_pipelines - 1))); do
 
     row_idx=$(( i / cols ))
     col_idx=$(( i % cols ))
-    xpos=$(( col_idx * (STREAM_WIDTH + PADDING) ))
-    ypos=$(( row_idx * (STREAM_HEIGHT + PADDING) ))
+    xpos=$(( col_idx * STREAM_WIDTH ))
+    ypos=$(( row_idx * STREAM_HEIGHT ))
 
     src_pipe=" urisourcebin uri=\"${uri}\" ! queue max-size-buffers=10 ! decodebin ! queue max-size-buffers=10 ! \
         dxpreprocess config-file-path=${PREPROCESS_CONFIG} ! queue max-size-buffers=10 ! \
@@ -75,7 +84,7 @@ for i in $(seq 0 $((num_pipelines - 1))); do
     compositor_props+=" sink_${i}::xpos=${xpos} sink_${i}::ypos=${ypos} sink_${i}::width=${STREAM_WIDTH} sink_${i}::height=${STREAM_HEIGHT}"
 done
 
-launch_cmd="gst-launch-1.0 -e ${pipeline_str} compositor name=comp ${compositor_props} ! videoconvert ! fpsdisplaysink sync=false"
+launch_cmd="gst-launch-1.0 -e ${pipeline_str} compositor name=comp ${compositor_props} ! videoconvert ! fpsdisplaysink sync=false $VIDEO_SINK_ARGS"
 echo "--------------------------------------------------"
 echo "Generated gst-launch-1.0 command:"
 echo "${launch_cmd}"
