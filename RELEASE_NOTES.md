@@ -12,6 +12,12 @@
 - Bug Fix: Addressed and alleviated a processing delay issue within the dx-inputselector.
 - Corrected a post-processing logic error in the SCRFD model when in secondary inference mode.
 - Fixed a bug in dx_rt that occurred when processing multi-tail models.
+- feat: improve error handling for setup scripts
+- feat: add support for X11 video sink on Ubuntu 18.04 across multiple scripts
+  - Force X11 video sink on Ubuntu 18.04
+  - Improved compatibility across OS versions
+  - Updated multiple pipeline scripts
+  - Added OS version check for Ubuntu 18.04
 
 ### 3. Added
 

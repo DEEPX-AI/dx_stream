@@ -11,6 +11,13 @@ INPUT_VIDEO_PATH_LIST=(
     "$SRC_DIR/samples/videos/snowboard.mp4"
 )
 
+if [ "$(lsb_release -rs)" = "18.04" ]; then
+    echo -e "Using X11 video sink forcely on ubuntu 18.04"
+    VIDEO_SINK_ARGS="video-sink=ximagesink"
+else
+    VIDEO_SINK_ARGS=""
+fi
+
 # check 'vaapidecodebin'
 if gst-inspect-1.0 vaapidecodebin &>/dev/null; then
     DECODE_PIPELINE="qtdemux ! vaapidecodebin"
@@ -37,5 +44,5 @@ for INPUT_VIDEO_PATH in "${INPUT_VIDEO_PATH_LIST[@]}"; do
                     gather.sink_1 \
                     dxgather name=gather ! queue ! \
                     dxosd width=1280 height=720 ! queue ! \
-                    videoconvert ! fpsdisplaysink 
+                    videoconvert ! fpsdisplaysink $VIDEO_SINK_ARGS
 done
