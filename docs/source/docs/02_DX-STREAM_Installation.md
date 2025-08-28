@@ -6,10 +6,10 @@ This section describes the hardware and software requirements for running **DX-S
 
 **Hardware and Software Requirements**  
 
-- **CPU:** aarch64, x86_64
+- **CPU:** amd64(x86_64), aarch64(arm64)
 - **RAM:** 8GB RAM (16GB RAM or higher is recommended)
 - **Storage:** 4GB or higher available disk space
-- **OS:** Ubuntu 18.04 / 20.04 / 22.04 / 24.04 (x64 / aarch64)
+- **OS:** Ubuntu 18.04 / 20.04 / 22.04 / 24.04 (x64)
 - **DX-RT must** be installed 3.0.0 or higher available 
 - The system **must** support connection to an **M1 M.2** module with the M.2 interface on the host PC. 
 
