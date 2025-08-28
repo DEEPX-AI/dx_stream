@@ -1,9 +1,10 @@
 #!/bin/bash
 SCRIPT_DIR=$(realpath "$(dirname "$0")")
-RUNTIME_PATH=$(realpath -s "${SCRIPT_DIR}/../") # Assuming color_env.sh is in scripts/ relative to this test file's parent
+PROJECT_ROOT=$(realpath -s "${SCRIPT_DIR}/../") # Assuming color_env.sh is in scripts/ relative to this test file's parent
 
 # color env settings
-source "${RUNTIME_PATH}/scripts/color_env.sh" # Ensure this path is correct for color_env.sh
+source "${PROJECT_ROOT}/scripts/color_env.sh" # Ensure this path is correct for color_env.sh
+source "${PROJECT_ROOT}/scripts/common_util.sh" # Ensure this path is correct for common_util.sh
 
 function print_color_sample() {
   name=$1
@@ -68,7 +69,6 @@ print_color_sample "COLOR_RED_ON_BLACK" "$COLOR_RED_ON_BLACK"
 print_color_sample "COLOR_BLUE_ON_BLACK" "$COLOR_BLUE_ON_BLACK"
 print_color_sample "COLOR_WHITE_ON_BLACK" "$COLOR_WHITE_ON_BLACK"
 
-echo "=== color set 2 ==="
 print_color_sample "COLOR_BLACK_ON_RED" "$COLOR_BLACK_ON_RED"
 print_color_sample "COLOR_BLACK_ON_BLUE" "$COLOR_BLACK_ON_BLUE"
 print_color_sample "COLOR_BLACK_ON_WHITE" "$COLOR_BLACK_ON_WHITE"
@@ -102,4 +102,16 @@ echo -e "${TAG_ERROR} This is an ERROR tag example."
 echo -e "${TAG_INFO} This is an INFO tag example."
 echo -e "${TAG_WARN} This is a WARN tag example."
 echo -e "${TAG_SKIP} This is a SKIP tag example."
+echo ""
+
+echo "=== Common Util ==="
+print_colored_v2 "SKIP" "This is a SKIP tag example."
+print_colored_v2 "INFO" "This is an INFO tag example."
+print_colored_v2 "WARNING" "This is a WARNING tag example."
+print_colored_v2 "DEBUG" "This is a DEBUG tag example."
+print_colored_v2 "HINT" "This is a HINT tag example."
+print_colored_v2 "ERROR" "This is an ERROR tag example."
+print_colored_v2 "FAIL" "This is a FAIL tag example."
+print_colored_v2 "SUCCESS" "This is a SUCCESS tag example."
+print_colored_v2 "OK" "This is a OK tag example."
 echo ""
