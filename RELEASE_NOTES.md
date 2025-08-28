@@ -1,5 +1,5 @@
 # RELEASE_NOTES
-## v2.0.0 / 2025-08-08
+## v2.0.0 / 2025-08-28
 
 ### 1. Changed
 - Code Examples: The PostProcess examples have been separated and implemented on a per-model basis for clarity.
@@ -7,6 +7,9 @@
 - Model Support: Inference is now restricted to models (DXNN v7) produced by DX-COM v2.0.0 and later versions.
 - Modified dx-gather event handling logic.
 - Removed unnecessary print statements.
+- feat: enhance build script and update installation documentation
+  - Added OS and architecture checks in the build script
+  - Updated CPU and OS specifications in the installation documentation for clarity
 
 ### 2. Fixed
 - Bug Fix: Addressed and alleviated a processing delay issue within the dx-inputselector.
@@ -20,6 +23,8 @@
   - Added OS version check for Ubuntu 18.04
 
 ### 3. Added
+- feat: add uninstall script and enhance color utility functions
+  - Introduced a new uninstall.sh script for cleaning up project files and directories
 
 ## v1.7.0 / 2025-07-16
 ### 1. Changed
