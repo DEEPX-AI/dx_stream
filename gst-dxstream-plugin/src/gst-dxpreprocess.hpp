@@ -9,6 +9,7 @@
 #include "gst-dxmeta.hpp"
 #include <gst/base/gstbasetransform.h>
 #include <gst/gst.h>
+#include <gst/video/video.h>
 #include <opencv2/opencv.hpp>
 #include <map>
 
@@ -42,9 +43,6 @@ struct _GstDxPreprocess {
     guint _input_channel;
     gboolean _keep_ratio;
     guint _pad_value;
-    guint _align_factor;
-
-    void *_temp_output_buffer;
 
     gboolean _secondary_mode;
     gint _target_class_id;

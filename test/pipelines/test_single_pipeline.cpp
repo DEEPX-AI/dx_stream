@@ -276,6 +276,8 @@ void yolo_pose_pipeline(std::string models) {
 }
 
 GST_START_TEST(test_single_pipeline) {
+    yolo_pipeline("YOLOV3_1");
+    yolo_pipeline("YOLOV4_3");
     yolo_pipeline("YOLOV5S_1");
     yolo_pipeline("YOLOV5S_3");
     yolo_pipeline("YOLOV5S_4");
@@ -283,7 +285,9 @@ GST_START_TEST(test_single_pipeline) {
     yolo_pipeline("YOLOV5X_2");
     yolo_pipeline("YOLOv7_512");
     yolo_pipeline("YoloV7");
-    // yolo_pipeline("YoloV8N");
+    yolo_pipeline("YoloV8N");
+    yolo_pipeline("YOLOV9S");
+    yolo_pipeline("YOLOX-S_1");
     yolo_pose_pipeline("YOLOV5Pose640_1");
 }
 GST_END_TEST

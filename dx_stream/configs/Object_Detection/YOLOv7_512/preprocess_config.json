@@ -3,5 +3,6 @@
     "resize_width": 512,
     "resize_height": 512,
     "keep_ratio": true,
+    "pad_value": 114,
     "interval": 0
 }

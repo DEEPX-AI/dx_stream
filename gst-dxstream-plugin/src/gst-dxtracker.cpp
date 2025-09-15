@@ -27,7 +27,7 @@ static void process_param(GstDxTracker *self, JsonObject *params,
     GType value_type = json_node_get_value_type(value_node);
     gchar *value_str = nullptr;
 
-    g_print("Processing key: %s, Type: %s\n", key, g_type_name(value_type));
+    // g_print("Processing key: %s, Type: %s\n", key, g_type_name(value_type));
 
     switch (value_type) {
     case G_TYPE_STRING:

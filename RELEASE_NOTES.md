@@ -1,4 +1,31 @@
 # RELEASE_NOTES
+## v2.0.0 / 2025-08-28
+
+### 1. Changed
+- Code Examples: The PostProcess examples have been separated and implemented on a per-model basis for clarity.
+- DX-RT v3.0.0 Compatibility: This version has been updated to ensure full compatibility with DX-RT v3.0.0.
+- Model Support: Inference is now restricted to models (DXNN v7) produced by DX-COM v2.0.0 and later versions.
+- Modified dx-gather event handling logic.
+- Removed unnecessary print statements.
+- feat: enhance build script and update installation documentation
+  - Added OS and architecture checks in the build script
+  - Updated CPU and OS specifications in the installation documentation for clarity
+
+### 2. Fixed
+- Bug Fix: Addressed and alleviated a processing delay issue within the dx-inputselector.
+- Corrected a post-processing logic error in the SCRFD model when in secondary inference mode.
+- Fixed a bug in dx_rt that occurred when processing multi-tail models.
+- feat: improve error handling for setup scripts
+- feat: add support for X11 video sink on Ubuntu 18.04 across multiple scripts
+  - Force X11 video sink on Ubuntu 18.04
+  - Improved compatibility across OS versions
+  - Updated multiple pipeline scripts
+  - Added OS version check for Ubuntu 18.04
+
+### 3. Added
+- feat: add uninstall script and enhance color utility functions
+  - Introduced a new uninstall.sh script for cleaning up project files and directories
+
 ## v1.7.0 / 2025-07-16
 ### 1. Changed
 - dxinfer : Improved the buffer queue management mechanism. Instead of locking inputs based on queue size within the push thread, the system now adds a req_id to the buffer and utilizes a wait function for more efficient processing.

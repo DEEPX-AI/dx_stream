@@ -366,10 +366,6 @@ static void dxpreprocess_dispose(GObject *object) {
 
     self->_track_cnt.clear();
 
-    if (self->_temp_output_buffer) {
-        free(self->_temp_output_buffer);
-        self->_temp_output_buffer = nullptr;
-    }
 #ifdef HAVE_LIBRGA
 #else
     for (std::map<int, uint8_t *>::iterator it = self->_crop_frame.begin();
@@ -628,8 +624,6 @@ static void gst_dxpreprocess_init(GstDxPreprocess *self) {
     self->_qos_timediff = 0;
     self->_throttling_delay = 0;
 
-    self->_temp_output_buffer = nullptr;
-
 #ifdef HAVE_LIBRGA
 #else
     self->_crop_frame = std::map<int, uint8_t *>();
@@ -666,23 +660,11 @@ static gboolean gst_dxpreprocess_start(GstBaseTransform *trans) {
         }
     }
 
-    self->_align_factor =
-        (64 - ((self->_resize_width * self->_input_channel) % 64)) % 64;
     if (self->_resize_height > 0 && self->_resize_width > 0) {
     } else {
         g_error("Invalid input size %d x %d", self->_resize_width,
                 self->_resize_height);
         return FALSE;
-    }
-
-    if (self->_align_factor != 0) {
-        self->_temp_output_buffer =
-            malloc(self->_resize_height * self->_resize_width * 3);
-        memset(self->_temp_output_buffer,
-               static_cast<uint8_t>(self->_pad_value),
-               self->_resize_height * self->_resize_width * 3);
-    } else {
-        self->_temp_output_buffer = nullptr;
     }
 
     return TRUE;
@@ -1036,20 +1018,6 @@ bool check_object(GstDxPreprocess *self, DXFrameMeta *frame_meta,
     return true;
 }
 
-void add_dummy_data(GstDxPreprocess *self, void *src, void *dst) {
-    for (size_t y = 0; y < (size_t)self->_resize_height; y++) {
-        memcpy(static_cast<uint8_t *>(dst) +
-                   y * (static_cast<int>(self->_resize_width) *
-                            static_cast<int>(self->_input_channel) +
-                        self->_align_factor),
-               static_cast<uint8_t *>(src) +
-                   y * static_cast<int>(self->_resize_width) *
-                       static_cast<int>(self->_input_channel),
-               static_cast<int>(self->_resize_width) *
-                   static_cast<int>(self->_input_channel));
-    }
-}
-
 bool primary_process(GstDxPreprocess *self, DXFrameMeta *frame_meta) {
     bool ret = true;
     if (self->_roi[0] != -1) {
@@ -1083,28 +1051,13 @@ bool primary_process(GstDxPreprocess *self, DXFrameMeta *frame_meta) {
     cv::Rect roi(cv::Point(frame_meta->_roi[0], frame_meta->_roi[1]),
                  cv::Point(frame_meta->_roi[2], frame_meta->_roi[3]));
 
-    if (self->_align_factor && self->_temp_output_buffer) {
-        if (self->_process_function != nullptr) {
-            if (!self->_process_function(frame_meta, nullptr,
-                                         self->_temp_output_buffer)) {
-                ret = false;
-            }
-        } else {
-            if (!preprocess(self, frame_meta, self->_temp_output_buffer,
-                            &roi)) {
-                ret = false;
-            }
+    if (self->_process_function != nullptr) {
+        if (!self->_process_function(frame_meta, nullptr, tensors._data)) {
+            ret = false;
         }
-        add_dummy_data(self, self->_temp_output_buffer, tensors._data);
     } else {
-        if (self->_process_function != nullptr) {
-            if (!self->_process_function(frame_meta, nullptr, tensors._data)) {
-                ret = false;
-            }
-        } else {
-            if (!preprocess(self, frame_meta, tensors._data, &roi)) {
-                ret = false;
-            }
+        if (!preprocess(self, frame_meta, tensors._data, &roi)) {
+            ret = false;
         }
     }
     if (ret) {
@@ -1123,7 +1076,7 @@ bool process_object(GstDxPreprocess *self, DXFrameMeta *frame_meta,
         g_error("Preprocess ID %d already exists in the object meta. check "
                 "your pipeline",
                 preprocess_id);
-        return false; // 에러지만 일단 false 리턴으로 처리
+        return false;
     }
 
     if (!check_object(self, frame_meta, object_meta)) {
@@ -1150,21 +1103,12 @@ bool process_object(GstDxPreprocess *self, DXFrameMeta *frame_meta,
                   std::min(int(object_meta->_box[3]), frame_meta->_height)));
 
     bool ret = true;
-    if (self->_align_factor && self->_temp_output_buffer) {
-        if (self->_process_function) {
-            ret = self->_process_function(frame_meta, object_meta,
-                                          self->_temp_output_buffer);
-        } else {
-            ret = preprocess(self, frame_meta, self->_temp_output_buffer, &roi);
-        }
-        add_dummy_data(self, self->_temp_output_buffer, tensors._data);
+
+    if (self->_process_function) {
+        ret =
+            self->_process_function(frame_meta, object_meta, tensors._data);
     } else {
-        if (self->_process_function) {
-            ret =
-                self->_process_function(frame_meta, object_meta, tensors._data);
-        } else {
-            ret = preprocess(self, frame_meta, tensors._data, &roi);
-        }
+        ret = preprocess(self, frame_meta, tensors._data, &roi);
     }
 
     if (ret) {
