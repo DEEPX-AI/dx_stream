@@ -99,14 +99,6 @@ clean() {
 }
 
 build() {
-    # this function is defined in scripts/common_util.sh
-    # Usage: os_check "supported_os_names" "ubuntu_versions" "debian_versions"
-    os_check "ubuntu debian" "18.04 20.04 22.04 24.04" "12"
-
-    # this function is defined in scripts/common_util.sh
-    # Usage: arch_check "supported_arch_names"
-    arch_check "amd64 x86_64 arm64 aarch64 armv7l"
-
     clean "clean"
 
     echo "Starting build process... build_type(${BUILD_TYPE})"
