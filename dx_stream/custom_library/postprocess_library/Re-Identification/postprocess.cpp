@@ -1,9 +1,10 @@
-#include "gst-dxmeta.hpp"
+#include "dx_stream/gst-dxmeta.hpp"
 #include <cmath>
 #include <iostream>
 #include <vector>
 
-extern "C" void PostProcess(std::vector<dxs::DXTensor> network_output,
+extern "C" void PostProcess(GstBuffer *buf,
+                            std::vector<dxs::DXTensor> network_output,
                             DXFrameMeta *frame_meta,
                             DXObjectMeta *object_meta) {
 

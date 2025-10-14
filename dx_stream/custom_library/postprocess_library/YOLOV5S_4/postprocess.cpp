@@ -1,5 +1,4 @@
-#include "dxcommon.hpp"
-#include "gst-dxmeta.hpp"
+#include "dx_stream/gst-dxmeta.hpp"
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -427,9 +426,10 @@ BoundingBox scale_box(const BoundingBox& box, int orig_width, int orig_height,
  * @param frame_meta Frame metadata containing image dimensions and ROI
  * @param object_meta Object metadata (output parameter)
  */
-extern "C" void PostProcess(std::vector<dxs::DXTensor> network_output,
-                            DXFrameMeta *frame_meta, DXObjectMeta *object_meta) {
-    
+extern "C" void PostProcess(GstBuffer *buf,
+                            std::vector<dxs::DXTensor> network_output,
+                            DXFrameMeta *frame_meta,
+                            DXObjectMeta *object_meta) {
     // ============================================================================
     // CONFIGURATION SETUP
     // ============================================================================
@@ -490,7 +490,7 @@ extern "C" void PostProcess(std::vector<dxs::DXTensor> network_output,
         scaled_box.y2 = std::max(0.0f, std::min(static_cast<float>(orig_height), scaled_box.y2));
         
         // Create DX Stream object metadata
-        DXObjectMeta *obj_meta = dx_create_object_meta(frame_meta->_buf);
+        DXObjectMeta *obj_meta = dx_create_object_meta(buf);
         obj_meta->_confidence = scaled_box.confidence;
         obj_meta->_label = scaled_box.class_id;
         obj_meta->_label_name = g_string_new(scaled_box.class_name.c_str());

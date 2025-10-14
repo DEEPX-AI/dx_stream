@@ -1,8 +1,7 @@
 #include <cmath>
 #include <numeric>
 
-#include "dxcommon.hpp"
-#include "gst-dxmeta.hpp"
+#include "dx_stream/gst-dxmeta.hpp"
 
 struct segmentationParams {
     bool needArgmax;
@@ -41,9 +40,11 @@ uint16_t get_class_uint16(const uint16_t *input, int h, int w, int width,
                               : 0; // numClasses 넘으면 0으로 처리 (필요시 변경)
 }
 
-void Segmentation(std::vector<dxs::DXTensor> outputs, DXFrameMeta *frame_meta,
-                  segmentationParams &params) {
-    DXObjectMeta *object_meta = dx_create_object_meta(frame_meta->_buf);
+void Segmentation(GstBuffer *buf,
+                    std::vector<dxs::DXTensor> outputs, 
+                    DXFrameMeta *frame_meta,
+                    segmentationParams &params) {
+    DXObjectMeta *object_meta = dx_create_object_meta(buf);
 
     int width = params.input_width;
     int height = params.input_height;
@@ -77,7 +78,8 @@ void Segmentation(std::vector<dxs::DXTensor> outputs, DXFrameMeta *frame_meta,
     dx_add_object_meta_to_frame_meta(object_meta, frame_meta);
 }
 
-extern "C" void PostProcess(std::vector<dxs::DXTensor> network_output,
+extern "C" void PostProcess(GstBuffer *buf,
+                            std::vector<dxs::DXTensor> network_output,
                             DXFrameMeta *frame_meta,
                             DXObjectMeta *object_meta) {
     segmentationParams params = {.needArgmax = true,
@@ -85,5 +87,5 @@ extern "C" void PostProcess(std::vector<dxs::DXTensor> network_output,
                                  .input_height = 640,
                                  .numClasses = 19};
 
-    Segmentation(network_output, frame_meta, params);
+    Segmentation(buf, network_output, frame_meta, params);
 }

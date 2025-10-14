@@ -78,10 +78,10 @@ void Crop(GstBuffer *buf, GstVideoInfo *input_info, uint8_t **dst, int src_width
 
     GstMapInfo map;
     if (!gst_buffer_map(buf, &map, GST_MAP_READ)) {
-        g_error("Crop: Failed to map GstBuffer\n");
+        GST_ERROR("Crop: Failed to map GstBuffer\n");
     }
     if (crop_width <= 0 || crop_height <= 0) {
-        g_error("Crop: Invalid crop dimensions\n");
+        GST_ERROR("Crop: Invalid crop dimensions\n");
     }
 
     if (g_strcmp0(format, "RGB") == 0) {
@@ -137,11 +137,11 @@ void Crop(GstBuffer *buf, GstVideoInfo *input_info, uint8_t **dst, int src_width
             NV12Crop(src_y, strideY, src_uv, strideUV, src_width, src_height,
                      *dst, crop_width, crop_height, crop_x, crop_y);
     } else {
-        g_error("Crop: Not supported color format\n");
+        GST_ERROR("Crop: Not supported color format\n");
     }
 
     if (result != 0) {
-        g_error("Crop: Failed to crop frame\n");
+        GST_ERROR("Crop: Failed to crop frame\n");
     }
     gst_buffer_unmap(buf, &map);
 }
@@ -149,7 +149,7 @@ void Crop(GstBuffer *buf, GstVideoInfo *input_info, uint8_t **dst, int src_width
 void Resize(uint8_t *src, uint8_t **dst, int src_width, int src_height,
             int dst_width, int dst_height, const gchar *format) {
     if (dst_width <= 0 || dst_height <= 0) {
-        g_warning("Resize: Invalid crop dimensions\n");
+        GST_WARNING("Resize: Invalid crop dimensions\n");
         return;
     }
 
@@ -202,12 +202,12 @@ void Resize(uint8_t *src, uint8_t **dst, int src_width, int src_height,
                               src_height, dst_y, dst_width, dst_uv, dst_width,
                               dst_width, dst_height, libyuv::kFilterLinear);
     } else {
-        g_warning("Resize: Not supported color format\n");
+        GST_WARNING("Resize: Not supported color format\n");
         return;
     }
 
     if (result != 0) {
-        g_warning("Resize: Failed to resize frame\n");
+        GST_WARNING("Resize: Failed to resize frame\n");
         return;
     }
 }
@@ -216,11 +216,11 @@ void Resize(GstBuffer *buf, GstVideoInfo *input_info, uint8_t **dst, int src_wid
             int dst_width, int dst_height, const gchar *format) {
     GstMapInfo map;
     if (!gst_buffer_map(buf, &map, GST_MAP_READ)) {
-        g_error("Resize(buffer): Failed to map GstBuffer\n");
+        GST_ERROR("Resize(buffer): Failed to map GstBuffer\n");
     }
     int result = 0;
     if (dst_width <= 0 || dst_height <= 0) {
-        g_error("Resize(buffer): Invalid crop dimensions\n");
+        GST_ERROR("Resize(buffer): Invalid crop dimensions\n");
     }
     if (g_strcmp0(format, "RGB") == 0) {
         if (!*dst) {
@@ -287,10 +287,10 @@ void Resize(GstBuffer *buf, GstVideoInfo *input_info, uint8_t **dst, int src_wid
                               src_height, dst_y, dst_width, dst_uv, dst_width,
                               dst_width, dst_height, libyuv::kFilterLinear);
     } else {
-        g_error("Resize(buffer): Not supported color format\n");
+        GST_ERROR("Resize(buffer): Not supported color format\n");
     }
     if (result != 0) {
-        g_error("Resize(buffer): Failed to crop frame\n");
+        GST_ERROR("Resize(buffer): Failed to crop frame\n");
     }
     gst_buffer_unmap(buf, &map);
 }
@@ -299,13 +299,13 @@ static inline void allocate_dst_buffer(uint8_t **dst, int size) {
     if (!*dst) {
         *dst = (uint8_t *)malloc(size);
         if (!*dst) {
-            g_error("Memory allocation failed\n");
+            GST_ERROR("Memory allocation failed\n");
         }
     }
 }
 
 static inline void handle_unsupported_format(const char *func_name) {
-    g_error("%s: Not supported color format\n", func_name);
+    GST_ERROR("%s: Not supported color format\n", func_name);
 }
 
 static bool is_rgb(const gchar *fmt) { return g_strcmp0(fmt, "RGB") == 0; }
@@ -314,7 +314,7 @@ static bool is_bgr(const gchar *fmt) { return g_strcmp0(fmt, "BGR") == 0; }
 
 static void handle_conversion_error(int result, const char *tag) {
     if (result != 0) {
-        g_error("%s: Failed to convert color\n", tag);
+        GST_ERROR("%s: Failed to convert color\n", tag);
     }
 }
 
@@ -325,7 +325,11 @@ static void convert_from_rgb(const uint8_t *src, int width, int height,
     allocate_dst_buffer(dst, size);
 
     if (is_rgb(dst_format)) {
-        memcpy(*dst, src, size);
+        if (*dst && src) {
+            memcpy(*dst, src, size);
+        } else {
+            GST_ERROR("convert_from_rgb: Null pointer passed to memcpy\n");
+        }
     } else if (is_bgr(dst_format)) {
         int result =
             libyuv::RAWToRGB24(src, stride, *dst, stride, width, height);
@@ -378,7 +382,7 @@ static void convert_from_nv12(const uint8_t *y, const uint8_t *uv, int strideY,
 
 static bool map_buffer(GstBuffer *buf, GstMapInfo *map, const char *tag) {
     if (!gst_buffer_map(buf, map, GST_MAP_READ)) {
-        g_error("%s: Failed to map GstBuffer\n", tag);
+        GST_ERROR("%s: Failed to map GstBuffer\n", tag);
         return false;
     }
     return true;
@@ -428,7 +432,7 @@ void CvtColor(GstBuffer *buf, GstVideoInfo *input_info, uint8_t **dst, int width
               const gchar *src_format, const gchar *dst_format) {
     const char *tag = "CvtColor(buffer)";
     if (width <= 0 || height <= 0) {
-        g_error("%s: Invalid dimensions\n", tag);
+        GST_ERROR("%s: Invalid dimensions\n", tag);
         return;
     }
 
@@ -453,7 +457,7 @@ void CvtColor(uint8_t *src, uint8_t **dst, int width, int height,
               const gchar *src_format, const gchar *dst_format) {
 
     if (width <= 0 || height <= 0) {
-        g_error("CvtColor: Invalid dimensions\n");
+        GST_ERROR("CvtColor: Invalid dimensions\n");
         return;
     }
 
@@ -465,7 +469,12 @@ void CvtColor(uint8_t *src, uint8_t **dst, int width, int height,
         alloc_and_process(width * height * 3);
 
         if (g_strcmp0(dst_format, "RGB") == 0) {
-            memcpy(*dst, src, width * height * 3);
+            if (*dst) {
+                memcpy(*dst, src, width * height * 3);
+            } else {
+                GST_ERROR("CvtColor: Destination buffer not allocated\n");
+                return;
+            }
         } else if (g_strcmp0(dst_format, "BGR") == 0) {
             ret = libyuv::RAWToRGB24(src, width * 3, *dst, width * 3, width,
                                      height);
@@ -513,109 +522,6 @@ void CvtColor(uint8_t *src, uint8_t **dst, int width, int height,
     }
 
     if (ret != 0) {
-        g_error("CvtColor: Failed to convert color\n");
-    }
-}
-
-void RGB24toI420(DXFrameMeta *frame_meta, GstVideoInfo *input_info, uint8_t *surface) {
-    GstMapInfo map;
-    if (!gst_buffer_is_writable(frame_meta->_buf)) {
-        frame_meta->_buf = gst_buffer_make_writable(frame_meta->_buf);
-    }
-    if (!gst_buffer_map(frame_meta->_buf, &map, GST_MAP_WRITE)) {
-        g_error("RGB24toI420: Failed to map GstBuffer");
-    }
-    uint8_t *dstY;
-    uint8_t *dstU;
-    uint8_t *dstV;
-    gint strideY;
-    gint strideU;
-    gint strideV;
-    if (input_info) {
-        dstY = map.data + input_info->offset[0];
-        dstU = map.data + input_info->offset[1];
-        dstV = map.data + input_info->offset[2];
-
-        strideY = input_info->stride[0];
-        strideU = input_info->stride[1];
-        strideV = input_info->stride[2];
-    } else {
-        dstY = map.data;
-        dstU = map.data + frame_meta->_width * frame_meta->_height;
-        dstV = dstU + (frame_meta->_width / 2) * (frame_meta->_height / 2);
-
-        strideY = frame_meta->_width;
-        strideU = frame_meta->_width / 2;
-        strideV = frame_meta->_width / 2;
-    }
-    int result = libyuv::RAWToI420(surface, frame_meta->_width * 3, dstY,
-                                   strideY, dstU, strideU, dstV, strideV,
-                                   frame_meta->_width, frame_meta->_height);
-    if (result != 0) {
-        g_error("Failed to convert RGB to I420");
-    }
-    gst_buffer_unmap(frame_meta->_buf, &map);
-}
-
-void RGB24toNV12(DXFrameMeta *frame_meta, GstVideoInfo *input_info, uint8_t *surface) {
-    GstMapInfo map;
-    if (!gst_buffer_is_writable(frame_meta->_buf)) {
-        frame_meta->_buf = gst_buffer_make_writable(frame_meta->_buf);
-    }
-    if (!gst_buffer_map(frame_meta->_buf, &map, GST_MAP_WRITE)) {
-        g_error("RGB24 to NV12: Failed to map GstBuffer");
-    }
-    uint8_t *dstY;
-    uint8_t *dstUV;
-    gint strideY;
-    gint strideUV;
-    if (input_info) {
-        dstY = map.data + input_info->offset[0];
-        dstUV = map.data + input_info->offset[1];
-
-        strideY = input_info->stride[0];
-        strideUV = input_info->stride[1];
-    } else {
-        dstY = map.data;
-        dstUV = map.data + frame_meta->_width * frame_meta->_height;
-
-        strideY = frame_meta->_width;
-        strideUV = frame_meta->_width;
-    }
-    cv::Mat yuv_frame;
-    cv::Mat surface_mat =
-        cv::Mat(frame_meta->_height, frame_meta->_width, CV_8UC3, surface);
-    cv::cvtColor(surface_mat, yuv_frame, cv::COLOR_RGB2YUV_I420);
-
-    unsigned char *y_plane = yuv_frame.data;
-    unsigned char *u_plane = y_plane + frame_meta->_width * frame_meta->_height;
-    unsigned char *v_plane =
-        u_plane + (frame_meta->_width / 2) * (frame_meta->_height / 2);
-
-    int result = libyuv::I420ToNV12(
-        y_plane, frame_meta->_width, u_plane, frame_meta->_width / 2, v_plane,
-        frame_meta->_width / 2, dstY, strideY, dstUV, strideUV,
-        frame_meta->_width, frame_meta->_height);
-    if (result != 0) {
-        g_error("Failed to convert I420 to NV12");
-    }
-    gst_buffer_unmap(frame_meta->_buf, &map);
-}
-
-void SurfaceToOrigin(DXFrameMeta *frame_meta, GstVideoInfo *input_info, uint8_t *surface) {
-    if (g_strcmp0(frame_meta->_format, "RGB") == 0) {
-        GstMapInfo map_info;
-        if (!gst_buffer_map(frame_meta->_buf, &map_info, GST_MAP_READ)) {
-            g_error("SurfaceToOrigin: Failed to map GstBuffer");
-        }
-        memcpy(map_info.data, surface,
-               3 * frame_meta->_height * frame_meta->_width);
-        gst_buffer_unmap(frame_meta->_buf, &map_info);
-    } else if (g_strcmp0(frame_meta->_format, "I420") == 0) {
-        RGB24toI420(frame_meta, input_info, surface);
-    } else if (g_strcmp0(frame_meta->_format, "NV12") == 0) {
-        RGB24toNV12(frame_meta, input_info, surface);
-    } else {
-        g_error("SurfaceToOrigin: Not support color format \n");
+        GST_ERROR("CvtColor: Failed to convert color\n");
     }
 }

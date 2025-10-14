@@ -20,30 +20,31 @@ cc = meson.get_compiler('cpp')
 
 extra_deps = []
 
+v3_mode = get_option('v3_mode')
+
 gstreamer_dep = dependency(
-    'gstreamer-1.0', version : '>=1.14',
+    'gstreamer-1.0', version : '>=1.16.3',
     required : true, fallback : ['gstreamer', 'gst_dep']
 )
-gstreamer_base_dep = dependency(
-    'gstreamer-base-1.0', version : '>=1.14',
-    fallback : ['gstreamer', 'gst_base_dep']
-)
+
 extra_deps += gstreamer_dep
-extra_deps += gstreamer_base_dep
 extra_deps += dependency('eigen3', required: true)
-extra_deps += dependency('gstreamer-video-1.0', version : '>=1.14')
+extra_deps += dependency('gstreamer-video-1.0', version : '>=1.16')
 extra_deps += dependency('json-glib-1.0', version : '>= 1.0')
 extra_deps += cc.find_library('dl', required : true)
 extra_deps += dependency('zlib', required: true)
 extra_deps += dependency('opencv4', required: true)
 extra_deps += cc.find_library('yuv')
-extra_deps += dependency('libmosquitto')
-extra_deps += dependency('rdkafka')
-
 extra_deps += declare_dependency(
     include_directories : include_directories('/usr/local/include'),
     link_args : ['-L/usr/local/lib', '-ldxrt'],
 )
+
+if v3_mode == false
+  message('Building in V3 mode')
+  extra_deps += dependency('libmosquitto')
+  extra_deps += dependency('rdkafka')
+endif
 
 have_librga_flag = false
 librga_dep_maybe = dependency('librga', required: false)
@@ -60,23 +61,29 @@ include_dirs = [
     include_directories('metadata'),
     include_directories('src/tracker/common/include'),
     include_directories('src/tracker/OC_SORT/include'),
-    include_directories('src/utils'),
-    include_directories('src/brokers')
+    include_directories('src/utils')
 ]
+
+if v3_mode == false
+  include_dirs += include_directories('src/brokers')
+endif
 
 install_headers = [
   './general/dxcommon.hpp',
   './metadata/gst-dxmeta.hpp',
   './metadata/gst-dxframemeta.hpp',
   './metadata/gst-dxobjectmeta.hpp',
-  './metadata/gst-dxmsgmeta.hpp'
+
 ]
+
+if v3_mode == false
+  install_headers += './metadata/gst-dxmsgmeta.hpp'
+endif
 
 install_headers += [
   './src/utils/libyuv_transform/libyuv_transform.hpp'
 ]
 
-
-install_headers(install_headers, install_dir: '/usr/local/include/dx_stream')
+install_headers(install_headers, install_dir: 'include/dx_stream')
 
 subdir('src')

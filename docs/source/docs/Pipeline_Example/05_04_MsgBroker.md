@@ -3,258 +3,159 @@ The pipeline demonstrates how to process a local video file with the YOLOv7 mode
 ![](./../../resources/05_04_msgbroker.png)
 
 The pipeline in the figure is defined in 
-`dx_stream/dx_stream/pipelines/broker/*.sh` and can be used as a reference for execution.
+`dx_stream/pipelines/broker/*.sh` and can be used as a reference for execution.
 
 ### **Explanation**
 
 **Element Descriptions**  
 
-- **`dxmsgconv`**: element that processes inference metadata from upstream **DxPostprocess** elements and converts it into message payloads in various formats.
-- **`dxmsgbroker`**: sink element that transmits payload messages to an external message broker (e.g., MQTT, Kafka) 
+- **`dxmsgconv`**: Transform element that processes inference metadata from upstream **DxPostprocess** elements and converts it into structured message payloads (typically JSON) using a user-defined custom library. The element requires a `library-file-path` property pointing to the custom message conversion library.
+- **`dxmsgbroker`**: Sink element that transmits payload messages to external message brokers (MQTT or Kafka) using a **Broker Abstraction Layer (BAL)** that provides unified interface for different broker types. 
 
 ### **Usage Notes**  
 
-**Metadata Conversion**  
-The `dxmsgconv` element requires a configuration file to define the message format. Update the `config-file-path` property to point to your message conversion configuration file.
+**Pipeline Execution**  
+1. **Server Side**: Run the DX-STREAM pipeline with broker output on the processing server
+2. **Client Side**: Run the consumer application to receive and process messages
 
-**Message Publishing**  
-The `dxmsgbroker` element requires the following properties.  
+**Basic Properties**  
+- **`dxmsgconv`**: Converts inference metadata to JSON format
+- **`dxmsgbroker`**: Publishes messages to MQTT/Kafka broker
 
-- **`conn-info`**: Connection information for the broker in the format `[host]:[port]`.  
-- **`topic`**: The topic name for publishing the messages.
-
----
-
-### **Broker Server Application**  
-
-**MQTT**  
-
-**MQTT** (Message Queuing Telemetry Transport) is a lightweight, publish/subscribe messaging protocol.
-
-- **Install Mosquitto Server/Client**  
-
-```
-$ sudo apt update
-$ sudo add-apt-repository ppa:mosquitto-dev/mosquitto-ppa
-$ sudo apt install mosquitto mosquitto-clients
- 
-$ sudo systemctl status mosquitto
-● mosquitto.service - Mosquitto MQTT Broker
-     Loaded: loaded (/lib/systemd/system/mosquitto.service; enabled; vendor preset: enabled)
-     Active: active (running) since Wed 2024-09-11 15:49:49 KST; 18min ago
-       Docs: man:mosquitto.conf(5)
-             man:mosquitto(8)
-   Main PID: 19577 (mosquitto)
-     Tasks: 1 (limit: 76827)
-     Memory: 904.0K
-     CGroup: /system.slice/mosquitto.service
-        └─19577 /usr/sbin/mosquitto -c /etc/mosquitto/mosquitto.conf
-```
-
-- **CA certificates / Server keys, certificates**  
-
-```
-** Test Root CA
-$ openssl genrsa -out ca.key 2048
-$ openssl req -new -x509 -days 360 -key ca.key -out ca.crt -subj "/C=KR/ST=KK/L=SN/O=DXS/OU=Test/  CN=TestCA"
-  
-** Server Key and Certificate(Server's CN must match the host)
-$ openssl genrsa -out server.key 2048
-$ openssl req -new -out server.csr -key server.key -subj "/C=KR/ST=KK/L=SN/O=DXS/OU=Server/  CN=DXS-BROKER"
-$ openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt -days 360
-$ openssl verify -CAfile ca.crt server.crt
-  
-$ ls -al
-ca.crt  ca.key  ca.srl  server.crt  server.csr  server.key
-  
-$ cat /etc/mosquitto/mosquitto.conf
-listener 8883
-cafile /etc/mosquitto/ca_certificates/ca.crt
-certfile /etc/mosquitto/certs/server.crt
-keyfile /etc/mosquitto/certs/server.key
-...
-```
-
-- **Id/Password**  
-
-```
-$ sudo mosquitto_passwd -c /etc/mosquitto/passwd user        ##create passwd file and add id
-Password:
-Reenter password:
-$ sudo mosquitto_passwd -b /etc/mosquitto/passwd user1 1234  ##add id
-$ sudo mosquitto_passwd -D /etc/mosquitto/passwd user1       ##remove id
-$ sudo chmod 644 /etc/mosquitto/passwd
-  
-$ cat /etc/mosquitto/mosquitto.conf 
-password_file /etc/mosquitto/passwd
-allow_anonymous false
-...
-```
-
-And for secure connection, you need to set the config file of dxmsgbroker as follows.  
-
-- `broker_mqtt.cfg`
-
-```
-### username / password
-#username = user
-#password = 1234
-
-### client-id, if not defined a random client idwill be generated
-##client-id = client1
-
-### enable ssl/tls encryption
-tls_enable = 1
-
-### the PEM encoded Certificate Authority certificates
-#tls_cafile = <path to CA certificate file>
-
-### the path to a file containing the CA certificates, 'openssl rehash <path to capath>' each time   you add/remove a certificate.
-tls_capath = <path to directroy containing CA certificates>
-
-### Path to the PEM encoded client certificate.
-tls_certfile = <path to certificate file>
-
-### Path to the PEM encoded client certificate.
-tls_keyfile = <path to key file>
-```
+For detailed element properties, see the Elements documentation.
 
 ---
 
-**Kafka**  
+### **Quick Start Demo**
 
-Apache **Kafka** is a distributed event streaming platform designed for high-throughput, fault-tolerant, and scalable handling of real-time data streams.  
+This section demonstrates how to run a basic message broker pipeline demo using MQTT or Kafka.
 
-- **Install Kafka**  
+#### **MQTT Demo**
 
-```
-$ sudo apt update
-$ sudo apt-get install default-jdk
-$ wget https://downloads.apache.org/kafka/3.9.0/kafka_2.13-3.9.0.tgz
-$ tar -xzf kafka_2.13-3.9.0.tgz
-$ cd kafka_2.13-3.9.0
-```
-
-- **Zookeeper**  
-
-```
-$ bin/zookeeper-server-start.sh config/zookeeper.properties
+**1. Server Setup (Processing Server with Message Broker)**
+```bash
+# Install and start Mosquitto MQTT broker
+sudo apt install mosquitto mosquitto-clients
+sudo systemctl start mosquitto
+sudo systemctl enable mosquitto
 ```
 
-- **Kafka server**  
+**2. Run DX-STREAM Pipeline (Server Side)**
+```bash
+# Execute the broker pipeline on processing server
+# The pipeline uses YOLOv7 model for object detection and converts to JSON messages
+cd /path/to/dx_stream
+./pipelines/broker/run_dxmsgbroker_mqtt.sh
 
-```
-$ bin/kafka-server-start.sh config/server.properties
-```
-  
-- **Producer**  
-
-```
-$ bin/kafka-console-producer.sh --topic test-topic --bootstrap-server localhost:9092
-```   
-  
-- **Consumer**  
-
-```
-$ bin/kafka-console-consumer.sh --topic test-topic --from-beginning --bootstrap-server localhost:9092
-```   
-
-For more information about Kafka, refer to [https://kafka.apache.org/](https://kafka.apache.org/)
-
-
-- **Kafka Client( GstDxMsgBroker) Configuration**  
-
-GstDxMsgBroker uses standard OpenSSL PEM keys.  
-
-- **Secure Connection**  
- 
-To set up Kafka SSL, begin by generating and configuring SSL certificates for both the Kafka broker and the client. Follow the detailed instructions in the [librdkafka SSL guide](https://github.com/confluentinc/librdkafka/wiki/Using-SSL-with-librdkafka) to create and validate these certificates. Update the Kafka broker configuration file (server.properties) with the appropriate SSL settings, such as keystore, truststore paths, and passwords. Finally, configure the Kafka client with SSL options, including the paths to the keystore and truststore files, ensuring secure communication between the client and broker.  
-  
-- **Kafka Server Configuration**  
-
-`server.properties`  
-
-```
-# SSL
-ssl.protocol=TLS
-ssl.enabled.protocols=TLSv1.2,TLSv1.1,TLSv1
-ssl.keystore.type=JKS
-ssl.keystore.location=<path to broker keystore file>
-ssl.keystore.password=<broker keystore password>
-ssl.key.password=<key password>
-ssl.truststore.type=JKS
-ssl.truststore.location=<path to broker truststore file>
-ssl.truststore.password=<broker truststore password>
-# To require authentication of clients use "require", else "none" or "request"
-ssl.client.auth = required
+# Or run manually with custom settings
+gst-launch-1.0 \
+  urisourcebin uri=file:///path/to/your/video.mp4 ! decodebin ! \
+  dxpreprocess config-file-path=configs/Object_Detection/YoloV7/preprocess_config.json ! \
+  dxinfer config-file-path=configs/Object_Detection/YoloV7/inference_config.json ! \
+  dxpostprocess config-file-path=configs/Object_Detection/YoloV7/postprocess_config.json ! \
+  dxmsgconv library-file-path=/usr/lib/libdx_msgconvl.so config-file-path=configs/msgconv_config.json ! \
+  dxmsgbroker broker-name=mqtt conn-info=localhost:1883 topic=test
 ```
 
-And for secure connection, you need to set the config file of dxmsgbroker as follows.  
+**3. Client Application (Any Machine - Consumer Only)**
+```bash
+# Install Python MQTT client library (client machine only needs this)
+pip install paho-mqtt
 
-`broker_kafka.cfg`  
+# Run the MQTT client to receive messages from server
+python3 /usr/share/dx-stream/bin/mqtt_sub_example.py -n <server_ip> -p 1883 -t test
+
+# Or for C++ version
+mqtt_sub_example -h <server_ip> -t test -p 1883
+```
+
+#### **Kafka Demo**
+
+**1. Server Setup (Processing Server with Message Broker)**
+```bash
+# Install Java and Kafka
+sudo apt install default-jdk
+wget https://downloads.apache.org/kafka/3.9.0/kafka_2.13-3.9.0.tgz
+tar -xzf kafka_2.13-3.9.0.tgz
+cd kafka_2.13-3.9.0
+
+# Start Zookeeper and Kafka server
+bin/zookeeper-server-start.sh config/zookeeper.properties &
+bin/kafka-server-start.sh config/server.properties &
+```
+
+**2. Run DX-STREAM Pipeline (Server Side)**
+```bash
+# Execute the broker pipeline on processing server  
+cd /path/to/dx_stream
+./pipelines/broker/run_dxmsgbroker_kafka.sh
+
+# Or run manually with custom settings
+gst-launch-1.0 \
+  urisourcebin uri=file:///path/to/your/video.mp4 ! decodebin ! \
+  dxpreprocess config-file-path=configs/Object_Detection/YoloV7/preprocess_config.json ! \
+  dxinfer config-file-path=configs/Object_Detection/YoloV7/inference_config.json ! \
+  dxpostprocess config-file-path=configs/Object_Detection/YoloV7/postprocess_config.json ! \
+  dxmsgconv library-file-path=/usr/lib/libdx_msgconvl.so config-file-path=configs/msgconv_config.json ! \
+  dxmsgbroker broker-name=kafka conn-info=localhost:9092 topic=test
+```
+
+**3. Client Application (Any Machine - Consumer Only)**
+```bash
+# Install Python Kafka client library (client machine only needs this)
+pip install kafka-python
+
+# Run the Kafka client to receive messages from server
+python3 /usr/share/dx-stream/bin/kafka_consume_example.py -n <server_ip> -p 9092 -t test
+
+# Or for C++ version
+kafka_consume_example -n <server_ip> -p 9092 -t test
+```
+
+#### **Network Architecture**
 
 ```
-#######################################
-### kafka client configuration
-#######################################
-[kafka]
-### for frame data
-message.max.bytes=10485760
-  
-### for secure transmission
-#security.protocol=ssl
-## CA certificate file for verifying the broker's certificate.
-ssl.ca.location=<path to CA certificate file>
- 
-## Client's certificate
-ssl.certificate.location=<path to client certificate file>
-
-## Client's key
-ssl.key.location=<path to client key file>
-
-## Key password, if any
-ssl.key.password=KEY_PASSWORD
+┌─────────────────────────┐    ┌─────────────────────────┐
+│   Processing Server     │    │    Client Machine       │
+│                         │    │                         │
+│ ┌─────────────────────┐ │    │ ┌─────────────────────┐ │
+│ │   DX-STREAM         │ │    │ │  Consumer App       │ │
+│ │   Pipeline          │ │    │ │  (Python/C++)       │ │
+│ │                     │ │────┤ │                     │ │
+│ │ dxmsgconv           │ │    │ │  - Only needs       │ │
+│ │ dxmsgbroker         │ │    │ │    client library   │ │
+│ └─────────────────────┘ │    │ │  - No broker        │ │
+│                         │    │ │    service needed   │ │
+│ ┌─────────────────────┐ │    │ └─────────────────────┘ │
+│ │ Message Broker      │ │    │                         │
+│ │ (MQTT/Kafka)        │ │    │                         │
+│ └─────────────────────┘ │    │                         │
+└─────────────────────────┘    └─────────────────────────┘
 ```
+
+**Requirements:**
+- **Server**: DX-STREAM + Message Broker Service (MQTT/Kafka)
+- **Client**: Only consumer application + client library (paho-mqtt/kafka-python)
+
+**Note:** Replace `<server_ip>` with the actual IP address of your processing server. For local testing, use `localhost`.
+
+#### **Pipeline Properties**
+
+The broker pipelines use the following key properties:
+
+**DxMsgConv Element:**
+- `config-file-path`: Path to configuration file containing message format properties (optional)
+- `library-file-path`: Path to custom message converter library (**required**)
+- `message-interval`: Frame interval for message conversion (default: 1)
+
+**DxMsgBroker Element:**
+- `broker-name`: Message broker type - "mqtt" or "kafka" (**required**)
+- `conn-info`: Connection string in format `host:port` (**required**)
+- `topic`: Topic name for message publishing (**required**)
+- `config`: Path to broker configuration file for advanced settings (optional)
 
 ---
 
-**Script Descriptions**  
-The server application, which receives data from the MQTT, KAFKA pipeline to log messages or render images, can be found in `/usr/share/dx-stream/bin`.    
+### **Advanced Configuration**
 
-- `mqtt_sub_example.py` (mqtt_sub_example)  
-
-Runs an MQTT server that logs the messages received.  
-
-```
-python3 /usr/share/dx-stream/bin/mqtt_sub_example.py -p <PORT> -n <HOSTNAME> -t <TOPIC>
-```
-
-- `mqtt_sub_example_frame.py`  
-
-Displays frames included in the messages using OpenCV.  
-
-**Note.** The `include_frame` option in the DxMsgConv config JSON **must** be set to true for this feature to work.  
-
-```
-python3 /usr/share/dx-stream/bin/mqtt_sub_example_frame.py -p <PORT> -n <HOSTNAME> -t <TOPIC>
-```
-
-- `kafka_consume_example.py` (kafka_consume_example)  
-
-Runs an KAFKA server that logs the messages received.  
-
-```
-python3 /usr/share/dx-stream/bin/kafka_consume_example.py <HOSTNAME> <TOPIC>
-```
-
-- `kafka_consume_example_frame.py`  
-
-Displays frames included in the messages using OpenCV.  
-
-**Note.** The include_frame option in the DxMsgConv config JSON **must** be set to true for this feature to work.  
-
-```
-python3 /usr/share/dx-stream/bin/kafka_consume_example_frame.py <HOSTNAME> <TOPIC>
-```
-
----
+For production deployments with SSL/TLS security, authentication, and advanced broker configurations, refer to **Chapter 6. Troubleshooting and FAQ**.---

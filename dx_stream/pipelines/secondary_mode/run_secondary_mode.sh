@@ -44,5 +44,5 @@ for INPUT_VIDEO_PATH in "${INPUT_VIDEO_PATH_LIST[@]}"; do
                     gather.sink_1 \
                     dxgather name=gather ! queue ! \
                     dxosd width=1280 height=720 ! queue ! \
-                    videoconvert ! fpsdisplaysink $VIDEO_SINK_ARGS
+                    videoconvert ! fpsdisplaysink sync=false $VIDEO_SINK_ARGS
 done
