@@ -41,6 +41,28 @@ Run the provided script to automatically install all required packages.
 $ ./install.sh
 ```
 
+**Optional Installation Options**  
+
+You can selectively skip certain dependencies if they are already installed or not needed:
+
+```bash
+# Skip GStreamer installation
+$ ./install.sh --wo-gst
+
+# Skip OpenCV installation  
+$ ./install.sh --wo-opencv
+
+# Skip both GStreamer and OpenCV
+$ ./install.sh --wo-gst --wo-opencv
+
+# Show help message
+$ ./install.sh --help
+```
+
+**Note:** Use these options only if you have compatible versions already installed:
+- GStreamer 1.16.3 or higher
+- OpenCV 4.2.0 or higher
+
 **3.** Build **DX-STREAM**  
 
 Compile **DX-STREAM**.  
@@ -93,20 +115,25 @@ $ ./run_demo.sh
 
 When the script is executed, you'll be prompted to select a demo from the following options.
 ```
-0: Object Detection (YOLOv7)
-1: Face Detection (YOLOV5S_Face)
-2: Multi-Object Tracking
-3: Pose Estimation
-4: Semantic Segmentation
-5: Multi-Channel Object Detection
-6: Multi-Channel RTSP
-7: secondary mode
+0: Object Detection (YOLOv5s)
+1: Object Detection (YOLOv5s with PPU)
+2: Face Detection (YOLOV5S_Face)
+3: Face Detection (SCRFD500M with PPU)
+4: Pose Estimation (YOLOV5Pose)
+5: Pose Estimation (YOLOV5Pose with PPU)
+6: Multi-Object Tracking
+7: Semantic Segmentation
+8: Multi-Channel Object Detection
+9: Multi-Channel RTSP
+-: secondary mode
 which AI demo do you want to run:(timeout:10s, default:0)
 ```
 
 Enter the number corresponding to the desired demo to run it.  
 
-If **no** input is provided within 10 seconds, the default option (`0: Object Detection`) will be executed automatically.  
+If **no** input is provided within 10 seconds, the default option (`0: Object Detection (YOLOv5s)`) will be executed automatically.
+
+**Note:** Options with "PPU" suffix utilize **Post-Processing Unit (PPU)** acceleration, which performs model post-processing operations (such as bounding box decoding and score thresholding) directly on the NPU hardware instead of the CPU. This approach significantly improves inference performance by reducing CPU overhead.  
 
 **Notes.** Each demo corresponds to a specific pipeline described in **Chapter 5. Pipeline Examples**.
 

@@ -1,19 +1,6 @@
 {
-    "cfgSection": {
-        "library_file_path": "/usr/share/dx-stream/lib/libdx_msgconvl.so",
-        "message_interval": 1,
-        "include_frame": true
-    },
-
-    "infoSection": {
-        "customId": 999
-    },
-    
-    "filterSection": {
-        "object": {
-            "include" : ["person", "bus"]
-        }
-    }    
+    "library_file_path": "/usr/share/dx-stream/lib/libdx_msgconvl.so",
+    "message_interval": 1  
 }
 
 

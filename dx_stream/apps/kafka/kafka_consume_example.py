@@ -3,6 +3,7 @@
 import signal
 import sys
 import json
+import argparse
 from confluent_kafka import Consumer, KafkaException, KafkaError
 
 run = True
@@ -64,12 +65,17 @@ def main(broker, topic):
     finally:
         consumer.close()
 
+def parse_args():
+    parser = argparse.ArgumentParser(description='Kafka message consumer')
+    parser.add_argument('-n', '--hostname', required=True, 
+                       help='Kafka broker hostname (e.g., localhost)')
+    parser.add_argument('-p', '--port', type=int, default=9092,
+                       help='Kafka broker port (default: 9092)')
+    parser.add_argument('-t', '--topic', required=True,
+                       help='Topic name to subscribe to')
+    return parser.parse_args()
+
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print(f"Usage: {sys.argv[0]} <broker> <topic>")
-        sys.exit(1)
-
-    broker = sys.argv[1]
-    topic = sys.argv[2]
-
-    main(broker, topic)
+    args = parse_args()
+    broker = f"{args.hostname}:{args.port}"
+    main(broker, args.topic)

@@ -176,7 +176,7 @@ dxpostprocess_change_state(GstElement *element, GstStateChange transition) {
                 self->_library_handle = nullptr;
             }
             self->_postproc_function =
-                (void (*)(std::vector<dxs::DXTensor>, DXFrameMeta *,
+                (void (*)(GstBuffer *, std::vector<dxs::DXTensor>, DXFrameMeta *,
                           DXObjectMeta *))func_ptr;
         }
         break;
@@ -315,26 +315,21 @@ static gboolean gst_dxpostprocess_sink_event(GstBaseTransform *trans,
     return res;
 }
 
-static void process_object_meta(DXObjectMeta *object_meta,
-                                GstDxPostprocess *self,
-                                DXFrameMeta *frame_meta) {
-    auto iter = object_meta->_output_tensors.find(self->_infer_id);
-    if (iter == object_meta->_output_tensors.end())
-        return;
-
-    if (iter->second._tensors.empty())
-        return;
-
-    self->_postproc_function(iter->second._tensors, frame_meta, object_meta);
-}
-
-static void process_secondary_mode(DXFrameMeta *frame_meta,
+static void process_secondary_mode(GstBuffer *buf,
+                                   DXFrameMeta *frame_meta,
                                    GstDxPostprocess *self) {
     int objects_size = g_list_length(frame_meta->_object_meta_list);
     for (int o = 0; o < objects_size; o++) {
         DXObjectMeta *object_meta =
             (DXObjectMeta *)g_list_nth_data(frame_meta->_object_meta_list, o);
-        process_object_meta(object_meta, self, frame_meta);
+        auto iter = object_meta->_output_tensors.find(self->_infer_id);
+        if (iter == object_meta->_output_tensors.end())
+            return;
+
+        if (iter->second._tensors.empty())
+            return;
+
+        self->_postproc_function(buf, iter->second._tensors, frame_meta, object_meta);
     }
 }
 
@@ -350,11 +345,11 @@ static GstFlowReturn gst_dxpostprocess_transform_ip(GstBaseTransform *trans,
     }
 
     if (self->_secondary_mode) {
-        process_secondary_mode(frame_meta, self);
+        process_secondary_mode(buf, frame_meta, self);
     } else {
         auto iter = frame_meta->_output_tensors.find(self->_infer_id);
         if (iter != frame_meta->_output_tensors.end()) {
-            self->_postproc_function(iter->second._tensors, frame_meta, nullptr);
+            self->_postproc_function(buf, iter->second._tensors, frame_meta, nullptr);
         }
     }
 

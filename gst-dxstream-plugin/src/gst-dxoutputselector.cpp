@@ -101,9 +101,6 @@ static void gst_dxoutputselector_init(GstDxOutputSelector *self) {
     gst_element_add_pad(GST_ELEMENT(self), self->_sinkpad);
 
     self->_srcpads.clear();
-    self->_cached_caps_for_stream.clear();
-    self->_last_stream_id = -1;
-    self->_eos_stream_id.clear();
 }
 
 static GstPad *find_target_srcpad(GstDxOutputSelector *self, int stream_id) {
@@ -119,20 +116,6 @@ static GstPad *find_target_srcpad(GstDxOutputSelector *self, int stream_id) {
     return nullptr;
 }
 
-static gboolean handle_forward_event(GstDxOutputSelector *self, GstEvent *event,
-                                     GstPad *target_srcpad) {
-    if (!target_srcpad) {
-        return FALSE;
-    }
-
-    gboolean res = gst_pad_push_event(target_srcpad, event);
-    if (!res) {
-        gst_event_unref(event);
-    }
-
-    return res;
-}
-
 static gboolean gst_dxoutputselector_sink_event(GstPad *pad, GstObject *parent,
                                                 GstEvent *event) {
     GstDxOutputSelector *self = GST_DXOUTPUTSELECTOR(parent);
@@ -142,84 +125,45 @@ static gboolean gst_dxoutputselector_sink_event(GstPad *pad, GstObject *parent,
     const GstEventType event_type = GST_EVENT_TYPE(event);
 
     switch (event_type) {
-    case GST_EVENT_FLUSH_START:
-    case GST_EVENT_FLUSH_STOP: {
-        if (self->_last_stream_id != -1) {
-            GstPad *target_srcpad = find_target_srcpad(self, self->_last_stream_id);
-            if (!target_srcpad) {
+    case GST_EVENT_CUSTOM_DOWNSTREAM: {
+        const GstStructure *structure = gst_event_get_structure(event);
+        if (gst_structure_has_name(structure, "application/x-dx-wrapped-event")) {
+            int stream_id = -1;
+            GstEvent *original_event = nullptr;
+            gst_structure_get_int(structure, "stream-id", &stream_id);
+            gst_structure_get(structure, "event", GST_TYPE_EVENT, &original_event, NULL);
+
+            GST_INFO_OBJECT(self, "Received custom event from stream [%d], type: %s", stream_id, GST_EVENT_TYPE_NAME(original_event));
+
+            GstPad *target_pad = find_target_srcpad(self, stream_id);
+
+            if (!target_pad) {
+                GST_INFO_OBJECT(self, "No target srcpad found for stream [%d]", stream_id);
+                gst_event_unref(original_event);
                 gst_event_unref(event);
                 return FALSE;
             }
-            res = gst_pad_push_event(target_srcpad, event);
-        } else {
-            res = gst_pad_event_default(pad, parent, event);
-        }
-        break;
-    }
-    
-    case GST_EVENT_EOS: {
-        GST_INFO_OBJECT(self, "Received global EOS, ignoring as all srcpads already received logical EOS");
-        res = gst_pad_event_default(pad, parent, event);
-        break;
-    }
 
-    case GST_EVENT_CUSTOM_DOWNSTREAM: {
-        const GstStructure *structure = gst_event_get_structure(event);
-        if (structure) {
-            if (gst_structure_has_name(structure,
-                                       "application/x-dx-route-info")) {
-                gst_structure_get_int(structure, "stream-id",
-                                      &self->_last_stream_id);
+            res = gst_pad_push_event(target_pad, original_event);
+            if (!res) {
+                GST_ERROR_OBJECT(self, "Failed to push Event\n");
+                gst_event_unref(original_event);
                 gst_event_unref(event);
-            } else if (gst_structure_has_name(
-                           structure, "application/x-dx-logical-stream-eos")) {
-                GstEvent *eos_event = gst_event_new_eos();
-                GstPad *target_srcpad = find_target_srcpad(self, self->_last_stream_id);
-                if (!target_srcpad) {
-                    res = FALSE;
-                }
-                self->_eos_stream_id.insert(self->_last_stream_id);
-                GST_INFO_OBJECT(self, "OUTPUT_SELECTOR_PUSHING_EOS_EVENT: %d", self->_last_stream_id);
-                res = gst_pad_push_event(target_srcpad, eos_event);
-                gst_event_unref(event);
-            } else {
-                if (self->_last_stream_id == -1) {
-                    GST_WARNING_OBJECT(self, "No stream_id set, cannot forward custom event");
-                    res = FALSE;
-                } else {
-                    GstPad *target_srcpad = find_target_srcpad(self, self->_last_stream_id);
-                    if (!target_srcpad) {
-                        gst_event_unref(event);
-                        res = FALSE;
-                    } else {
-                        res = handle_forward_event(self, event, target_srcpad);
-                    }
-                }
+                return FALSE;
             }
+            gst_event_unref(event);
+            return res;
         } else {
             GST_WARNING_OBJECT(self, "Custom event has no structure");
             gst_event_unref(event);
-            return FALSE;
+            res = FALSE;
         }
-        break;
-    }
-    case GST_EVENT_CAPS: {
-        GstCaps *new_caps;
-        gst_event_parse_caps(event, &new_caps);
-        GstPad *target_srcpad = find_target_srcpad(self, self->_last_stream_id);
-        
-        if (!target_srcpad) {
-            gst_event_unref(event);
-            return FALSE;
-        }
-        
-        res = gst_pad_push_event(target_srcpad, event);
         break;
     }
     default: {
-        GstPad *target_srcpad = find_target_srcpad(self, self->_last_stream_id);
-        res = handle_forward_event(self, event, target_srcpad);
-        break;
+        GST_INFO_OBJECT(self, "Received Global EOS event from stream");
+        gst_event_unref(event);
+        return TRUE;
     }
     }
 
@@ -239,10 +183,10 @@ static GstPad *gst_dxoutputselector_request_pad(GstElement *element,
 
     gint stream_id = get_src_pad_index(srcpad);
     gst_pad_set_active(srcpad, TRUE);
+    GST_PAD_SET_PROXY_CAPS(srcpad);
     gst_element_add_pad(element, srcpad);
 
     self->_srcpads[stream_id] = GST_PAD(gst_object_ref(srcpad));
-    self->_cached_caps_for_stream[stream_id] = nullptr;
     g_free(pad_name);
     return srcpad;
 }
@@ -270,12 +214,12 @@ static GstFlowReturn gst_dxoutputselector_chain_function(GstPad *pad,
                          frame_meta->_stream_id);
         return GST_FLOW_ERROR;
     }
-    // GST_INFO_OBJECT(self, "OUTPUT_SELECTOR_PUSHING_BUFFER: %d", frame_meta->_stream_id);
-    if (self->_eos_stream_id.count(frame_meta->_stream_id) > 0) {
-        GST_INFO_OBJECT(self, "OUTPUT_SELECTOR_PUSHING_BUFFER: %d is EOS", frame_meta->_stream_id);
-        gst_buffer_unref(buffer);
-        return GST_FLOW_OK;
+
+    GstFlowReturn res = gst_pad_push(self->_srcpads[frame_meta->_stream_id], buffer);
+    if (res != GST_FLOW_OK) {
+        GST_ERROR_OBJECT(self, "Failed to push buffer to stream [%d], res: %d", frame_meta->_stream_id, res);
+        return res;
     }
-    GstFlowReturn res = gst_pad_push(it_pad->second, buffer);
-    return res;
+
+    return GST_FLOW_OK;
 }
