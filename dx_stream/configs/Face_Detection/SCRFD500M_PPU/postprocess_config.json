@@ -1,0 +1,5 @@
+{
+    "inference_id": 1,
+    "library_file_path": "/usr/share/dx-stream/lib/libpostprocess_ppu.so",
+    "function_name": "SCRFD500M_PPU"
+}

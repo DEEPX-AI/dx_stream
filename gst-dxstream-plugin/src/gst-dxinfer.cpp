@@ -14,6 +14,7 @@ enum {
     PROP_SECONDARY_MODE,
     PROP_MODEL_PATH,
     PROP_CONFIG_PATH,
+    PROP_USE_ORT,
     N_PROPERTIES
 };
 
@@ -116,6 +117,10 @@ static void parse_config(GstDxInfer *self) {
             json_object_get_boolean_member(object, "secondary_mode");
     }
 
+    if (json_object_has_member(object, "use_ort")) {
+        self->_use_ort = json_object_get_boolean_member(object, "use_ort");
+    }
+
     g_object_unref(parser);
 }
 
@@ -154,6 +159,10 @@ static void gst_dxinfer_set_property(GObject *object, guint property_id,
         self->_secondary_mode = g_value_get_boolean(value);
         break;
     }
+    case PROP_USE_ORT: {
+        self->_use_ort = g_value_get_boolean(value);
+        break;
+    }
     default:
         break;
     }
@@ -181,6 +190,9 @@ static void gst_dxinfer_get_property(GObject *object, guint property_id,
         break;
     case PROP_SECONDARY_MODE:
         g_value_set_boolean(value, self->_secondary_mode);
+        break;
+    case PROP_USE_ORT:
+        g_value_set_boolean(value, self->_use_ort);
         break;
     default:
         break;
@@ -244,50 +256,48 @@ static void handle_null_to_ready(GstDxInfer *self) {
         return;
     }
 
-    self->_ie = std::make_shared<dxrt::InferenceEngine>(self->_model_path);
+    self->_infer_option = std::make_shared<dxrt::InferenceOption>();
+    self->_infer_option->useORT = self->_use_ort;
+
+    self->_ie = std::make_shared<dxrt::InferenceEngine>(self->_model_path, *(self->_infer_option));
     self->_output_tensor_size = self->_ie->GetOutputSize();
+
     std::string version = dxrt::Configuration::GetInstance().GetVersion();
     if (!version_meets_minimum(version, "3.0.0")) {
         g_error("[dxinfer] DXRT library version is too low. (required: >= 3.0.0, current: %s)\n", version.c_str());
         return;
     }
-    std::string model_version = self->_ie->GetModelVersion();
-    if (!version_meets_minimum(model_version, "7")) {
-        g_error("[dxinfer] Model version is too low. (required: >= 7, current: %s , Use DX-COM v2.0.0 or higher)\n", model_version.c_str());
-        return;
-    }
+    // std::string model_version = self->_ie->GetModelVersion();
+    // if (!version_meets_minimum(model_version, "7")) {
+    //     g_error("[dxinfer] Model version is too low. (required: >= 7, current: %s , Use DX-COM v2.0.0 or higher)\n", model_version.c_str());
+    //     return;
+    // }
 }
 
 static void handle_ready_to_paused(GstDxInfer *self) {
-    if (self->_secondary_mode)
-        return;
-
     if (!self->_push_running) {
         self->_push_running = TRUE;
-        self->_push_thread =
-            g_thread_new("push-thread", (GThreadFunc)push_thread_func, self);
+        if (!self->_secondary_mode) {
+            self->_push_thread =
+                g_thread_new("push-thread", (GThreadFunc)push_thread_func, self);
+        }
     }
 }
 
-static void handle_playing_to_paused(GstDxInfer *self) {
-    if (self->_secondary_mode)
-        return;
+static void handle_paused_to_playing(GstDxInfer *self) {
+    if (!self->_secondary_mode) {
+        self->_push_running = TRUE;
+    }
+    self->_cv.notify_all();
+}
 
+static void handle_playing_to_paused(GstDxInfer *self) {
     self->_push_running = FALSE;
     self->_cv.notify_all();
 
-    if (self->_ie && self->_last_req_id != 0) {
-        self->_ie->Wait(self->_last_req_id);
-    }
-
-    {
-        std::unique_lock<std::mutex> lock(self->_push_lock);
-        while (!self->_push_queue.empty()) {
-            if (GST_IS_BUFFER(self->_push_queue.front().second)) {
-                gst_buffer_unref(self->_push_queue.front().second);
-            }
-            self->_push_queue.pop();
-        }
+    if (self->_push_thread && !self->_secondary_mode) {
+        g_thread_join(self->_push_thread);
+        self->_push_thread = nullptr;
     }
 }
 
@@ -295,13 +305,32 @@ static void handle_paused_to_ready(GstDxInfer *self) {
     if (self->_secondary_mode)
         return;
 
-    self->_cv.notify_all();
-    g_thread_join(self->_push_thread);
-}
-
-static void handle_paused_to_playing(GstDxInfer *self) {
-    self->_push_running = TRUE;
-    self->_cv.notify_all();
+    {
+        std::unique_lock<std::mutex> lock(self->_push_lock);
+        if (!self->_push_queue.empty()) {
+            GST_WARNING_OBJECT(self, "Push queue not empty after thread completion: %zu items", 
+                             self->_push_queue.size());
+            while (!self->_push_queue.empty()) {
+                auto& front = self->_push_queue.front();
+                int existing_req_id = front.first;
+                if (existing_req_id != -1) {
+                    GST_DEBUG_OBJECT(self, "Waiting for inference request %d in cleanup", existing_req_id);
+                    try {
+                        auto outputs = self->_ie->Wait(existing_req_id);
+                    } catch (const std::exception& e) {
+                        GST_WARNING_OBJECT(self, "Exception during cleanup inference %d: %s", 
+                                         existing_req_id, e.what());
+                    }
+                }
+                if (GST_IS_BUFFER(front.second)) {
+                    gst_buffer_unref(front.second);
+                }
+                self->_push_queue.pop();
+            }
+        }
+    }
+    
+    self->_last_req_id = 0;
 }
 
 static GstStateChangeReturn dxinfer_change_state(GstElement *element,
@@ -370,6 +399,10 @@ static void gst_dxinfer_class_init(GstDxInferClass *klass) {
         "secondary-mode", "secondary mode",
         "Determines whether to operate in primary mode or secondary mode.",
         FALSE, G_PARAM_READWRITE);
+    obj_properties[PROP_USE_ORT] = g_param_spec_boolean(
+        "use-ort", "use ort",
+        "Determines whether to use ONNX Runtime for inference.",
+        TRUE, G_PARAM_READWRITE);
 
     g_object_class_install_properties(gobject_class, N_PROPERTIES,
                                       obj_properties);
@@ -392,10 +425,18 @@ static gboolean gst_dxinfer_sink_event(GstPad *pad, GstObject *parent,
                                        GstEvent *event) {
     GstDxInfer *self = GST_DXINFER(parent);
     // g_print("Received event: %s \n", GST_EVENT_TYPE_NAME(event));
+    // GST_INFO_OBJECT(self, "Received event: %s \n", GST_EVENT_TYPE_NAME(event));
     gboolean res = TRUE;
     switch (GST_EVENT_TYPE(event)) {
     case GST_EVENT_EOS: {
-        if (!self->_secondary_mode) {
+        GST_INFO_OBJECT(self, "Received EOS event");
+        int buffer_size = 0;
+        {   
+            std::unique_lock<std::mutex> lock(self->_push_lock);
+            buffer_size = self->_push_queue.size();
+        }
+
+        if (buffer_size > 0) {
             self->_global_eos = true;
             self->_cv.notify_all();
         } else {
@@ -408,13 +449,33 @@ static gboolean gst_dxinfer_sink_event(GstPad *pad, GstObject *parent,
         break;
     case GST_EVENT_CUSTOM_DOWNSTREAM: {
         const GstStructure *s_check = gst_event_get_structure(event);
-        if (gst_structure_has_name(s_check,
-                                   "application/x-dx-logical-stream-eos")) {
+
+        if (gst_structure_has_name(s_check, "application/x-dx-wrapped-event")) {
             int stream_id = -1;
+            GstEvent *original_event = nullptr;
             gst_structure_get_int(s_check, "stream-id", &stream_id);
-            self->_stream_eos_arrived.insert(stream_id);
-            res = TRUE;
-            gst_event_unref(event);
+            gst_structure_get(s_check, "event", GST_TYPE_EVENT, &original_event, NULL);
+            if (original_event && GST_EVENT_TYPE(original_event) == GST_EVENT_EOS) {
+                int buffer_size = 0;
+                {
+                    std::unique_lock<std::mutex> lock(self->_eos_lock);
+                    buffer_size = self->_stream_pending_buffers[stream_id];
+                }
+
+                GST_INFO_OBJECT(self, "EOS Arrived From Stream [%d] ", stream_id);
+                self->_stream_eos_arrived.insert(stream_id);
+                res = TRUE;
+
+                if (buffer_size == 0) {
+                    GST_INFO_OBJECT(self, "Push EOS From Stream [%d] ", stream_id);
+                    res = gst_pad_push_event(self->_srcpad, event);
+                } else {
+                    gst_event_unref(event);
+                    res = TRUE;
+                }
+            } else {
+                res = gst_pad_push_event(self->_srcpad, event);
+            }
         } else {
             res = gst_pad_push_event(self->_srcpad, event);
         }
@@ -484,6 +545,7 @@ static void gst_dxinfer_init(GstDxInfer *self) {
     self->_model_path = nullptr;
     self->_config_path = nullptr;
     self->_secondary_mode = FALSE;
+    self->_use_ort = TRUE;
     self->_ie = nullptr;
     self->_output_tensor_size = 0;
 
@@ -525,25 +587,19 @@ gint64 calculate_average(GQueue *queue) {
 
 void push_logical_eos(GstDxInfer *self, int stream_id) {
     gboolean res = TRUE;
-    GstStructure *s_route_info =
-        gst_structure_new("application/x-dx-route-info", "stream-id",
-                          G_TYPE_INT, stream_id, NULL);
-    GstEvent *route_info = gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM, s_route_info);
-    // g_print("INFER PUSH_LOGICAL_EOS: %d \n", stream_id);
-    res = gst_pad_push_event(self->_srcpad, route_info);
-    if (!res) {
-        gst_event_unref(route_info); 
-        return;
-    }
 
-    GstStructure *s_logical_eos =
-        gst_structure_new("application/x-dx-logical-stream-eos", "stream-id",
-                          G_TYPE_INT, stream_id, NULL);
-    GstEvent *logical_eos_event =
-        gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM, s_logical_eos);
-    res = gst_pad_push_event(self->_srcpad, logical_eos_event);
+    GstEvent *eos_event = gst_event_new_eos();
+    GstStructure *s = gst_structure_new("application/x-dx-wrapped-event",
+                                        "stream-id", G_TYPE_INT, stream_id,
+                                        "event", GST_TYPE_EVENT, eos_event,
+                                        NULL);
+
+    GstEvent *wrapped_event = gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM, s);
+    GST_INFO_OBJECT(self, "Push EOS From Stream [%d] ", stream_id);
+    res = gst_pad_push_event(self->_srcpad, wrapped_event);
     if (!res) {
-        gst_event_unref(logical_eos_event);
+        GST_ERROR_OBJECT(self, "Failed to push EOS Event\n");
+        gst_event_unref(eos_event); 
     }
 }
 
@@ -560,13 +616,53 @@ static gpointer push_thread_func(GstDxInfer *self) {
 
             if (self->_global_eos && self->_push_queue.size() == 0) {
                 GstEvent *eos_event = gst_event_new_eos();
+                GST_INFO_OBJECT(self, "Push Global EOS");
                 if (!gst_pad_push_event(self->_srcpad, eos_event)) {
                     GST_ERROR_OBJECT(self, "Failed to push EOS Event\n");
                 }
                 break;
             }
 
-            if (!self->_push_running && self->_push_queue.size() == 0) {
+            if (!self->_push_running) {
+                GST_INFO_OBJECT(self, "Push thread shutdown requested");
+                
+                if (self->_last_req_id != 0) {
+                    GST_DEBUG_OBJECT(self, "Waiting for last inference request %d in push thread", 
+                                   self->_last_req_id);
+                    try {
+                        auto result = self->_ie->Wait(self->_last_req_id);
+                        GST_DEBUG_OBJECT(self, "Last inference completed in push thread");
+                    } catch (const std::exception& e) {
+                        GST_WARNING_OBJECT(self, "Exception waiting for last inference: %s", e.what());
+                    }
+                    self->_last_req_id = 0;
+                }
+
+                GST_INFO_OBJECT(self, "Cleaning up %zu remaining buffers with inference completion", 
+                              self->_push_queue.size());
+                
+                while (!self->_push_queue.empty()) {
+                    auto& front = self->_push_queue.front();
+                    int existing_req_id = front.first;
+                    GstBuffer* existing_buf = front.second;
+                    
+                    if (existing_req_id != -1) {
+                        GST_DEBUG_OBJECT(self, "Waiting for inference request %d in cleanup", existing_req_id);
+                        try {
+                            auto outputs = self->_ie->Wait(existing_req_id);
+                        } catch (const std::exception& e) {
+                            GST_WARNING_OBJECT(self, "Exception during cleanup inference %d: %s", 
+                                             existing_req_id, e.what());
+                        }
+                    }
+                    
+                    if (GST_IS_BUFFER(existing_buf)) {
+                        gst_buffer_unref(existing_buf);
+                    }
+                    self->_push_queue.pop();
+                }
+                
+                GST_INFO_OBJECT(self, "Push thread cleanup completed");
                 break;
             }
 
@@ -675,28 +771,57 @@ static GstFlowReturn gst_dxinfer_chain(GstPad *pad, GstObject *parent,
 
     {
         std::unique_lock<std::mutex> lock(self->_eos_lock);
+        if (self->_stream_eos_arrived.count(frame_meta->_stream_id) > 0) {
+            GST_INFO_OBJECT(self, "EOS Already Arrived [%d] ", frame_meta->_stream_id);
+            gst_buffer_unref(buf);
+            return GST_FLOW_OK;
+        }
         self->_stream_pending_buffers[frame_meta->_stream_id]++;
     }
 
     if (self->_secondary_mode) {
+        if (!self->_push_running) {
+            GST_DEBUG_OBJECT(self, "Dropping buffer in secondary mode due to shutdown");
+            gst_buffer_unref(buf);
+            return GST_FLOW_FLUSHING;
+        }
+
         int objects_size = g_list_length(frame_meta->_object_meta_list);
         for (int o = 0; o < objects_size; o++) {
+            if (!self->_push_running) {
+                GST_DEBUG_OBJECT(self, "Stopping inference loop due to shutdown");
+                gst_buffer_unref(buf);
+                return GST_FLOW_FLUSHING;
+            }
+
             DXObjectMeta *object_meta = (DXObjectMeta *)g_list_nth_data(
                 frame_meta->_object_meta_list, o);
             auto iter = object_meta->_input_tensors.find(self->_preproc_id);
             if (iter != object_meta->_input_tensors.end()) {
-                object_meta->_output_tensors[self->_infer_id] =
-                    dxs::DXTensors();
+                object_meta->_output_tensors[self->_infer_id] = dxs::DXTensors();
                 object_meta->_output_tensors[self->_infer_id]._mem_size =
                     self->_output_tensor_size;
                 object_meta->_output_tensors[self->_infer_id]._data =
                     malloc(self->_output_tensor_size);
-                auto outputs = self->_ie->Run(
-                    iter->second._data, nullptr,
-                    object_meta->_output_tensors[self->_infer_id]._data);
-                convert_tensor(outputs,
-                               object_meta->_output_tensors[self->_infer_id]);
+                
+                try {
+                    auto outputs = self->_ie->Run(
+                        iter->second._data, nullptr,
+                        object_meta->_output_tensors[self->_infer_id]._data);
+                    convert_tensor(outputs,
+                                object_meta->_output_tensors[self->_infer_id]);
+                } catch (const std::exception& e) {
+                    GST_WARNING_OBJECT(self, "Exception during secondary mode inference: %s", e.what());
+                    gst_buffer_unref(buf);
+                    return GST_FLOW_ERROR;
+                }
             }
+        }
+
+        if (!self->_push_running) {
+            GST_DEBUG_OBJECT(self, "Dropping buffer before push due to shutdown");
+            gst_buffer_unref(buf);
+            return GST_FLOW_FLUSHING;
         }
 
         GstFlowReturn ret = gst_pad_push(self->_srcpad, buf);
@@ -738,8 +863,15 @@ static GstFlowReturn gst_dxinfer_chain(GstPad *pad, GstObject *parent,
             });
 
             if (!self->_push_running) {
+                if (req_id != -1) {
+                    try {
+                        auto outputs = self->_ie->Wait(req_id);
+                    } catch (const std::exception& e) {
+                        GST_WARNING_OBJECT(self, "Exception while waiting for inference: %s", e.what());
+                    }
+                }
                 gst_buffer_unref(buf);
-                return GST_FLOW_OK;
+                return GST_FLOW_FLUSHING;
             }
 
             self->_push_queue.push(std::make_pair(req_id, buf));

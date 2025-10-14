@@ -1,5 +1,4 @@
-#include "dxcommon.hpp"
-#include "gst-dxmeta.hpp"
+#include "dx_stream/gst-dxmeta.hpp"
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -214,9 +213,10 @@ std::vector<BoundingBox> parse_single_output(const dxs::DXTensor& output,
  * 
  * The function then applies NMS and scales coordinates to original image space.
  */
-extern "C" void PostProcess(std::vector<dxs::DXTensor> network_output,
-                            DXFrameMeta *frame_meta, DXObjectMeta *object_meta) {
-    
+extern "C" void PostProcess(GstBuffer *buf,
+                            std::vector<dxs::DXTensor> network_output,
+                            DXFrameMeta *frame_meta,
+                            DXObjectMeta *object_meta) {
     // Configuration setup
     YoloConfig config;
     
@@ -271,7 +271,7 @@ extern "C" void PostProcess(std::vector<dxs::DXTensor> network_output,
         y2 = std::max(0.0f, std::min(static_cast<float>(orig_height), y2));
         
         // Create DX Stream object metadata
-        DXObjectMeta *obj_meta = dx_create_object_meta(frame_meta->_buf);
+        DXObjectMeta *obj_meta = dx_create_object_meta(buf);
         obj_meta->_confidence = box.confidence;
         obj_meta->_label = box.class_id;
         obj_meta->_label_name = g_string_new(box.class_name.c_str());

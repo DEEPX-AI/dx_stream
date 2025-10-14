@@ -338,8 +338,8 @@ static gboolean push_caps_event(GstDxOsd *self) {
 static gboolean gst_dxosd_sink_event(GstPad *pad, GstObject *parent,
                                      GstEvent *event) {
     GstDxOsd *self = GST_DXOSD(parent);
-    GST_DEBUG_OBJECT(self, "Received event %s on sink pad",
-                     GST_EVENT_TYPE_NAME(event));
+
+    GST_INFO_OBJECT(self, "Received event [%s] on sink pad", GST_EVENT_TYPE_NAME(event));
 
     if (GST_EVENT_TYPE(event) == GST_EVENT_CAPS) {
         GstCaps *incaps = nullptr;
@@ -375,11 +375,7 @@ static gboolean gst_dxosd_sink_event(GstPad *pad, GstObject *parent,
         gst_event_unref(event);
         return FALSE;
     }
-
-    // default case
-    GST_DEBUG_OBJECT(self, "Forwarding event %s to default handler",
-                     GST_EVENT_TYPE_NAME(event));
-    return gst_pad_event_default(pad, parent, event);
+    return gst_pad_push_event(self->_srcpad, event);
 }
 
 static gboolean gst_dxosd_src_query(GstPad *pad, GstObject *parent,
@@ -569,12 +565,49 @@ void draw_label_or_id(cv::Mat &img, const DXObjectMeta *meta, float sx,
                 font_scale, cv::Scalar(255, 255, 255));
 }
 
+void draw_clip(cv::Mat &img, const DXObjectMeta *meta, float sx, float sy) {
+    if (meta->_confidence > 0.24 && meta->_label == -1 && meta->_box[0] == -1 && meta->_box[1] == -1 && meta->_box[2] == -1 && meta->_box[3] == -1) {
+        std::string text = cv::format("%s=%.2f", meta->_label_name->str, meta->_confidence);
+        
+        int text_area_height = img.rows * 0.15;
+        int text_area_width = img.cols * 0.9;
+        int margin_x = img.cols * 0.05;
+        int margin_y = img.rows * 0.02;
+        
+        double font_scale = 0.002 * std::min(img.cols, img.rows);
+        int baseline = 0;
+        cv::Size text_size;
+        
+        do {
+            text_size = cv::getTextSize(text, cv::FONT_HERSHEY_SIMPLEX, font_scale, 2, &baseline);
+            if (text_size.width <= text_area_width && text_size.height <= text_area_height - margin_y) {
+                break;
+            }
+            font_scale *= 0.9;
+        } while (font_scale > 0.3);
+        
+        int box_y_start = img.rows - text_size.height - margin_y * 2;
+        int box_width = text_size.width + margin_x * 2;
+        cv::rectangle(img, 
+                     cv::Rect(cv::Point(0, box_y_start), 
+                             cv::Point(box_width, img.rows)), 
+                     cv::Scalar(39, 129, 113), cv::FILLED);
+        
+        int text_x = margin_x;
+        int text_y = img.rows - margin_y;
+        cv::putText(img, text, cv::Point(text_x, text_y), 
+                   cv::FONT_HERSHEY_SIMPLEX, font_scale, 
+                   cv::Scalar(255, 255, 255), 2);
+    }
+}
+
 void draw_object_meta(cv::Mat &img, DXObjectMeta *meta, float scale_x,
                       float scale_y) {
     draw_segmentation(img, meta);
     draw_keypoints(img, meta, scale_x, scale_y);
     draw_face(img, meta, scale_x, scale_y);
     draw_label_or_id(img, meta, scale_x, scale_y);
+    draw_clip(img, meta, scale_x, scale_y);
 }
 
 bool calculate_strides(int w, int h, int wa, int ha, int *ws, int *hs) {
@@ -588,25 +621,31 @@ bool calculate_strides(int w, int h, int wa, int ha, int *ws, int *hs) {
 }
 
 #ifdef HAVE_LIBRGA
-void draw_rga(GstDxOsd *self, DXFrameMeta *frame_meta, GstBuffer *outbuffer) {
+void draw_rga(GstDxOsd *self, GstBuffer *buf, GstBuffer *outbuffer) {
     if (self->_width % 16 != 0) {
-        g_error("ERROR : DXOSD output W stride must be 16 aligned ! \n");
+        GST_ERROR_OBJECT(self, "DXOSD output width must be 16 aligned ! \n");
+        return;
+    }
+
+    DXFrameMeta *frame_meta = dx_get_frame_meta(buf);
+    if (!frame_meta) {
+        GST_ERROR_OBJECT(self, "DXOSD Failed to get DXFrameMeta \n");
         return;
     }
 
     if (g_strcmp0(frame_meta->_format, "NV12") != 0) {
-        g_error("ERROR : not supported format (use NV12)! \n");
+        GST_ERROR_OBJECT(self, "not supported format (use NV12)! \n");
         return;
     }
 
     GstMapInfo input_map, output_map;
-    if (!gst_buffer_map(frame_meta->_buf, &input_map, GST_MAP_READ)) {
-        g_error("ERROR : DXOSD Failed to map GstBuffer (input)\n");
+    if (!gst_buffer_map(buf, &input_map, GST_MAP_READ)) {
+        GST_ERROR_OBJECT(self, "DXOSD Failed to map GstBuffer (input)\n");
         return;
     }
 
     if (!gst_buffer_map(outbuffer, &output_map, GST_MAP_READ)) {
-        g_error("ERROR : DXOSD Failed to map GstBuffer (output)\n");
+        GST_ERROR_OBJECT(self, "DXOSD Failed to map GstBuffer (output)\n");
         return;
     }
 
@@ -614,20 +653,20 @@ void draw_rga(GstDxOsd *self, DXFrameMeta *frame_meta, GstBuffer *outbuffer) {
         (float)frame_meta->_width / self->_width >= 8 ||
         (float)frame_meta->_height / self->_height <= 0.125 ||
         (float)frame_meta->_height / self->_height >= 8) {
-        g_error("DX OSD : scale check error, scale limit[1/8 ~ 8] \n");
+        GST_ERROR_OBJECT(self, "DX OSD : scale check error, scale limit[1/8 ~ 8] \n");
         return;
     }
 
     if (frame_meta->_width < 68 || frame_meta->_height < 2 ||
         frame_meta->_width > 8176 || frame_meta->_height > 8176) {
-        g_error("DX OSD : resolution check error, input range[68x2 ~ "
+        GST_ERROR_OBJECT(self, "DX OSD : resolution check error, input range[68x2 ~ "
                 "8176x8176] \n");
         return;
     }
 
     if (self->_width < 68 || self->_height < 2 || self->_width > 8128 ||
         self->_height > 8128) {
-        g_error("DX OSD : resolution check error, output range[68x2 ~ "
+        GST_ERROR_OBJECT(self, "DX OSD : resolution check error, output range[68x2 ~ "
                 "8128x8128] \n");
         return;
     }
@@ -646,15 +685,15 @@ void draw_rga(GstDxOsd *self, DXFrameMeta *frame_meta, GstBuffer *outbuffer) {
              IM_SCHEDULER_RGA3_CORE0 | IM_SCHEDULER_RGA3_CORE1);
     int ret = imcheck(src_img, dst_img, {}, {});
     if (IM_STATUS_NOERROR != ret) {
-        std::cerr << "check error: " << ret << " - "
-                  << imStrError((IM_STATUS)ret) << std::endl;
+        GST_ERROR_OBJECT(self, "check error: %d - %s\n", ret,
+                         imStrError((IM_STATUS)ret));
         return;
     }
 
     ret = improcess(src_img, dst_img, {}, {}, {}, {}, IM_SYNC);
     if (ret != IM_STATUS_SUCCESS) {
-        std::cerr << "RGA resize (imresize) failed: " << ret << " - "
-                  << imStrError((IM_STATUS)ret) << std::endl;
+        GST_ERROR_OBJECT(self, "RGA resize (imresize) failed: %d - %s\n", ret,
+                         imStrError((IM_STATUS)ret));
         return;
     }
 
@@ -671,15 +710,21 @@ void draw_rga(GstDxOsd *self, DXFrameMeta *frame_meta, GstBuffer *outbuffer) {
         draw_object_meta(surface, obj_meta, scale_factor_x, scale_factor_y);
     }
 
-    gst_buffer_unmap(frame_meta->_buf, &input_map);
+    gst_buffer_unmap(buf, &input_map);
     gst_buffer_unmap(outbuffer, &output_map);
 }
 #else
-void draw(GstDxOsd *self, DXFrameMeta *frame_meta, GstBuffer *outbuffer) {
+void draw(GstDxOsd *self, GstBuffer *buf, GstBuffer *outbuffer) {
+    DXFrameMeta *frame_meta = dx_get_frame_meta(buf);
+    if (!frame_meta) {
+        GST_ERROR_OBJECT(self, "DXOSD Failed to get DXFrameMeta \n");
+        return;
+    }
+
     GstMapInfo output_map;
 
     if (!gst_buffer_map(outbuffer, &output_map, GST_MAP_READ)) {
-        g_error("ERROR : DXOSD Failed to map GstBuffer (output)\n");
+        GST_ERROR_OBJECT(self, "DXOSD Failed to map GstBuffer (output)\n");
         return;
     }
 
@@ -690,12 +735,21 @@ void draw(GstDxOsd *self, DXFrameMeta *frame_meta, GstBuffer *outbuffer) {
 
     unsigned int object_length = g_list_length(frame_meta->_object_meta_list);
 
-    Resize(frame_meta->_buf, &self->_input_info, &self->_resized_frame[frame_meta->_stream_id],
+    bool resized = false;
+    if (frame_meta->_width != self->_width || frame_meta->_height != self->_height) {
+        Resize(buf, &self->_input_info, &self->_resized_frame[frame_meta->_stream_id],
            frame_meta->_width, frame_meta->_height, self->_width, self->_height,
            frame_meta->_format);
+        resized = true;
+    }
 
-    CvtColor(self->_resized_frame[frame_meta->_stream_id], &output_map.data,
+    if (resized) {
+        CvtColor(self->_resized_frame[frame_meta->_stream_id], &output_map.data,
              self->_width, self->_height, frame_meta->_format, "BGR");
+    } else {
+        CvtColor(buf, &self->_input_info, &output_map.data,
+             self->_width, self->_height, frame_meta->_format, "BGR");
+    }
 
     cv::Mat surface =
         cv::Mat(self->_height, self->_width, CV_8UC3, output_map.data);
@@ -733,19 +787,14 @@ static GstFlowReturn gst_dxosd_chain(GstPad *pad, GstObject *parent,
     GST_BUFFER_OFFSET(outbuf) = GST_BUFFER_OFFSET(buf);
     GST_BUFFER_OFFSET_END(outbuf) = GST_BUFFER_OFFSET_END(buf);
 
-    DXFrameMeta *frame_meta =
-        (DXFrameMeta *)gst_buffer_get_meta(buf, DX_FRAME_META_API_TYPE);
-    if (!frame_meta) {
-        GST_WARNING_OBJECT(self, "No DXFrameMeta in GstBuffer \n");
-    } else {
 #ifdef HAVE_LIBRGA
-        draw_rga(self, frame_meta, outbuf);
+    draw_rga(self, buf, outbuf);
 #else
-        draw(self, frame_meta, outbuf);
+    draw(self, buf, outbuf);
 #endif
-    }
 
     gst_buffer_unref(buf);
+    // GST_INFO_OBJECT(self, "[%d] Pushing buffer to src pad PTS: %" GST_TIME_FORMAT, frame_meta->_stream_id, GST_TIME_ARGS(GST_BUFFER_PTS(outbuf)));
     ret = gst_pad_push(self->_srcpad, outbuf);
     if (ret != GST_FLOW_OK) {
         GST_ERROR_OBJECT(self, "Failed to push buffer: %d\n", ret);

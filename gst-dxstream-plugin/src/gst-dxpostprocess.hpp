@@ -26,7 +26,7 @@ struct _GstDxPostprocess {
     double _acc_fps;
 
     void *_library_handle;
-    void (*_postproc_function)(std::vector<dxs::DXTensor>, DXFrameMeta *,
+    void (*_postproc_function)(GstBuffer *, std::vector<dxs::DXTensor>, DXFrameMeta *,
                                DXObjectMeta *);
 };
 

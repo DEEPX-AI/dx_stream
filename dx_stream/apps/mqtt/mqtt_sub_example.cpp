@@ -154,7 +154,7 @@ int main(int argc, char *argv[]) {
     mosquitto_subscribe_callback_set(mosq, on_subscribe);
     mosquitto_message_callback_set(mosq, on_message);
 
-    rc = mosquitto_connect(mosq, "localhost", 1883, 60);
+    rc = mosquitto_connect(mosq, hostname, port, 60);
     if (rc != MOSQ_ERR_SUCCESS) {
         mosquitto_destroy(mosq);
         fprintf(stderr, "Error: %s\n", mosquitto_strerror(rc));

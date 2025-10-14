@@ -6,13 +6,16 @@ PROJECT_ROOT=$(realpath -s "${SCRIPT_DIR}/../..")
 BUILD_TYPE="release"
 SONAR_MODE_ARG=""
 NATIVE_FILE_ARG=""
+V3_MODE=""
 
 show_help() {
   echo "Usage: $(basename "$0") [--debug] [--help]"
   echo "Example 1): $0"
   echo "Example 2): $0 --debug"
+  echo "Example 3): $0 --v3"
   echo "Options:"
   echo "  [--debug]       Build for debug"
+  echo "  [--v3]          Build for DEEPX V3 Standalone Device (skip Host installation)."
   echo "  [--help]        Show this help message"
 
   if [ "$1" == "error" ]; then
@@ -28,6 +31,9 @@ for i in "$@"; do
     case "$1" in
         --debug)
             BUILD_TYPE="debug"
+            ;;
+        --v3)
+            V3_MODE="--v3"
             ;;
         --sonar)
             SONAR_MODE_ARG="--sonar"
@@ -53,7 +59,7 @@ build_and_install() {
         echo "Processing directory: $subdir"
         
         cd "$subdir" || exit 1
-        meson setup build --buildtype="$BUILD_TYPE"
+        meson setup build --buildtype="$BUILD_TYPE" --prefix="${PROJECT_ROOT}/install"
         if [ $? -ne 0 ]; then
             echo -e "Error: meson setup failed"
             exit 1
@@ -68,14 +74,17 @@ build_and_install() {
             echo -e "Error: meson install failed"
             exit 1
         fi
-        if [ ! -n "${SONAR_MODE_ARG}" ]; then
-            rm -rf build
-        else
-            echo -e "Warn: The '--sonar' option is set. So, Skip to remove 'build' directory"
-        fi
+        # if [ ! -n "${SONAR_MODE_ARG}" ]; then
+        #     rm -rf build
+        # else
+        #     echo -e "Warn: The '--sonar' option is set. So, Skip to remove 'build' directory"
+        # fi
         cd - > /dev/null || exit 1
     done
 }
 
 build_and_install "./postprocess_library"
-build_and_install "./message_convert_library"
+
+if [ "$V3_MODE" != "--v3" ]; then
+    build_and_install "./message_convert_library"
+fi

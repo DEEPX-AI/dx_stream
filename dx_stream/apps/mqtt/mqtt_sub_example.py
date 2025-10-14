@@ -10,71 +10,56 @@ import time
 
 
 '''
-/*** Payload format: json
- *
+/*
+ * Sample JSON Output Format:
  * {
- *   "streamId" : 0,
- *   "seqId" : 1,
- *   "width" : 1920,
- *   "height" : 1080,
- *   "customId" : 999,
- *   "objects" : [
+ *   "streamId": 0,
+ *   "seqId": 123,
+ *   "width": 1920,
+ *   "height": 1080,
+ *   "objects": [
  *     {
- *         OBJECT_TYPE: { ... }
- *     },
- *     ...
- *   ],
- *   "segment" : {
- *     "height" : 384,
- *     "width" : 768,
- *     "data" : 140040227284784
- *   }
+ *       "object": {
+ *         "label_id": 1,
+ *         "track_id": 42,
+ *         "confidence": 0.87,
+ *         "name": "person",
+ *         "box": {
+ *           "startX": 300.0,
+ *           "startY": 400.0,
+ *           "endX": 500.0,
+ *           "endY": 600.0
+ *         },
+ *         "body_feature": [0.321, 0.654, 0.987],
+ *         "segment": {
+ *           "height": 1080,
+ *           "width": 1920,
+ *           "data": 140712345678912
+ *         },
+ *         "pose": {
+ *           "keypoints": [
+ *             {"kx": 100.5, "ky": 200.3, "ks": 0.8},
+ *             {"kx": 105.2, "ky": 205.7, "ks": 0.9}
+ *           ]
+ *         },
+ *         "face": {
+ *           "landmark": [
+ *             {"x": 150.2, "y": 180.5},
+ *             {"x": 155.8, "y": 185.3}
+ *           ],
+ *           "box": {
+ *             "startX": 100.0,
+ *             "startY": 150.0,
+ *             "endX": 200.0,
+ *             "endY": 250.0
+ *           },
+ *           "confidence": 0.95,
+ *           "face_feature": [0.123, 0.456, 0.789]
+ *         }
+ *       }
+ *     }
+ *   ]
  * }
- *
- *
- *** OBJECT_TYPE: "object" | "track" |  "face" | "pose"
- *
- *       "object" : {
- *         "id" : 0,
- *         "confidence" : 0.7830657958984375,
- *         "name" : "face",
- *         "box" : {
- *           "startX" : 828,
- *           "startY" : 271,
- *           "endX" : 887,
- *           "endY" : 350
- *         }
- *       }
- *
- *       "track" : {
- *         "id" : 1,
- *         "box" : {
- *           "startX" : 320,
- *           "startY" : 232,
- *           "endX" : 639,
- *           "endY" : 926
- *         }
- *       }
- *
- *       "face" : {
- *         "landmark" : [
- *           {
- *             "x" : 838,
- *             "y" : 299
- *           },
- *           ...
- *       }
- *
- *       "pose" : {
- *         "keypoints" : [
- *           {
- *             "kx" : 118,
- *             "ky" : 272,
- *             "ks" : 0.92519611120223999
- *           },
- *           ...
- *         ]
- *       },
  */
 '''
 

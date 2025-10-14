@@ -37,7 +37,7 @@ const GstMetaInfo *dx_frame_meta_get_info(void) {
 static gboolean dx_frame_meta_init(GstMeta *meta, gpointer params,
                                    GstBuffer *buffer) {
     DXFrameMeta *dx_meta = (DXFrameMeta *)meta;
-    dx_meta->_buf = nullptr;
+    
     dx_meta->_object_meta_list = nullptr;
     dx_meta->_stream_id = -1;
     dx_meta->_width = -1;
@@ -59,8 +59,6 @@ static void dx_frame_meta_free(GstMeta *meta, GstBuffer *buffer) {
 
     g_list_free(dx_meta->_object_meta_list);
     dx_meta->_object_meta_list = nullptr;
-
-    dx_meta->_buf = nullptr;
 
     for (auto &tensors : dx_meta->_input_tensors) {
         if (tensors.second._data) {
@@ -141,6 +139,5 @@ static gboolean dx_frame_meta_transform(GstBuffer *dest, GstMeta *meta,
     DXFrameMeta *dst_frame_meta =
         (DXFrameMeta *)gst_buffer_add_meta(dest, DX_FRAME_META_INFO, nullptr);
     dx_frame_meta_copy(buffer, src_frame_meta, dest, dst_frame_meta);
-    dst_frame_meta->_buf = dest;
     return TRUE;
 }

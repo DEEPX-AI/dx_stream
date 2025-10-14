@@ -22,9 +22,8 @@ struct _GstDxInputSelector {
     GstPad *_srcpad;
 
     std::mutex _event_mutex;
-
     std::set<int> _stream_eos_arrived;
-    bool _global_eos;
+    std::set<int> _stream_eos_sent;
 
     GThread *_thread;
     bool _running;

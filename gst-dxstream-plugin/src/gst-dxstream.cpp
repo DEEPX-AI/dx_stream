@@ -5,8 +5,6 @@
 #include "gst-dxgather.hpp"
 #include "gst-dxinfer.hpp"
 #include "gst-dxinputselector.hpp"
-#include "gst-dxmsgbroker.hpp"
-#include "gst-dxmsgconv.hpp"
 #include "gst-dxosd.hpp"
 #include "gst-dxoutputselector.hpp"
 #include "gst-dxpostprocess.hpp"
@@ -14,6 +12,12 @@
 #include "gst-dxrate.hpp"
 #include "gst-dxtracker.hpp"
 #include <gst/gst.h>
+
+#ifdef DEEPX_V3
+#else
+#include "gst-dxmsgbroker.hpp"
+#include "gst-dxmsgconv.hpp"
+#endif
 
 static gboolean plugin_init(GstPlugin *plugin) {
     // Pipeline Design Elements
@@ -30,6 +34,8 @@ static gboolean plugin_init(GstPlugin *plugin) {
         return FALSE;
     }
     // Utility Elements
+#ifdef DEEPX_V3
+#else
     if (!gst_element_register(plugin, "dxmsgconv", GST_RANK_NONE,
                               GST_TYPE_DXMSGCONV)) {
         return FALSE;
@@ -38,6 +44,7 @@ static gboolean plugin_init(GstPlugin *plugin) {
                               GST_TYPE_DXMSGBROKER)) {
         return FALSE;
     }
+#endif
     if (!gst_element_register(plugin, "dxrate", GST_RANK_NONE,
                               GST_TYPE_DXRATE)) {
         return FALSE;

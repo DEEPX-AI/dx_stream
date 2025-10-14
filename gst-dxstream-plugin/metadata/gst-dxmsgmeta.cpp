@@ -1,5 +1,12 @@
 #include "gst-dxmsgmeta.hpp"
 
+static gboolean gst_dxmsg_meta_init(GstMeta *meta, gpointer params,
+                                    GstBuffer *buffer);
+static void gst_dxmsg_meta_free(GstMeta *meta, GstBuffer *buffer);
+static gboolean gst_dxmsg_meta_transform(GstBuffer *dest, GstMeta *meta,
+                                       GstBuffer *buffer, GQuark type,
+                                       gpointer data);
+
 GType gst_dxmsg_meta_api_get_type(void) {
     static GType type;
     static const gchar *tags[] = {"gst_dxmsg_meta", nullptr};
@@ -9,6 +16,20 @@ GType gst_dxmsg_meta_api_get_type(void) {
         g_once_init_leave(&type, _type);
     }
     return type;
+}
+
+const GstMetaInfo *gst_dxmsg_meta_get_info(void) {
+    static const GstMetaInfo *info = nullptr;
+
+    if (g_once_init_enter(&info)) {
+        const GstMetaInfo *meta_info = gst_meta_register(
+            GST_DXMSG_META_API_TYPE, "GstDxMsgMeta", sizeof(GstDxMsgMeta),
+            (GstMetaInitFunction)gst_dxmsg_meta_init,
+            (GstMetaFreeFunction)gst_dxmsg_meta_free,
+            (GstMetaTransformFunction)gst_dxmsg_meta_transform);
+        g_once_init_leave(&info, meta_info);
+    }
+    return info;
 }
 
 static gboolean gst_dxmsg_meta_init(GstMeta *meta, gpointer params,
@@ -23,45 +44,30 @@ static void gst_dxmsg_meta_free(GstMeta *meta, GstBuffer *buffer) {
     DxMsgPayload *payload = (DxMsgPayload *)dxmsg_meta->_payload;
 
     if (payload) {
-        // GST_INFO("|JCP-M| gst_dxmsg_meta_free: payload=%p,
-        // payload->_data=%p\n",
-        //          payload, payload->_data);
-
         g_free(payload->_data);
         g_free(payload);
         payload = nullptr;
     }
 }
 
-const GstMetaInfo *gst_dxmsg_meta_get_info(void) {
-    static const GstMetaInfo *info = nullptr;
-
-    if (g_once_init_enter(&info)) {
-        const GstMetaInfo *meta_info = gst_meta_register(
-            GST_DXMSG_META_API_TYPE, "GstDxMsgMeta", sizeof(GstDxMsgMeta),
-            (GstMetaInitFunction)gst_dxmsg_meta_init,
-            (GstMetaFreeFunction)gst_dxmsg_meta_free,
-            (GstMetaTransformFunction) nullptr);
-        g_once_init_leave(&info, meta_info);
+static gboolean gst_dxmsg_meta_transform(GstBuffer *dest, GstMeta *meta,
+                                       GstBuffer *buffer, GQuark type,
+                                       gpointer data) {
+    GstDxMsgMeta *src_msg_meta = (GstDxMsgMeta *)meta;
+    GstDxMsgMeta *exist_msg_meta = (GstDxMsgMeta *)gst_buffer_get_meta(dest, GST_DXMSG_META_API_TYPE);
+    if (exist_msg_meta) {
+        return FALSE;
     }
-    return info;
-}
-
-void gst_buffer_add_dxmsg_meta(GstBuffer *buffer, DxMsgPayload *payload) {
-    GstDxMsgMeta *dxmsg_meta = (GstDxMsgMeta *)gst_buffer_add_meta(
-        buffer, GST_DXMSG_META_INFO, nullptr);
-
-#if 0 /** create payload in msg converter layer */
-    DxMsgPayload *msgPayload = g_new0(DxMsgPayload, 1);
-    msgPayload->_data = g_memdup(payload->_data, payload->_size);
-    msgPayload->_size = payload->_size;
-
-    dxmsg_meta->_payload = (gpointer)msgPayload;
-#else
-    dxmsg_meta->_payload = (gpointer)payload;
-#endif
-    // GST_INFO(
-    //     "|JCP-M| gst_buffer_add_dxmsg_meta: payload=%p, payload->_data=%p\n",
-    //     dxmsg_meta->_payload, ((DxMsgPayload *)dxmsg_meta->_payload)->_data);
-    // return dxmsg_meta;
+    GstDxMsgMeta *dst_msg_meta = (GstDxMsgMeta *)gst_buffer_add_meta(dest, GST_DXMSG_META_INFO, nullptr);
+    
+    DxMsgPayload *src_payload = (DxMsgPayload *)src_msg_meta->_payload;
+    if (src_payload) {
+        DxMsgPayload *dst_payload = g_new0(DxMsgPayload, 1);
+        dst_payload->_data = g_memdup(src_payload->_data, src_payload->_size);
+        dst_payload->_size = src_payload->_size;
+        dst_msg_meta->_payload = (gpointer)dst_payload;
+    } else {
+        dst_msg_meta->_payload = nullptr;
+    }
+    return TRUE;
 }

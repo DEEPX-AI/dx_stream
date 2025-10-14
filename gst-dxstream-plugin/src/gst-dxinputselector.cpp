@@ -149,10 +149,10 @@ static void gst_dxinputselector_init(GstDxInputSelector *self) {
                             std::greater<std::pair<GstClockTime, int>>>();
     self->_thread = nullptr;
     self->_running = false;
-    self->_global_eos = false;
-    self->_max_queue_size = 10;
+    self->_max_queue_size = 2;
 
     self->_stream_eos_arrived.clear();
+    self->_stream_eos_sent.clear();
 
     self->_sinkpads.clear();
 }
@@ -185,59 +185,97 @@ static void gst_dxinputselector_get_property(GObject *object, guint prop_id,
     }
 }
 
+gboolean send_wrapped_event(GstDxInputSelector *self, GstEvent *event, gint stream_id) {
+    gboolean res = TRUE;
+    GST_INFO_OBJECT(self, "Received event [%s] from stream [%d]", GST_EVENT_TYPE_NAME(event), stream_id);
+    GstStructure *s = gst_structure_new("application/x-dx-wrapped-event", 
+                                        "stream-id", G_TYPE_INT, stream_id,
+                                        "event", GST_TYPE_EVENT, event,
+                                        NULL);
+    
+    GstEvent *wrapped_event = gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM, s);
+    res = gst_pad_push_event(self->_srcpad, wrapped_event);
+    if (!res) {
+        gst_event_unref(event);
+        return FALSE;
+    }
+    return res;
+}
+
 static gboolean gst_dxinputselector_sink_event(GstPad *pad, GstObject *parent,
                                                GstEvent *event) {
     GstDxInputSelector *self = GST_DXINPUTSELECTOR(parent);
     gint stream_id = get_sink_pad_index(pad);
     gboolean res = TRUE;
 
+    std::unique_lock<std::mutex> lock(self->_event_mutex);
+
     switch (GST_EVENT_TYPE(event)) {
     case GST_EVENT_EOS: {
         GST_INFO_OBJECT(self, "Get EOS From Stream [%d] ", stream_id);
+        int buffer_size = 0;
         {
             std::unique_lock<std::mutex> lock(self->_buffer_lock);
-            self->_stream_eos_arrived.insert(stream_id);
-            self->_global_eos =
-                self->_stream_eos_arrived.size() == self->_sinkpads.size();
-            GST_INFO_OBJECT(self, "Stream [%d] EOS set, global_eos: %d",
-                            stream_id, self->_global_eos);
+            buffer_size = self->_buffer_queue[stream_id].size();
+        }
 
-            while (!self->_buffer_queue[stream_id].empty()) {
+        if (buffer_size > 0) {
+            GST_INFO_OBJECT(self, "EOS Arrived From Stream [%d] ", stream_id);
+            self->_stream_eos_arrived.insert(stream_id);
+            return TRUE;
+        }
+        GstEvent *eos_event = gst_event_new_eos();
+        GstStructure *s = gst_structure_new("application/x-dx-wrapped-event",
+                                            "stream-id", G_TYPE_INT, stream_id,
+                                            "event", GST_TYPE_EVENT, eos_event,
+                                            NULL);
+
+        GstEvent *wrapped_event = gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM, s);
+        GST_INFO_OBJECT(self, "Push EOS From Stream [%d] ", stream_id);
+        gboolean res = gst_pad_push_event(self->_srcpad, wrapped_event);
+        if (!res) {
+            gst_event_unref(eos_event);
+            return FALSE;
+        }
+
+        {
+            std::unique_lock<std::mutex> lock(self->_buffer_lock);
+            while (self->_buffer_queue[stream_id].size() > 0) {
                 gst_buffer_unref(self->_buffer_queue[stream_id].front());
                 self->_buffer_queue[stream_id].pop();
             }
+            self->_buffer_queue.erase(stream_id);
         }
 
-        gst_event_unref(event);
+        self->_stream_eos_sent.insert(stream_id);
 
-        GST_INFO_OBJECT(self, "push logical eos in inputselector : %d",
-                        stream_id);
-        GstStructure *s = gst_structure_new(
-            "application/x-dx-logical-stream-eos", "stream-id", G_TYPE_INT,
-            stream_id, NULL);
-        GstEvent *logical_eos_event =
-            gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM, s);
-
-        self->_push_cv.notify_all();
-        self->_aquire_cv.notify_all();
-        res = gst_pad_push_event(self->_srcpad, logical_eos_event);
+        if (self->_stream_eos_sent.size() == self->_sinkpads.size()) {
+            GST_INFO_OBJECT(self, "All streams reached EOS, pushing global EOS");
+            self->_running = false;
+            self->_push_cv.notify_all();
+            GstEvent *eos_event = gst_event_new_eos();
+            if (!gst_pad_push_event(self->_srcpad, eos_event)) {
+                GST_ERROR_OBJECT(self, "Failed to push EOS Event\n");
+                return FALSE;
+            }
+        }
     } break;
-    default: {
-        std::unique_lock<std::mutex> lock(self->_event_mutex);
-        GstStructure *s =
-            gst_structure_new("application/x-dx-route-info", "stream-id",
-                              G_TYPE_INT, stream_id, NULL);
-        GstEvent *route_info =
-            gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM, s);
-        res = gst_pad_push_event(self->_srcpad, route_info);
-        if (!res) {
-            gst_event_unref(event);
-            return FALSE;
-        }
+    case GST_EVENT_STREAM_GROUP_DONE: {
+        gst_event_unref(event);
+        return TRUE;
+    }
+    case GST_EVENT_STREAM_START:
+    case GST_EVENT_SEGMENT:
+    case GST_EVENT_CAPS: {
         res = gst_pad_push_event(self->_srcpad, event);
         if (!res) {
+            GST_ERROR_OBJECT(self, "Failed to push Event\n");
             return FALSE;
         }
+        res = send_wrapped_event(self, event, stream_id);
+    } break;
+    default: {
+        res = send_wrapped_event(self, event, stream_id);
     } break;
     }
     return res;
@@ -274,17 +312,29 @@ static void gst_dxinputselector_release_pad(GstElement *element, GstPad *pad) {
 }
 
 static gpointer push_thread_func(GstDxInputSelector *self) {
-    while (self->_running) {
-        GstBuffer *buf = nullptr;
+    // Prerolling
+    bool prerolling = false;
+    while (self->_running && !prerolling) {
+        prerolling = true;
         {
             std::unique_lock<std::mutex> lock(self->_buffer_lock);
-            self->_push_cv.wait(lock, [self]() {
-                size_t active_streams =
-                    self->_sinkpads.size() - self->_stream_eos_arrived.size();
-                return !self->_running || self->_global_eos ||
-                       (active_streams > 0 &&
-                        self->_pts_heap.size() >= active_streams);
-            });
+            for (auto &pair : self->_buffer_queue) {
+                if (pair.second.size() == 0) {
+                    prerolling = false;
+                    break;
+                }
+            }
+            self->_aquire_cv.notify_all();
+        }
+        g_usleep(1000);
+    }
+
+    while (self->_running) {
+        GstBuffer *buf = nullptr;
+        int smallest_stream_id = -1;
+        {
+            std::unique_lock<std::mutex> lock(self->_buffer_lock);
+            self->_push_cv.wait(lock, [self]() { return !self->_running || self->_buffer_queue.size() > 0; });
 
             if (!self->_running) {
                 clear_queues(self->_buffer_queue);
@@ -294,31 +344,14 @@ static gpointer push_thread_func(GstDxInputSelector *self) {
                 break;
             }
 
-            if (self->_global_eos) {
-                GST_INFO_OBJECT(self,
-                                "All streams reached EOS, pushing global EOS");
-                GstEvent *eos_event = gst_event_new_eos();
-                gst_pad_push_event(self->_srcpad, eos_event);
-                break;
-            }
+            
 
             if (self->_pts_heap.empty()) {
                 continue;
             }
 
-            int smallest_stream_id = -1;
-            while (!self->_pts_heap.empty()) {
-                smallest_stream_id = self->_pts_heap.top().second;
-                self->_pts_heap.pop();
-
-                if (self->_stream_eos_arrived.count(smallest_stream_id) == 0) {
-                    break; 
-                }
-            }
-            
-            if (smallest_stream_id < 0 || self->_stream_eos_arrived.count(smallest_stream_id) > 0) {
-                continue;
-            }
+            smallest_stream_id = self->_pts_heap.top().second;
+            self->_pts_heap.pop();
 
             buf = self->_buffer_queue[smallest_stream_id].front();
             self->_buffer_queue[smallest_stream_id].pop();
@@ -337,10 +370,61 @@ static gpointer push_thread_func(GstDxInputSelector *self) {
             continue;
         }
 
+        // GST_INFO_OBJECT(self, "Push Buffer From Stream [%d] PTS: %" GST_TIME_FORMAT, smallest_stream_id, GST_TIME_ARGS(GST_BUFFER_PTS(buf)));
         GstFlowReturn ret = gst_pad_push(self->_srcpad, buf);
 
         if (ret != GST_FLOW_OK) {
             GST_ERROR_OBJECT(self, "Failed to push buffer:% d\n ", ret);
+        }
+
+        int buffer_size = 0;
+
+        {
+            std::unique_lock<std::mutex> lock(self->_buffer_lock);
+            buffer_size = self->_buffer_queue[smallest_stream_id].size();
+        }
+
+        {
+            std::unique_lock<std::mutex> lock(self->_event_mutex);
+            if (self->_stream_eos_arrived.count(smallest_stream_id) > 0 && buffer_size == 0) {
+                GstEvent *eos_event = gst_event_new_eos();
+                GstStructure *s = gst_structure_new("application/x-dx-wrapped-event",
+                                                    "stream-id", G_TYPE_INT, smallest_stream_id,
+                                                    "event", GST_TYPE_EVENT, eos_event,
+                                                    NULL);
+
+                GstEvent *wrapped_event = gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM, s);
+                GST_INFO_OBJECT(self, "Push EOS From Stream [%d] ", smallest_stream_id);
+                gboolean res = gst_pad_push_event(self->_srcpad, wrapped_event);
+                if (!res) {
+                    gst_event_unref(eos_event);
+                    return FALSE;
+                }
+                self->_stream_eos_sent.insert(smallest_stream_id);
+                self->_stream_eos_arrived.erase(smallest_stream_id);
+                
+                {
+                    std::unique_lock<std::mutex> lock(self->_buffer_lock);
+                    while (self->_buffer_queue[smallest_stream_id].size() > 0) {
+                        gst_buffer_unref(self->_buffer_queue[smallest_stream_id].front());
+                        self->_buffer_queue[smallest_stream_id].pop();
+                    }
+                    self->_buffer_queue.erase(smallest_stream_id);
+                }
+
+                if (self->_stream_eos_sent.size() == self->_sinkpads.size()) {
+                    GST_INFO_OBJECT(self, "All streams reached EOS, pushing global EOS");
+                    self->_running = false;
+                    self->_push_cv.notify_all();
+                    self->_aquire_cv.notify_all();
+                    GstEvent *eos_event = gst_event_new_eos();
+                    if (!gst_pad_push_event(self->_srcpad, eos_event)) {
+                        GST_ERROR_OBJECT(self, "Failed to push EOS Event\n");
+                    }
+                    self->_stream_eos_sent.clear();
+                    self->_stream_eos_arrived.clear();
+                }
+            }
         }
     }
     return nullptr;
@@ -351,6 +435,8 @@ static GstFlowReturn gst_dxinputselector_chain(GstPad *pad, GstObject *parent,
     GstDxInputSelector *self = GST_DXINPUTSELECTOR(parent);
 
     gint stream_id = get_sink_pad_index(pad);
+
+    // GST_INFO_OBJECT(self, "Chain Buffer From Stream [%d] ", stream_id);
 
     GstClockTime pts = GST_BUFFER_TIMESTAMP(buf);
     if (!GST_CLOCK_TIME_IS_VALID(pts)) {
@@ -376,7 +462,6 @@ static GstFlowReturn gst_dxinputselector_chain(GstPad *pad, GstObject *parent,
         gst_structure_get_fraction(s, "framerate", &num, &denom);
         frame_meta->_frame_rate = (gfloat)num / (gfloat)denom;
         frame_meta->_stream_id = stream_id;
-        frame_meta->_buf = buf;
         gst_caps_unref(caps);
     }
 
@@ -385,12 +470,11 @@ static GstFlowReturn gst_dxinputselector_chain(GstPad *pad, GstObject *parent,
 
         self->_aquire_cv.wait(lock, [self, stream_id]() {
             return !self->_running ||
-                   self->_buffer_queue[stream_id].size() <
-                       self->_max_queue_size ||
+                   self->_buffer_queue[stream_id].size() < self->_max_queue_size ||
                    self->_stream_eos_arrived.count(stream_id) > 0;
         });
 
-        if (!self->_running || self->_stream_eos_arrived.count(stream_id) > 0) {
+        if (!self->_running) {
             gst_buffer_unref(buf);
             self->_push_cv.notify_all();
             return GST_FLOW_OK;

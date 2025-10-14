@@ -39,12 +39,20 @@ If `keep-ratio` is set to `true`, the aspect ratio is preserved by applying padd
 Padding color is set using the `pad-value` property.
 
 **Custom Preprocessing**  
-User-defined preprocessing logic can be implemented by providing.  
+User-defined preprocessing logic can be implemented by providing:  
 
 - `library-file-path` : Path to the custom shared library (`.so`).  
 - `function-name` : Name of the preprocessing function within the library.  
 
-This allows implementation of customized data handling tailored to specific AI models. 
+The custom function signature has been updated to include GstBuffer access:
+```cpp
+extern "C" bool PreProcess(GstBuffer *buf,
+                          DXFrameMeta *frame_meta,
+                          DXObjectMeta *object_meta,
+                          void *output);
+```
+
+This allows implementation of customized data handling tailored to specific AI models with direct access to the GStreamer buffer. 
 
 **QoS Handling**  
 If the downstream sink element has `sync=true`, input buffers may be dropped based on their timestamps. This helps maintain real-time performance and avoids frame backlog under system load.

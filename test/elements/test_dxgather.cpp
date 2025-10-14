@@ -121,7 +121,6 @@ probe_create_callback(GstPad *pad, GstPadProbeInfo *info, gpointer user_data) {
     DXFrameMeta *frame_meta =
         (DXFrameMeta *)gst_buffer_add_meta(buffer, DX_FRAME_META_INFO, NULL);
     frame_meta->_stream_id = 0;
-    frame_meta->_buf = buffer;
     frame_meta->_format = "I420";
     frame_meta->_name = "test";
 

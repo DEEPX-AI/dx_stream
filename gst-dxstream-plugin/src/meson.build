@@ -11,6 +11,11 @@ if have_librga_flag
   cdata.set('HAVE_LIBRGA', true)
 endif
 
+if v3_mode
+  cdata.set('DEEPX_V3', true)
+endif
+
+
 configure_file(output : 'config.h', configuration : cdata)
 
 sources = [
@@ -21,18 +26,13 @@ sources = [
     'gst-dxosd.cpp',
     'gst-dxrate.cpp',
     'gst-dxtracker.cpp',
-    'gst-dxmsgconv.cpp',
-    'gst-dxmsgbroker.cpp',
     'gst-dxgather.cpp',
     'gst-dxinputselector.cpp',
     'gst-dxoutputselector.cpp',
-    'brokers/dx_msgbrokerl_mqtt.cpp',
-    'brokers/dx_msgbrokerl_kafka.cpp',
 
     './../metadata/gst-dxmeta.cpp',
     './../metadata/gst-dxframemeta.cpp',
     './../metadata/gst-dxobjectmeta.cpp',
-    './../metadata/gst-dxmsgmeta.cpp',
 
     'tracker/common/src/TrackerFactory.cpp',
     'tracker/OC_SORT/src/Association.cpp',
@@ -44,17 +44,29 @@ sources = [
 ]
 
 sources += [
-    'utils/libyuv_transform/libyuv_transform.cpp'
+    'utils/libyuv_transform/libyuv_transform.cpp',
+    'preprocessors/preprocessor.cpp',
+    'preprocessors/preprocessor_factory.cpp',
+    'preprocessors/libyuv_preprocessor.cpp',
+    'preprocessors/rga_preprocessor.cpp'
+]
+
+if v3_mode == false
+  sources += [
+    'gst-dxmsgconv.cpp',
+    'gst-dxmsgbroker.cpp',
+    'brokers/dx_msgbrokerl_mqtt.cpp',
+    'brokers/dx_msgbrokerl_kafka.cpp',
+    './../metadata/gst-dxmsgmeta.cpp',
   ]
+endif
 
-# Get GStreamer plugin directory from pkg-config
-gstreamer_plugin_dir = gstreamer_dep.get_pkgconfig_variable('pluginsdir')
-
+# Install to lib directory relative to prefix
 gstdxstream = library('gstdxstream',
     sources,
     cpp_args: common_args,
     include_directories: include_dirs,
     dependencies : extra_deps,
     install : true,
-    install_dir : gstreamer_plugin_dir,
+    install_dir : 'lib/gstreamer-1.0',
 )

@@ -63,12 +63,6 @@ GST_START_TEST(test_element_properties) {
                 "'library-file-path' properties not set correctly");
     g_free(library_file_path);
 
-    g_object_set(element, "include-frame", FALSE, NULL);
-    gboolean include_frame;
-    g_object_get(element, "include-frame", &include_frame, NULL);
-    fail_unless(include_frame == FALSE,
-                "'include-frame' property not set correctly");
-
     g_object_set(element, "message-interval", 3, NULL);
     guint message_interval;
     g_object_get(element, "message-interval", &message_interval, NULL);
@@ -88,10 +82,6 @@ GST_START_TEST(test_element_properties) {
     g_object_get(element, "message-interval", &message_interval, NULL);
     fail_unless(message_interval == 1,
                 "'message-interval' property not set correctly");
-
-    g_object_get(element, "include-frame", &include_frame, NULL);
-    fail_unless(include_frame == TRUE,
-                "'include-frame' property not set correctly");
 
     gst_object_unref(element);
 }

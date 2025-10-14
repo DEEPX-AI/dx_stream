@@ -1,5 +1,4 @@
-#include "dxcommon.hpp"
-#include "gst-dxmeta.hpp"
+#include "dx_stream/gst-dxmeta.hpp"
 #include <cmath>
 #include <numeric>
 
@@ -52,7 +51,8 @@ void Classification(std::vector<dxs::DXTensor> outputs, DXFrameMeta *frame_meta,
         g_string_new(params.classNames[object_meta->_label].c_str());
 }
 
-extern "C" void PostProcess(std::vector<dxs::DXTensor> network_output,
+extern "C" void PostProcess(GstBuffer *buf,
+                            std::vector<dxs::DXTensor> network_output,
                             DXFrameMeta *frame_meta,
                             DXObjectMeta *object_meta) {
 
