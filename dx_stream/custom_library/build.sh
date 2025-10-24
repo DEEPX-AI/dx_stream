@@ -74,11 +74,11 @@ build_and_install() {
             echo -e "Error: meson install failed"
             exit 1
         fi
-        # if [ ! -n "${SONAR_MODE_ARG}" ]; then
-        #     rm -rf build
-        # else
-        #     echo -e "Warn: The '--sonar' option is set. So, Skip to remove 'build' directory"
-        # fi
+        if [ ! -n "${SONAR_MODE_ARG}" ]; then
+            rm -rf build
+        else
+            echo -e "Warn: The '--sonar' option is set. So, Skip to remove 'build' directory"
+        fi
         cd - > /dev/null || exit 1
     done
 }
