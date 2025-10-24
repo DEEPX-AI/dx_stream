@@ -17,6 +17,25 @@ Rendering in GStreamer is generally performed using a sink element. If the speci
     $ gst-launch-1.0 ..... ! videoconvert ! autovideosink
     ```
 
+---
+
+### Display Sink Issues on Raspberry Pi 5
+
+```
+(ERROR: from element /GstPipeline:pipeline0/GstFPSDisplaySink:fpsdisplaysink0/GstAutoVideoSink:fps-display-video_sink/GstKMSSink:fps-display-video_sink-actual-sink-kms: GStreamer encountered a general resource error.
+Additional debug info:
+../sys/kms/gstkmssink.c(2032): gst_kms_sink_show_frame (): /GstPipeline:pipeline0/GstFPSDisplaySink:fpsdisplaysink0/GstAutoVideoSink:fps-display-video_sink/GstKMSSink:fps-display-video_sink-actual-sink-kms:
+drmModeSetPlane failed: Permission denied (13)
+ERROR: pipeline doesn't want to preroll.
+Setting pipeline to NULL ...)
+```
+
+The `fpsdisplaysink` element automatically selects an appropriate sink based on the RANK of available rendering sink elements. In this case, the high-ranked `kmssink` was selected, but due to environmental issues, it fails to operate normally.
+
+**Solution**: Modify the pipeline code to replace `fpsdisplaysink` with `ximagesink`, which uses CPU-based rendering in an X11 environment for proper display output.
+
+---
+
 ### Buffer Delays in Sink Element  
 
 When a PC has low performance or is under heavy load, GStreamer pipelines may experience delays in delivering buffers to the sink element (e.g., `ximagesink`, `glimagesink`, etc.). This can result in issues such as  
@@ -47,8 +66,6 @@ Use Asynchronous Rendering:
 ```
 gst-launch-1.0 ... autovideosink sync=false
 ```
-
-### Kafka Pipeline  
 
 ---
 
@@ -110,6 +127,8 @@ tls_capath = /path/to/ca/certificates
 tls_certfile = /path/to/client.crt
 tls_keyfile = /path/to/client.key
 ```
+
+---
 
 ### **Kafka Security Configuration**
 
