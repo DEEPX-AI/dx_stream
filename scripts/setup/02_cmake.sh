@@ -12,11 +12,30 @@ get_cmake_version() {
     cmake --version 2>/dev/null | head -n1 | awk '{print $3}'
 }
 
+# Install CMake build dependencies helper function
+install_cmake_build_deps() {
+    print_message "install" "Installing CMake build dependencies..."
+    local cmake_deps=("libssl-dev" "libcurl4-openssl-dev" "zlib1g-dev" "build-essential" "curl")
+    local missing_deps=()
+    
+    for dep in "${cmake_deps[@]}"; do
+        if ! is_package_installed "$dep"; then
+            missing_deps+=("$dep")
+        fi
+    done
+    
+    if [ ${#missing_deps[@]} -gt 0 ]; then
+        print_message "install" "Installing missing CMake dependencies: ${missing_deps[*]}"
+        sudo apt-get update -y 2>/dev/null
+        sudo apt-get install -y "${missing_deps[@]}" 2>&1 | grep -v "Note, selecting"
+    fi
+}
+
 # Build CMake from source
 build_cmake_from_source() {
     local version=$1
     print_message "build" "Building CMake $version from source..."
-
+    install_cmake_build_deps
     mkdir -p "$DX_SRC_DIR/util"
     cd "$DX_SRC_DIR/util"
 
@@ -41,6 +60,16 @@ build_cmake_from_source() {
     sudo make install
     sudo ldconfig
 
+    # Verify installation
+    if ! command -v cmake >/dev/null 2>&1; then
+        print_message "error" "CMake installation failed. Exiting."
+        exit 1
+    fi
+
+    # remove build directory
+    cd "$DX_SRC_DIR/util"
+    rm -rf "cmake-$version.0"
+
     print_message "success" "CMake $(cmake --version | head -n1) installed from source!"
 }
 
@@ -50,26 +79,6 @@ setup_cmake() {
     local installed_version=$(get_cmake_version || echo "")
     
     print_message "search" "Checking CMake installation..."
-
-    # Install CMake build dependencies helper function
-    install_cmake_build_deps() {
-        print_message "install" "Installing CMake build dependencies..."
-        local cmake_deps=("libssl-dev" "libcurl4-openssl-dev" "zlib1g-dev")
-        local missing_deps=()
-        
-        for dep in "${cmake_deps[@]}"; do
-            if ! is_package_installed "$dep"; then
-                missing_deps+=("$dep")
-            fi
-        done
-        
-        if [ ${#missing_deps[@]} -gt 0 ]; then
-            print_message "install" "Installing missing CMake dependencies: ${missing_deps[*]}"
-            apt-get update -y 2>/dev/null
-        apt-get install -y cmake 2>&1 | grep -v "Note, selecting"
-        fi
-    }
-
     if [ -z "$installed_version" ]; then
         print_message "warning" "${package_name} is not installed"
         
@@ -83,13 +92,11 @@ setup_cmake() {
                 return 0
             else
                 print_message "warning" "APT version $apt_version below requirement ($required_version). Building from source..."
-                install_cmake_build_deps
                 build_cmake_from_source "$required_version"
                 return 0
             fi
         else
             print_message "error" "CMake not available in APT. Building from source..."
-            install_cmake_build_deps
             build_cmake_from_source "$required_version"
             return 0
         fi
@@ -107,7 +114,6 @@ setup_cmake() {
             else
                 print_message "build" "Building from source..."
                 remove_apt_package cmake
-                install_cmake_build_deps
                 build_cmake_from_source "$required_version"
             fi
         else

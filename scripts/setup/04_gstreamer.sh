@@ -521,6 +521,16 @@ check_gstreamer_core() {
         fi
     done
     
+    # Always check for GStreamer tools separately
+    print_message "search" "Checking GStreamer tools (gst-inspect-1.0)..." >&2
+    if ! command -v gst-inspect-1.0 >/dev/null 2>&1; then
+        print_message "warning" "GStreamer tools not found" >&2
+        missing_packages+=("gstreamer1.0-tools")
+    else
+        local tools_version=$(gst-inspect-1.0 --version 2>/dev/null | head -1 | awk '{print $3}' || echo "unknown")
+        print_message "success" "Found GStreamer tools v$tools_version" >&2
+    fi
+    
     echo "${missing_packages[@]}"
 }
 
@@ -545,7 +555,12 @@ check_gstreamer_plugins() {
         
         local plugin_available=false
         
-        if command -v gst-inspect-1.0 >/dev/null 2>&1; then
+        # First check if APT package is installed
+        if is_package_installed "$apt_package"; then
+            print_message "success" "APT package installed" >&2
+            plugin_available=true
+        elif command -v gst-inspect-1.0 >/dev/null 2>&1; then
+            # Fallback to runtime check if APT package check fails
             case "$plugin_type" in
                 "good")
                     if gst-inspect-1.0 audioconvert >/dev/null 2>&1 || gst-inspect-1.0 videoscale >/dev/null 2>&1; then
@@ -566,18 +581,22 @@ check_gstreamer_plugins() {
         fi
         
         if [ "$plugin_available" = true ]; then
-            local plugin_version=$(gst-inspect-1.0 --version 2>/dev/null | head -1 | awk '{print $3}')
-            print_message "success" "Runtime available: v$plugin_version" >&2
-            
-            # Version check for libav
-            local min_version="$MIN_GSTREAMER_VERSION"
-            if [[ "$plugin_type" == "libav" ]]; then
-                min_version="$MIN_LIBAV_VERSION"
-            fi
-            
-            if [ "$(printf '%s\n%s' "$min_version" "$plugin_version" | sort -V | head -n1)" != "$min_version" ]; then
-                print_message "warning" "Version too low (required: >=$min_version)" >&2
-                missing_packages+=("$apt_package")
+            if command -v gst-inspect-1.0 >/dev/null 2>&1; then
+                local plugin_version=$(gst-inspect-1.0 --version 2>/dev/null | head -1 | awk '{print $3}')
+                print_message "success" "Runtime available: v$plugin_version" >&2
+                
+                # Version check for libav
+                local min_version="$MIN_GSTREAMER_VERSION"
+                if [[ "$plugin_type" == "libav" ]]; then
+                    min_version="$MIN_LIBAV_VERSION"
+                fi
+                
+                if [ "$(printf '%s\n%s' "$min_version" "$plugin_version" | sort -V | head -n1)" != "$min_version" ]; then
+                    print_message "warning" "Version too low (required: >=$min_version)" >&2
+                    missing_packages+=("$apt_package")
+                fi
+            else
+                print_message "success" "Package installed via APT" >&2
             fi
         else
             print_message "warning" "Not available" >&2
