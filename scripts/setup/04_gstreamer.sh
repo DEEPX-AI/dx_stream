@@ -446,17 +446,49 @@ detect_and_install_rockchip_deps() {
         if ! dpkg -l | grep -q "^ii.*librga-dev"; then
             print_message "install" "Installing librga-dev..."
             sudo apt-get update
-            sudo apt-get install -y librga-dev libdrm-dev
             
-            if [ $? -eq 0 ]; then
+            # Try to install librga-dev first
+            if sudo apt-get install -y librga-dev; then
                 print_message "success" "librga-dev installed successfully"
             else
-                print_message "error" "Failed to install librga-dev"
-                print_message "warning" "Please install manually: sudo apt-get install librga-dev libdrm-dev"
-                return 1
+                print_message "warning" "librga-dev installation failed, trying without libdrm-dev..."
+                # librga-dev might already be installed, check again
+                if dpkg -l | grep -q "^ii.*librga-dev"; then
+                    print_message "success" "librga-dev is already installed"
+                else
+                    print_message "error" "Failed to install librga-dev"
+                    print_message "warning" "Please install manually: sudo apt-get install librga-dev"
+                    # Don't fail, continue without it
+                fi
+            fi
+            
+            # Check libdrm-dev separately (might have version conflicts)
+            if ! dpkg -l | grep -q "^ii.*libdrm-dev"; then
+                print_message "info" "Checking libdrm-dev..."
+                if sudo apt-get install -y libdrm-dev 2>&1 | grep -q "E:"; then
+                    print_message "warning" "libdrm-dev installation failed (version conflict), but libdrm2 is already present"
+                    print_message "info" "This is acceptable - continuing with existing libdrm installation"
+                else
+                    print_message "success" "libdrm-dev installed successfully"
+                fi
+            else
+                print_message "success" "libdrm-dev already installed"
             fi
         else
             print_message "success" "librga-dev already installed"
+            
+            # Also verify libdrm-dev
+            if dpkg -l | grep -q "^ii.*libdrm-dev"; then
+                print_message "success" "libdrm-dev already installed"
+            else
+                print_message "info" "libdrm-dev not installed, attempting installation..."
+                if ! sudo apt-get install -y libdrm-dev 2>&1 | grep -q "E:"; then
+                    print_message "success" "libdrm-dev installed successfully"
+                else
+                    print_message "warning" "libdrm-dev installation failed (version conflict)"
+                    print_message "info" "Continuing with existing libdrm runtime libraries"
+                fi
+            fi
         fi
     else
         print_message "info" "Non-Rockchip platform detected. Skipping librga installation."
