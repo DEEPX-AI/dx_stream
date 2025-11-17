@@ -421,6 +421,50 @@ install_gstreamer_from_source() {
     fi
 }
 
+# Check and install Rockchip-specific dependencies
+detect_and_install_rockchip_deps() {
+    print_message "search" "Detecting hardware platform..."
+    
+    # Rockchip board detection
+    local is_rockchip=false
+    
+    if [ -f /proc/device-tree/compatible ]; then
+        if grep -qi "rockchip" /proc/device-tree/compatible; then
+            is_rockchip=true
+        fi
+    fi
+    
+    # Also check CPU info
+    if grep -qi "rockchip" /proc/cpuinfo 2>/dev/null; then
+        is_rockchip=true
+    fi
+    
+    if [ "$is_rockchip" = true ]; then
+        print_message "info" "Rockchip platform detected. Checking librga dependencies..."
+        
+        # Check if librga-dev is installed
+        if ! dpkg -l | grep -q "^ii.*librga-dev"; then
+            print_message "install" "Installing librga-dev..."
+            sudo apt-get update
+            sudo apt-get install -y librga-dev libdrm-dev
+            
+            if [ $? -eq 0 ]; then
+                print_message "success" "librga-dev installed successfully"
+            else
+                print_message "error" "Failed to install librga-dev"
+                print_message "warning" "Please install manually: sudo apt-get install librga-dev libdrm-dev"
+                return 1
+            fi
+        else
+            print_message "success" "librga-dev already installed"
+        fi
+    else
+        print_message "info" "Non-Rockchip platform detected. Skipping librga installation."
+    fi
+    
+    return 0
+}
+
 # Check FFmpeg dependency
 check_ffmpeg_dependency() {
     print_message "search" "Checking FFmpeg dependency..."
@@ -611,6 +655,9 @@ check_gstreamer_plugins() {
 install_gstreamer_smart() {
     print_message "info" "🎬 Smart GStreamer installation - checking individual modules..." >&2
     
+    # Check and install Rockchip dependencies if needed
+    detect_and_install_rockchip_deps
+
     # Check FFmpeg dependency first
     check_ffmpeg_dependency
     
