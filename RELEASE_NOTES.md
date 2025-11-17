@@ -16,6 +16,7 @@
 - **Memory Management**: Better buffer handling in preprocessing and postprocessing pipelines
 - **Registry Handling**: Fixed GStreamer registry cache issues with GstShark integration
 - Fixed an event processing timing issue in 'dxinputselector' that caused compositor pipeline freezes.
+- fix: add detection and installation of Rockchip-specific dependencies (librga-dev)
 
 ### 3. Added
 - **PPU Support**: Integrated Post-Processing Unit functionality for YOLOv5s, SCRFD500M, and YOLOv5Pose models
