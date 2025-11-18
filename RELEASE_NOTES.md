@@ -9,6 +9,9 @@
 - **Buffer Processing**: Enhanced preprocessing and postprocessing to use direct buffer manipulation for better performance
 - **Configuration**: Streamlined msgconv configuration by removing unnecessary sections
 - Modified event handling logic in 'dxpreprocess', 'dxinfer', 'dxoutputselector' and 'dxosd' to align with updates to 'dxinputselector'.
+- feat: enhance dependency installation for Debian 12
+  - Smart version checking for meson (apt/backports/pip fallback)
+  - Handle libdrm version conflicts without breaking HW acceleration
 
 ### 2. Fixed
 - **Setup Scripts**: Improved error handling and prevented excessive download retry attempts
