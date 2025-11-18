@@ -1,0 +1,1361 @@
+orangepi@orangepi5plus:/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime$ ./install.sh --target=dx_stream
+[INFO] --- OS Check..... --- 
+[INFO] Detected OS: debian 12 
+[INFO] debian 12 is supported. 
+[INFO] [OK] OS check completed successfully. 
+[INFO] --- Arch Check..... --- 
+[INFO] Detected architecture: aarch64 
+[INFO] Architecture aarch64 is supported. 
+[INFO] [OK] Architecture check completed successfully. 
+[INFO] === install python... === 
+CMD: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/scripts/install_python_and_venv.sh  --venv_path=/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/venv-dx-runtime --venv-force-remove
+[INFO] Detected OS: debian 12
+[INFO] --venv-force-remove specified. Removing existing path at /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/venv-dx-runtime...
+[INFO] Starting Python installation and environment setup...
+[INFO] Requested Python Version: OS Default/Min (3.8.10)
+[INFO] Starting Python installation/dependency checks for default on debian 12...
+[INFO] Checking for existing Python installations that meet requirements...
+[INFO] Detected Python 3.11.2 at /usr/bin/python3.11.
+[INFO] Python 3.11.2 is suitable as no specific version was requested. Using this version.
+[SKIP] A suitable Python installation is already present (/usr/bin/python3.11).
+[INFO] Ensuring required development and venv packages for /usr/bin/python3.11 are installed.
+[SKIP] Python3.11-dev and python3.11-venv are already installed. Skipping.
+[INFO] Python installation/dependency checks done. Resolved Python executable: /usr/bin/python3.11
+[INFO] Virtual Environment Path: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/venv-dx-runtime
+[INFO] Creating python venv to this path: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/venv-dx-runtime
+[INFO] Setting up Virtual Environment at /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/venv-dx-runtime using /usr/bin/python3.11...
+[INFO] Activating virtual environment for package upgrades...
+[INFO] Upgrading pip, wheel, and setuptools...
+[INFO] *** OS: debian 12 ***
+Requirement already satisfied: setuptools in ./venv-dx-runtime/lib/python3.11/site-packages (66.1.1)
+Collecting setuptools
+  Using cached setuptools-80.9.0-py3-none-any.whl (1.2 MB)
+Installing collected packages: setuptools
+  Attempting uninstall: setuptools
+    Found existing installation: setuptools 66.1.1
+    Uninstalling setuptools-66.1.1:
+      Successfully uninstalled setuptools-66.1.1
+Successfully installed setuptools-80.9.0
+[INFO] Virtual environment setup complete.
+[SUCCESS] Script execution completed successfully.
+[INFO] To activate the virtual environment, run:
+  source /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/venv-dx-runtime/bin/activate 
+[INFO] [OK] Completed to install python 
+[SUCCESS] Installing python completed. 
+[INFO] venv activate... 
+[SUCCESS] Virtual environment at '/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/venv-dx-runtime' is activated. 
+[INFO] Installing dx_stream... 
+[INFO] === Installing dx_stream... === 
+[INFO] Uninstalling dx_stream... 
+/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime
+/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream
+Uninstalling dx_stream ...
+[INFO] Uninstalling common files... 
+[INFO] Deleting original file: /media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/download/models-2_1_0.tar.gz 
+[INFO] Deleting symlink: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/download/models-2_1_0.tar.gz 
+[INFO] Deleting original file: /media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/videos/download/sample_videos.tar.gz 
+[INFO] Deleting symlink: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/download/sample_videos.tar.gz 
+[INFO] Deleting path: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/download 
+[INFO] Uninstalling dx_stream specific files... 
+Using GStreamer plugin directory: /usr/lib/aarch64-linux-gnu/gstreamer-1.0
+Starting uninstall process...
+Removing /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+Removing /usr/local/lib/libgstdxstream.so...
+[sudo] orangepi 암호: 
+죄송합니다만, 다시 시도하십시오.
+[sudo] orangepi 암호: 
+Removing /usr/lib/aarch64-linux-gnu/gstreamer-1.0/libgstdxstream.so...
+Removing /usr/local/include/dx_stream
+Removing /usr/share/dx-stream
+uninstall completed.
+[INFO] Deleting original file: /media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/models-2_1_0 
+rm: '/media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/models-2_1_0/YOLOV4_3.dxnn'을(를) 제거할 수 없습니다: 허가 거부
+rm: '/media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/models-2_1_0/EfficientNetB0_4.dxnn'을(를) 제거할 수 없습니다: 허가 거부
+rm: '/media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/models-2_1_0/DeepLabV3PlusMobileNetV2_2.dxnn'을(를) 제거할 수 없습니다: 허가 거부
+rm: '/media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/models-2_1_0/YoloV7.dxnn'을(를) 제거할 수 없습니다: 허가 거부
+rm: '/media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/models-2_1_0/YOLOv7_512.dxnn'을(를) 제거할 수 없습니다: 허가 거부
+rm: '/media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/models-2_1_0/YOLOV5S_PPU.dxnn'을(를) 제거할 수 없습니다: 허가 거부
+rm: '/media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/models-2_1_0/EfficientNetB0_8.dxnn'을(를) 제거할 수 없습니다: 허가 거부
+rm: '/media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/models-2_1_0/YOLOV5X_2.dxnn'을(를) 제거할 수 없습니다: 허가 거부
+rm: '/media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/models-2_1_0/MobileNetV2_2.dxnn'을(를) 제거할 수 없습니다: 허가 거부
+rm: '/media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/models-2_1_0/YOLOV5S_4.dxnn'을(를) 제거할 수 없습니다: 허가 거부
+rm: '/media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/models-2_1_0/osnet_x0_5_market_256x128.dxnn'을(를) 제거할 수 없습니다: 허가 거부
+rm: '/media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/models-2_1_0/SCRFD500M_PPU.dxnn'을(를) 제거할 수 없습니다: 허가 거부
+rm: '/media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/models-2_1_0/YOLOV9S.dxnn'을(를) 제거할 수 없습니다: 허가 거부
+rm: '/media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/models-2_1_0/YOLOV5S_6.dxnn'을(를) 제거할 수 없습니다: 허가 거부
+rm: '/media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/models-2_1_0/YOLOV5_1.dxnn'을(를) 제거할 수 없습니다: 허가 거부
+rm: '/media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/models-2_1_0/YOLOV5S_3.dxnn'을(를) 제거할 수 없습니다: 허가 거부
+rm: '/media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/models-2_1_0/YOLOX-S_1.dxnn'을(를) 제거할 수 없습니다: 허가 거부
+rm: '/media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/models-2_1_0/SCRFD500M_1.dxnn'을(를) 제거할 수 없습니다: 허가 거부
+rm: '/media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/models-2_1_0/YOLOV3_1.dxnn'을(를) 제거할 수 없습니다: 허가 거부
+rm: '/media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/models-2_1_0/YOLOV5Pose_PPU.dxnn'을(를) 제거할 수 없습니다: 허가 거부
+rm: '/media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/models-2_1_0/YOLOV5S-1.dxnn'을(를) 제거할 수 없습니다: 허가 거부
+rm: '/media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/models-2_1_0/YoloV8N.dxnn'을(를) 제거할 수 없습니다: 허가 거부
+rm: '/media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/models-2_1_0/YOLOV5Pose640_1.dxnn'을(를) 제거할 수 없습니다: 허가 거부
+rm: '/media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/models-2_1_0/YOLOV5S_Face-1.dxnn'을(를) 제거할 수 없습니다: 허가 거부
+[WARNING] Permission denied when deleting original file: /media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/models-2_1_0 
+[INFO] Retrying with sudo... 
+[SUCCESS] Successfully deleted original file with sudo: /media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/models-2_1_0 
+[INFO] Deleting symlink: dx_stream/samples//models 
+[INFO] Deleting original file: /media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/videos/sample_videos 
+[INFO] Deleting symlink: dx_stream/samples//videos 
+Uninstalling dx_stream done
+/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream
+/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime
+[SUCCESS] Uninstalling dx_stream completed. 
+/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime
+DX_SRC_DIR the default one /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream
+🚀 Starting DX-Stream Dependencies Installation...
+Target Architecture: aarch64
+🚀 DX-Stream Dependencies Installation
+=======================================
+📦 Updating package lists...
+W: https://repo.huaweicloud.com/docker-ce/linux/debian/dists/bookworm/InRelease: Key is stored in legacy trusted.gpg keyring (/etc/apt/trusted.gpg), see the DEPRECATION section in apt-key(8) for details.
+📁 Using modular setup scripts from: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/scripts/setup
+🔧 Step 1/7: Essential Build Tools
+ℹ️ Checking essential build tools...
+✅ All essential build tools are already installed
+🏗️  Step 2/7: CMake Build System
+🔍 Checking CMake installation...
+✅ Installed version 3.25.1 meets requirement (>= 3.17)
+⚙️  Step 3/7: Meson Build System
+🔍 Checking Meson installation...
+✅ Meson version 1.9.1 meets requirement (>= 1.3)
+🎬 Step 4/7: GStreamer Framework
+ℹ️ 🎬 Smart GStreamer installation - checking individual modules...
+🔍 Detecting hardware platform...
+ℹ️ Rockchip platform detected. Checking librga dependencies...
+📦 Installing librga-dev...
+기존:1 http://repo.huaweicloud.com/debian bookworm InRelease
+기존:2 http://repo.huaweicloud.com/debian bookworm-updates InRelease                       
+기존:3 http://repo.huaweicloud.com/debian bookworm-backports InRelease                     
+기존:4 https://packages.microsoft.com/repos/code stable InRelease                          
+기존:5 https://repo.huaweicloud.com/docker-ce/linux/debian bookworm InRelease              
+패키지 목록을 읽는 중입니다... 완료                  
+W: https://repo.huaweicloud.com/docker-ce/linux/debian/dists/bookworm/InRelease: Key is stored in legacy trusted.gpg keyring (/etc/apt/trusted.gpg), see the DEPRECATION section in apt-key(8) for details.
+패키지 목록을 읽는 중입니다... 완료
+의존성 트리를 만드는 중입니다... 완료
+상태 정보를 읽는 중입니다... 완료        
+librga-dev is already the newest version (2.2.0-1).
+다음 패키지가 자동으로 설치되었지만 더 이상 필요하지 않습니다:
+  libgettextpo0 libgooglepinyin0
+Use 'sudo apt autoremove' to remove them.
+0개 업그레이드, 0개 새로 설치, 0개 제거 및 286개 업그레이드 안 함.
+✅ librga-dev installed successfully
+ℹ️ Checking libdrm-dev...
+⚠️ libdrm-dev installation failed (version conflict), but libdrm2 is already present
+ℹ️ This is acceptable - continuing with existing libdrm installation
+🔍 Checking FFmpeg dependency...
+✅ FFmpeg v5.1 (sufficient)
+ℹ️ Analyzing GStreamer core modules...
+🔍 Checking gstreamer-plugins-base-1.0 (GStreamer base plugins development)...
+✅ Found v1.22.0 with development headers
+🔍 Checking gstreamer-1.0 (GStreamer core development)...
+✅ Found v1.22.0 with development headers
+🔍 Checking GStreamer tools (gst-inspect-1.0)...
+✅ Found GStreamer tools v1.22.0
+ℹ️ Checking GStreamer plugins...
+🔍 Checking libav plugins (GStreamer libav plugin)...
+⚠️ Not available
+🔍 Checking bad plugins (GStreamer bad plugins)...
+✅ APT package installed
+✅ Runtime available: v1.22.0
+🔍 Checking good plugins (GStreamer good plugins)...
+✅ APT package installed
+✅ Runtime available: v1.22.0
+ℹ️ GStreamer core v1.22.0 already installed (>= 1.16.3)
+ℹ️ Using existing GStreamer 1.22.0 installation. Installing missing plugins via APT...
+📦 Attempting to install gstreamer1.0-libav via APT...
+패키지 목록을 읽는 중입니다... 완료
+의존성 트리를 만드는 중입니다... 완료
+상태 정보를 읽는 중입니다... 완료        
+다음 패키지가 자동으로 설치되었지만 더 이상 필요하지 않습니다:
+  libgettextpo0 libgooglepinyin0
+Use 'sudo apt autoremove' to remove them.
+다음 새 패키지를 설치할 것입니다:
+  gstreamer1.0-libav
+0개 업그레이드, 1개 새로 설치, 0개 제거 및 286개 업그레이드 안 함.
+91.2 k바이트 아카이브를 받아야 합니다.
+이 작업 후 290 k바이트의 디스크 공간을 더 사용하게 됩니다.
+받기:1 http://repo.huaweicloud.com/debian bookworm/main arm64 gstreamer1.0-libav arm64 1.22.0-2 [91.2 kB]
+내려받기 91.2 k바이트, 소요시간 1초 (147 k바이트/초)  
+Selecting previously unselected package gstreamer1.0-libav:arm64.
+(데이터베이스 읽는중 ...현재 251705개의 파일과 디렉터리가 설치되어 있습니다.)
+Preparing to unpack .../gstreamer1.0-libav_1.22.0-2_arm64.deb ...
+Unpacking gstreamer1.0-libav:arm64 (1.22.0-2) ...
+gstreamer1.0-libav:arm64 (1.22.0-2) 설정하는 중입니다 ...
+✅ gstreamer1.0-libav installed successfully
+✅ GStreamer libav plugin verified successfully
+👁️  Step 5/7: OpenCV Library
+🔍 Checking OpenCV installation...
+✅ OpenCV v4.6.0 meets requirement (>= 4.2.0)
+🔗 Step 6/7: Communication Libraries
+ℹ️ 🔗 Setting up communication libraries...
+🔍 Checking libeigen3-dev (Mathematical computation library)...
+✅ libeigen3-dev: v3.4.0-4
+🔍 Checking libjson-glib-dev (JSON handling library for GLib)...
+✅ libjson-glib-dev: v1.6.6-1
+🔍 Checking librdkafka-dev (Apache Kafka C/C++ library)...
+✅ librdkafka-dev: v2.0.2-1
+🔍 Checking libmosquitto-dev (MQTT client library)...
+✅ libmosquitto-dev: v2.0.11-1.2+deb12u2
+✅ All communication libraries are already installed.
+🔍 Checking mosquitto pkg-config...
+✅ libmosquitto pkg-config found (version: 2.0.11)
+✅ Communication libraries setup completed!
+📺 Step 7/7: libyuv Library
+🔍 Checking libyuv installation...
+✅ libyuv libraries already present.
+✅ All DX-Stream dependencies installed successfully!
+
+✅ DX-Stream installation completed successfully!
+Using GStreamer plugin directory: /usr/lib/aarch64-linux-gnu/gstreamer-1.0
+Starting clean process...
+Warn:  not found. So, skip to remove file.
+Warn: /usr/local/lib/libgstdxstream.so not found. So, skip to remove file.
+Warn: /usr/lib/aarch64-linux-gnu/gstreamer-1.0/libgstdxstream.so not found. So, skip to remove file.
+Warn: /usr/lib/aarch64-linux-gnu/gstreamer-1.0/libgstdxstream.so not found. So, skip to remove file.
+Warn: /usr/lib/aarch64-linux-gnu/gstreamer-1.0/libgstdxstream.so not found. So, skip to remove file.
+clean completed.
+Starting build process... build_type(release)
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/gst-dxstream-plugin
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/gst-dxstream-plugin/builddir
+Build type: native build
+Project name: gst-dxstream
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Run-time dependency eigen3 found: YES 3.4.0
+Run-time dependency gstreamer-video-1.0 found: YES 1.22.0
+Run-time dependency json-glib-1.0 found: YES 1.6.6
+Library dl found: YES
+Run-time dependency zlib found: YES 1.2.13
+Run-time dependency opencv4 found: YES 4.6.0
+Library yuv found: YES
+Message: Building in V3 mode
+Run-time dependency libmosquitto found: YES 2.0.11
+Run-time dependency rdkafka found: YES 2.0.2
+Run-time dependency librga found: YES 2.1.0
+Message: Found librga library, adding to dependencies.
+Run-time dependency libdrm found: YES 2.4.114
+Configuring config.h using configuration
+Build targets in project: 1
+
+gst-dxstream 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/gst-dxstream-plugin/builddir
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/gst-dxstream-plugin/builddir'
+[4/31] Compiling C++ object src/libgstdxstream.so.p/.._metadata_gst-dxmeta.cpp.o
+../metadata/gst-dxmeta.cpp: In function ‘void dx_add_payload_to_buffer(GstBuffer*, DxMsgPayload*)’:
+../metadata/gst-dxmeta.cpp:54:33: warning: ‘void* g_memdup(gconstpointer, guint)’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+   54 |     msgPayload->_data = g_memdup(payload->_data, payload->_size);
+      |                         ~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/glib-2.0/glib.h:84,
+                 from ../metadata/gst-dxframemeta.hpp:5,
+                 from ../metadata/gst-dxmeta.hpp:4,
+                 from ../metadata/gst-dxmeta.cpp:1:
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+[23/31] Compiling C++ object src/libgstdxstream.so.p/.._metadata_gst-dxmsgmeta.cpp.o
+../metadata/gst-dxmsgmeta.cpp: In function ‘gboolean gst_dxmsg_meta_transform(GstBuffer*, GstMeta*, GstBuffer*, GQuark, gpointer)’:
+../metadata/gst-dxmsgmeta.cpp:66:38: warning: ‘void* g_memdup(gconstpointer, guint)’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+   66 |         dst_payload->_data = g_memdup(src_payload->_data, src_payload->_size);
+      |                              ~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/glib-2.0/glib.h:84,
+                 from /usr/include/gstreamer-1.0/gst/gst.h:27,
+                 from ../metadata/gst-dxmsgmeta.hpp:4,
+                 from ../metadata/gst-dxmsgmeta.cpp:1:
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+[31/31] Linking target src/libgstdxstream.so
+Install DX-Stream to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/gst-dxstream-plugin/builddir'
+ninja: no work to do.
+Installing src/libgstdxstream.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/gstreamer-1.0
+Installing /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/gst-dxstream-plugin/general/dxcommon.hpp to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/include/dx_stream
+Installing /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/gst-dxstream-plugin/metadata/gst-dxmeta.hpp to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/include/dx_stream
+Installing /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/gst-dxstream-plugin/metadata/gst-dxframemeta.hpp to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/include/dx_stream
+Installing /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/gst-dxstream-plugin/metadata/gst-dxobjectmeta.hpp to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/include/dx_stream
+Installing /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/gst-dxstream-plugin/metadata/gst-dxmsgmeta.hpp to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/include/dx_stream
+Installing /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/gst-dxstream-plugin/src/utils/libyuv_transform/libyuv_transform.hpp to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/include/dx_stream
+Using build type: release
+SONAR_MODE_ARG() is set
+Processing directory: ./postprocess_library/CLIP/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/CLIP
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/CLIP/build
+Build type: native build
+Project name: postprocess_clip
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_clip 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/CLIP/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/CLIP/build'
+[2/2] Linking target libpostprocess_clip.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/CLIP/build'
+ninja: no work to do.
+Installing libpostprocess_clip.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/Classification/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/Classification
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/Classification/build
+Build type: native build
+Project name: postprocess_classification
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_classification 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/Classification/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/Classification/build'
+[2/2] Linking target libpostprocess_classification.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/Classification/build'
+ninja: no work to do.
+Installing libpostprocess_classification.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/DeepLabV3PlusMobileNetV2_2/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/DeepLabV3PlusMobileNetV2_2
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/DeepLabV3PlusMobileNetV2_2/build
+Build type: native build
+Project name: postprocess_deeplabv3plusmobilenetv2_2
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_deeplabv3plusmobilenetv2_2 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/DeepLabV3PlusMobileNetV2_2/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/DeepLabV3PlusMobileNetV2_2/build'
+[2/2] Linking target libpostprocess_deeplabv3plusmobilenetv2_2.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/DeepLabV3PlusMobileNetV2_2/build'
+ninja: no work to do.
+Installing libpostprocess_deeplabv3plusmobilenetv2_2.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/PPU/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/PPU
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/PPU/build
+Build type: native build
+Project name: postprocess_ppu
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_ppu 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/PPU/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/PPU/build'
+[2/2] Linking target libpostprocess_ppu.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/PPU/build'
+ninja: no work to do.
+Installing libpostprocess_ppu.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/Re-Identification/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/Re-Identification
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/Re-Identification/build
+Build type: native build
+Project name: postprocess_reid
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_reid 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/Re-Identification/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/Re-Identification/build'
+[2/2] Linking target libpostprocess_reid.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/Re-Identification/build'
+ninja: no work to do.
+Installing libpostprocess_reid.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/SCRFD/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/SCRFD
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/SCRFD/build
+Build type: native build
+Project name: postprocess_scrfd
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_scrfd 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/SCRFD/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/SCRFD/build'
+[2/2] Linking target libpostprocess_scrfd.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/SCRFD/build'
+ninja: no work to do.
+Installing libpostprocess_scrfd.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/YOLOV3_1/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV3_1
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV3_1/build
+Build type: native build
+Project name: postprocess_yolov3_1
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_yolov3_1 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV3_1/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV3_1/build'
+[1/2] Compiling C++ object libpostprocess_yolov3_1.so.p/postprocess.cpp.o
+../postprocess.cpp: In function ‘std::vector<BoundingBox> parse_multi_output(const std::vector<dxs::_DXTensor>&, const YoloConfig&)’:
+../postprocess.cpp:267:39: warning: comparison of integer expressions of different signedness: ‘int’ and ‘std::vector<std::__cxx11::basic_string<char> >::size_type’ {aka ‘long unsigned int’} [-Wsign-compare]
+  267 |     for (int layer_idx = 0; layer_idx < tensor_names.size(); layer_idx++) {
+      |                             ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~
+[2/2] Linking target libpostprocess_yolov3_1.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV3_1/build'
+ninja: no work to do.
+Installing libpostprocess_yolov3_1.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/YOLOV4_3/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV4_3
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV4_3/build
+Build type: native build
+Project name: postprocess_yolov4_3
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_yolov4_3 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV4_3/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV4_3/build'
+[2/2] Linking target libpostprocess_yolov4_3.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV4_3/build'
+ninja: no work to do.
+Installing libpostprocess_yolov4_3.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/YOLOV5Pose640_1/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5Pose640_1
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5Pose640_1/build
+Build type: native build
+Project name: postprocess_yolo_pose
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_yolo_pose 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5Pose640_1/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5Pose640_1/build'
+[2/2] Linking target libpostprocess_yolo_pose.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5Pose640_1/build'
+ninja: no work to do.
+Installing libpostprocess_yolo_pose.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/YOLOV5S_1/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_1
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_1/build
+Build type: native build
+Project name: postprocess_yolov5s_1
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_yolov5s_1 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_1/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_1/build'
+[1/2] Compiling C++ object libpostprocess_yolov5s_1.so.p/postprocess.cpp.o
+../postprocess.cpp: In function ‘std::vector<BoundingBox> parse_multi_output(const std::vector<dxs::_DXTensor>&, const YoloConfig&)’:
+../postprocess.cpp:271:39: warning: comparison of integer expressions of different signedness: ‘int’ and ‘std::vector<std::__cxx11::basic_string<char> >::size_type’ {aka ‘long unsigned int’} [-Wsign-compare]
+  271 |     for (int layer_idx = 0; layer_idx < tensor_names.size(); layer_idx++) {
+      |                             ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~
+[2/2] Linking target libpostprocess_yolov5s_1.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_1/build'
+ninja: no work to do.
+Installing libpostprocess_yolov5s_1.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/YOLOV5S_3/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_3
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_3/build
+Build type: native build
+Project name: postprocess_yolov5s_3
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_yolov5s_3 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_3/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_3/build'
+[1/2] Compiling C++ object libpostprocess_yolov5s_3.so.p/postprocess.cpp.o
+../postprocess.cpp: In function ‘std::vector<BoundingBox> parse_multi_output(const std::vector<dxs::_DXTensor>&, const YoloConfig&)’:
+../postprocess.cpp:271:39: warning: comparison of integer expressions of different signedness: ‘int’ and ‘std::vector<std::__cxx11::basic_string<char> >::size_type’ {aka ‘long unsigned int’} [-Wsign-compare]
+  271 |     for (int layer_idx = 0; layer_idx < tensor_names.size(); layer_idx++) {
+      |                             ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~
+[2/2] Linking target libpostprocess_yolov5s_3.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_3/build'
+ninja: no work to do.
+Installing libpostprocess_yolov5s_3.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/YOLOV5S_4/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_4
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_4/build
+Build type: native build
+Project name: postprocess_yolov5s_4
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_yolov5s_4 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_4/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_4/build'
+[1/2] Compiling C++ object libpostprocess_yolov5s_4.so.p/postprocess.cpp.o
+../postprocess.cpp: In function ‘std::vector<BoundingBox> parse_multi_output(const std::vector<dxs::_DXTensor>&, const YoloConfig&)’:
+../postprocess.cpp:267:39: warning: comparison of integer expressions of different signedness: ‘int’ and ‘std::vector<std::__cxx11::basic_string<char> >::size_type’ {aka ‘long unsigned int’} [-Wsign-compare]
+  267 |     for (int layer_idx = 0; layer_idx < tensor_names.size(); layer_idx++) {
+      |                             ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~
+[2/2] Linking target libpostprocess_yolov5s_4.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_4/build'
+ninja: no work to do.
+Installing libpostprocess_yolov5s_4.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/YOLOV5S_6/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_6
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_6/build
+Build type: native build
+Project name: postprocess_yolov5s_6
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_yolov5s_6 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_6/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_6/build'
+[1/2] Compiling C++ object libpostprocess_yolov5s_6.so.p/postprocess.cpp.o
+../postprocess.cpp: In function ‘std::vector<BoundingBox> parse_multi_output(const std::vector<dxs::_DXTensor>&, const YoloConfig&)’:
+../postprocess.cpp:267:39: warning: comparison of integer expressions of different signedness: ‘int’ and ‘std::vector<std::__cxx11::basic_string<char> >::size_type’ {aka ‘long unsigned int’} [-Wsign-compare]
+  267 |     for (int layer_idx = 0; layer_idx < tensor_names.size(); layer_idx++) {
+      |                             ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~
+[2/2] Linking target libpostprocess_yolov5s_6.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_6/build'
+ninja: no work to do.
+Installing libpostprocess_yolov5s_6.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/YOLOV5S_Face-1/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_Face-1
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_Face-1/build
+Build type: native build
+Project name: postprocess_yolo_face
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_yolo_face 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_Face-1/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_Face-1/build'
+[2/2] Linking target libpostprocess_yolo_face.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_Face-1/build'
+ninja: no work to do.
+Installing libpostprocess_yolo_face.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/YOLOV5X_2/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5X_2
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5X_2/build
+Build type: native build
+Project name: postprocess_yolov5x_2
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_yolov5x_2 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5X_2/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5X_2/build'
+[1/2] Compiling C++ object libpostprocess_yolov5x_2.so.p/postprocess.cpp.o
+../postprocess.cpp: In function ‘std::vector<BoundingBox> parse_multi_output(const std::vector<dxs::_DXTensor>&, const YoloConfig&)’:
+../postprocess.cpp:267:39: warning: comparison of integer expressions of different signedness: ‘int’ and ‘std::vector<std::__cxx11::basic_string<char> >::size_type’ {aka ‘long unsigned int’} [-Wsign-compare]
+  267 |     for (int layer_idx = 0; layer_idx < tensor_names.size(); layer_idx++) {
+      |                             ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~
+[2/2] Linking target libpostprocess_yolov5x_2.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5X_2/build'
+ninja: no work to do.
+Installing libpostprocess_yolov5x_2.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/YOLOX-S_1/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOX-S_1
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOX-S_1/build
+Build type: native build
+Project name: postprocess_yoloxs_1
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_yoloxs_1 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOX-S_1/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOX-S_1/build'
+[2/2] Linking target libpostprocess_yoloxs_1.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOX-S_1/build'
+ninja: no work to do.
+Installing libpostprocess_yoloxs_1.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/YOLO_ALL/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLO_ALL
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLO_ALL/build
+Build type: native build
+Project name: postprocess_yolo
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_yolo 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLO_ALL/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLO_ALL/build'
+[2/2] Linking target libpostprocess_yolo.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLO_ALL/build'
+ninja: no work to do.
+Installing libpostprocess_yolo.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/YOLOv7_512/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOv7_512
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOv7_512/build
+Build type: native build
+Project name: postprocess_yolov7_512
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_yolov7_512 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOv7_512/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOv7_512/build'
+[1/2] Compiling C++ object libpostprocess_yolov7_512.so.p/postprocess.cpp.o
+../postprocess.cpp: In function ‘std::vector<BoundingBox> parse_multi_output(const std::vector<dxs::_DXTensor>&, const YoloConfig&)’:
+../postprocess.cpp:270:39: warning: comparison of integer expressions of different signedness: ‘int’ and ‘std::vector<std::__cxx11::basic_string<char> >::size_type’ {aka ‘long unsigned int’} [-Wsign-compare]
+  270 |     for (int layer_idx = 0; layer_idx < tensor_names.size(); layer_idx++) {
+      |                             ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~
+[2/2] Linking target libpostprocess_yolov7_512.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOv7_512/build'
+ninja: no work to do.
+Installing libpostprocess_yolov7_512.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/YoloV7/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YoloV7
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YoloV7/build
+Build type: native build
+Project name: postprocess_yolov7
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_yolov7 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YoloV7/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YoloV7/build'
+[1/2] Compiling C++ object libpostprocess_yolov7.so.p/postprocess.cpp.o
+../postprocess.cpp: In function ‘std::vector<BoundingBox> parse_multi_output(const std::vector<dxs::_DXTensor>&, const YoloConfig&)’:
+../postprocess.cpp:271:39: warning: comparison of integer expressions of different signedness: ‘int’ and ‘std::vector<std::__cxx11::basic_string<char> >::size_type’ {aka ‘long unsigned int’} [-Wsign-compare]
+  271 |     for (int layer_idx = 0; layer_idx < tensor_names.size(); layer_idx++) {
+      |                             ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~
+[2/2] Linking target libpostprocess_yolov7.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YoloV7/build'
+ninja: no work to do.
+Installing libpostprocess_yolov7.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/YoloV8N/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YoloV8N
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YoloV8N/build
+Build type: native build
+Project name: postprocess_yolov8n
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_yolov8n 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YoloV8N/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YoloV8N/build'
+[2/2] Linking target libpostprocess_yolov8n.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YoloV8N/build'
+ninja: no work to do.
+Installing libpostprocess_yolov8n.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/YoloV9S/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YoloV9S
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YoloV9S/build
+Build type: native build
+Project name: postprocess_yolov9s
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_yolov9s 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YoloV9S/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YoloV9S/build'
+[2/2] Linking target libpostprocess_yolov9s.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YoloV9S/build'
+ninja: no work to do.
+Installing libpostprocess_yolov9s.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./message_convert_library/dx_msgconvl/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/message_convert_library/dx_msgconvl
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/message_convert_library/dx_msgconvl/build
+Build type: native build
+Project name: dx_stream_dx_msgconvl
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency opencv4 found: YES 4.6.0
+Run-time dependency json-glib-1.0 found: YES 1.6.6
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+dx_stream_dx_msgconvl 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/message_convert_library/dx_msgconvl/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/message_convert_library/dx_msgconvl/build'
+[2/3] Compiling C++ object libdx_msgconvl.so.p/dx_msgconvl_priv.cpp.o
+../dx_msgconvl_priv.cpp: In function ‘gchar* dxpayload_convert_to_json(DxMsgContext*, GstDxMsgMetaInfo*)’:
+../dx_msgconvl_priv.cpp:189:23: warning: unused variable ‘contextPriv’ [-Wunused-variable]
+  189 |     DxMsgContextPriv *contextPriv = (DxMsgContextPriv *)context->_priv_data;
+      |                       ^~~~~~~~~~~
+[3/3] Linking target libdx_msgconvl.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/message_convert_library/dx_msgconvl/build'
+ninja: no work to do.
+Installing libdx_msgconvl.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/msgcomvert
+Using build type: release
+Processing directory: ./kafka/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/kafka
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/kafka/build
+Build type: native build
+Project name: kafka_consume_example
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency rdkafka found: YES 2.0.2
+Run-time dependency json-glib-1.0 found: YES 1.6.6
+Build targets in project: 1
+
+kafka_consume_example 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/kafka/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/kafka/build'
+[2/2] Linking target kafka_consume_example
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/kafka/build'
+ninja: no work to do.
+Installing kafka_consume_example to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/bin
+Installing /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/kafka/kafka_consume_example.py to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/bin
+Processing directory: ./mqtt/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/mqtt
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/mqtt/build
+Build type: native build
+Project name: mqtt_sub_example
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency libmosquitto found: YES 2.0.11
+Run-time dependency json-glib-1.0 found: YES 1.6.6
+Build targets in project: 1
+
+mqtt_sub_example 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/mqtt/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/mqtt/build'
+[2/2] Linking target mqtt_sub_example
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/mqtt/build'
+ninja: no work to do.
+Installing mqtt_sub_example to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/bin
+Installing /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/mqtt/mqtt_sub_example.py to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/bin
+./build.sh: 행 169번: cd: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/test/test_plugin: 그런 파일이나 디렉터리가 없습니다
+Using build type: release
+Processing directory: ./kafka/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/kafka
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/kafka/build
+Build type: native build
+Project name: kafka_consume_example
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency rdkafka found: YES 2.0.2
+Run-time dependency json-glib-1.0 found: YES 1.6.6
+Build targets in project: 1
+
+kafka_consume_example 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/kafka/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/kafka/build'
+[2/2] Linking target kafka_consume_example
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/kafka/build'
+ninja: no work to do.
+Installing kafka_consume_example to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/bin
+Installing /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/kafka/kafka_consume_example.py to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/bin
+Processing directory: ./mqtt/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/mqtt
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/mqtt/build
+Build type: native build
+Project name: mqtt_sub_example
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency libmosquitto found: YES 2.0.11
+Run-time dependency json-glib-1.0 found: YES 1.6.6
+Build targets in project: 1
+
+mqtt_sub_example 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/mqtt/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/mqtt/build'
+[2/2] Linking target mqtt_sub_example
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/mqtt/build'
+ninja: no work to do.
+Installing mqtt_sub_example to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/bin
+Installing /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/mqtt/mqtt_sub_example.py to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/bin
+Build completed.
+Installing libgstdxstream.so to /usr/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing header files to /usr/local/include/dx_stream
+Installing PostProcess models to /usr/share/dx-stream/lib
+Installing MsgComvert models to /usr/share/dx-stream/lib
+Installing dx_stream applications to /usr/share/dx-stream/bin
+/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime
+[SUCCESS] Installing dx_stream completed. 
+--- sanity check... ---
+/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_rt /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime
+Attempting to run the DeepX SDK sanity check...
+---
+============================================================================
+==== Sanity Check Date : 2025. 11. 18. (화) 16:04:02 KST ====
+Log file location : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_rt/dx_report/sanity/result/sanity_check_result_20251118_160402.log
+
+==== PCI Link-up Check ====
+[OK] Vendor ID 1ff4 is present in the PCI devices.(num=1)
+==== Device File Check ====
+[OK] /dev/dxrt0 exists.
+[OK] /dev/dxrt0 is a character device.
+[OK] /dev/dxrt0 has correct permissions (0666).
+==== Kernel Module Check ====
+[OK] dxrt_driver module is loaded.
+[OK] dx_dma module is loaded.
+[OK] PCIe 01:00.0 driver probe is success.
+==== Legacy Driver Installed Check ====
+[INFO] /lib/modules/6.1.43-rockchip-rk3588/kernel/drivers/dxrt_driver.ko ... NONE
+[INFO] /lib/modules/6.1.43-rockchip-rk3588/kernel/drivers/dx_dma.ko ... NONE
+==== DKMS Driver Installed Check ====
+[INFO] dxrt-driver-dkms/1.8.0-2, 6.1.43-rockchip-rk3588, aarch64: installed
+[INFO] /lib/modules/6.1.43-rockchip-rk3588/updates/dkms/dxrt_driver.ko ... OK
+[INFO] /lib/modules/6.1.43-rockchip-rk3588/updates/dkms/dx_dma.ko ... OK
+==== Runtime Version Dependency Check ====
+[OK] Version Dependency Check
+   Runtime Framework Version: 3.0.0
+   Device Driver Version: v1.8.0
+   PCIe Driver Version: v1.5.1
+   Firmware Version: device-id=0 v2.1.4
+   ONNX Runtime Version: v1.20.1
+==== Runtime Executable File Check ====
+[OK] Executable File Check
+   Runtime Framework Version: 3.0.0
+   Device Driver Version: v1.8.0
+   PCIe Driver Version: v1.5.1
+   Firmware Version: device-id=0 v2.1.4
+   ONNX Runtime Version: v1.20.1
+   dxrt-cli ...OK
+   run_model ...OK
+   parse_model ...OK
+   dxtop ...OK
+   dxrtd ...OK
+   Header: /usr/local/include/dxrt ...OK
+==== Runtime dxrtd Service Check ====
+[OK] The dxrtd service is running correctly. This is the expected behavior for builds with USE_SERVICE=ON on cmake/dxrt.cfg.cmake
+
+============================================================================
+** Sanity check PASSED!
+============================================================================
+/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime
+---
+[INFO] Sanity Check Result: 
+ ✅ PASS: All sanity checks passed successfully. 
+[INFO] [OK] Installing dx_stream 
+orangepi@orangepi5plus:/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime$ cd dx_stream/
+orangepi@orangepi5plus:/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream$ ls
+LICENSE           docs                                               install.sh           setup.sh                util
+README.md         dx_stream                                          install_gstshark.sh  setup_sample_models.sh
+RELEASE_NOTES.md  dx_stream-local-build-error-opi5plus-debian12.log  release.ver          setup_sample_videos.sh
+build.sh          gst-dxstream-plugin                                run_demo.sh          test
+debian            install                                            scripts              uninstall.sh
+orangepi@orangepi5plus:/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream$ ./run_demo.sh 
+/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream
+[INFO] DX_STREAM_PATH: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream 
+[INFO] Models and Videos not found. Downloading now via setup.sh... 
+/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream
+[INFO] === DOCKER_VOLUME_PATH() is set === 
+[INFO] (host mode detected) 
+[INFO]  MODEL_PATH: ./dx_stream/samples/models 
+[INFO]  models directory not found. Running setup models script... () 
+Get Resources from remote server ...
+/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/scripts/get_resource.sh --src_path=res/models/models-2_1_0.tar.gz --output=./dx_stream/samples/models --symlink_target_path=/media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models  --extract
+USE_EXTRACT(1)
+USE_FORCE(0)
+[INFO] === Download Start === 
+Move and Extract to --symlink_target_path: /media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/download/models-2_1_0.tar.gz
+--- Download path: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/download/models-2_1_0.tar.gz ---
+--- Download real path:  ---
+--- ARCHIVE_TARGET_PATH(/media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/download/models-2_1_0.tar.gz) ---
+Downloading models-2_1_0.tar.gz from https://sdk.deepx.ai/res/models/models-2_1_0.tar.gz...
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100  712M  100  712M    0     0  32.4M      0  0:00:21  0:00:21 --:--:-- 33.2M^F
+ [OK] Download Complete 
+[INFO] === Generate output Start === 
+Move and Extract to --symlink_target_path: /media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/download/models-2_1_0.tar.gz
+Move /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/download/models-2_1_0.tar.gz to /media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/download/models-2_1_0.tar.gz
+ [OK] === MAKE SYMLINK SUCC === 
+Extract file(/media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/download/models-2_1_0.tar.gz) to '/media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/models-2_1_0'
+No top-level directory detected: Extracting as is
+EXTRACT_CMD: tar xvfz /media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/download/models-2_1_0.tar.gz -C /media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/models-2_1_0
+YOLOV5Pose_PPU.dxnn
+YOLOV5S-1.dxnn
+YOLOV5_1.dxnn
+YOLOV5X_2.dxnn
+YOLOV5S_Face-1.dxnn
+YOLOV5S_6.dxnn
+YOLOv7_512.dxnn
+YOLOV9S.dxnn
+YOLOV4_3.dxnn
+YOLOV5S_4.dxnn
+EfficientNetB0_4.dxnn
+EfficientNetB0_8.dxnn
+DeepLabV3PlusMobileNetV2_2.dxnn
+YoloV7.dxnn
+YOLOV3_1.dxnn
+MobileNetV2_2.dxnn
+osnet_x0_5_market_256x128.dxnn
+YOLOV5Pose640_1.dxnn
+YOLOX-S_1.dxnn
+SCRFD500M_1.dxnn
+YoloV8N.dxnn
+YOLOV5S_3.dxnn
+YOLOV5S_PPU.dxnn
+SCRFD500M_PPU.dxnn
+ [OK] === EXTRACT SUCC === 
+Move and Extract complete.
+ [OK] === Generate output Complete === 
+[INFO] === Make Symbolic Link Start === 
+CMD: ln -s /media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/models-2_1_0 ./dx_stream/samples/models
+Created symbolic link: ./dx_stream/samples/models -> /media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/models/models-2_1_0
+ [OK] === Make Symbolic Link Complete === 
+[INFO] VIDEO_PATH: ./dx_stream/samples/videos 
+[INFO]  Video directory not found. Running setup models script... (/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/samples/videos) 
+Get Resources from remote server ...
+/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/scripts/get_resource.sh --src_path=res/video/sample_videos.tar.gz --output=./dx_stream/samples/videos --symlink_target_path=/media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/videos  --extract
+USE_EXTRACT(1)
+USE_FORCE(0)
+[INFO] === Download Start === 
+Move and Extract to --symlink_target_path: /media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/videos/download/sample_videos.tar.gz
+--- Download path: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/download/sample_videos.tar.gz ---
+--- Download real path: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/download/sample_videos.tar.gz ---
+--- ARCHIVE_TARGET_PATH(/media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/videos/download/sample_videos.tar.gz) ---
+Downloading sample_videos.tar.gz from https://sdk.deepx.ai/res/video/sample_videos.tar.gz...
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100 1066M  100 1066M    0     0  33.0M      0  0:00:32  0:00:32 --:--:-- 33.1M
+ [OK] Download Complete 
+[INFO] === Generate output Start === 
+Move and Extract to --symlink_target_path: /media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/videos/download/sample_videos.tar.gz
+Move /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/download/sample_videos.tar.gz to /media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/videos/download/sample_videos.tar.gz
+ [OK] === MAKE SYMLINK SUCC === 
+Extract file(/media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/videos/download/sample_videos.tar.gz) to '/media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/videos/sample_videos'
+Detected top-level directory: Using --strip-components=1
+EXTRACT_CMD: tar xvfz /media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/videos/download/sample_videos.tar.gz --strip-components=1 -C /media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/videos/sample_videos
+./dron-citry-road2.mov
+./dance-group2.mov
+./codec_test_clip_h265_8Mbps.mp4
+./doughnut.mp4
+./dance-group.mov
+./blackbox-city-road2.mov
+./boat.mp4
+./cctv-city-road2.mov
+./snowboard.mp4
+./dogs.mp4
+./cctv-city-road.mov
+./carrierbag.mp4
+./codec_test_clip_h264_16Mbps.mp4
+./dron-citry-road.mov
+./blackbox-city-road.mp4
+./dance-solo.mov
+ [OK] === EXTRACT SUCC === 
+Move and Extract complete.
+ [OK] === Generate output Complete === 
+[INFO] === Make Symbolic Link Start === 
+CMD: ln -s /media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/videos/sample_videos ./dx_stream/samples/videos
+Created symbolic link: ./dx_stream/samples/videos -> /media/orangepi/home/orangepi/github/dx-all-suite/workspace/res/videos/sample_videos
+ [OK] === Make Symbolic Link Complete === 
+[INFO] [OK] Sample models and videos setup complete 
+/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream
+0: Object Detection (YOLOv5s)
+1: Object Detection (YOLOv5s with PPU)
+2: Face Detection (YOLOV5S_Face)
+3: Face Detection (SCRFD500M with PPU)
+4: Pose Estimation (YOLOV5Pose)
+5: Pose Estimation (YOLOV5Pose with PPU)
+6: Multi-Object Tracking
+7: Semantic Segmentation
+8: Multi-Channel Object Detection
+9: Multi-Channel RTSP
+-: secondary mode
+which AI demo do you want to run:(timeout:10s, default:0)0
+파이프라인을 PAUSED로 만드는 중 ...
+파이프라인 PREROLLING중 ...
+Redistribute latency...
+Redistribute latency...
+^Chandling interrupt. (0.0 %)
+인터럽트: 파이프라인 멈추는 중 ...
+파이프라인을 NULL로 만드는 중 ...
+
+(gst-launch-1.0:185320): GStreamer-Video-CRITICAL **: 16:09:24.119: gst_video_center_rect: assertion 'src->h != 0' failed
+
+(gst-launch-1.0:185320): GStreamer-Video-CRITICAL **: 16:09:24.170: gst_video_center_rect: assertion 'src->h != 0' failed
+
+(gst-launch-1.0:185320): GStreamer-Video-CRITICAL **: 16:09:24.220: gst_video_center_rect: assertion 'src->h != 0' failed
+
+(gst-launch-1.0:185320): GStreamer-Video-CRITICAL **: 16:09:24.271: gst_video_center_rect: assertion 'src->h != 0' failed
+
+(gst-launch-1.0:185320): GStreamer-Video-CRITICAL **: 16:09:24.423: gst_video_center_rect: assertion 'src->h != 0' failed
+
+(gst-launch-1.0:185320): GStreamer-Video-CRITICAL **: 16:09:24.523: gst_video_center_rect: assertion 'src->h != 0' failed
+
+(gst-launch-1.0:185320): GStreamer-Video-CRITICAL **: 16:09:24.774: gst_video_center_rect: assertion 'src->h != 0' failed
+
+(gst-launch-1.0:185320): GStreamer-Video-CRITICAL **: 16:09:24.825: gst_video_center_rect: assertion 'src->h != 0' failed
+
+(gst-launch-1.0:185320): GStreamer-Video-CRITICAL **: 16:09:24.875: gst_video_center_rect: assertion 'src->h != 0' failed
+
+(gst-launch-1.0:185320): GStreamer-Video-CRITICAL **: 16:09:24.926: gst_video_center_rect: assertion 'src->h != 0' failed
+
+(gst-launch-1.0:185320): GStreamer-Video-CRITICAL **: 16:09:24.976: gst_video_center_rect: assertion 'src->h != 0' failed
+
+(gst-launch-1.0:185320): GStreamer-Video-CRITICAL **: 16:09:25.027: gst_video_center_rect: assertion 'src->h != 0' failed
+
+(gst-launch-1.0:185320): GStreamer-Video-CRITICAL **: 16:09:25.077: gst_video_center_rect: assertion 'src->h != 0' failed
+^C
+orangepi@orangepi5plus:/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream$

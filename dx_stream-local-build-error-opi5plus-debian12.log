@@ -1,0 +1,2598 @@
+orangepi@orangepi5plus:/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime$ ./install.sh --target=dx_stream
+[INFO] --- OS Check..... --- 
+[INFO] Detected OS: debian 12 
+[INFO] debian 12 is supported. 
+[INFO] [OK] OS check completed successfully. 
+[INFO] --- Arch Check..... --- 
+[INFO] Detected architecture: aarch64 
+[INFO] Architecture aarch64 is supported. 
+[INFO] [OK] Architecture check completed successfully. 
+[INFO] === install python... === 
+CMD: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/scripts/install_python_and_venv.sh  --venv_path=/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/venv-dx-runtime --venv-force-remove
+[INFO] Detected OS: debian 12
+[INFO] --venv-force-remove specified. Removing existing path at /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/venv-dx-runtime...
+[INFO] Starting Python installation and environment setup...
+[INFO] Requested Python Version: OS Default/Min (3.8.10)
+[INFO] Starting Python installation/dependency checks for default on debian 12...
+[INFO] Checking for existing Python installations that meet requirements...
+[INFO] Detected Python 3.11.2 at /usr/bin/python3.11.
+[INFO] Python 3.11.2 is suitable as no specific version was requested. Using this version.
+[SKIP] A suitable Python installation is already present (/usr/bin/python3.11).
+[INFO] Ensuring required development and venv packages for /usr/bin/python3.11 are installed.
+[SKIP] Python3.11-dev and python3.11-venv are already installed. Skipping.
+[INFO] Python installation/dependency checks done. Resolved Python executable: /usr/bin/python3.11
+[INFO] Virtual Environment Path: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/venv-dx-runtime
+[INFO] Creating python venv to this path: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/venv-dx-runtime
+[INFO] Setting up Virtual Environment at /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/venv-dx-runtime using /usr/bin/python3.11...
+[INFO] Activating virtual environment for package upgrades...
+[INFO] Upgrading pip, wheel, and setuptools...
+[INFO] *** OS: debian 12 ***
+Requirement already satisfied: setuptools in ./venv-dx-runtime/lib/python3.11/site-packages (66.1.1)
+Collecting setuptools
+  Using cached setuptools-80.9.0-py3-none-any.whl (1.2 MB)
+Installing collected packages: setuptools
+  Attempting uninstall: setuptools
+    Found existing installation: setuptools 66.1.1
+    Uninstalling setuptools-66.1.1:
+      Successfully uninstalled setuptools-66.1.1
+Successfully installed setuptools-80.9.0
+[INFO] Virtual environment setup complete.
+[SUCCESS] Script execution completed successfully.
+[INFO] To activate the virtual environment, run:
+  source /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/venv-dx-runtime/bin/activate 
+[INFO] [OK] Completed to install python 
+[SUCCESS] Installing python completed. 
+[INFO] venv activate... 
+[SUCCESS] Virtual environment at '/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/venv-dx-runtime' is activated. 
+[INFO] Installing dx_stream... 
+[INFO] === Installing dx_stream... === 
+[INFO] Uninstalling dx_stream... 
+/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime
+/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream
+Uninstalling dx_stream ...
+[INFO] Uninstalling common files... 
+[INFO] Uninstalling dx_stream specific files... 
+Using GStreamer plugin directory: /usr/lib/aarch64-linux-gnu/gstreamer-1.0
+Starting uninstall process...
+Warn:  not found. Was the project installed?
+Warn: /usr/local/lib/libgstdxstream.so not found. Was the project installed?
+Warn: /usr/lib/aarch64-linux-gnu/gstreamer-1.0/libgstdxstream.so not found. Was the project installed?
+Warn: /usr/lib/aarch64-linux-gnu/gstreamer-1.0/libgstdxstream.so not found. Was the project installed?
+Warn: /usr/lib/aarch64-linux-gnu/gstreamer-1.0/libgstdxstream.so not found. Was the project installed?
+uninstall completed.
+Uninstalling dx_stream done
+/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream
+/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime
+[SUCCESS] Uninstalling dx_stream completed. 
+/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime
+DX_SRC_DIR the default one /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream
+🚀 Starting DX-Stream Dependencies Installation...
+Target Architecture: aarch64
+🚀 DX-Stream Dependencies Installation
+=======================================
+📦 Updating package lists...
+W: https://repo.huaweicloud.com/docker-ce/linux/debian/dists/bookworm/InRelease: Key is stored in legacy trusted.gpg keyring (/etc/apt/trusted.gpg), see the DEPRECATION section in apt-key(8) for details.
+📁 Using modular setup scripts from: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/scripts/setup
+🔧 Step 1/7: Essential Build Tools
+ℹ️ Checking essential build tools...
+✅ All essential build tools are already installed
+🏗️  Step 2/7: CMake Build System
+🔍 Checking CMake installation...
+✅ Installed version 3.25.1 meets requirement (>= 3.17)
+⚙️  Step 3/7: Meson Build System
+🔍 Checking Meson installation...
+✅ Meson version 1.9.1 meets requirement (>= 1.3)
+🎬 Step 4/7: GStreamer Framework
+ℹ️ 🎬 Smart GStreamer installation - checking individual modules...
+🔍 Detecting hardware platform...
+ℹ️ Rockchip platform detected. Checking librga dependencies...
+📦 Installing librga-dev...
+기존:1 https://packages.microsoft.com/repos/code stable InRelease
+기존:2 http://repo.huaweicloud.com/debian bookworm InRelease                                              
+기존:3 http://repo.huaweicloud.com/debian bookworm-updates InRelease                                      
+기존:4 http://repo.huaweicloud.com/debian bookworm-backports InRelease                     
+기존:5 https://repo.huaweicloud.com/docker-ce/linux/debian bookworm InRelease
+패키지 목록을 읽는 중입니다... 완료                  
+W: https://repo.huaweicloud.com/docker-ce/linux/debian/dists/bookworm/InRelease: Key is stored in legacy trusted.gpg keyring (/etc/apt/trusted.gpg), see the DEPRECATION section in apt-key(8) for details.
+패키지 목록을 읽는 중입니다... 완료
+의존성 트리를 만드는 중입니다... 완료
+상태 정보를 읽는 중입니다... 완료        
+librga-dev is already the newest version (2.2.0-1).
+다음 패키지가 자동으로 설치되었지만 더 이상 필요하지 않습니다:
+  libgettextpo0 libgooglepinyin0
+Use 'sudo apt autoremove' to remove them.
+0개 업그레이드, 0개 새로 설치, 0개 제거 및 286개 업그레이드 안 함.
+✅ librga-dev installed successfully
+ℹ️ Checking libdrm-dev...
+⚠️ libdrm-dev installation failed (version conflict), but libdrm2 is already present
+ℹ️ This is acceptable - continuing with existing libdrm installation
+🔍 Checking FFmpeg dependency...
+✅ FFmpeg v5.1 (sufficient)
+ℹ️ Analyzing GStreamer core modules...
+🔍 Checking gstreamer-plugins-base-1.0 (GStreamer base plugins development)...
+✅ Found v1.22.0 with development headers
+🔍 Checking gstreamer-1.0 (GStreamer core development)...
+✅ Found v1.22.0 with development headers
+🔍 Checking GStreamer tools (gst-inspect-1.0)...
+✅ Found GStreamer tools v1.22.0
+ℹ️ Checking GStreamer plugins...
+🔍 Checking libav plugins (GStreamer libav plugin)...
+⚠️ Not available
+🔍 Checking bad plugins (GStreamer bad plugins)...
+✅ APT package installed
+✅ Runtime available: v1.22.0
+🔍 Checking good plugins (GStreamer good plugins)...
+✅ APT package installed
+✅ Runtime available: v1.22.0
+❌ APT package 'gstreamer1.0-libav' not found in repositories. Cannot proceed.
+⚠️ APT versions insufficient. Building GStreamer from source...
+🔨 GStreamer source build initiated
+ℹ️ Target GStreamer version for all components: 1.16.3
+📦 Installing GStreamer build dependencies...
+기존:1 http://repo.huaweicloud.com/debian bookworm InRelease
+기존:2 http://repo.huaweicloud.com/debian bookworm-updates InRelease                                                    
+기존:3 http://repo.huaweicloud.com/debian bookworm-backports InRelease                                                  
+기존:4 https://repo.huaweicloud.com/docker-ce/linux/debian bookworm InRelease                                           
+기존:5 https://packages.microsoft.com/repos/code stable InRelease                                          
+패키지 목록을 읽는 중입니다... 완료                     
+W: https://repo.huaweicloud.com/docker-ce/linux/debian/dists/bookworm/InRelease: Key is stored in legacy trusted.gpg keyring (/etc/apt/trusted.gpg), see the DEPRECATION section in apt-key(8) for details.
+패키지 목록을 읽는 중입니다... 완료
+의존성 트리를 만드는 중입니다... 완료
+상태 정보를 읽는 중입니다... 완료        
+flex is already the newest version (2.6.4-8.2).
+bison is already the newest version (2:3.8.2+dfsg-1+b1).
+nasm is already the newest version (2.16.01-1).
+libglib2.0-dev is already the newest version (2.74.6-2+deb12u7).
+libjpeg-dev is already the newest version (1:2.1.5-2).
+libpng-dev is already the newest version (1.6.39-2).
+liborc-0.4-dev is already the newest version (1:0.4.33-2).
+libgirepository1.0-dev is already the newest version (1.74.0-3).
+다음 패키지가 자동으로 설치되었지만 더 이상 필요하지 않습니다:
+  libgettextpo0 libgooglepinyin0
+Use 'sudo apt autoremove' to remove them.
+0개 업그레이드, 0개 새로 설치, 0개 제거 및 286개 업그레이드 안 함.
+🔨 Building GStreamer core (version: 1.16.3)...
+✅ gstreamer v1.22.0 already installed (>= 1.16.3)
+🔨 Building GStreamer plugins-base (version: 1.16.3)...
+✅ gst-plugins-base v1.22.0 already installed (>= 1.16.3)
+🔨 Building GStreamer plugins-good (version: 1.16.3)...
+ℹ️ Downloading gst-plugins-good 1.16.3 source archive...
+--2025-11-18 15:34:55--  https://gstreamer.freedesktop.org/src/gst-plugins-good/gst-plugins-good-1.16.3.tar.xz
+gstreamer.freedesktop.org (gstreamer.freedesktop.org) 해석 중... 131.252.210.176
+다음으로 연결 중: gstreamer.freedesktop.org (gstreamer.freedesktop.org)|131.252.210.176|:443... 연결했습니다.
+HTTP 요청을 보냈습니다. 응답 기다리는 중... 200 OK
+길이: 3914676 (3.7M) [application/x-xz]
+저장 위치: `gst-plugins-good-1.16.3.tar.xz'
+
+gst-plugins-good-1.16.3.tar.xz 100%[=================================================>]   3.73M  3.01MB/s    /  1.2s    
+
+2025-11-18 15:34:57 (3.01 MB/s) - `gst-plugins-good-1.16.3.tar.xz' 저장함 [3914676/3914676]
+
+🔍 Verifying download integrity...
+ℹ️ Extracting source archive...
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/util/gstreamer_build/gst-plugins-good-1.16.3
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/util/gstreamer_build/gst-plugins-good-1.16.3/build
+Build type: native build
+Project name: gst-plugins-good
+Project version: 1.16.3
+C compiler for the host machine: cc (gcc 12.2.0 "cc (Debian 12.2.0-14) 12.2.0")
+C linker for the host machine: cc ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Compiler for C supports link arguments -Wl,-Bsymbolic-functions: YES 
+Compiler for C supports arguments -fvisibility=hidden: YES 
+Compiler for C supports arguments -fno-strict-aliasing: YES 
+Message: Disabling GLib cast checks
+Has header "dlfcn.h" : YES 
+Has header "fcntl.h" : YES 
+Has header "inttypes.h" : YES 
+Has header "memory.h" : YES 
+Has header "process.h" : NO 
+Has header "stdint.h" : YES 
+Has header "stdlib.h" : YES 
+Has header "strings.h" : YES 
+Has header "string.h" : YES 
+Has header "sys/ioctl.h" : YES 
+Has header "sys/param.h" : YES 
+Has header "sys/socket.h" : YES 
+Has header "sys/stat.h" : YES 
+Has header "sys/time.h" : YES 
+Has header "sys/types.h" : YES 
+Has header "unistd.h" : YES 
+Library m found: YES
+Checking for function "asinh" with dependency -lm: YES 
+Checking for function "clock_gettime" with dependency -lm: YES 
+Checking for function "cosh" with dependency -lm: YES 
+Checking for function "dcgettext" with dependency -lm: YES 
+Checking for function "getpagesize" with dependency -lm: YES 
+Checking for function "isinf" with dependency -lm: YES 
+Checking for function "mmap" with dependency -lm: YES 
+Checking for function "mmap64" with dependency -lm: NO 
+Checking for function "sinh" with dependency -lm: YES 
+Checking for size of "char" : 1 
+Checking for size of "int" : 4 
+Checking for size of "long" : 8 
+Checking for size of "short" : 2 
+Checking for size of "void*" : 8 
+Checking for size of "off_t" : 8 
+Compiler for C supports arguments -Wmissing-declarations: YES 
+Compiler for C++ supports arguments -Wmissing-declarations: YES 
+Compiler for C supports arguments -Wredundant-decls: YES 
+Compiler for C++ supports arguments -Wredundant-decls: YES 
+Compiler for C supports arguments -Wwrite-strings: YES 
+Compiler for C++ supports arguments -Wwrite-strings: YES 
+Compiler for C supports arguments -Winit-self: YES 
+Compiler for C++ supports arguments -Winit-self: YES 
+Compiler for C supports arguments -Wmissing-include-dirs: YES 
+Compiler for C++ supports arguments -Wmissing-include-dirs: YES 
+Compiler for C supports arguments -Wno-multichar: YES 
+Compiler for C++ supports arguments -Wno-multichar: YES 
+Compiler for C supports arguments -Wvla: YES 
+Compiler for C++ supports arguments -Wvla: YES 
+Compiler for C supports arguments -Wpointer-arith: YES 
+Compiler for C++ supports arguments -Wpointer-arith: YES 
+Compiler for C supports arguments -Wmissing-prototypes: YES 
+Compiler for C supports arguments -Wdeclaration-after-statement: YES 
+Compiler for C supports arguments -Wold-style-definition: YES 
+Compiler for C supports arguments -Waggregate-return: YES 
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Run-time dependency gstreamer-base-1.0 found: YES 1.22.0
+Run-time dependency gstreamer-net-1.0 found: YES 1.22.0
+Run-time dependency gstreamer-controller-1.0 found: YES 1.22.0
+Dependency gstreamer-check-1.0 skipped: feature tests disabled
+Run-time dependency gstreamer-pbutils-1.0 found: YES 1.22.0
+Run-time dependency gstreamer-allocators-1.0 found: YES 1.22.0
+Run-time dependency gstreamer-app-1.0 found: YES 1.22.0
+Run-time dependency gstreamer-audio-1.0 found: YES 1.22.0
+Run-time dependency gstreamer-fft-1.0 found: YES 1.22.0
+Run-time dependency gstreamer-riff-1.0 found: YES 1.22.0
+Run-time dependency gstreamer-rtp-1.0 found: YES 1.22.0
+Run-time dependency gstreamer-rtsp-1.0 found: YES 1.22.0
+Run-time dependency gstreamer-sdp-1.0 found: YES 1.22.0
+Run-time dependency gstreamer-tag-1.0 found: YES 1.22.0
+Run-time dependency gstreamer-video-1.0 found: YES 1.22.0
+Run-time dependency gstreamer-gl-1.0 found: YES 1.22.0
+Message: GStreamer OpenGL window systems: wayland x11 gbm
+Message: GStreamer OpenGL platforms: egl glx
+Message: GStreamer OpenGL apis: gles2 gl
+Run-time dependency zlib found: YES 1.2.13
+Run-time dependency glib-2.0 found: YES 2.74.6
+Run-time dependency gobject-2.0 found: YES 2.74.6
+Run-time dependency gio-2.0 found: YES 2.74.6
+Run-time dependency orc-0.4 found: YES 0.4.33
+Program orcc found: YES (/usr/bin/orcc)
+Header "gst/gstconfig.h" has symbol "GST_DISABLE_GST_DEBUG" with dependency gstreamer-1.0: NO 
+Message: GStreamer debug system is enabled
+Library bz2 found: NO
+Has header "sys/soundcard.h" : YES 
+Message: Checking headers needed for Open Sound System 4 plugin...
+Has header "fcntl.h" : YES (cached)
+Has header "sys/ioctl.h" : YES (cached)
+Has header "sys/stat.h" : YES (cached)
+Has header "sys/types.h" : YES (cached)
+Message: Required headers found, building Open Sound System 4 plugin.
+Has header "linux/videodev2.h" : YES 
+Message: building v4l2 plugin
+Run-time dependency gudev-1.0 found: YES 237
+Run-time dependency libv4l2 found: YES 1.22.1
+Run-time dependency x11 found: YES 1.8.4
+Run-time dependency xext found: YES 1.3.4
+Checking for function "XShmAttach" with dependency xext: YES 
+Run-time dependency xfixes found: YES 6.0.0
+Run-time dependency xdamage found: YES 1.1.6
+Has header "aalib.h" : NO 
+Run-time dependency cairo-gobject found: YES 1.16.0
+Found CMake: /usr/bin/cmake (3.25.1)
+Run-time dependency flac found: NO (tried pkgconfig and cmake)
+Run-time dependency gdk-pixbuf-2.0 found: YES 2.42.10
+Dependency gtk+-3.0 skipped: feature gtk3 disabled
+Dependency jack found: NO. Found 0.126.0 but need: '>= 1.9.7'
+Run-time dependency jack found: NO (tried pkgconfig and cmake)
+Run-time dependency libjpeg found: YES 2.1.5
+Library mp3lame found: NO
+Run-time dependency caca found: YES 0.99.beta20
+Run-time dependency libdv found: NO (tried pkgconfig and cmake)
+Run-time dependency libpng found: YES 1.6.39
+Run-time dependency libmpg123 found: NO (tried pkgconfig and cmake)
+Run-time dependency libraw1394 found: YES 2.1.2
+Run-time dependency libavc1394 found: NO (tried pkgconfig and cmake)
+Run-time dependency libiec61883 found: NO (tried pkgconfig and cmake)
+Dependency qt5 (modules: Core, Gui, Qml, Quick) skipped: feature qt5 disabled
+Program moc-qt5 moc skipped: feature qt5 disabled
+Run-time dependency libpulse found: YES 16.1
+Run-time dependency shout found: NO (tried pkgconfig and cmake)
+Run-time dependency libsoup-2.4 found: NO (tried pkgconfig and cmake)
+Looking for a fallback subproject for the dependency libsoup-2.4
+Attempted to resolve subproject without subprojects directory present.
+Subproject libsoup is buildable: NO (disabling)
+Dependency libsoup-2.4 from subproject libsoup found: NO (subproject failed to configure)
+Run-time dependency speex found: NO (tried pkgconfig and cmake)
+Run-time dependency taglib found: NO (tried pkgconfig and cmake)
+Run-time dependency twolame found: NO (tried pkgconfig and cmake)
+Dependency vpx skipped: feature vpx disabled
+Run-time dependency wavpack found: NO (tried pkgconfig and cmake)
+Configuring gstreamer-plugins-good-1.0-uninstalled.pc using configuration
+Program xgettext found: NO
+Configuring config.h using configuration
+Program python3 found: YES (/usr/bin/python3)
+WARNING: You should add the boolean check kwarg to the run_command call.
+         It currently defaults to false,
+         but it will default to true in meson 2.0.
+         See also: https://github.com/mesonbuild/meson/issues/9300
+Build targets in project: 65
+NOTICE: Future-deprecated features used:
+ * 0.56.0: {'dependency.get_pkgconfig_variable'}
+
+gst-plugins-good 1.16.3
+
+  Subprojects
+    libsoup : NO Attempted to resolve subproject without subprojects directory present.
+
+  User defined options
+    examples: disabled
+    gtk3    : disabled
+    jpeg    : enabled
+    png     : enabled
+    prefix  : /usr/local
+    qt5     : disabled
+    tests   : disabled
+    vpx     : disabled
+
+Found ninja-1.11.1 at /usr/bin/ninja
+ninja: Entering directory `build'
+[58/447] Compiling C object gst/debugutils/libgstdebug.so.p/cpureport.c.o
+In file included from ../gst/debugutils/cpureport.c:29:
+../gst/debugutils/cpureport.h:45:3: warning: ‘GTimeVal’ is deprecated: Use 'GDateTime' instead [-Wdeprecated-declarations]
+   45 |   GTimeVal start_time;
+      |   ^~~~~~~~
+In file included from /usr/include/glib-2.0/glib/galloca.h:34,
+                 from /usr/include/glib-2.0/glib.h:32,
+                 from /usr/include/gstreamer-1.0/gst/gst.h:27,
+                 from ../gst/debugutils/cpureport.c:24:
+/usr/include/glib-2.0/glib/gtypes.h:576:8: note: declared here
+  576 | struct _GTimeVal
+      |        ^~~~~~~~~
+../gst/debugutils/cpureport.h:46:3: warning: ‘GTimeVal’ is deprecated: Use 'GDateTime' instead [-Wdeprecated-declarations]
+   46 |   GTimeVal last_time;
+      |   ^~~~~~~~
+/usr/include/glib-2.0/glib/gtypes.h:576:8: note: declared here
+  576 | struct _GTimeVal
+      |        ^~~~~~~~~
+../gst/debugutils/cpureport.c: In function ‘gst_cpu_report_transform_ip’:
+../gst/debugutils/cpureport.c:102:3: warning: ‘GTimeVal’ is deprecated: Use 'GDateTime' instead [-Wdeprecated-declarations]
+  102 |   GTimeVal cur_time;
+      |   ^~~~~~~~
+/usr/include/glib-2.0/glib/gtypes.h:576:8: note: declared here
+  576 | struct _GTimeVal
+      |        ^~~~~~~~~
+../gst/debugutils/cpureport.c:109:3: warning: ‘g_get_current_time’ is deprecated: Use 'g_get_real_time' instead [-Wdeprecated-declarations]
+  109 |   g_get_current_time (&cur_time);
+      |   ^~~~~~~~~~~~~~~~~~
+In file included from /usr/include/glib-2.0/glib/giochannel.h:35,
+                 from /usr/include/glib-2.0/glib.h:56:
+/usr/include/glib-2.0/glib/gmain.h:728:8: note: declared here
+  728 | void   g_get_current_time                 (GTimeVal       *result);
+      |        ^~~~~~~~~~~~~~~~~~
+../gst/debugutils/cpureport.c: In function ‘gst_cpu_report_start’:
+../gst/debugutils/cpureport.c:138:3: warning: ‘g_get_current_time’ is deprecated: Use 'g_get_real_time' instead [-Wdeprecated-declarations]
+  138 |   g_get_current_time (&filter->last_time);
+      |   ^~~~~~~~~~~~~~~~~~
+/usr/include/glib-2.0/glib/gmain.h:728:8: note: declared here
+  728 | void   g_get_current_time                 (GTimeVal       *result);
+      |        ^~~~~~~~~~~~~~~~~~
+[59/447] Compiling C object gst/debugutils/libgstdebug.so.p/progressreport.c.o
+In file included from ../gst/debugutils/progressreport.c:76:
+../gst/debugutils/progressreport.h:51:3: warning: ‘GTimeVal’ is deprecated: Use 'GDateTime' instead [-Wdeprecated-declarations]
+   51 |   GTimeVal start_time;
+      |   ^~~~~~~~
+In file included from /usr/include/glib-2.0/glib/galloca.h:34,
+                 from /usr/include/glib-2.0/glib.h:32,
+                 from /usr/include/gstreamer-1.0/gst/gst.h:27,
+                 from ../gst/debugutils/progressreport.c:71:
+/usr/include/glib-2.0/glib/gtypes.h:576:8: note: declared here
+  576 | struct _GTimeVal
+      |        ^~~~~~~~~
+../gst/debugutils/progressreport.h:52:3: warning: ‘GTimeVal’ is deprecated: Use 'GDateTime' instead [-Wdeprecated-declarations]
+   52 |   GTimeVal last_report;
+      |   ^~~~~~~~
+/usr/include/glib-2.0/glib/gtypes.h:576:8: note: declared here
+  576 | struct _GTimeVal
+      |        ^~~~~~~~~
+../gst/debugutils/progressreport.c:328:1: warning: ‘GTimeVal’ is deprecated: Use 'GDateTime' instead [-Wdeprecated-declarations]
+  328 | gst_progress_report_report (GstProgressReport * filter, GTimeVal cur_time,
+      | ^~~~~~~~~~~~~~~~~~~~~~~~~~
+/usr/include/glib-2.0/glib/gtypes.h:576:8: note: declared here
+  576 | struct _GTimeVal
+      |        ^~~~~~~~~
+../gst/debugutils/progressreport.c: In function ‘gst_progress_report_sink_event’:
+../gst/debugutils/progressreport.c:390:7: warning: ‘GTimeVal’ is deprecated: Use 'GDateTime' instead [-Wdeprecated-declarations]
+  390 |       GTimeVal cur_time;
+      |       ^~~~~~~~
+/usr/include/glib-2.0/glib/gtypes.h:576:8: note: declared here
+  576 | struct _GTimeVal
+      |        ^~~~~~~~~
+../gst/debugutils/progressreport.c:392:7: warning: ‘g_get_current_time’ is deprecated: Use 'g_get_real_time' instead [-Wdeprecated-declarations]
+  392 |       g_get_current_time (&cur_time);
+      |       ^~~~~~~~~~~~~~~~~~
+In file included from /usr/include/glib-2.0/glib/giochannel.h:35,
+                 from /usr/include/glib-2.0/glib.h:56:
+/usr/include/glib-2.0/glib/gmain.h:728:8: note: declared here
+  728 | void   g_get_current_time                 (GTimeVal       *result);
+      |        ^~~~~~~~~~~~~~~~~~
+../gst/debugutils/progressreport.c: In function ‘gst_progress_report_transform_ip’:
+../gst/debugutils/progressreport.c:407:3: warning: ‘GTimeVal’ is deprecated: Use 'GDateTime' instead [-Wdeprecated-declarations]
+  407 |   GTimeVal cur_time;
+      |   ^~~~~~~~
+/usr/include/glib-2.0/glib/gtypes.h:576:8: note: declared here
+  576 | struct _GTimeVal
+      |        ^~~~~~~~~
+../gst/debugutils/progressreport.c:409:3: warning: ‘g_get_current_time’ is deprecated: Use 'g_get_real_time' instead [-Wdeprecated-declarations]
+  409 |   g_get_current_time (&cur_time);
+      |   ^~~~~~~~~~~~~~~~~~
+/usr/include/glib-2.0/glib/gmain.h:728:8: note: declared here
+  728 | void   g_get_current_time                 (GTimeVal       *result);
+      |        ^~~~~~~~~~~~~~~~~~
+../gst/debugutils/progressreport.c: In function ‘gst_progress_report_start’:
+../gst/debugutils/progressreport.c:437:3: warning: ‘g_get_current_time’ is deprecated: Use 'g_get_real_time' instead [-Wdeprecated-declarations]
+  437 |   g_get_current_time (&filter->last_report);
+      |   ^~~~~~~~~~~~~~~~~~
+/usr/include/glib-2.0/glib/gmain.h:728:8: note: declared here
+  728 | void   g_get_current_time                 (GTimeVal       *result);
+      |        ^~~~~~~~~~~~~~~~~~
+[121/447] Compiling C object gst/flv/libgstflv.so.p/gstflvmux.c.o
+../gst/flv/gstflvmux.c: In function ‘gst_flv_mux_create_metadata’:
+../gst/flv/gstflvmux.c:1086:5: warning: ‘GTimeVal’ is deprecated: Use 'GDateTime' instead [-Wdeprecated-declarations]
+ 1086 |     GTimeVal tv = { 0, };
+      |     ^~~~~~~~
+In file included from /usr/include/glib-2.0/glib/galloca.h:34,
+                 from /usr/include/glib-2.0/glib.h:32,
+                 from /usr/include/gstreamer-1.0/gst/gst.h:27,
+                 from /usr/include/gstreamer-1.0/gst/audio/audio.h:25,
+                 from ../gst/flv/gstflvmux.c:44:
+/usr/include/glib-2.0/glib/gtypes.h:576:8: note: declared here
+  576 | struct _GTimeVal
+      |        ^~~~~~~~~
+../gst/flv/gstflvmux.c:1098:5: warning: ‘g_get_current_time’ is deprecated: Use 'g_get_real_time' instead [-Wdeprecated-declarations]
+ 1098 |     g_get_current_time (&tv);
+      |     ^~~~~~~~~~~~~~~~~~
+In file included from /usr/include/glib-2.0/glib/giochannel.h:35,
+                 from /usr/include/glib-2.0/glib.h:56:
+/usr/include/glib-2.0/glib/gmain.h:728:8: note: declared here
+  728 | void   g_get_current_time                 (GTimeVal       *result);
+      |        ^~~~~~~~~~~~~~~~~~
+[164/447] Compiling C object gst/matroska/libgstmatroska.so.p/ebml-read.c.o
+../gst/matroska/ebml-read.c: In function ‘gst_ebml_read_binary’:
+../gst/matroska/ebml-read.c:666:3: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+  666 |   *binary = g_memdup (data, size);
+      |   ^
+In file included from /usr/include/glib-2.0/glib.h:84,
+                 from /usr/include/gstreamer-1.0/gst/gst.h:27,
+                 from ../gst/matroska/ebml-read.h:25,
+                 from ../gst/matroska/ebml-read.c:28:
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+[166/447] Compiling C object gst/isomp4/libgstisomp4.so.p/atoms.c.o
+../gst/isomp4/atoms.c: In function ‘atoms_get_current_qt_time’:
+../gst/isomp4/atoms.c:81:3: warning: ‘GTimeVal’ is deprecated: Use 'GDateTime' instead [-Wdeprecated-declarations]
+   81 |   GTimeVal timeval;
+      |   ^~~~~~~~
+In file included from /usr/include/glib-2.0/glib/galloca.h:34,
+                 from /usr/include/glib-2.0/glib.h:32,
+                 from ../gst/isomp4/atoms.h:46,
+                 from ../gst/isomp4/atoms.c:44:
+/usr/include/glib-2.0/glib/gtypes.h:576:8: note: declared here
+  576 | struct _GTimeVal
+      |        ^~~~~~~~~
+../gst/isomp4/atoms.c:83:3: warning: ‘g_get_current_time’ is deprecated: Use 'g_get_real_time' instead [-Wdeprecated-declarations]
+   83 |   g_get_current_time (&timeval);
+      |   ^~~~~~~~~~~~~~~~~~
+In file included from /usr/include/glib-2.0/glib/giochannel.h:35,
+                 from /usr/include/glib-2.0/glib.h:56:
+/usr/include/glib-2.0/glib/gmain.h:728:8: note: declared here
+  728 | void   g_get_current_time                 (GTimeVal       *result);
+      |        ^~~~~~~~~~~~~~~~~~
+[172/447] Compiling C object gst/matroska/libgstmatroska.so.p/matroska-ids.c.o
+../gst/matroska/matroska-ids.c: In function ‘gst_matroska_parse_xiph_stream_headers’:
+../gst/matroska/matroska-ids.c:187:5: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+  187 |     hdr = gst_buffer_new_wrapped (g_memdup (p + offset, length[i]), length[i]);
+      |     ^~~
+In file included from /usr/include/glib-2.0/glib.h:84,
+                 from /usr/include/gstreamer-1.0/gst/gst.h:27,
+                 from ../gst/matroska/matroska-ids.h:25,
+                 from ../gst/matroska/matroska-ids.c:27:
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+../gst/matroska/matroska-ids.c: In function ‘gst_matroska_parse_speex_stream_headers’:
+../gst/matroska/matroska-ids.c:226:3: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+  226 |   hdr = gst_buffer_new_wrapped (g_memdup (pdata, 80), 80);
+      |   ^~~
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+../gst/matroska/matroska-ids.c:230:5: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+  230 |     hdr = gst_buffer_new_wrapped (g_memdup (pdata + 80, codec_data_size - 80),
+      |     ^~~
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+../gst/matroska/matroska-ids.c: In function ‘gst_matroska_parse_opus_stream_headers’:
+../gst/matroska/matroska-ids.c:261:7: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+  261 |       gst_buffer_new_wrapped (g_memdup (pdata, codec_data_size),
+      |       ^~~~~~~~~~~~~~~~~~~~~~
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+../gst/matroska/matroska-ids.c: In function ‘gst_matroska_parse_flac_stream_headers’:
+../gst/matroska/matroska-ids.c:292:3: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+  292 |   hdr = gst_buffer_new_wrapped (g_memdup (pdata, 4), 4);
+      |   ^~~
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+../gst/matroska/matroska-ids.c:310:5: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+  310 |     hdr = gst_buffer_new_wrapped (g_memdup (pdata + off, len + 4), len + 4);
+      |     ^~~
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+[173/447] Compiling C object gst/flv/libgstflv.so.p/gstflvdemux.c.o
+In file included from ../gst/flv/gstflvdemux.c:51:
+../gst/flv/gstindex.c: In function ‘gst_index_add_associationv’:
+../gst/flv/gstindex.c:817:3: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+  817 |   entry->data.assoc.assocs = g_memdup (list, sizeof (GstIndexAssociation) * n);
+      |   ^~~~~
+In file included from /usr/include/glib-2.0/glib.h:84,
+                 from /usr/include/gstreamer-1.0/gst/gst.h:27,
+                 from ../gst/flv/gstflvdemux.h:23,
+                 from ../gst/flv/gstflvdemux.c:37:
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+[206/447] Compiling C object gst/matroska/libgstmatroska.so.p/matroska-read-common.c.o
+../gst/matroska/matroska-read-common.c: In function ‘gst_matroska_read_common_parse_attached_file’:
+../gst/matroska/matroska-read-common.c:846:7: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+  846 |       tagbuffer = gst_buffer_new_wrapped (g_memdup (data, datalen), datalen);
+      |       ^~~~~~~~~
+In file included from /usr/include/glib-2.0/glib.h:84,
+                 from /usr/include/gstreamer-1.0/gst/gst.h:27,
+                 from /usr/include/gstreamer-1.0/gst/tag/tag.h:25,
+                 from ../gst/matroska/matroska-read-common.c:40:
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+[239/447] Compiling C object gst/matroska/libgstmatroska.so.p/matroska-mux.c.o
+../gst/matroska/matroska-mux.c: In function ‘gst_matroska_mux_write_colour’:
+../gst/matroska/matroska-mux.c:2546:3: warning: enumeration value ‘GST_VIDEO_TRANSFER_BT2020_10’ not handled in switch [-Wswitch]
+ 2546 |   switch (videocontext->colorimetry.transfer) {
+      |   ^~~~~~
+../gst/matroska/matroska-mux.c:2546:3: warning: enumeration value ‘GST_VIDEO_TRANSFER_SMPTE2084’ not handled in switch [-Wswitch]
+../gst/matroska/matroska-mux.c:2546:3: warning: enumeration value ‘GST_VIDEO_TRANSFER_ARIB_STD_B67’ not handled in switch [-Wswitch]
+../gst/matroska/matroska-mux.c:2546:3: warning: enumeration value ‘GST_VIDEO_TRANSFER_BT601’ not handled in switch [-Wswitch]
+../gst/matroska/matroska-mux.c: In function ‘gst_matroska_mux_start’:
+../gst/matroska/matroska-mux.c:2975:3: warning: ‘GTimeVal’ is deprecated: Use 'GDateTime' instead [-Wdeprecated-declarations]
+ 2975 |   GTimeVal time = { 0, 0 };
+      |   ^~~~~~~~
+In file included from /usr/include/glib-2.0/glib/galloca.h:34,
+                 from /usr/include/glib-2.0/glib.h:32,
+                 from /usr/include/gstreamer-1.0/gst/gst.h:27,
+                 from /usr/include/gstreamer-1.0/gst/audio/audio.h:25,
+                 from ../gst/matroska/matroska-mux.c:53:
+/usr/include/glib-2.0/glib/gtypes.h:576:8: note: declared here
+  576 | struct _GTimeVal
+      |        ^~~~~~~~~
+../gst/matroska/matroska-mux.c:3113:3: warning: ‘g_get_current_time’ is deprecated: Use 'g_get_real_time' instead [-Wdeprecated-declarations]
+ 3113 |   g_get_current_time (&time);
+      |   ^~~~~~~~~~~~~~~~~~
+In file included from /usr/include/glib-2.0/glib/giochannel.h:35,
+                 from /usr/include/glib-2.0/glib.h:56:
+/usr/include/glib-2.0/glib/gmain.h:728:8: note: declared here
+  728 | void   g_get_current_time                 (GTimeVal       *result);
+      |        ^~~~~~~~~~~~~~~~~~
+[253/447] Compiling C object gst/matroska/libgstmatroska.so.p/matroska-demux.c.o
+../gst/matroska/matroska-demux.c: In function ‘gst_matroska_demux_add_mpeg_seq_header’:
+../gst/matroska/matroska-demux.c:3667:5: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+ 3667 |     newbuf = gst_buffer_new_wrapped (g_memdup (seq_header, seq_header_len),
+      |     ^~~~~~
+In file included from /usr/include/glib-2.0/glib.h:84,
+                 from /usr/include/glib-2.0/glib/gprintf.h:23,
+                 from ../gst/matroska/matroska-demux.c:54:
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+../gst/matroska/matroska-demux.c: In function ‘gst_matroska_demux_video_caps’:
+../gst/matroska/matroska-demux.c:6052:13: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+ 6052 |             gst_buffer_new_wrapped (g_memdup ((guint8 *) vids + offset,
+      |             ^~~~~~~~~~~~~~~~~~~~~~
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+../gst/matroska/matroska-demux.c:6135:7: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+ 6135 |       priv = gst_buffer_new_wrapped (g_memdup (data, size), size);
+      |       ^~~~
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+../gst/matroska/matroska-demux.c:6184:7: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+ 6184 |       priv = gst_buffer_new_wrapped (g_memdup (data, size), size);
+      |       ^~~~
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+../gst/matroska/matroska-demux.c:6204:7: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+ 6204 |       priv = gst_buffer_new_wrapped (g_memdup (data, size), size);
+      |       ^~~~
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+../gst/matroska/matroska-demux.c:6244:11: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+ 6244 |           gst_buffer_new_wrapped (g_memdup (data + 0x1a, size - 0x1a),
+      |           ^~~~~~~~~~~~~~~~~~~~~~
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+../gst/matroska/matroska-demux.c:6273:7: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+ 6273 |       priv = gst_buffer_new_wrapped (g_memdup (data, size), size);
+      |       ^~~~
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+../gst/matroska/matroska-demux.c: In function ‘gst_matroska_demux_audio_caps’:
+../gst/matroska/matroska-demux.c:6641:11: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+ 6641 |           gst_buffer_new_wrapped (g_memdup (context->codec_priv,
+      |           ^~~~~~~~~~~~~~~~~~~~~~
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+../gst/matroska/matroska-demux.c:6731:9: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+ 6731 |         priv = gst_buffer_new_wrapped (g_memdup (context->codec_priv,
+      |         ^~~~
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+../gst/matroska/matroska-demux.c:6858:11: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+ 6858 |           priv = gst_buffer_new_wrapped (g_memdup (data + 78, extra_data_size),
+      |           ^~~~
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+../gst/matroska/matroska-demux.c: In function ‘gst_matroska_demux_subtitle_caps’:
+../gst/matroska/matroska-demux.c:6956:5: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+ 6956 |     buf = gst_buffer_new_wrapped (g_memdup (data, size), size);
+      |     ^~~
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+[321/447] Compiling C object gst/isomp4/libgstisomp4.so.p/qtdemux.c.o
+../gst/isomp4/qtdemux.c: In function ‘qtdemux_parse_pssh’:
+../gst/isomp4/qtdemux.c:4052:3: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+ 4052 |   pssh = gst_buffer_new_wrapped (g_memdup (node->data, pssh_size), pssh_size);
+      |   ^~~~
+In file included from /usr/include/glib-2.0/glib.h:84,
+                 from /usr/include/glib-2.0/glib/gprintf.h:23,
+                 from ../gst/isomp4/qtdemux.c:55:
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+../gst/isomp4/qtdemux.c: In function ‘extract_cc_from_data’:
+../gst/isomp4/qtdemux.c:5731:7: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+ 5731 |       res = g_memdup (data + 8, *cclen);
+      |       ^~~
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+../gst/isomp4/qtdemux.c: In function ‘qtdemux_stbl_init’:
+../gst/isomp4/qtdemux.c:9062:3: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+ 9062 |   stream->stts.data = g_memdup (stream->stts.data, stream->stts.size);
+      |   ^~~~~~
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+../gst/isomp4/qtdemux.c:9085:5: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+ 9085 |     stream->stss.data = g_memdup (stream->stss.data, stream->stss.size);
+      |     ^~~~~~
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+../gst/isomp4/qtdemux.c:9103:7: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+ 9103 |       stream->stps.data = g_memdup (stream->stps.data, stream->stps.size);
+      |       ^~~~~~
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+../gst/isomp4/qtdemux.c:9127:3: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+ 9127 |   stream->stsz.data = g_memdup (stream->stsz.data, stream->stsz.size);
+      |   ^~~~~~
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+../gst/isomp4/qtdemux.c:9145:3: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+ 9145 |   stream->stsc.data = g_memdup (stream->stsc.data, stream->stsc.size);
+      |   ^~~~~~
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+../gst/isomp4/qtdemux.c:9172:3: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+ 9172 |   stream->stco.data = g_memdup (stream->stco.data, stream->stco.size);
+      |   ^~~~~~
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+../gst/isomp4/qtdemux.c:9225:5: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+ 9225 |     stream->ctts.data = g_memdup (stream->ctts.data, stream->ctts.size);
+      |     ^~~~~~
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+../gst/isomp4/qtdemux.c: In function ‘qtdemux_parse_trak’:
+../gst/isomp4/qtdemux.c:10754:13: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+10754 |             palette_data = g_memdup (ff_qt_default_palette_2, palette_size);
+      |             ^~~~~~~~~~~~
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+../gst/isomp4/qtdemux.c:10757:13: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+10757 |             palette_data = g_memdup (ff_qt_default_palette_4, palette_size);
+      |             ^~~~~~~~~~~~
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+../gst/isomp4/qtdemux.c:10762:19: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+10762 |                   g_memdup (ff_qt_grayscale_palette_16, palette_size);
+      |                   ^~~~~~~~
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+../gst/isomp4/qtdemux.c:10764:15: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+10764 |               palette_data = g_memdup (ff_qt_default_palette_16, palette_size);
+      |               ^~~~~~~~~~~~
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+../gst/isomp4/qtdemux.c:10769:19: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+10769 |                   g_memdup (ff_qt_grayscale_palette_256, palette_size);
+      |                   ^~~~~~~~
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+../gst/isomp4/qtdemux.c:10771:15: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+10771 |               palette_data = g_memdup (ff_qt_default_palette_256, palette_size);
+      |               ^~~~~~~~~~~~
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+../gst/isomp4/qtdemux.c: In function ‘qtdemux_parse_redirects’:
+../gst/isomp4/qtdemux.c:14073:17: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+14073 |                 g_list_prepend (redirects, g_memdup (&ref, sizeof (ref)));
+      |                 ^~~~~~~~~~~~~~
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+../gst/isomp4/qtdemux.c: In function ‘qtdemux_parse_tree’:
+../gst/isomp4/qtdemux.c:14167:7: warning: ‘GTimeVal’ is deprecated: Use 'GDateTime' instead [-Wdeprecated-declarations]
+14167 |       GTimeVal now;
+      |       ^~~~~~~~
+In file included from /usr/include/glib-2.0/glib/galloca.h:34,
+                 from /usr/include/glib-2.0/glib.h:32:
+/usr/include/glib-2.0/glib/gtypes.h:576:8: note: declared here
+  576 | struct _GTimeVal
+      |        ^~~~~~~~~
+../gst/isomp4/qtdemux.c:14171:7: warning: ‘g_get_current_time’ is deprecated: Use 'g_get_real_time' instead [-Wdeprecated-declarations]
+14171 |       g_get_current_time (&now);
+      |       ^~~~~~~~~~~~~~~~~~
+In file included from /usr/include/glib-2.0/glib/giochannel.h:35,
+                 from /usr/include/glib-2.0/glib.h:56:
+/usr/include/glib-2.0/glib/gmain.h:728:8: note: declared here
+  728 | void   g_get_current_time                 (GTimeVal       *result);
+      |        ^~~~~~~~~~~~~~~~~~
+../gst/isomp4/qtdemux.c: In function ‘parse_xiph_stream_headers’:
+../gst/isomp4/qtdemux.c:14347:5: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+14347 |     hdr = gst_buffer_new_wrapped (g_memdup (p + offset, length[i]), length[i]);
+      |     ^~~
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+[329/447] Compiling C object gst/rtsp/libgstrtsp.so.p/gstrtsp.c.o
+In file included from ../gst/rtsp/gstrtsp.c:51:
+../gst/rtsp/gstrtspsrc.h:236:3: warning: ‘GTimeVal’ is deprecated: Use 'GDateTime' instead [-Wdeprecated-declarations]
+  236 |   GTimeVal          tcp_timeout;
+      |   ^~~~~~~~
+In file included from /usr/include/glib-2.0/glib/galloca.h:34,
+                 from /usr/include/glib-2.0/glib.h:32,
+                 from /usr/include/gstreamer-1.0/gst/gst.h:27,
+                 from ../gst/rtsp/gstrtpdec.h:46,
+                 from ../gst/rtsp/gstrtsp.c:50:
+/usr/include/glib-2.0/glib/gtypes.h:576:8: note: declared here
+  576 | struct _GTimeVal
+      |        ^~~~~~~~~
+../gst/rtsp/gstrtspsrc.h:237:3: warning: ‘GTimeVal’ is deprecated: Use 'GDateTime' instead [-Wdeprecated-declarations]
+  237 |   GTimeVal         *ptcp_timeout;
+      |   ^~~~~~~~
+/usr/include/glib-2.0/glib/gtypes.h:576:8: note: declared here
+  576 | struct _GTimeVal
+      |        ^~~~~~~~~
+[342/447] Compiling C object gst/rtpmanager/libgstrtpmanager.so.p/gstrtpsession.c.o
+../gst/rtpmanager/gstrtpsession.c: In function ‘get_current_times’:
+../gst/rtpmanager/gstrtpsession.c:1064:11: warning: ‘GTimeVal’ is deprecated: Use 'GDateTime' instead [-Wdeprecated-declarations]
+ 1064 |           GTimeVal current;
+      |           ^~~~~~~~
+In file included from /usr/include/glib-2.0/glib/galloca.h:34,
+                 from /usr/include/glib-2.0/glib.h:32,
+                 from /usr/include/gstreamer-1.0/gst/gst.h:27,
+                 from /usr/include/gstreamer-1.0/gst/rtp/gstrtpbuffer.h:27,
+                 from ../gst/rtpmanager/gstrtpsession.c:115:
+/usr/include/glib-2.0/glib/gtypes.h:576:8: note: declared here
+  576 | struct _GTimeVal
+      |        ^~~~~~~~~
+../gst/rtpmanager/gstrtpsession.c:1067:11: warning: ‘g_get_current_time’ is deprecated: Use 'g_get_real_time' instead [-Wdeprecated-declarations]
+ 1067 |           g_get_current_time (&current);
+      |           ^~~~~~~~~~~~~~~~~~
+In file included from /usr/include/glib-2.0/glib/giochannel.h:35,
+                 from /usr/include/glib-2.0/glib.h:56:
+/usr/include/glib-2.0/glib/gmain.h:728:8: note: declared here
+  728 | void   g_get_current_time                 (GTimeVal       *result);
+      |        ^~~~~~~~~~~~~~~~~~
+[349/447] Compiling C object gst/rtpmanager/libgstrtpmanager.so.p/gstrtpbin.c.o
+../gst/rtpmanager/gstrtpbin.c: In function ‘get_current_times’:
+../gst/rtpmanager/gstrtpbin.c:1196:11: warning: ‘GTimeVal’ is deprecated: Use 'GDateTime' instead [-Wdeprecated-declarations]
+ 1196 |           GTimeVal current;
+      |           ^~~~~~~~
+In file included from /usr/include/glib-2.0/glib/galloca.h:34,
+                 from /usr/include/glib-2.0/glib.h:32,
+                 from /usr/include/gstreamer-1.0/gst/gst.h:27,
+                 from /usr/include/gstreamer-1.0/gst/rtp/gstrtpbuffer.h:27,
+                 from ../gst/rtpmanager/gstrtpbin.c:143:
+/usr/include/glib-2.0/glib/gtypes.h:576:8: note: declared here
+  576 | struct _GTimeVal
+      |        ^~~~~~~~~
+../gst/rtpmanager/gstrtpbin.c:1199:11: warning: ‘g_get_current_time’ is deprecated: Use 'g_get_real_time' instead [-Wdeprecated-declarations]
+ 1199 |           g_get_current_time (&current);
+      |           ^~~~~~~~~~~~~~~~~~
+In file included from /usr/include/glib-2.0/glib/giochannel.h:35,
+                 from /usr/include/glib-2.0/glib.h:56:
+/usr/include/glib-2.0/glib/gmain.h:728:8: note: declared here
+  728 | void   g_get_current_time                 (GTimeVal       *result);
+      |        ^~~~~~~~~~~~~~~~~~
+../gst/rtpmanager/gstrtpbin.c: In function ‘new_ssrc_pad_found’:
+../gst/rtpmanager/gstrtpbin.c:3534:3: warning: ‘gst_element_get_request_pad’ is deprecated: Use 'gst_element_request_pad_simple' instead [-Wdeprecated-declarations]
+ 3534 |   sinkpad = gst_element_get_request_pad (stream->buffer, "sink_rtcp");
+      |   ^~~~~~~
+In file included from /usr/include/gstreamer-1.0/gst/gstbin.h:27,
+                 from /usr/include/gstreamer-1.0/gst/gst.h:35:
+/usr/include/gstreamer-1.0/gst/gstelement.h:1042:25: note: declared here
+ 1042 | GstPad*                 gst_element_get_request_pad     (GstElement *element, const gchar *name);
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+../gst/rtpmanager/gstrtpbin.c: In function ‘complete_session_sink’:
+../gst/rtpmanager/gstrtpbin.c:3605:7: warning: ‘gst_element_get_request_pad’ is deprecated: Use 'gst_element_request_pad_simple' instead [-Wdeprecated-declarations]
+ 3605 |       gst_element_get_request_pad (session->session, "recv_rtp_sink");
+      |       ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+/usr/include/gstreamer-1.0/gst/gstelement.h:1042:25: note: declared here
+ 1042 | GstPad*                 gst_element_get_request_pad     (GstElement *element, const gchar *name);
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+../gst/rtpmanager/gstrtpbin.c: In function ‘complete_session_rtcp’:
+../gst/rtpmanager/gstrtpbin.c:3870:7: warning: ‘gst_element_get_request_pad’ is deprecated: Use 'gst_element_request_pad_simple' instead [-Wdeprecated-declarations]
+ 3870 |       gst_element_get_request_pad (session->session, "recv_rtcp_sink");
+      |       ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+/usr/include/gstreamer-1.0/gst/gstelement.h:1042:25: note: declared here
+ 1042 | GstPad*                 gst_element_get_request_pad     (GstElement *element, const gchar *name);
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+../gst/rtpmanager/gstrtpbin.c: In function ‘setup_aux_sender_fold’:
+../gst/rtpmanager/gstrtpbin.c:4147:7: warning: ‘gst_element_get_request_pad’ is deprecated: Use 'gst_element_request_pad_simple' instead [-Wdeprecated-declarations]
+ 4147 |       gst_element_get_request_pad (newsess->session, "send_rtp_sink");
+      |       ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+/usr/include/gstreamer-1.0/gst/gstelement.h:1042:25: note: declared here
+ 1042 | GstPad*                 gst_element_get_request_pad     (GstElement *element, const gchar *name);
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+../gst/rtpmanager/gstrtpbin.c: In function ‘create_send_rtp’:
+../gst/rtpmanager/gstrtpbin.c:4289:9: warning: ‘gst_element_get_request_pad’ is deprecated: Use 'gst_element_request_pad_simple' instead [-Wdeprecated-declarations]
+ 4289 |         gst_element_get_request_pad (session->session, "send_rtp_sink");
+      |         ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+/usr/include/gstreamer-1.0/gst/gstelement.h:1042:25: note: declared here
+ 1042 | GstPad*                 gst_element_get_request_pad     (GstElement *element, const gchar *name);
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+../gst/rtpmanager/gstrtpbin.c: In function ‘create_send_rtcp’:
+../gst/rtpmanager/gstrtpbin.c:4428:7: warning: ‘gst_element_get_request_pad’ is deprecated: Use 'gst_element_request_pad_simple' instead [-Wdeprecated-declarations]
+ 4428 |       gst_element_get_request_pad (session->session, "send_rtcp_src");
+      |       ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+/usr/include/gstreamer-1.0/gst/gstelement.h:1042:25: note: declared here
+ 1042 | GstPad*                 gst_element_get_request_pad     (GstElement *element, const gchar *name);
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+[355/447] Compiling C object gst/udp/libgstudp.so.p/gstmultiudpsink.c.o
+../gst/udp/gstmultiudpsink.c: In function ‘gst_multiudpsink_add_internal’:
+../gst/udp/gstmultiudpsink.c:1590:3: warning: ‘GTimeVal’ is deprecated: Use 'GDateTime' instead [-Wdeprecated-declarations]
+ 1590 |   GTimeVal now;
+      |   ^~~~~~~~
+In file included from /usr/include/glib-2.0/glib/galloca.h:34,
+                 from /usr/include/glib-2.0/glib.h:32,
+                 from /usr/include/gstreamer-1.0/gst/gst.h:27,
+                 from ../gst/udp/gstmultiudpsink.h:23,
+                 from ../gst/udp/gstmultiudpsink.c:35:
+/usr/include/glib-2.0/glib/gtypes.h:576:8: note: declared here
+  576 | struct _GTimeVal
+      |        ^~~~~~~~~
+../gst/udp/gstmultiudpsink.c:1625:5: warning: ‘g_get_current_time’ is deprecated: Use 'g_get_real_time' instead [-Wdeprecated-declarations]
+ 1625 |     g_get_current_time (&now);
+      |     ^~~~~~~~~~~~~~~~~~
+In file included from /usr/include/glib-2.0/glib/giochannel.h:35,
+                 from /usr/include/glib-2.0/glib.h:56:
+/usr/include/glib-2.0/glib/gmain.h:728:8: note: declared here
+  728 | void   g_get_current_time                 (GTimeVal       *result);
+      |        ^~~~~~~~~~~~~~~~~~
+../gst/udp/gstmultiudpsink.c: In function ‘gst_multiudpsink_remove’:
+../gst/udp/gstmultiudpsink.c:1684:3: warning: ‘GTimeVal’ is deprecated: Use 'GDateTime' instead [-Wdeprecated-declarations]
+ 1684 |   GTimeVal now;
+      |   ^~~~~~~~
+/usr/include/glib-2.0/glib/gtypes.h:576:8: note: declared here
+  576 | struct _GTimeVal
+      |        ^~~~~~~~~
+../gst/udp/gstmultiudpsink.c:1721:5: warning: ‘g_get_current_time’ is deprecated: Use 'g_get_real_time' instead [-Wdeprecated-declarations]
+ 1721 |     g_get_current_time (&now);
+      |     ^~~~~~~~~~~~~~~~~~
+/usr/include/glib-2.0/glib/gmain.h:728:8: note: declared here
+  728 | void   g_get_current_time                 (GTimeVal       *result);
+      |        ^~~~~~~~~~~~~~~~~~
+[372/447] Compiling C object gst/rtpmanager/libgstrtpmanager.so.p/gstrtpjitterbuffer.c.o
+../gst/rtpmanager/gstrtpjitterbuffer.c: In function ‘timer_queue_append’:
+../gst/rtpmanager/gstrtpjitterbuffer.c:2118:3: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+ 2118 |   copy = g_memdup (timer, sizeof (*timer));
+      |   ^~~~
+In file included from /usr/include/glib-2.0/glib.h:84,
+                 from /usr/include/gstreamer-1.0/gst/gst.h:27,
+                 from /usr/include/gstreamer-1.0/gst/rtp/gstrtpbuffer.h:27,
+                 from ../gst/rtpmanager/gstrtpjitterbuffer.c:108:
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+[377/447] Compiling C object gst/wavparse/libgstwavparse.so.p/gstwavparse.c.o
+../gst/wavparse/gstwavparse.c: In function ‘gst_wavparse_labl_chunk’:
+../gst/wavparse/gstwavparse.c:837:3: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+  837 |   labl->text = g_memdup (data + 4, size - 4);
+      |   ^~~~
+In file included from /usr/include/glib-2.0/glib.h:84,
+                 from /usr/include/gstreamer-1.0/gst/gst.h:27,
+                 from ../gst/wavparse/gstwavparse.h:26,
+                 from ../gst/wavparse/gstwavparse.c:54:
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+../gst/wavparse/gstwavparse.c: In function ‘gst_wavparse_note_chunk’:
+../gst/wavparse/gstwavparse.c:867:3: warning: ‘g_memdup’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+  867 |   note->text = g_memdup (data + 4, size - 4);
+      |   ^~~~
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+[394/447] Compiling C object sys/v4l2/libgstvideo4linux2.so.p/gstv4l2src.c.o
+../sys/v4l2/gstv4l2src.c: In function ‘gst_v4l2src_create’:
+../sys/v4l2/gstv4l2src.c:883:7: warning: ‘GTimeVal’ is deprecated: Use 'GDateTime' instead [-Wdeprecated-declarations]
+  883 |       GTimeVal now;
+      |       ^~~~~~~~
+In file included from /usr/include/glib-2.0/glib/galloca.h:34,
+                 from /usr/include/glib-2.0/glib.h:32,
+                 from /usr/include/gstreamer-1.0/gst/gst.h:27,
+                 from /usr/include/gstreamer-1.0/gst/video/gstvideometa.h:23,
+                 from ../sys/v4l2/gstv4l2src.c:55:
+/usr/include/glib-2.0/glib/gtypes.h:576:8: note: declared here
+  576 | struct _GTimeVal
+      |        ^~~~~~~~~
+../sys/v4l2/gstv4l2src.c:886:7: warning: ‘g_get_current_time’ is deprecated: Use 'g_get_real_time' instead [-Wdeprecated-declarations]
+  886 |       g_get_current_time (&now);
+      |       ^~~~~~~~~~~~~~~~~~
+In file included from /usr/include/glib-2.0/glib/giochannel.h:35,
+                 from /usr/include/glib-2.0/glib.h:56:
+/usr/include/glib-2.0/glib/gmain.h:728:8: note: declared here
+  728 | void   g_get_current_time                 (GTimeVal       *result);
+      |        ^~~~~~~~~~~~~~~~~~
+[400/447] Compiling C object sys/v4l2/libgstvideo4linux2.so.p/gstv4l2bufferpool.c.o
+../sys/v4l2/gstv4l2bufferpool.c: In function ‘gst_v4l2_buffer_pool_import_userptr’:
+../sys/v4l2/gstv4l2bufferpool.c:239:13: warning: ‘tile_ws’ is deprecated: Use 'tile_info' instead [-Wdeprecated-declarations]
+  239 |             GST_VIDEO_FORMAT_INFO_TILE_WS (finfo);
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/gstreamer-1.0/gst/video/video.h:29,
+                 from ../sys/v4l2/gstv4l2bufferpool.c:38:
+/usr/include/gstreamer-1.0/gst/video/video-format.h:631:37: note: declared here
+  631 |   G_DEPRECATED_FOR(tile_info) guint tile_ws;
+      |                                     ^~~~~~~
+../sys/v4l2/gstv4l2bufferpool.c:242:13: warning: ‘tile_hs’ is deprecated: Use 'tile_info' instead [-Wdeprecated-declarations]
+  242 |             GST_VIDEO_FORMAT_INFO_TILE_HS (finfo);
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/usr/include/gstreamer-1.0/gst/video/video-format.h:632:37: note: declared here
+  632 |   G_DEPRECATED_FOR(tile_info) guint tile_hs;
+      |                                     ^~~~~~~
+[420/447] Compiling C object sys/ximage/libgstximagesrc.so.p/ximageutil.c.o
+In file included from /usr/include/glib-2.0/glib/gthread.h:34,
+                 from /usr/include/glib-2.0/glib/gasyncqueue.h:34,
+                 from /usr/include/glib-2.0/glib.h:34,
+                 from /usr/include/gstreamer-1.0/gst/gst.h:27,
+                 from ../sys/ximage/ximageutil.h:23,
+                 from ../sys/ximage/ximageutil.c:24:
+../sys/ximage/ximageutil.c: In function ‘gst_meta_ximage_api_get_type’:
+/usr/include/glib-2.0/glib/gatomic.h:131:5: warning: argument 2 of ‘__atomic_load’ discards ‘volatile’ qualifier [-Wincompatible-pointer-types]
+  131 |     __atomic_load (gapg_temp_atomic, &gapg_temp_newval, __ATOMIC_SEQ_CST); \
+      |     ^~~~~~~~~~~~~
+/usr/include/glib-2.0/glib/gthread.h:262:7: note: in expansion of macro ‘g_atomic_pointer_get’
+  262 |     (!g_atomic_pointer_get (location) &&                             \
+      |       ^~~~~~~~~~~~~~~~~~~~
+../sys/ximage/ximageutil.c:32:7: note: in expansion of macro ‘g_once_init_enter’
+   32 |   if (g_once_init_enter (&type)) {
+      |       ^~~~~~~~~~~~~~~~~
+[422/447] Compiling C object sys/v4l2/libgstvideo4linux2.so.p/gstv4l2object.c.o
+../sys/v4l2/gstv4l2object.c: In function ‘gst_v4l2_object_set_stride’:
+../sys/v4l2/gstv4l2object.c:2995:5: warning: ‘tile_ws’ is deprecated: Use 'tile_info' instead [-Wdeprecated-declarations]
+ 2995 |     ws = GST_VIDEO_FORMAT_INFO_TILE_WS (finfo);
+      |     ^~
+In file included from /usr/include/gstreamer-1.0/gst/video/video.h:29,
+                 from ../sys/v4l2/gstv4l2object.h:37,
+                 from ../sys/v4l2/gstv4l2object.c:38:
+/usr/include/gstreamer-1.0/gst/video/video-format.h:631:37: note: declared here
+  631 |   G_DEPRECATED_FOR(tile_info) guint tile_ws;
+      |                                     ^~~~~~~
+../sys/v4l2/gstv4l2object.c:2996:5: warning: ‘tile_hs’ is deprecated: Use 'tile_info' instead [-Wdeprecated-declarations]
+ 2996 |     hs = GST_VIDEO_FORMAT_INFO_TILE_HS (finfo);
+      |     ^~
+/usr/include/gstreamer-1.0/gst/video/video-format.h:632:37: note: declared here
+  632 |   G_DEPRECATED_FOR(tile_info) guint tile_hs;
+      |                                     ^~~~~~~
+../sys/v4l2/gstv4l2object.c: In function ‘gst_v4l2_object_save_format’:
+../sys/v4l2/gstv4l2object.c:3091:5: warning: ‘tile_hs’ is deprecated: Use 'tile_info' instead [-Wdeprecated-declarations]
+ 3091 |     hs = GST_VIDEO_FORMAT_INFO_TILE_HS (finfo);
+      |     ^~
+/usr/include/gstreamer-1.0/gst/video/video-format.h:632:37: note: declared here
+  632 |   G_DEPRECATED_FOR(tile_info) guint tile_hs;
+      |                                     ^~~~~~~
+../sys/v4l2/gstv4l2object.c: In function ‘gst_v4l2_object_set_format_full’:
+../sys/v4l2/gstv4l2object.c:3458:13: warning: ‘tile_ws’ is deprecated: Use 'tile_info' instead [-Wdeprecated-declarations]
+ 3458 |             GST_VIDEO_FORMAT_INFO_TILE_WS (info.finfo);
+      |             ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/usr/include/gstreamer-1.0/gst/video/video-format.h:631:37: note: declared here
+  631 |   G_DEPRECATED_FOR(tile_info) guint tile_ws;
+      |                                     ^~~~~~~
+../sys/v4l2/gstv4l2object.c:3477:11: warning: ‘tile_ws’ is deprecated: Use 'tile_info' instead [-Wdeprecated-declarations]
+ 3477 |           GST_VIDEO_FORMAT_INFO_TILE_WS (info.finfo);
+      |           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/usr/include/gstreamer-1.0/gst/video/video-format.h:631:37: note: declared here
+  631 |   G_DEPRECATED_FOR(tile_info) guint tile_ws;
+      |                                     ^~~~~~~
+../sys/v4l2/gstv4l2object.c: In function ‘gst_v4l2_object_try_import’:
+../sys/v4l2/gstv4l2object.c:4714:17: warning: ‘tile_ws’ is deprecated: Use 'tile_info' instead [-Wdeprecated-declarations]
+ 4714 |                 GST_VIDEO_FORMAT_INFO_TILE_WS (obj->info.finfo);
+      |                 ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/usr/include/gstreamer-1.0/gst/video/video-format.h:631:37: note: declared here
+  631 |   G_DEPRECATED_FOR(tile_info) guint tile_ws;
+      |                                     ^~~~~~~
+../sys/v4l2/gstv4l2object.c:4727:15: warning: ‘tile_ws’ is deprecated: Use 'tile_info' instead [-Wdeprecated-declarations]
+ 4727 |               GST_VIDEO_FORMAT_INFO_TILE_WS (obj->info.finfo);
+      |               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/usr/include/gstreamer-1.0/gst/video/video-format.h:631:37: note: declared here
+  631 |   G_DEPRECATED_FOR(tile_info) guint tile_ws;
+      |                                     ^~~~~~~
+[446/447] Compiling C object gst/rtsp/libgstrtsp.so.p/gstrtspsrc.c.o
+In file included from ../gst/rtsp/gstrtspsrc.c:109:
+../gst/rtsp/gstrtspsrc.h:236:3: warning: ‘GTimeVal’ is deprecated: Use 'GDateTime' instead [-Wdeprecated-declarations]
+  236 |   GTimeVal          tcp_timeout;
+      |   ^~~~~~~~
+In file included from /usr/include/glib-2.0/glib/galloca.h:34,
+                 from /usr/include/glib-2.0/glib.h:32,
+                 from /usr/include/gstreamer-1.0/gst/gst.h:27,
+                 from /usr/include/gstreamer-1.0/gst/net/net-prelude.h:25,
+                 from /usr/include/gstreamer-1.0/gst/net/gstnet.h:24,
+                 from ../gst/rtsp/gstrtspsrc.c:102:
+/usr/include/glib-2.0/glib/gtypes.h:576:8: note: declared here
+  576 | struct _GTimeVal
+      |        ^~~~~~~~~
+../gst/rtsp/gstrtspsrc.h:237:3: warning: ‘GTimeVal’ is deprecated: Use 'GDateTime' instead [-Wdeprecated-declarations]
+  237 |   GTimeVal         *ptcp_timeout;
+      |   ^~~~~~~~
+/usr/include/glib-2.0/glib/gtypes.h:576:8: note: declared here
+  576 | struct _GTimeVal
+      |        ^~~~~~~~~
+../gst/rtsp/gstrtspsrc.c:2615:5: warning: ‘GTimeVal’ is deprecated: Use 'GDateTime' instead [-Wdeprecated-declarations]
+ 2615 |     GstRTSPMessage * message, GTimeVal * timeout)
+      |     ^~~~~~~~~~~~~~
+/usr/include/glib-2.0/glib/gtypes.h:576:8: note: declared here
+  576 | struct _GTimeVal
+      |        ^~~~~~~~~
+../gst/rtsp/gstrtspsrc.c:2632:5: warning: ‘GTimeVal’ is deprecated: Use 'GDateTime' instead [-Wdeprecated-declarations]
+ 2632 |     GstRTSPMessage * message, GTimeVal * timeout)
+      |     ^~~~~~~~~~~~~~
+/usr/include/glib-2.0/glib/gtypes.h:576:8: note: declared here
+  576 | struct _GTimeVal
+      |        ^~~~~~~~~
+../gst/rtsp/gstrtspsrc.c: In function ‘request_rtcp_encoder’:
+../gst/rtsp/gstrtspsrc.c:3670:3: warning: ‘gst_element_get_request_pad’ is deprecated: Use 'gst_element_request_pad_simple' instead [-Wdeprecated-declarations]
+ 3670 |   pad = gst_element_get_request_pad (stream->srtpenc, name);
+      |   ^~~
+In file included from /usr/include/gstreamer-1.0/gst/gstbin.h:27,
+                 from /usr/include/gstreamer-1.0/gst/gst.h:35:
+/usr/include/gstreamer-1.0/gst/gstelement.h:1042:25: note: declared here
+ 1042 | GstPad*                 gst_element_get_request_pad     (GstElement *element, const gchar *name);
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+../gst/rtsp/gstrtspsrc.c: In function ‘gst_rtspsrc_stream_configure_manager’:
+../gst/rtsp/gstrtspsrc.c:3937:5: warning: ‘gst_element_get_request_pad’ is deprecated: Use 'gst_element_request_pad_simple' instead [-Wdeprecated-declarations]
+ 3937 |     stream->channelpad[0] = gst_element_get_request_pad (src->manager, name);
+      |     ^~~~~~
+/usr/include/gstreamer-1.0/gst/gstelement.h:1042:25: note: declared here
+ 1042 | GstPad*                 gst_element_get_request_pad     (GstElement *element, const gchar *name);
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+../gst/rtsp/gstrtspsrc.c:3940:5: warning: ‘gst_element_get_request_pad’ is deprecated: Use 'gst_element_request_pad_simple' instead [-Wdeprecated-declarations]
+ 3940 |     stream->channelpad[1] = gst_element_get_request_pad (src->manager, name);
+      |     ^~~~~~
+/usr/include/gstreamer-1.0/gst/gstelement.h:1042:25: note: declared here
+ 1042 | GstPad*                 gst_element_get_request_pad     (GstElement *element, const gchar *name);
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+../gst/rtsp/gstrtspsrc.c: In function ‘gst_rtspsrc_stream_configure_tcp’:
+../gst/rtsp/gstrtspsrc.c:4126:5: warning: ‘gst_element_get_request_pad’ is deprecated: Use 'gst_element_request_pad_simple' instead [-Wdeprecated-declarations]
+ 4126 |     pad = gst_element_get_request_pad (src->manager, name);
+      |     ^~~
+/usr/include/gstreamer-1.0/gst/gstelement.h:1042:25: note: declared here
+ 1042 | GstPad*                 gst_element_get_request_pad     (GstElement *element, const gchar *name);
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+../gst/rtsp/gstrtspsrc.c: In function ‘gst_rtspsrc_stream_configure_udp_sinks’:
+../gst/rtsp/gstrtspsrc.c:4517:5: warning: ‘gst_element_get_request_pad’ is deprecated: Use 'gst_element_request_pad_simple' instead [-Wdeprecated-declarations]
+ 4517 |     pad = gst_element_get_request_pad (src->manager, name);
+      |     ^~~
+/usr/include/gstreamer-1.0/gst/gstelement.h:1042:25: note: declared here
+ 1042 | GstPad*                 gst_element_get_request_pad     (GstElement *element, const gchar *name);
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+../gst/rtsp/gstrtspsrc.c: In function ‘gst_rtspsrc_loop_interleaved’:
+../gst/rtsp/gstrtspsrc.c:5466:3: warning: ‘GTimeVal’ is deprecated: Use 'GDateTime' instead [-Wdeprecated-declarations]
+ 5466 |   GTimeVal tv_timeout;
+      |   ^~~~~~~~
+/usr/include/glib-2.0/glib/gtypes.h:576:8: note: declared here
+  576 | struct _GTimeVal
+      |        ^~~~~~~~~
+../gst/rtsp/gstrtspsrc.c: In function ‘gst_rtspsrc_loop_udp’:
+../gst/rtsp/gstrtspsrc.c:5592:5: warning: ‘GTimeVal’ is deprecated: Use 'GDateTime' instead [-Wdeprecated-declarations]
+ 5592 |     GTimeVal tv_timeout;
+      |     ^~~~~~~~
+/usr/include/glib-2.0/glib/gtypes.h:576:8: note: declared here
+  576 | struct _GTimeVal
+      |        ^~~~~~~~~
+[447/447] Linking target gst/rtsp/libgstrtsp.so
+ninja: Entering directory `build'
+[0/1] Installing files
+Installing gst/alpha/libgstalpha.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/alpha/libgstalphacolor.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/apetag/libgstapetag.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/audiofx/libgstaudiofx.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/audioparsers/libgstaudioparsers.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/auparse/libgstauparse.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/autodetect/libgstautodetect.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/avi/libgstavi.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/cutter/libgstcutter.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/debugutils/libgstnavigationtest.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/debugutils/libgstdebug.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/deinterlace/libgstdeinterlace.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/dtmf/libgstdtmf.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/effectv/libgsteffectv.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/equalizer/libgstequalizer.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/flv/libgstflv.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/flx/libgstflxdec.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/goom/libgstgoom.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/goom2k1/libgstgoom2k1.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/icydemux/libgsticydemux.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/id3demux/libgstid3demux.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/imagefreeze/libgstimagefreeze.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/interleave/libgstinterleave.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/isomp4/libgstisomp4.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/law/libgstalaw.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/law/libgstmulaw.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/level/libgstlevel.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/matroska/libgstmatroska.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/monoscope/libgstmonoscope.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/multifile/libgstmultifile.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/multipart/libgstmultipart.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/replaygain/libgstreplaygain.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/rtp/libgstrtp.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/rtpmanager/libgstrtpmanager.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/rtsp/libgstrtsp.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/shapewipe/libgstshapewipe.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/smpte/libgstsmpte.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/spectrum/libgstspectrum.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/udp/libgstudp.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/videobox/libgstvideobox.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/videocrop/libgstvideocrop.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/videofilter/libgstvideofilter.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/videomixer/libgstvideomixer.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/wavenc/libgstwavenc.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/wavparse/libgstwavparse.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing gst/y4m/libgsty4menc.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing sys/oss/libgstossaudio.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing sys/oss4/libgstoss4.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing sys/v4l2/libgstvideo4linux2.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing sys/ximage/libgstximagesrc.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing ext/cairo/libgstcairo.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing ext/gdk_pixbuf/libgstgdkpixbuf.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing ext/jpeg/libgstjpeg.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing ext/libcaca/libgstcacasink.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing ext/libpng/libgstpng.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing ext/pulse/libgstpulseaudio.so to /usr/local/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/util/gstreamer_build/gst-plugins-good-1.16.3/gst/equalizer/GstIirEqualizer3Bands.prs to /usr/local/share/gstreamer-1.0/presets
+Installing /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/util/gstreamer_build/gst-plugins-good-1.16.3/gst/equalizer/GstIirEqualizer10Bands.prs to /usr/local/share/gstreamer-1.0/presets
+Installing /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/util/gstreamer_build/gst-plugins-good-1.16.3/gst/isomp4/GstQTMux.prs to /usr/local/share/gstreamer-1.0/presets
+🔨 Building GStreamer plugins-bad (version: 1.16.3)...
+✅ gst-plugins-bad v1.22.0 already installed (>= 1.16.3)
+🔨 Building GStreamer libav (version: 1.16.3)...
+ℹ️ Downloading gst-libav 1.16.3 source archive...
+--2025-11-18 15:35:56--  https://gstreamer.freedesktop.org/src/gst-libav/gst-libav-1.16.3.tar.xz
+gstreamer.freedesktop.org (gstreamer.freedesktop.org) 해석 중... 131.252.210.176
+다음으로 연결 중: gstreamer.freedesktop.org (gstreamer.freedesktop.org)|131.252.210.176|:443... 연결했습니다.
+HTTP 요청을 보냈습니다. 응답 기다리는 중... 200 OK
+길이: 9472760 (9.0M) [application/x-xz]
+저장 위치: `gst-libav-1.16.3.tar.xz'
+
+gst-libav-1.16.3.tar.xz        100%[=================================================>]   9.03M  6.60MB/s    /  1.4s    
+
+2025-11-18 15:35:58 (6.60 MB/s) - `gst-libav-1.16.3.tar.xz' 저장함 [9472760/9472760]
+
+🔍 Verifying download integrity...
+ℹ️ Extracting source archive...
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/util/gstreamer_build/gst-libav-1.16.3
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/util/gstreamer_build/gst-libav-1.16.3/build
+Build type: native build
+Project name: gst-libav
+Project version: 1.16.3
+C compiler for the host machine: cc (gcc 12.2.0 "cc (Debian 12.2.0-14) 12.2.0")
+C linker for the host machine: cc ld.bfd 2.40
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency libavfilter found: YES 8.44.100
+Run-time dependency libavformat found: YES 59.27.100
+Run-time dependency libavcodec found: YES 59.37.100
+Run-time dependency libavutil found: YES 57.28.100
+Checking if "libav is provided by FFmpeg" with dependencies libavfilter, libavformat, libavcodec, libavutil compiles: YES 
+Has header "unistd.h" : YES 
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Run-time dependency gstreamer-base-1.0 found: YES 1.22.0
+Run-time dependency gstreamer-video-1.0 found: YES 1.22.0
+Run-time dependency gstreamer-audio-1.0 found: YES 1.22.0
+Run-time dependency gstreamer-pbutils-1.0 found: YES 1.22.0
+Library m found: YES
+Configuring config.h using configuration
+Compiler for C supports arguments -fvisibility=hidden: YES 
+Compiler for C supports link arguments -Wl,--exclude-libs=ALL: YES 
+Compiler for C supports arguments -fno-strict-aliasing: YES 
+Message: GStreamer debug system is enabled
+Compiler for C supports arguments -Wmissing-declarations: YES 
+Compiler for C supports arguments -Wmissing-prototypes: YES 
+Compiler for C supports arguments -Wold-style-definition: YES 
+Compiler for C supports arguments -Wredundant-decls: YES 
+Compiler for C supports arguments -Wundef: YES 
+Compiler for C supports arguments -Wwrite-strings: YES 
+Compiler for C supports arguments -Wformat: YES 
+Compiler for C supports arguments -Wformat-nonliteral: YES 
+Compiler for C supports arguments -Wformat-security: YES 
+Compiler for C supports arguments -Winit-self: YES 
+Compiler for C supports arguments -Wmissing-include-dirs: YES 
+Compiler for C supports arguments -Waddress: YES 
+Compiler for C supports arguments -Wno-multichar: YES 
+Compiler for C supports arguments -Waggregate-return: YES 
+Compiler for C supports arguments -Wdeclaration-after-statement: YES 
+Compiler for C supports arguments -Wvla: YES 
+Compiler for C supports arguments -Wpointer-arith: YES 
+Program python3 found: YES (/usr/bin/python3)
+WARNING: You should add the boolean check kwarg to the run_command call.
+         It currently defaults to false,
+         but it will default to true in meson 2.0.
+         See also: https://github.com/mesonbuild/meson/issues/9300
+Build targets in project: 1
+
+gst-libav 1.16.3
+
+  User defined options
+    prefix: /usr/local
+
+Found ninja-1.11.1 at /usr/bin/ninja
+ninja: Entering directory `build'
+[3/13] Compiling C object ext/libav/libgstlibav.so.p/gstavdemux.c.o
+FAILED: ext/libav/libgstlibav.so.p/gstavdemux.c.o 
+cc -Iext/libav/libgstlibav.so.p -Iext/libav -I../ext/libav -I. -I.. -I/usr/include/aarch64-linux-gnu -I/usr/include/gstreamer-1.0 -I/usr/include/glib-2.0 -I/usr/lib/aarch64-linux-gnu/glib-2.0/include -I/usr/include/rga -I/usr/include/orc-0.4 -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -O2 -g -fvisibility=hidden -fno-strict-aliasing -Wmissing-declarations -Wmissing-prototypes -Wold-style-definition -Wredundant-decls -Wundef -Wwrite-strings -Wformat -Wformat-nonliteral -Wformat-security -Winit-self -Wmissing-include-dirs -Waddress -Wno-multichar -Waggregate-return -Wdeclaration-after-statement -Wvla -Wpointer-arith -fPIC -pthread -DHAVE_CONFIG_H -MD -MQ ext/libav/libgstlibav.so.p/gstavdemux.c.o -MF ext/libav/libgstlibav.so.p/gstavdemux.c.o.d -o ext/libav/libgstlibav.so.p/gstavdemux.c.o -c ../ext/libav/gstavdemux.c
+../ext/libav/gstavdemux.c: In function ‘gst_ffmpegdemux_do_seek’:
+../ext/libav/gstavdemux.c:486:24: error: ‘AVStream’ has no member named ‘index_entries’
+  486 |       fftarget = stream->index_entries[keyframeidx].timestamp;
+      |                        ^~
+[4/13] Compiling C object ext/libav/libgstlibav.so.p/gstavutils.c.o
+../ext/libav/gstavutils.c: In function ‘gst_ffmpeg_get_codecid_longname’:
+../ext/libav/gstavutils.c:42:14: warning: assignment discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   42 |   if ((codec = avcodec_find_decoder (codec_id)) ||
+      |              ^
+../ext/libav/gstavutils.c:43:14: warning: assignment discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+   43 |       (codec = avcodec_find_encoder (codec_id)))
+      |              ^
+[5/13] Compiling C object ext/libav/libgstlibav.so.p/gstavauddec.c.o
+../ext/libav/gstavauddec.c: In function ‘gst_ffmpegauddec_close’:
+../ext/libav/gstavauddec.c:201:9: warning: implicit declaration of function ‘avcodec_get_context_defaults3’ [-Wimplicit-function-declaration]
+  201 |     if (avcodec_get_context_defaults3 (ffmpegdec->context,
+      |         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+../ext/libav/gstavauddec.c: In function ‘settings_changed’:
+../ext/libav/gstavauddec.c:363:3: warning: ‘av_get_channel_layout_nb_channels’ is deprecated [-Wdeprecated-declarations]
+  363 |   gint channels = av_get_channel_layout_nb_channels (frame->channel_layout);
+      |   ^~~~
+In file included from /usr/include/aarch64-linux-gnu/libavutil/frame.h:33,
+                 from /usr/include/aarch64-linux-gnu/libavcodec/avcodec.h:35,
+                 from ../ext/libav/gstavauddec.c:29:
+/usr/include/aarch64-linux-gnu/libavutil/channel_layout.h:449:5: note: declared here
+  449 | int av_get_channel_layout_nb_channels(uint64_t channel_layout);
+      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+../ext/libav/gstavauddec.c:363:3: warning: ‘channel_layout’ is deprecated [-Wdeprecated-declarations]
+  363 |   gint channels = av_get_channel_layout_nb_channels (frame->channel_layout);
+      |   ^~~~
+/usr/include/aarch64-linux-gnu/libavutil/frame.h:510:14: note: declared here
+  510 |     uint64_t channel_layout;
+      |              ^~~~~~~~~~~~~~
+../ext/libav/gstavauddec.c: In function ‘gst_ffmpegauddec_negotiate’:
+../ext/libav/gstavauddec.c:390:3: warning: ‘av_get_channel_layout_nb_channels’ is deprecated [-Wdeprecated-declarations]
+  390 |   channels = av_get_channel_layout_nb_channels (frame->channel_layout);
+      |   ^~~~~~~~
+/usr/include/aarch64-linux-gnu/libavutil/channel_layout.h:449:5: note: declared here
+  449 | int av_get_channel_layout_nb_channels(uint64_t channel_layout);
+      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+../ext/libav/gstavauddec.c:390:3: warning: ‘channel_layout’ is deprecated [-Wdeprecated-declarations]
+  390 |   channels = av_get_channel_layout_nb_channels (frame->channel_layout);
+      |   ^~~~~~~~
+/usr/include/aarch64-linux-gnu/libavutil/frame.h:510:14: note: declared here
+  510 |     uint64_t channel_layout;
+      |              ^~~~~~~~~~~~~~
+../ext/libav/gstavauddec.c:392:5: warning: ‘channels’ is deprecated [-Wdeprecated-declarations]
+  392 |     channels = frame->channels;
+      |     ^~~~~~~~
+/usr/include/aarch64-linux-gnu/libavutil/frame.h:643:9: note: declared here
+  643 |     int channels;
+      |         ^~~~~~~~
+../ext/libav/gstavauddec.c:408:3: warning: ‘channel_layout’ is deprecated [-Wdeprecated-declarations]
+  408 |   gst_ffmpeg_channel_layout_to_gst (frame->channel_layout, channels, pos);
+      |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/usr/include/aarch64-linux-gnu/libavutil/frame.h:510:14: note: declared here
+  510 |     uint64_t channel_layout;
+      |              ^~~~~~~~~~~~~~
+[9/13] Compiling C object ext/libav/libgstlibav.so.p/gstavvidenc.c.o
+../ext/libav/gstavvidenc.c: In function ‘gst_ffmpegvidenc_set_format’:
+../ext/libav/gstavvidenc.c:249:9: warning: implicit declaration of function ‘avcodec_get_context_defaults3’ [-Wimplicit-function-declaration]
+  249 |     if (avcodec_get_context_defaults3 (ffmpegenc->context,
+      |         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+[10/13] Compiling C object ext/libav/libgstlibav.so.p/gstavaudenc.c.o
+../ext/libav/gstavaudenc.c: In function ‘gst_ffmpegaudenc_start’:
+../ext/libav/gstavaudenc.c:196:7: warning: implicit declaration of function ‘avcodec_get_context_defaults3’ [-Wimplicit-function-declaration]
+  196 |   if (avcodec_get_context_defaults3 (ffmpegaudenc->context,
+      |       ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+../ext/libav/gstavaudenc.c: In function ‘gst_ffmpegaudenc_set_format’:
+../ext/libav/gstavaudenc.c:262:3: warning: ‘channel_layout’ is deprecated [-Wdeprecated-declarations]
+  262 |   if (ffmpegaudenc->context->channel_layout) {
+      |   ^~
+In file included from ../ext/libav/gstavaudenc.c:33:
+/usr/include/aarch64-linux-gnu/libavcodec/avcodec.h:1060:14: note: declared here
+ 1060 |     uint64_t channel_layout;
+      |              ^~~~~~~~~~~~~~
+../ext/libav/gstavaudenc.c:263:5: warning: ‘channel_layout’ is deprecated [-Wdeprecated-declarations]
+  263 |     gst_ffmpeg_channel_layout_to_gst (ffmpegaudenc->context->channel_layout,
+      |     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/usr/include/aarch64-linux-gnu/libavcodec/avcodec.h:1060:14: note: declared here
+ 1060 |     uint64_t channel_layout;
+      |              ^~~~~~~~~~~~~~
+../ext/libav/gstavaudenc.c:264:9: warning: ‘channels’ is deprecated [-Wdeprecated-declarations]
+  264 |         ffmpegaudenc->context->channels, ffmpegaudenc->ffmpeg_layout);
+      |         ^~~~~~~~~~~~
+/usr/include/aarch64-linux-gnu/libavcodec/avcodec.h:1006:9: note: declared here
+ 1006 |     int channels;
+      |         ^~~~~~~~
+../ext/libav/gstavaudenc.c:268:13: warning: ‘channels’ is deprecated [-Wdeprecated-declarations]
+  268 |             ffmpegaudenc->context->channels) != 0);
+      |             ^~~~~~~~~~~~
+/usr/include/aarch64-linux-gnu/libavcodec/avcodec.h:1006:9: note: declared here
+ 1006 |     int channels;
+      |         ^~~~~~~~
+../ext/libav/gstavaudenc.c: In function ‘gst_ffmpegaudenc_send_frame’:
+../ext/libav/gstavaudenc.c:444:5: warning: ‘channels’ is deprecated [-Wdeprecated-declarations]
+  444 |     frame->channels = ffmpegaudenc->context->channels;
+      |     ^~~~~
+In file included from /usr/include/aarch64-linux-gnu/libavcodec/avcodec.h:35:
+/usr/include/aarch64-linux-gnu/libavutil/frame.h:643:9: note: declared here
+  643 |     int channels;
+      |         ^~~~~~~~
+../ext/libav/gstavaudenc.c:444:5: warning: ‘channels’ is deprecated [-Wdeprecated-declarations]
+  444 |     frame->channels = ffmpegaudenc->context->channels;
+      |     ^~~~~
+/usr/include/aarch64-linux-gnu/libavcodec/avcodec.h:1006:9: note: declared here
+ 1006 |     int channels;
+      |         ^~~~~~~~
+../ext/libav/gstavaudenc.c:445:5: warning: ‘channel_layout’ is deprecated [-Wdeprecated-declarations]
+  445 |     frame->channel_layout = ffmpegaudenc->context->channel_layout;
+      |     ^~~~~
+/usr/include/aarch64-linux-gnu/libavutil/frame.h:510:14: note: declared here
+  510 |     uint64_t channel_layout;
+      |              ^~~~~~~~~~~~~~
+../ext/libav/gstavaudenc.c:445:5: warning: ‘channel_layout’ is deprecated [-Wdeprecated-declarations]
+  445 |     frame->channel_layout = ffmpegaudenc->context->channel_layout;
+      |     ^~~~~
+/usr/include/aarch64-linux-gnu/libavcodec/avcodec.h:1060:14: note: declared here
+ 1060 |     uint64_t channel_layout;
+      |              ^~~~~~~~~~~~~~
+[11/13] Compiling C object ext/libav/libgstlibav.so.p/gstavviddec.c.o
+../ext/libav/gstavviddec.c: In function ‘gst_ffmpegviddec_close’:
+../ext/libav/gstavviddec.c:335:9: warning: implicit declaration of function ‘avcodec_get_context_defaults3’ [-Wimplicit-function-declaration]
+  335 |     if (avcodec_get_context_defaults3 (ffmpegdec->context,
+      |         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+../ext/libav/gstavviddec.c: In function ‘gst_ffmpegviddec_set_format’:
+../ext/libav/gstavviddec.c:489:3: warning: ‘debug_mv’ is deprecated [-Wdeprecated-declarations]
+  489 |   ffmpegdec->context->debug_mv = ffmpegdec->debug_mv;
+      |   ^~~~~~~~~
+In file included from ../ext/libav/gstavviddec.c:27:
+/usr/include/aarch64-linux-gnu/libavcodec/avcodec.h:1810:9: note: declared here
+ 1810 |     int debug_mv;
+      |         ^~~~~~~~
+In file included from /usr/include/gstreamer-1.0/gst/gst.h:55,
+                 from ../ext/libav/gstav.h:30,
+                 from ../ext/libav/gstavviddec.c:30:
+../ext/libav/gstavviddec.c: In function ‘gst_ffmpegviddec_video_frame’:
+../ext/libav/gstavviddec.c:1617:11: warning: format ‘%d’ expects argument of type ‘int’, but argument 8 has type ‘size_t’ {aka ‘long unsigned int’} [-Wformat=]
+ 1617 |           "Found CC side data of type AV_FRAME_DATA_A53_CC, size %d",
+      |           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ 1618 |           side_data->size);
+      |           ~~~~~~~~~~~~~~~
+      |                    |
+      |                    size_t {aka long unsigned int}
+/usr/include/gstreamer-1.0/gst/gstinfo.h:727:31: note: in definition of macro ‘GST_CAT_LEVEL_LOG’
+  727 |         (GObject *) (object), __VA_ARGS__);                             \
+      |                               ^~~~~~~~~~~
+../ext/libav/gstavviddec.c:1616:7: note: in expansion of macro ‘GST_LOG_OBJECT’
+ 1616 |       GST_LOG_OBJECT (ffmpegdec,
+      |       ^~~~~~~~~~~~~~
+../ext/libav/gstavviddec.c:1617:67: note: format string is defined here
+ 1617 |           "Found CC side data of type AV_FRAME_DATA_A53_CC, size %d",
+      |                                                                  ~^
+      |                                                                   |
+      |                                                                   int
+      |                                                                  %ld
+../ext/libav/gstavviddec.c: In function ‘gst_ffmpegviddec_set_property’:
+../ext/libav/gstavviddec.c:2151:7: warning: ‘debug_mv’ is deprecated [-Wdeprecated-declarations]
+ 2151 |       ffmpegdec->debug_mv = ffmpegdec->context->debug_mv =
+      |       ^~~~~~~~~
+/usr/include/aarch64-linux-gnu/libavcodec/avcodec.h:1810:9: note: declared here
+ 1810 |     int debug_mv;
+      |         ^~~~~~~~
+../ext/libav/gstavviddec.c: In function ‘gst_ffmpegviddec_get_property’:
+../ext/libav/gstavviddec.c:2183:7: warning: ‘debug_mv’ is deprecated [-Wdeprecated-declarations]
+ 2183 |       g_value_set_boolean (value, ffmpegdec->context->debug_mv);
+      |       ^~~~~~~~~~~~~~~~~~~
+/usr/include/aarch64-linux-gnu/libavcodec/avcodec.h:1810:9: note: declared here
+ 1810 |     int debug_mv;
+      |         ^~~~~~~~
+../ext/libav/gstavviddec.c: In function ‘gst_ffmpegvideodec_prepare_dr_pool’:
+../ext/libav/gstavviddec.c:622:3: warning: ‘avcodec_align_dimensions2’ accessing 32 bytes in a region of size 16 [-Wstringop-overflow=]
+  622 |   avcodec_align_dimensions2 (ffmpegdec->context, &width, &height,
+      |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  623 |       linesize_align);
+      |       ~~~~~~~~~~~~~~~
+../ext/libav/gstavviddec.c:622:3: note: referencing argument 4 of type ‘int[8]’
+/usr/include/aarch64-linux-gnu/libavcodec/avcodec.h:2493:6: note: in a call to function ‘avcodec_align_dimensions2’
+ 2493 | void avcodec_align_dimensions2(AVCodecContext *s, int *width, int *height,
+      |      ^~~~~~~~~~~~~~~~~~~~~~~~~
+../ext/libav/gstavviddec.c: In function ‘gst_ffmpegvideodec_prepare_dr_pool.constprop’:
+../ext/libav/gstavviddec.c:622:3: warning: ‘avcodec_align_dimensions2’ accessing 32 bytes in a region of size 16 [-Wstringop-overflow=]
+  622 |   avcodec_align_dimensions2 (ffmpegdec->context, &width, &height,
+      |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  623 |       linesize_align);
+      |       ~~~~~~~~~~~~~~~
+../ext/libav/gstavviddec.c:622:3: note: referencing argument 4 of type ‘int[8]’
+/usr/include/aarch64-linux-gnu/libavcodec/avcodec.h:2493:6: note: in a call to function ‘avcodec_align_dimensions2’
+ 2493 | void avcodec_align_dimensions2(AVCodecContext *s, int *width, int *height,
+      |      ^~~~~~~~~~~~~~~~~~~~~~~~~
+../ext/libav/gstavviddec.c:622:3: warning: ‘avcodec_align_dimensions2’ accessing 32 bytes in a region of size 16 [-Wstringop-overflow=]
+  622 |   avcodec_align_dimensions2 (ffmpegdec->context, &width, &height,
+      |   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  623 |       linesize_align);
+      |       ~~~~~~~~~~~~~~~
+../ext/libav/gstavviddec.c:622:3: note: referencing argument 4 of type ‘int[8]’
+/usr/include/aarch64-linux-gnu/libavcodec/avcodec.h:2493:6: note: in a call to function ‘avcodec_align_dimensions2’
+ 2493 | void avcodec_align_dimensions2(AVCodecContext *s, int *width, int *height,
+      |      ^~~~~~~~~~~~~~~~~~~~~~~~~
+[12/13] Compiling C object ext/libav/libgstlibav.so.p/gstavcodecmap.c.o
+../ext/libav/gstavcodecmap.c: In function ‘gst_ff_aud_caps_new’:
+../ext/libav/gstavcodecmap.c:573:3: warning: ‘channels’ is deprecated [-Wdeprecated-declarations]
+  573 |   if (context != NULL && context->channels != -1) {
+      |   ^~
+In file included from ../ext/libav/gstavcodecmap.c:29:
+/usr/include/aarch64-linux-gnu/libavcodec/avcodec.h:1006:9: note: declared here
+ 1006 |     int channels;
+      |         ^~~~~~~~
+../ext/libav/gstavcodecmap.c:579:9: warning: ‘channels’ is deprecated [-Wdeprecated-declarations]
+  579 |         "channels", G_TYPE_INT, context->channels, NULL);
+      |         ^~~~~~~~~~
+/usr/include/aarch64-linux-gnu/libavcodec/avcodec.h:1006:9: note: declared here
+ 1006 |     int channels;
+      |         ^~~~~~~~
+../ext/libav/gstavcodecmap.c:581:5: warning: ‘channels’ is deprecated [-Wdeprecated-declarations]
+  581 |     if (context->channels > 1 &&
+      |     ^~
+/usr/include/aarch64-linux-gnu/libavcodec/avcodec.h:1006:9: note: declared here
+ 1006 |     int channels;
+      |         ^~~~~~~~
+../ext/libav/gstavcodecmap.c:582:9: warning: ‘channel_layout’ is deprecated [-Wdeprecated-declarations]
+  582 |         gst_ffmpeg_channel_layout_to_gst (context->channel_layout,
+      |         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/usr/include/aarch64-linux-gnu/libavcodec/avcodec.h:1060:14: note: declared here
+ 1060 |     uint64_t channel_layout;
+      |              ^~~~~~~~~~~~~~
+../ext/libav/gstavcodecmap.c:583:13: warning: ‘channels’ is deprecated [-Wdeprecated-declarations]
+  583 |             context->channels, pos) &&
+      |             ^~~~~~~
+/usr/include/aarch64-linux-gnu/libavcodec/avcodec.h:1006:9: note: declared here
+ 1006 |     int channels;
+      |         ^~~~~~~~
+../ext/libav/gstavcodecmap.c:584:9: warning: ‘channels’ is deprecated [-Wdeprecated-declarations]
+  584 |         gst_audio_channel_positions_to_mask (pos, context->channels, FALSE,
+      |         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/usr/include/aarch64-linux-gnu/libavcodec/avcodec.h:1006:9: note: declared here
+ 1006 |     int channels;
+      |         ^~~~~~~~
+../ext/libav/gstavcodecmap.c:679:5: warning: ‘channel_layouts’ is deprecated [-Wdeprecated-declarations]
+  679 |     if (codec && codec->channel_layouts) {
+      |     ^~
+In file included from /usr/include/aarch64-linux-gnu/libavcodec/avcodec.h:40:
+/usr/include/aarch64-linux-gnu/libavcodec/codec.h:226:21: note: declared here
+  226 |     const uint64_t *channel_layouts;         ///< array of support channel layouts, or NULL if unknown. array is terminated by 0
+      |                     ^~~~~~~~~~~~~~~
+../ext/libav/gstavcodecmap.c:680:7: warning: ‘channel_layouts’ is deprecated [-Wdeprecated-declarations]
+  680 |       const uint64_t *layouts = codec->channel_layouts;
+      |       ^~~~~
+/usr/include/aarch64-linux-gnu/libavcodec/codec.h:226:21: note: declared here
+  226 |     const uint64_t *channel_layouts;         ///< array of support channel layouts, or NULL if unknown. array is terminated by 0
+      |                     ^~~~~~~~~~~~~~~
+../ext/libav/gstavcodecmap.c: In function ‘gst_ffmpeg_codecid_to_caps’:
+../ext/libav/gstavcodecmap.c:2300:16: warning: assignment discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+ 2300 |     if ((codec = avcodec_find_decoder (codec_id)) ||
+      |                ^
+../ext/libav/gstavcodecmap.c:2301:16: warning: assignment discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+ 2301 |         (codec = avcodec_find_encoder (codec_id))) {
+      |                ^
+../ext/libav/gstavcodecmap.c: In function ‘gst_ffmpeg_caps_to_smpfmt’:
+../ext/libav/gstavcodecmap.c:2545:3: warning: ‘channels’ is deprecated [-Wdeprecated-declarations]
+ 2545 |   gst_structure_get_int (structure, "channels", &context->channels);
+      |   ^~~~~~~~~~~~~~~~~~~~~
+/usr/include/aarch64-linux-gnu/libavcodec/avcodec.h:1006:9: note: declared here
+ 1006 |     int channels;
+      |         ^~~~~~~~
+../ext/libav/gstavcodecmap.c: In function ‘gst_ffmpeg_audioinfo_to_context’:
+../ext/libav/gstavcodecmap.c:3023:3: warning: ‘channels’ is deprecated [-Wdeprecated-declarations]
+ 3023 |   context->channels = info->channels;
+      |   ^~~~~~~
+/usr/include/aarch64-linux-gnu/libavcodec/avcodec.h:1006:9: note: declared here
+ 1006 |     int channels;
+      |         ^~~~~~~~
+../ext/libav/gstavcodecmap.c:3025:3: warning: ‘channel_layout’ is deprecated [-Wdeprecated-declarations]
+ 3025 |   context->channel_layout =
+      |   ^~~~~~~
+/usr/include/aarch64-linux-gnu/libavcodec/avcodec.h:1060:14: note: declared here
+ 1060 |     uint64_t channel_layout;
+      |              ^~~~~~~~~~~~~~
+../ext/libav/gstavcodecmap.c: In function ‘gst_ffmpeg_caps_with_codecid’:
+../ext/libav/gstavcodecmap.c:3461:11: warning: ‘channels’ is deprecated [-Wdeprecated-declarations]
+ 3461 |           context->channels = 1;
+      |           ^~~~~~~
+/usr/include/aarch64-linux-gnu/libavcodec/avcodec.h:1006:9: note: declared here
+ 1006 |     int channels;
+      |         ^~~~~~~~
+../ext/libav/gstavcodecmap.c:3491:7: warning: ‘channels’ is deprecated [-Wdeprecated-declarations]
+ 3491 |       context->channels = 1;
+      |       ^~~~~~~
+/usr/include/aarch64-linux-gnu/libavcodec/avcodec.h:1006:9: note: declared here
+ 1006 |     int channels;
+      |         ^~~~~~~~
+../ext/libav/gstavcodecmap.c: In function ‘gst_ffmpeg_caps_to_codecid’:
+../ext/libav/gstavcodecmap.c:4344:18: warning: assignment discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+ 4344 |       if ((codec = avcodec_find_decoder_by_name (ext)) ||
+      |                  ^
+../ext/libav/gstavcodecmap.c:4345:18: warning: assignment discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+ 4345 |           (codec = avcodec_find_encoder_by_name (ext))) {
+      |                  ^
+../ext/libav/gstavcodecmap.c:4356:18: warning: assignment discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+ 4356 |       if ((codec = avcodec_find_decoder_by_name (ext)) ||
+      |                  ^
+../ext/libav/gstavcodecmap.c:4357:18: warning: assignment discards ‘const’ qualifier from pointer target type [-Wdiscarded-qualifiers]
+ 4357 |           (codec = avcodec_find_encoder_by_name (ext))) {
+      |                  ^
+ninja: build stopped: subcommand failed.
+ninja: Entering directory `build'
+[1/3] Compiling C object ext/libav/libgstlibav.so.p/gstavdemux.c.o
+FAILED: ext/libav/libgstlibav.so.p/gstavdemux.c.o 
+cc -Iext/libav/libgstlibav.so.p -Iext/libav -I../ext/libav -I. -I.. -I/usr/include/aarch64-linux-gnu -I/usr/include/gstreamer-1.0 -I/usr/include/glib-2.0 -I/usr/lib/aarch64-linux-gnu/glib-2.0/include -I/usr/include/rga -I/usr/include/orc-0.4 -fdiagnostics-color=always -D_FILE_OFFSET_BITS=64 -Wall -Winvalid-pch -O2 -g -fvisibility=hidden -fno-strict-aliasing -Wmissing-declarations -Wmissing-prototypes -Wold-style-definition -Wredundant-decls -Wundef -Wwrite-strings -Wformat -Wformat-nonliteral -Wformat-security -Winit-self -Wmissing-include-dirs -Waddress -Wno-multichar -Waggregate-return -Wdeclaration-after-statement -Wvla -Wpointer-arith -fPIC -pthread -DHAVE_CONFIG_H -MD -MQ ext/libav/libgstlibav.so.p/gstavdemux.c.o -MF ext/libav/libgstlibav.so.p/gstavdemux.c.o.d -o ext/libav/libgstlibav.so.p/gstavdemux.c.o -c ../ext/libav/gstavdemux.c
+../ext/libav/gstavdemux.c: In function ‘gst_ffmpegdemux_do_seek’:
+../ext/libav/gstavdemux.c:486:24: error: ‘AVStream’ has no member named ‘index_entries’
+  486 |       fftarget = stream->index_entries[keyframeidx].timestamp;
+      |                        ^~
+ninja: build stopped: subcommand failed.
+✅ GStreamer source build completed!
+✅ GStreamer 1.22.0 ready
+👁️  Step 5/7: OpenCV Library
+🔍 Checking OpenCV installation...
+✅ OpenCV v4.6.0 meets requirement (>= 4.2.0)
+🔗 Step 6/7: Communication Libraries
+ℹ️ 🔗 Setting up communication libraries...
+🔍 Checking libeigen3-dev (Mathematical computation library)...
+✅ libeigen3-dev: v3.4.0-4
+🔍 Checking libjson-glib-dev (JSON handling library for GLib)...
+✅ libjson-glib-dev: v1.6.6-1
+🔍 Checking librdkafka-dev (Apache Kafka C/C++ library)...
+✅ librdkafka-dev: v2.0.2-1
+🔍 Checking libmosquitto-dev (MQTT client library)...
+✅ libmosquitto-dev: v2.0.11-1.2+deb12u2
+✅ All communication libraries are already installed.
+🔍 Checking mosquitto pkg-config...
+✅ libmosquitto pkg-config found (version: 2.0.11)
+✅ Communication libraries setup completed!
+📺 Step 7/7: libyuv Library
+🔍 Checking libyuv installation...
+✅ libyuv libraries already present.
+✅ All DX-Stream dependencies installed successfully!
+
+✅ DX-Stream installation completed successfully!
+Using GStreamer plugin directory: /usr/lib/aarch64-linux-gnu/gstreamer-1.0
+Starting clean process...
+Warn:  not found. So, skip to remove file.
+Warn: /usr/local/lib/libgstdxstream.so not found. So, skip to remove file.
+Warn: /usr/lib/aarch64-linux-gnu/gstreamer-1.0/libgstdxstream.so not found. So, skip to remove file.
+Warn: /usr/lib/aarch64-linux-gnu/gstreamer-1.0/libgstdxstream.so not found. So, skip to remove file.
+Warn: /usr/lib/aarch64-linux-gnu/gstreamer-1.0/libgstdxstream.so not found. So, skip to remove file.
+clean completed.
+Starting build process... build_type(release)
+Directory already configured.
+
+Just run your build command (e.g. ninja) and Meson will regenerate as necessary.
+Run "meson setup --reconfigure" to force Meson to regenerate.
+
+If build failures persist, run "meson setup --wipe" to rebuild from scratch
+using the same options as passed when configuring the build.
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/gst-dxstream-plugin/builddir
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/gst-dxstream-plugin/builddir'
+[1/23] Compiling C++ object src/libgstdxstream.so.p/.._metadata_gst-dxmeta.cpp.o
+../metadata/gst-dxmeta.cpp: In function ‘void dx_add_payload_to_buffer(GstBuffer*, DxMsgPayload*)’:
+../metadata/gst-dxmeta.cpp:54:33: warning: ‘void* g_memdup(gconstpointer, guint)’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+   54 |     msgPayload->_data = g_memdup(payload->_data, payload->_size);
+      |                         ~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/glib-2.0/glib.h:84,
+                 from ../metadata/gst-dxframemeta.hpp:5,
+                 from ../metadata/gst-dxmeta.hpp:4,
+                 from ../metadata/gst-dxmeta.cpp:1:
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+[16/23] Compiling C++ object src/libgstdxstream.so.p/.._metadata_gst-dxmsgmeta.cpp.o
+../metadata/gst-dxmsgmeta.cpp: In function ‘gboolean gst_dxmsg_meta_transform(GstBuffer*, GstMeta*, GstBuffer*, GQuark, gpointer)’:
+../metadata/gst-dxmsgmeta.cpp:66:38: warning: ‘void* g_memdup(gconstpointer, guint)’ is deprecated: Use 'g_memdup2' instead [-Wdeprecated-declarations]
+   66 |         dst_payload->_data = g_memdup(src_payload->_data, src_payload->_size);
+      |                              ~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /usr/include/glib-2.0/glib.h:84,
+                 from /usr/include/gstreamer-1.0/gst/gst.h:27,
+                 from ../metadata/gst-dxmsgmeta.hpp:4,
+                 from ../metadata/gst-dxmsgmeta.cpp:1:
+/usr/include/glib-2.0/glib/gstrfuncs.h:259:23: note: declared here
+  259 | gpointer              g_memdup         (gconstpointer mem,
+      |                       ^~~~~~~~
+[23/23] Linking target src/libgstdxstream.so
+Install DX-Stream to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/gst-dxstream-plugin/builddir'
+ninja: no work to do.
+Installing src/libgstdxstream.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/gstreamer-1.0
+Installing /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/gst-dxstream-plugin/general/dxcommon.hpp to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/include/dx_stream
+Installing /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/gst-dxstream-plugin/metadata/gst-dxmeta.hpp to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/include/dx_stream
+Installing /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/gst-dxstream-plugin/metadata/gst-dxframemeta.hpp to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/include/dx_stream
+Installing /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/gst-dxstream-plugin/metadata/gst-dxobjectmeta.hpp to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/include/dx_stream
+Installing /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/gst-dxstream-plugin/metadata/gst-dxmsgmeta.hpp to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/include/dx_stream
+Installing /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/gst-dxstream-plugin/src/utils/libyuv_transform/libyuv_transform.hpp to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/include/dx_stream
+Using build type: release
+SONAR_MODE_ARG() is set
+Processing directory: ./postprocess_library/CLIP/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/CLIP
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/CLIP/build
+Build type: native build
+Project name: postprocess_clip
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_clip 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/CLIP/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/CLIP/build'
+[2/2] Linking target libpostprocess_clip.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/CLIP/build'
+ninja: no work to do.
+Installing libpostprocess_clip.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/Classification/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/Classification
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/Classification/build
+Build type: native build
+Project name: postprocess_classification
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_classification 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/Classification/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/Classification/build'
+[2/2] Linking target libpostprocess_classification.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/Classification/build'
+ninja: no work to do.
+Installing libpostprocess_classification.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/DeepLabV3PlusMobileNetV2_2/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/DeepLabV3PlusMobileNetV2_2
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/DeepLabV3PlusMobileNetV2_2/build
+Build type: native build
+Project name: postprocess_deeplabv3plusmobilenetv2_2
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_deeplabv3plusmobilenetv2_2 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/DeepLabV3PlusMobileNetV2_2/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/DeepLabV3PlusMobileNetV2_2/build'
+[2/2] Linking target libpostprocess_deeplabv3plusmobilenetv2_2.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/DeepLabV3PlusMobileNetV2_2/build'
+ninja: no work to do.
+Installing libpostprocess_deeplabv3plusmobilenetv2_2.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/PPU/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/PPU
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/PPU/build
+Build type: native build
+Project name: postprocess_ppu
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_ppu 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/PPU/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/PPU/build'
+[2/2] Linking target libpostprocess_ppu.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/PPU/build'
+ninja: no work to do.
+Installing libpostprocess_ppu.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/Re-Identification/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/Re-Identification
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/Re-Identification/build
+Build type: native build
+Project name: postprocess_reid
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_reid 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/Re-Identification/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/Re-Identification/build'
+[2/2] Linking target libpostprocess_reid.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/Re-Identification/build'
+ninja: no work to do.
+Installing libpostprocess_reid.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/SCRFD/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/SCRFD
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/SCRFD/build
+Build type: native build
+Project name: postprocess_scrfd
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_scrfd 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/SCRFD/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/SCRFD/build'
+[2/2] Linking target libpostprocess_scrfd.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/SCRFD/build'
+ninja: no work to do.
+Installing libpostprocess_scrfd.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/YOLOV3_1/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV3_1
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV3_1/build
+Build type: native build
+Project name: postprocess_yolov3_1
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_yolov3_1 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV3_1/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV3_1/build'
+[1/2] Compiling C++ object libpostprocess_yolov3_1.so.p/postprocess.cpp.o
+../postprocess.cpp: In function ‘std::vector<BoundingBox> parse_multi_output(const std::vector<dxs::_DXTensor>&, const YoloConfig&)’:
+../postprocess.cpp:267:39: warning: comparison of integer expressions of different signedness: ‘int’ and ‘std::vector<std::__cxx11::basic_string<char> >::size_type’ {aka ‘long unsigned int’} [-Wsign-compare]
+  267 |     for (int layer_idx = 0; layer_idx < tensor_names.size(); layer_idx++) {
+      |                             ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~
+[2/2] Linking target libpostprocess_yolov3_1.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV3_1/build'
+ninja: no work to do.
+Installing libpostprocess_yolov3_1.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/YOLOV4_3/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV4_3
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV4_3/build
+Build type: native build
+Project name: postprocess_yolov4_3
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_yolov4_3 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV4_3/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV4_3/build'
+[2/2] Linking target libpostprocess_yolov4_3.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV4_3/build'
+ninja: no work to do.
+Installing libpostprocess_yolov4_3.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/YOLOV5Pose640_1/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5Pose640_1
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5Pose640_1/build
+Build type: native build
+Project name: postprocess_yolo_pose
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_yolo_pose 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5Pose640_1/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5Pose640_1/build'
+[2/2] Linking target libpostprocess_yolo_pose.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5Pose640_1/build'
+ninja: no work to do.
+Installing libpostprocess_yolo_pose.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/YOLOV5S_1/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_1
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_1/build
+Build type: native build
+Project name: postprocess_yolov5s_1
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_yolov5s_1 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_1/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_1/build'
+[1/2] Compiling C++ object libpostprocess_yolov5s_1.so.p/postprocess.cpp.o
+../postprocess.cpp: In function ‘std::vector<BoundingBox> parse_multi_output(const std::vector<dxs::_DXTensor>&, const YoloConfig&)’:
+../postprocess.cpp:271:39: warning: comparison of integer expressions of different signedness: ‘int’ and ‘std::vector<std::__cxx11::basic_string<char> >::size_type’ {aka ‘long unsigned int’} [-Wsign-compare]
+  271 |     for (int layer_idx = 0; layer_idx < tensor_names.size(); layer_idx++) {
+      |                             ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~
+[2/2] Linking target libpostprocess_yolov5s_1.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_1/build'
+ninja: no work to do.
+Installing libpostprocess_yolov5s_1.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/YOLOV5S_3/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_3
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_3/build
+Build type: native build
+Project name: postprocess_yolov5s_3
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_yolov5s_3 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_3/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_3/build'
+[1/2] Compiling C++ object libpostprocess_yolov5s_3.so.p/postprocess.cpp.o
+../postprocess.cpp: In function ‘std::vector<BoundingBox> parse_multi_output(const std::vector<dxs::_DXTensor>&, const YoloConfig&)’:
+../postprocess.cpp:271:39: warning: comparison of integer expressions of different signedness: ‘int’ and ‘std::vector<std::__cxx11::basic_string<char> >::size_type’ {aka ‘long unsigned int’} [-Wsign-compare]
+  271 |     for (int layer_idx = 0; layer_idx < tensor_names.size(); layer_idx++) {
+      |                             ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~
+[2/2] Linking target libpostprocess_yolov5s_3.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_3/build'
+ninja: no work to do.
+Installing libpostprocess_yolov5s_3.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/YOLOV5S_4/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_4
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_4/build
+Build type: native build
+Project name: postprocess_yolov5s_4
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_yolov5s_4 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_4/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_4/build'
+[1/2] Compiling C++ object libpostprocess_yolov5s_4.so.p/postprocess.cpp.o
+../postprocess.cpp: In function ‘std::vector<BoundingBox> parse_multi_output(const std::vector<dxs::_DXTensor>&, const YoloConfig&)’:
+../postprocess.cpp:267:39: warning: comparison of integer expressions of different signedness: ‘int’ and ‘std::vector<std::__cxx11::basic_string<char> >::size_type’ {aka ‘long unsigned int’} [-Wsign-compare]
+  267 |     for (int layer_idx = 0; layer_idx < tensor_names.size(); layer_idx++) {
+      |                             ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~
+[2/2] Linking target libpostprocess_yolov5s_4.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_4/build'
+ninja: no work to do.
+Installing libpostprocess_yolov5s_4.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/YOLOV5S_6/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_6
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_6/build
+Build type: native build
+Project name: postprocess_yolov5s_6
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_yolov5s_6 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_6/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_6/build'
+[1/2] Compiling C++ object libpostprocess_yolov5s_6.so.p/postprocess.cpp.o
+../postprocess.cpp: In function ‘std::vector<BoundingBox> parse_multi_output(const std::vector<dxs::_DXTensor>&, const YoloConfig&)’:
+../postprocess.cpp:267:39: warning: comparison of integer expressions of different signedness: ‘int’ and ‘std::vector<std::__cxx11::basic_string<char> >::size_type’ {aka ‘long unsigned int’} [-Wsign-compare]
+  267 |     for (int layer_idx = 0; layer_idx < tensor_names.size(); layer_idx++) {
+      |                             ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~
+[2/2] Linking target libpostprocess_yolov5s_6.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_6/build'
+ninja: no work to do.
+Installing libpostprocess_yolov5s_6.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/YOLOV5S_Face-1/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_Face-1
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_Face-1/build
+Build type: native build
+Project name: postprocess_yolo_face
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_yolo_face 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_Face-1/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_Face-1/build'
+[2/2] Linking target libpostprocess_yolo_face.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5S_Face-1/build'
+ninja: no work to do.
+Installing libpostprocess_yolo_face.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/YOLOV5X_2/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5X_2
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5X_2/build
+Build type: native build
+Project name: postprocess_yolov5x_2
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_yolov5x_2 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5X_2/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5X_2/build'
+[1/2] Compiling C++ object libpostprocess_yolov5x_2.so.p/postprocess.cpp.o
+../postprocess.cpp: In function ‘std::vector<BoundingBox> parse_multi_output(const std::vector<dxs::_DXTensor>&, const YoloConfig&)’:
+../postprocess.cpp:267:39: warning: comparison of integer expressions of different signedness: ‘int’ and ‘std::vector<std::__cxx11::basic_string<char> >::size_type’ {aka ‘long unsigned int’} [-Wsign-compare]
+  267 |     for (int layer_idx = 0; layer_idx < tensor_names.size(); layer_idx++) {
+      |                             ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~
+[2/2] Linking target libpostprocess_yolov5x_2.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOV5X_2/build'
+ninja: no work to do.
+Installing libpostprocess_yolov5x_2.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/YOLOX-S_1/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOX-S_1
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOX-S_1/build
+Build type: native build
+Project name: postprocess_yoloxs_1
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_yoloxs_1 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOX-S_1/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOX-S_1/build'
+[2/2] Linking target libpostprocess_yoloxs_1.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOX-S_1/build'
+ninja: no work to do.
+Installing libpostprocess_yoloxs_1.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/YOLO_ALL/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLO_ALL
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLO_ALL/build
+Build type: native build
+Project name: postprocess_yolo
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_yolo 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLO_ALL/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLO_ALL/build'
+[2/2] Linking target libpostprocess_yolo.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLO_ALL/build'
+ninja: no work to do.
+Installing libpostprocess_yolo.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/YOLOv7_512/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOv7_512
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOv7_512/build
+Build type: native build
+Project name: postprocess_yolov7_512
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_yolov7_512 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOv7_512/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOv7_512/build'
+[1/2] Compiling C++ object libpostprocess_yolov7_512.so.p/postprocess.cpp.o
+../postprocess.cpp: In function ‘std::vector<BoundingBox> parse_multi_output(const std::vector<dxs::_DXTensor>&, const YoloConfig&)’:
+../postprocess.cpp:270:39: warning: comparison of integer expressions of different signedness: ‘int’ and ‘std::vector<std::__cxx11::basic_string<char> >::size_type’ {aka ‘long unsigned int’} [-Wsign-compare]
+  270 |     for (int layer_idx = 0; layer_idx < tensor_names.size(); layer_idx++) {
+      |                             ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~
+[2/2] Linking target libpostprocess_yolov7_512.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YOLOv7_512/build'
+ninja: no work to do.
+Installing libpostprocess_yolov7_512.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/YoloV7/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YoloV7
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YoloV7/build
+Build type: native build
+Project name: postprocess_yolov7
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_yolov7 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YoloV7/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YoloV7/build'
+[1/2] Compiling C++ object libpostprocess_yolov7.so.p/postprocess.cpp.o
+../postprocess.cpp: In function ‘std::vector<BoundingBox> parse_multi_output(const std::vector<dxs::_DXTensor>&, const YoloConfig&)’:
+../postprocess.cpp:271:39: warning: comparison of integer expressions of different signedness: ‘int’ and ‘std::vector<std::__cxx11::basic_string<char> >::size_type’ {aka ‘long unsigned int’} [-Wsign-compare]
+  271 |     for (int layer_idx = 0; layer_idx < tensor_names.size(); layer_idx++) {
+      |                             ~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~
+[2/2] Linking target libpostprocess_yolov7.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YoloV7/build'
+ninja: no work to do.
+Installing libpostprocess_yolov7.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/YoloV8N/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YoloV8N
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YoloV8N/build
+Build type: native build
+Project name: postprocess_yolov8n
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_yolov8n 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YoloV8N/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YoloV8N/build'
+[2/2] Linking target libpostprocess_yolov8n.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YoloV8N/build'
+ninja: no work to do.
+Installing libpostprocess_yolov8n.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./postprocess_library/YoloV9S/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YoloV9S
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YoloV9S/build
+Build type: native build
+Project name: postprocess_yolov9s
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+postprocess_yolov9s 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YoloV9S/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YoloV9S/build'
+[2/2] Linking target libpostprocess_yolov9s.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/postprocess_library/YoloV9S/build'
+ninja: no work to do.
+Installing libpostprocess_yolov9s.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/postprocess
+Processing directory: ./message_convert_library/dx_msgconvl/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/message_convert_library/dx_msgconvl
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/message_convert_library/dx_msgconvl/build
+Build type: native build
+Project name: dx_stream_dx_msgconvl
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency opencv4 found: YES 4.6.0
+Run-time dependency json-glib-1.0 found: YES 1.6.6
+Run-time dependency gstreamer-1.0 found: YES 1.22.0
+Build targets in project: 1
+
+dx_stream_dx_msgconvl 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/message_convert_library/dx_msgconvl/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/message_convert_library/dx_msgconvl/build'
+[2/3] Compiling C++ object libdx_msgconvl.so.p/dx_msgconvl_priv.cpp.o
+../dx_msgconvl_priv.cpp: In function ‘gchar* dxpayload_convert_to_json(DxMsgContext*, GstDxMsgMetaInfo*)’:
+../dx_msgconvl_priv.cpp:189:23: warning: unused variable ‘contextPriv’ [-Wunused-variable]
+  189 |     DxMsgContextPriv *contextPriv = (DxMsgContextPriv *)context->_priv_data;
+      |                       ^~~~~~~~~~~
+[3/3] Linking target libdx_msgconvl.so
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/custom_library/message_convert_library/dx_msgconvl/build'
+ninja: no work to do.
+Installing libdx_msgconvl.so to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/lib/msgcomvert
+Using build type: release
+Processing directory: ./kafka/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/kafka
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/kafka/build
+Build type: native build
+Project name: kafka_consume_example
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency rdkafka found: YES 2.0.2
+Run-time dependency json-glib-1.0 found: YES 1.6.6
+Build targets in project: 1
+
+kafka_consume_example 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/kafka/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/kafka/build'
+[2/2] Linking target kafka_consume_example
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/kafka/build'
+ninja: no work to do.
+Installing kafka_consume_example to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/bin
+Installing /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/kafka/kafka_consume_example.py to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/bin
+Processing directory: ./mqtt/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/mqtt
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/mqtt/build
+Build type: native build
+Project name: mqtt_sub_example
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency libmosquitto found: YES 2.0.11
+Run-time dependency json-glib-1.0 found: YES 1.6.6
+Build targets in project: 1
+
+mqtt_sub_example 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/mqtt/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/mqtt/build'
+[2/2] Linking target mqtt_sub_example
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/mqtt/build'
+ninja: no work to do.
+Installing mqtt_sub_example to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/bin
+Installing /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/mqtt/mqtt_sub_example.py to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/bin
+./build.sh: 행 169번: cd: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/test/test_plugin: 그런 파일이나 디렉터리가 없습니다
+Using build type: release
+Processing directory: ./kafka/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/kafka
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/kafka/build
+Build type: native build
+Project name: kafka_consume_example
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency rdkafka found: YES 2.0.2
+Run-time dependency json-glib-1.0 found: YES 1.6.6
+Build targets in project: 1
+
+kafka_consume_example 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/kafka/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/kafka/build'
+[2/2] Linking target kafka_consume_example
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/kafka/build'
+ninja: no work to do.
+Installing kafka_consume_example to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/bin
+Installing /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/kafka/kafka_consume_example.py to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/bin
+Processing directory: ./mqtt/
+The Meson build system
+Version: 1.9.1
+Source dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/mqtt
+Build dir: /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/mqtt/build
+Build type: native build
+Project name: mqtt_sub_example
+Project version: 1.0.0
+C++ compiler for the host machine: c++ (gcc 12.2.0 "c++ (Debian 12.2.0-14) 12.2.0")
+C++ linker for the host machine: c++ ld.bfd 2.40
+Host machine cpu family: aarch64
+Host machine cpu: aarch64
+Found pkg-config: YES (/usr/bin/pkg-config) 1.8.1
+Run-time dependency libmosquitto found: YES 2.0.11
+Run-time dependency json-glib-1.0 found: YES 1.6.6
+Build targets in project: 1
+
+mqtt_sub_example 1.0.0
+
+  User defined options
+    buildtype: release
+    prefix   : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install
+
+Found ninja-1.11.1 at /usr/bin/ninja
+INFO: autodetecting backend as ninja
+INFO: calculating backend command to run: /usr/bin/ninja -C /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/mqtt/build
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/mqtt/build'
+[2/2] Linking target mqtt_sub_example
+ninja: Entering directory `/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/mqtt/build'
+ninja: no work to do.
+Installing mqtt_sub_example to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/bin
+Installing /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/dx_stream/apps/mqtt/mqtt_sub_example.py to /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_stream/install/bin
+Build completed.
+Installing libgstdxstream.so to /usr/lib/aarch64-linux-gnu/gstreamer-1.0
+Installing header files to /usr/local/include/dx_stream
+Installing PostProcess models to /usr/share/dx-stream/lib
+Installing MsgComvert models to /usr/share/dx-stream/lib
+Installing dx_stream applications to /usr/share/dx-stream/bin
+/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime
+[SUCCESS] Installing dx_stream completed. 
+--- sanity check... ---
+/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_rt /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime
+Attempting to run the DeepX SDK sanity check...
+---
+============================================================================
+==== Sanity Check Date : 2025. 11. 18. (화) 15:38:53 KST ====
+Log file location : /media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime/dx_rt/dx_report/sanity/result/sanity_check_result_20251118_153853.log
+
+==== PCI Link-up Check ====
+[OK] Vendor ID 1ff4 is present in the PCI devices.(num=1)
+==== Device File Check ====
+[OK] /dev/dxrt0 exists.
+[OK] /dev/dxrt0 is a character device.
+[OK] /dev/dxrt0 has correct permissions (0666).
+==== Kernel Module Check ====
+[OK] dxrt_driver module is loaded.
+[OK] dx_dma module is loaded.
+[OK] PCIe 01:00.0 driver probe is success.
+==== Legacy Driver Installed Check ====
+[INFO] /lib/modules/6.1.43-rockchip-rk3588/kernel/drivers/dxrt_driver.ko ... NONE
+[INFO] /lib/modules/6.1.43-rockchip-rk3588/kernel/drivers/dx_dma.ko ... NONE
+==== DKMS Driver Installed Check ====
+[INFO] dxrt-driver-dkms/1.8.0-2, 6.1.43-rockchip-rk3588, aarch64: installed
+[INFO] /lib/modules/6.1.43-rockchip-rk3588/updates/dkms/dxrt_driver.ko ... OK
+[INFO] /lib/modules/6.1.43-rockchip-rk3588/updates/dkms/dx_dma.ko ... OK
+==== Runtime Version Dependency Check ====
+[OK] Version Dependency Check
+   Runtime Framework Version: 3.0.0
+   Device Driver Version: v1.8.0
+   PCIe Driver Version: v1.5.1
+   Firmware Version: device-id=0 v2.1.4
+   ONNX Runtime Version: v1.20.1
+==== Runtime Executable File Check ====
+[OK] Executable File Check
+   Runtime Framework Version: 3.0.0
+   Device Driver Version: v1.8.0
+   PCIe Driver Version: v1.5.1
+   Firmware Version: device-id=0 v2.1.4
+   ONNX Runtime Version: v1.20.1
+   dxrt-cli ...OK
+   run_model ...OK
+   parse_model ...OK
+   dxtop ...OK
+   dxrtd ...OK
+   Header: /usr/local/include/dxrt ...OK
+==== Runtime dxrtd Service Check ====
+[OK] The dxrtd service is running correctly. This is the expected behavior for builds with USE_SERVICE=ON on cmake/dxrt.cfg.cmake
+
+============================================================================
+** Sanity check PASSED!
+============================================================================
+/media/orangepi/home/orangepi/github/dx-all-suite/dx-runtime
+---
+[INFO] Sanity Check Result: 
+ ✅ PASS: All sanity checks passed successfully. 
+[INFO] [OK] Installing dx_stream 
+

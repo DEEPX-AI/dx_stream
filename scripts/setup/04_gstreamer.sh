@@ -192,8 +192,14 @@ build_gstreamer_core() {
         -Dexamples=disabled \
         -Dintrospection=disabled
     
-    ninja -C build
-    sudo ninja -C build install
+    if ! ninja -C build; then
+        print_message "error" "Failed to build gstreamer core"
+        return 1
+    fi
+    if ! sudo ninja -C build install; then
+        print_message "error" "Failed to install gstreamer core"
+        return 1
+    fi
     cd ..
     
     rm -f "gstreamer-${version}.tar.xz"
@@ -236,8 +242,14 @@ build_gst_plugins_base() {
         -Dtests=disabled \
         -Dgl=disabled
     
-    ninja -C build
-    sudo ninja -C build install
+    if ! ninja -C build; then
+        print_message "error" "Failed to build gst-plugins-base"
+        return 1
+    fi
+    if ! sudo ninja -C build install; then
+        print_message "error" "Failed to install gst-plugins-base"
+        return 1
+    fi
     cd ..
     
     rm -f "gst-plugins-base-${version}.tar.xz"
@@ -283,8 +295,14 @@ build_gst_plugins_good() {
         -Dqt5=disabled \
         -Dgtk3=disabled
     
-    ninja -C build
-    sudo ninja -C build install
+    if ! ninja -C build; then
+        print_message "error" "Failed to build gst-plugins-good"
+        return 1
+    fi
+    if ! sudo ninja -C build install; then
+        print_message "error" "Failed to install gst-plugins-good"
+        return 1
+    fi
     cd ..
     
     rm -f "gst-plugins-good-${version}.tar.xz"
@@ -328,8 +346,14 @@ build_gst_plugins_bad() {
         -Dopencv=disabled \
         -Dvdpau=disabled
     
-    ninja -C build
-    sudo ninja -C build install
+    if ! ninja -C build; then
+        print_message "error" "Failed to build gst-plugins-bad"
+        return 1
+    fi
+    if ! sudo ninja -C build install; then
+        print_message "error" "Failed to install gst-plugins-bad"
+        return 1
+    fi
     cd ..
     
     rm -f "gst-plugins-bad-${version}.tar.xz"
@@ -368,8 +392,14 @@ build_gst_libav() {
     
     meson setup build --prefix=/usr/local
     
-    ninja -C build
-    sudo ninja -C build install
+    if ! ninja -C build; then
+        print_message "error" "Failed to build gst-libav"
+        return 1
+    fi
+    if ! sudo ninja -C build install; then
+        print_message "error" "Failed to install gst-libav"
+        return 1
+    fi
     cd ..
     
     rm -f "gst-libav-${version}.tar.xz"
@@ -403,11 +433,26 @@ install_gstreamer_from_source() {
     mkdir -p "$build_dir"
     
     # Build each component with the same version
-    build_gstreamer_core "$target_version" "$build_dir"
-    build_gst_plugins_base "$target_version" "$build_dir"
-    build_gst_plugins_good "$target_version" "$build_dir"
-    build_gst_plugins_bad "$target_version" "$build_dir"
-    build_gst_libav "$target_version" "$build_dir"
+    if ! build_gstreamer_core "$target_version" "$build_dir"; then
+        rm -rf "$build_dir"
+        return 1
+    fi
+    if ! build_gst_plugins_base "$target_version" "$build_dir"; then
+        rm -rf "$build_dir"
+        return 1
+    fi
+    if ! build_gst_plugins_good "$target_version" "$build_dir"; then
+        rm -rf "$build_dir"
+        return 1
+    fi
+    if ! build_gst_plugins_bad "$target_version" "$build_dir"; then
+        rm -rf "$build_dir"
+        return 1
+    fi
+    if ! build_gst_libav "$target_version" "$build_dir"; then
+        rm -rf "$build_dir"
+        return 1
+    fi
     
     # Cleanup
     rm -rf "$build_dir"
@@ -706,7 +751,71 @@ install_gstreamer_smart() {
         return 0
     fi
     
-    # Validate available APT versions before attempting installation
+    # Check if GStreamer core is already installed with sufficient version
+    local core_installed=false
+    local core_version=""
+    
+    if pkg-config --exists gstreamer-1.0 2>/dev/null; then
+        core_version=$(pkg-config --modversion gstreamer-1.0)
+        if [ "$(printf '%s\n%s' "$MIN_GSTREAMER_VERSION" "$core_version" | sort -V | head -n1)" = "$MIN_GSTREAMER_VERSION" ]; then
+            core_installed=true
+            print_message "info" "GStreamer core v$core_version already installed (>= $MIN_GSTREAMER_VERSION)"
+        fi
+    fi
+    
+    # If core GStreamer is already installed with sufficient version, only install missing plugins via APT
+    if [ "$core_installed" = true ]; then
+        print_message "info" "Using existing GStreamer $core_version installation. Installing missing plugins via APT..."
+        
+        # For libav plugin, try APT installation regardless of version check failure
+        local libav_missing=false
+        for pkg in "${unique_packages[@]}"; do
+            if [[ "$pkg" == "gstreamer1.0-libav" ]]; then
+                libav_missing=true
+                break
+            fi
+        done
+        
+        if [ "$libav_missing" = true ]; then
+            print_message "install" "Attempting to install gstreamer1.0-libav via APT..."
+            if sudo apt-get install -y gstreamer1.0-libav 2>&1; then
+                print_message "success" "gstreamer1.0-libav installed successfully"
+                # Remove from unique_packages array
+                unique_packages=($(printf '%s\n' "${unique_packages[@]}" | grep -v "gstreamer1.0-libav"))
+            else
+                print_message "warning" "gstreamer1.0-libav APT installation failed. Will try source build."
+            fi
+        fi
+        
+        # Install remaining packages via APT (skip version validation)
+        if [ ${#unique_packages[@]} -gt 0 ]; then
+            print_message "install" "Installing remaining packages: ${unique_packages[*]}"
+            sudo apt-get install -y "${unique_packages[@]}" 2>&1 | grep -v "Note, selecting"
+        fi
+        
+        # Verify libav plugin
+        if command -v gst-inspect-1.0 >/dev/null 2>&1; then
+            if gst-inspect-1.0 libav >/dev/null 2>&1; then
+                print_message "success" "GStreamer libav plugin verified successfully"
+                return 0
+            else
+                print_message "warning" "GStreamer libav plugin not available after APT installation"
+                print_message "info" "Building gst-libav from source to match GStreamer $core_version..."
+                
+                # Build only gst-libav from source with matching version
+                local build_dir="$DX_SRC_DIR/util/gstreamer_build"
+                mkdir -p "$build_dir"
+                install_build_dependencies
+                build_gst_libav "$core_version" "$build_dir"
+                rm -rf "$build_dir"
+                return $?
+            fi
+        fi
+        
+        return 0
+    fi
+    
+    # If core GStreamer is not installed, validate APT versions before full installation
     local apt_version_ok=true
     for pkg in "${unique_packages[@]}"; do
         if ! ensure_apt_version_satisfied "$pkg"; then
