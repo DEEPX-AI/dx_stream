@@ -1,4 +1,9 @@
 #!/bin/bash
+
+# Force English locale for consistent command output parsing
+export LC_ALL=C
+export LANG=C
+
 # DX-Stream Dependencies Installation Script
 # Modularized setup using individual component scripts in scripts/setup/
 

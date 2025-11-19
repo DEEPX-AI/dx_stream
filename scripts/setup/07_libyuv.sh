@@ -3,6 +3,10 @@
 # libyuv library setup for DX-Stream
 # This script handles libyuv installation with smart detection and multiple installation methods
 
+# Force English locale for consistent command output parsing
+export LC_ALL=C
+export LANG=C
+
 # Source common utilities
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/00_common.sh"
@@ -16,9 +20,22 @@ build_libyuv_from_source() {
     if [ ! -d "libyuv" ]; then
         print_message "info" "Cloning libyuv repository..."
         git clone -b main https://chromium.googlesource.com/libyuv/libyuv libyuv
+    else
+        print_message "info" "libyuv repository already exists, updating..."
+        cd libyuv
+        git fetch origin
+        git reset --hard origin/main
+        cd ..
     fi
     
     cd libyuv
+    
+    # Clean up old build directory to avoid CMake cache issues
+    if [ -d "build" ]; then
+        print_message "info" "Removing old build directory to avoid CMake cache conflicts..."
+        rm -rf build
+    fi
+    
     mkdir -p build && cd build
     
     print_message "build" "Configuring and building libyuv..."
@@ -26,10 +43,25 @@ build_libyuv_from_source() {
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_EXE_LINKER_FLAGS="-pthread" \
         -DCMAKE_C_FLAGS="-pthread" \
-        -DCMAKE_CXX_FLAGS="-pthread" | cat
+        -DCMAKE_CXX_FLAGS="-pthread" 2>&1 | grep -v "^--"
+    
+    if [ ${PIPESTATUS[0]} -ne 0 ]; then
+        print_message "error" "CMake configuration failed"
+        return 1
+    fi
     
     make -j"$(nproc)"
+    if [ $? -ne 0 ]; then
+        print_message "error" "libyuv build failed"
+        return 1
+    fi
+    
     sudo make install
+    if [ $? -ne 0 ]; then
+        print_message "error" "libyuv installation failed"
+        return 1
+    fi
+    
     sudo ldconfig
     
     print_message "search" "Verifying libyuv installation..."
@@ -37,12 +69,14 @@ build_libyuv_from_source() {
         print_message "success" "libyuv successfully installed!"
     else
         print_message "error" "libyuv installation verification failed."
-        exit 1
+        return 1
     fi
     
-    # Clean up
-    cd "$build_dir"
-    rm -rf libyuv
+    # Clean up build directory but keep source
+    cd "$build_dir/libyuv"
+    rm -rf build
+    
+    return 0
 }
 
 # Install libyuv packages for aarch64
