@@ -3,6 +3,10 @@
 # OpenCV setup for DX-Stream
 # This script handles OpenCV installation with smart version checking and source build fallback
 
+# Force English locale for consistent command output parsing
+export LC_ALL=C
+export LANG=C
+
 # Source common utilities
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/00_common.sh"
@@ -221,7 +225,7 @@ setup_opencv() {
     
     # Check APT availability
     print_message "search" "Checking APT OpenCV availability..."
-    local apt_version=$(apt-cache policy libopencv-dev 2>/dev/null | awk '/Candidate:/ {print $2}' | cut -d'-' -f1)
+    local apt_version=$(apt-cache policy libopencv-dev 2>/dev/null | awk '/Candidate:/ {print $2}' | cut -d'+' -f1 | cut -d'-' -f1)
     
     if [ -n "$apt_version" ] && [ "$apt_version" != "(none)" ]; then
         # Compare versions

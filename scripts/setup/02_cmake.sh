@@ -3,6 +3,10 @@
 # CMake setup for DX-Stream
 # This script handles CMake installation with version checking and smart source building
 
+# Force English locale for consistent command output parsing
+export LC_ALL=C
+export LANG=C
+
 # Source common utilities
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/00_common.sh"

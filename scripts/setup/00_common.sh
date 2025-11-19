@@ -3,6 +3,10 @@
 # Common utility functions for DX-Stream setup scripts
 # This file should be sourced by all setup scripts
 
+# Force English locale for consistent command output parsing
+export LC_ALL=C
+export LANG=C
+
 # Color definitions
 RED='\033[0;31m'
 GREEN='\033[0;32m'
