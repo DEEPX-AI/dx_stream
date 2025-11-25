@@ -320,7 +320,7 @@ extern "C" void YOLOV5S_PPU(GstBuffer *buf,
 
     YoloConfig config;
 
-    config.input_size = 320;
+    config.input_size = 512;
 
     std::vector<BoundingBox> all_boxes;
 
