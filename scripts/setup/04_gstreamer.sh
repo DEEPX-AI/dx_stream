@@ -36,7 +36,7 @@ install_ffmpeg_from_source() {
 
     print_message "info" "Downloading FFmpeg ${ffmpeg_version} source..."
     rm -f "ffmpeg-${ffmpeg_version}.tar.bz2"*
-    if ! wget --tries=1 --timeout=30 --connect-timeout=10 "https://ffmpeg.org/releases/ffmpeg-${ffmpeg_version}.tar.bz2"; then
+    if ! wget "https://ffmpeg.org/releases/ffmpeg-${ffmpeg_version}.tar.bz2"; then
         print_message "error" "Failed to download FFmpeg (connection timeout or network error). Exiting."
         exit 1
     fi
@@ -240,11 +240,28 @@ build_gst_plugins_base() {
     tar -xf "gst-plugins-base-${version}.tar.xz"
     cd "gst-plugins-base-${version}"
     
-    meson setup build --prefix=/usr/local \
+    # Meson build options with fallback for version compatibility
+    local meson_opts="--prefix=/usr/local"
+    
+    if meson setup build $meson_opts \
         -Dintrospection=disabled \
         -Dexamples=disabled \
         -Dtests=disabled \
-        -Dgl=disabled
+        -Dgl=disabled 2>/dev/null; then
+        print_message "success" "Meson setup succeeded with all options"
+    else
+        print_message "warning" "Some meson options not supported, trying fallback..."
+        rm -rf build
+        if ! meson setup build $meson_opts \
+            -Dtests=disabled 2>/dev/null; then
+            rm -rf build
+            if ! meson setup build $meson_opts; then
+                print_message "error" "Meson setup failed"
+                return 1
+            fi
+        fi
+        print_message "success" "Meson setup succeeded with fallback options"
+    fi
     
     if ! ninja -C build; then
         print_message "error" "Failed to build gst-plugins-base"
@@ -290,14 +307,37 @@ build_gst_plugins_good() {
     tar -xf "gst-plugins-good-${version}.tar.xz"
     cd "gst-plugins-good-${version}"
     
-    meson setup build --prefix=/usr/local \
+    # Meson build options - use only universally supported options
+    # Note: -Dexamples option was renamed/removed in different GStreamer versions
+    local meson_opts="--prefix=/usr/local"
+    
+    # Try to use modern options first, fallback if they fail
+    if meson setup build $meson_opts \
         -Dexamples=disabled \
         -Dtests=disabled \
         -Djpeg=enabled \
         -Dpng=enabled \
         -Dvpx=disabled \
         -Dqt5=disabled \
-        -Dgtk3=disabled
+        -Dgtk3=disabled 2>/dev/null; then
+        print_message "success" "Meson setup succeeded with all options"
+    else
+        print_message "warning" "Some meson options not supported, trying fallback..."
+        # Fallback: use only essential options that work across all versions
+        rm -rf build
+        if ! meson setup build $meson_opts \
+            -Dtests=disabled \
+            -Djpeg=enabled \
+            -Dpng=enabled 2>/dev/null; then
+            # Last resort: minimal options
+            rm -rf build
+            if ! meson setup build $meson_opts; then
+                print_message "error" "Meson setup failed"
+                return 1
+            fi
+        fi
+        print_message "success" "Meson setup succeeded with fallback options"
+    fi
     
     if ! ninja -C build; then
         print_message "error" "Failed to build gst-plugins-good"
@@ -343,12 +383,29 @@ build_gst_plugins_bad() {
     tar -xf "gst-plugins-bad-${version}.tar.xz"
     cd "gst-plugins-bad-${version}"
     
-    meson setup build --prefix=/usr/local \
+    # Meson build options with fallback for version compatibility
+    local meson_opts="--prefix=/usr/local"
+    
+    if meson setup build $meson_opts \
         -Dintrospection=disabled \
         -Dexamples=disabled \
         -Dtests=disabled \
         -Dopencv=disabled \
-        -Dvdpau=disabled
+        -Dvdpau=disabled 2>/dev/null; then
+        print_message "success" "Meson setup succeeded with all options"
+    else
+        print_message "warning" "Some meson options not supported, trying fallback..."
+        rm -rf build
+        if ! meson setup build $meson_opts \
+            -Dtests=disabled 2>/dev/null; then
+            rm -rf build
+            if ! meson setup build $meson_opts; then
+                print_message "error" "Meson setup failed"
+                return 1
+            fi
+        fi
+        print_message "success" "Meson setup succeeded with fallback options"
+    fi
     
     if ! ninja -C build; then
         print_message "error" "Failed to build gst-plugins-bad"
@@ -471,13 +528,24 @@ install_gstreamer_from_source() {
     
     print_message "build" "GStreamer source build initiated"
     
-    # Detect if core is already installed via APT and get its version
+    # Always use minimum required version for consistency and compatibility
+    # If APT-installed GStreamer exists, it will be upgraded to meet requirements
     if pkg-config --exists gstreamer-1.0 2>/dev/null; then
         local core_version
         core_version=$(pkg-config --modversion gstreamer-1.0)
-        if dpkg -l | grep -q "^ii.*libgstreamer1.0-0"; then
-            print_message "info" "Detected APT-installed GStreamer core v$core_version"
-            target_version="$core_version"
+        print_message "info" "Detected existing GStreamer core v$core_version"
+        
+        # Compare versions and ensure we use at least MIN_GSTREAMER_VERSION
+        if dpkg --compare-versions "$core_version" lt "$MIN_GSTREAMER_VERSION" 2>/dev/null; then
+            print_message "warning" "Existing GStreamer v$core_version is below minimum requirement ($MIN_GSTREAMER_VERSION)"
+            print_message "info" "Will build GStreamer $MIN_GSTREAMER_VERSION to meet requirements"
+        else
+            print_message "info" "Existing version meets minimum requirement"
+            # Use the higher version between installed and minimum
+            if dpkg --compare-versions "$core_version" gt "$MIN_GSTREAMER_VERSION" 2>/dev/null; then
+                target_version="$core_version"
+                print_message "info" "Using existing version $core_version for consistency"
+            fi
         fi
     fi
     
