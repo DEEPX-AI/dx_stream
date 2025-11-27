@@ -85,7 +85,7 @@ build_opencv_from_source() {
     # Download OpenCV source
     print_message "info" "Downloading OpenCV ${version} source..."
     if [ ! -f "opencv-${version}.zip" ]; then
-        if ! wget --tries=1 --timeout=30 --connect-timeout=10 -O "opencv-${version}.zip" "https://github.com/opencv/opencv/archive/${version}.zip"; then
+        if ! wget -O "opencv-${version}.zip" "https://github.com/opencv/opencv/archive/${version}.zip"; then
             print_message "error" "Failed to download OpenCV. Exiting."
             exit 1
         fi
@@ -99,7 +99,7 @@ build_opencv_from_source() {
     fi
     
     if [ ! -f "opencv_contrib-${version}.zip" ]; then
-        if ! wget --tries=1 --timeout=30 --connect-timeout=10 -O "opencv_contrib-${version}.zip" "https://github.com/opencv/opencv_contrib/archive/${version}.zip"; then
+        if ! wget -O "opencv_contrib-${version}.zip" "https://github.com/opencv/opencv_contrib/archive/${version}.zip"; then
             print_message "error" "Failed to download OpenCV contrib. Exiting."
             exit 1
         fi
