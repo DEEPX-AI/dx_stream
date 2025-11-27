@@ -175,7 +175,7 @@ build_gstreamer_core() {
     
     cd "$build_dir"
     print_message "info" "Downloading gstreamer ${version} source archive..."
-    if ! wget --tries=1 --timeout=30 --connect-timeout=10 "https://gstreamer.freedesktop.org/src/gstreamer/gstreamer-${version}.tar.xz"; then
+    if ! wget "https://gstreamer.freedesktop.org/src/gstreamer/gstreamer-${version}.tar.xz"; then
         print_message "error" "Failed to download gstreamer. Exiting."
         exit 1
     fi
@@ -224,7 +224,7 @@ build_gst_plugins_base() {
     
     cd "$build_dir"
     print_message "info" "Downloading gst-plugins-base ${version} source archive..."
-    if ! wget --tries=1 --timeout=30 --connect-timeout=10 "https://gstreamer.freedesktop.org/src/gst-plugins-base/gst-plugins-base-${version}.tar.xz"; then
+    if ! wget "https://gstreamer.freedesktop.org/src/gst-plugins-base/gst-plugins-base-${version}.tar.xz"; then
         print_message "error" "Failed to download gst-plugins-base. Exiting."
         exit 1
     fi
@@ -291,7 +291,7 @@ build_gst_plugins_good() {
     
     cd "$build_dir"
     print_message "info" "Downloading gst-plugins-good ${version} source archive..."
-    if ! wget --tries=1 --timeout=30 --connect-timeout=10 "https://gstreamer.freedesktop.org/src/gst-plugins-good/gst-plugins-good-${version}.tar.xz"; then
+    if ! wget "https://gstreamer.freedesktop.org/src/gst-plugins-good/gst-plugins-good-${version}.tar.xz"; then
         print_message "error" "Failed to download gst-plugins-good. Exiting."
         exit 1
     fi
@@ -367,7 +367,7 @@ build_gst_plugins_bad() {
     
     cd "$build_dir"
     print_message "info" "Downloading gst-plugins-bad ${version} source archive..."
-    if ! wget --tries=1 --timeout=30 --connect-timeout=10 "https://gstreamer.freedesktop.org/src/gst-plugins-bad/gst-plugins-bad-${version}.tar.xz"; then
+    if ! wget "https://gstreamer.freedesktop.org/src/gst-plugins-bad/gst-plugins-bad-${version}.tar.xz"; then
         print_message "error" "Failed to download gst-plugins-bad. Exiting."
         exit 1
     fi
@@ -489,7 +489,7 @@ build_gst_libav() {
     
     cd "$build_dir"
     print_message "info" "Downloading gst-libav ${version} source archive..."
-    if ! wget --tries=1 --timeout=30 --connect-timeout=10 "https://gstreamer.freedesktop.org/src/gst-libav/gst-libav-${version}.tar.xz"; then
+    if ! wget "https://gstreamer.freedesktop.org/src/gst-libav/gst-libav-${version}.tar.xz"; then
         print_message "error" "Failed to download gst-libav. Exiting."
         exit 1
     fi

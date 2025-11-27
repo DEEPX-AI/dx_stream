@@ -44,7 +44,7 @@ build_cmake_from_source() {
     cd "$DX_SRC_DIR/util"
 
     if [ ! -f "cmake-$version.0.tar.gz" ]; then
-        if ! wget --tries=1 --timeout=30 --connect-timeout=10 https://cmake.org/files/v$version/cmake-$version.0.tar.gz --no-check-certificate; then
+        if ! wget https://cmake.org/files/v$version/cmake-$version.0.tar.gz --no-check-certificate; then
             print_message "error" "Failed to download CMake. Exiting."
             exit 1
         fi
