@@ -206,6 +206,7 @@ Specify the library path and function name in the JSON configuration file for `d
 Custom message conversion in **DX-STREAM** requires implementing a user-defined library that converts inference metadata into the desired message format (typically JSON).
 
 The library converts comprehensive object detection metadata including:
+
 - **Object Detection**: label_id, track_id, confidence, name, bounding box
 - **Body Features**: extracted body feature vectors for re-identification  
 - **Segmentation**: pixel-level classification maps with height, width, and data
@@ -351,6 +352,7 @@ for (size_t i = 0; i < object_length; i++) {
 
 - **Frame-level metadata**: `streamId`, `seqId`, `width`, `height` are extracted from `DXFrameMeta`
 - **Object-level metadata**: Each `DXObjectMeta` from the frame's object list is processed to create:
+
   - **Object Detection**: `label_id` (_label), `track_id` (_track_id), `confidence` (_confidence), `name` (_label_name->str), `box` (_box[4])
   - **Body Features**: `body_feature` array from _body_feature vector (if available)
   - **Segmentation**: `segment` object with height, width, and data pointer from _seg_cls_map (if available)
@@ -358,12 +360,12 @@ for (size_t i = 0; i < object_length; i++) {
   - **Face Detection**: `face` object with landmarks from _face_landmarks, face bounding box from _face_box, confidence from _face_confidence, and face features from _face_feature (if available)
 
 **Data Type Handling:**
+
 - Coordinates and confidence values are stored as double precision floating-point
 - Feature vectors are converted to JSON arrays of double values
 - Integer values (dimensions, IDs) remain as integers
 - Memory addresses (like segmentation data pointer) are cast to integer representation
 
-**Note:** Fields like `segment`, `pose`, and `face` are only included if the corresponding metadata is available from upstream elements.
 ```
 
 #### **Library Integration**  
@@ -393,8 +395,11 @@ custom_msgconv_lib = shared_library('dx_msgconvl',
 ```
 
 **Required Dependencies:**
+
 - **gstreamer-1.0**: Core GStreamer framework
+
 - **dx_stream**: DX-STREAM metadata and type definitions
+
 - **json-glib-1.0**: JSON processing library for structured output generation
 
 **Usage in Pipeline:**
@@ -402,6 +407,7 @@ custom_msgconv_lib = shared_library('dx_msgconvl',
 dxmsgconv library-file-path=/opt/dx_stream/msgconv/lib/libdx_msgconvl.so
 ```
 
-**Note:** The `config-file-path` property is no longer required as configuration parsing has been removed from the library implementation.
+!!! note "NOTE" 
+    The `config-file-path` property is no longer required as configuration parsing has been removed from the library implementation.
 
 ---

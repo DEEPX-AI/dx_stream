@@ -37,10 +37,10 @@ GObject
 | `height`    | Sets the height of output buffer           | Integer   | `360`         |
 
 
-**Notes.**  
+!!! note "NOTE" 
 
-- DXOSD produces output buffers in BGR format. Therefore, to display the output, use a displaysink that supports this format or insert a videoconvert element to convert it to a suitable format.
-- In DXOSD’s output buffers, the `DXFrameMeta` metadata is removed. Therefore, it is **not** suitable for use upstream of elements that require this metadata.
-- Visualizations include bounding boxes, class names, confidence scores, and additional data like segmentation maps, poses, or face landmarks, depending on available metadata.  
+    - DXOSD produces output buffers in BGR format. Therefore, to display the output, use a displaysink that supports this format or insert a videoconvert element to convert it to a suitable format.
+    - In DXOSD’s output buffers, the `DXFrameMeta` metadata is removed. Therefore, it is **not** suitable for use upstream of elements that require this metadata.
+    - Visualizations include bounding boxes, class names, confidence scores, and additional data like segmentation maps, poses, or face landmarks, depending on available metadata.  
 
 ---

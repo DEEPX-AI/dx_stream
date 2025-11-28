@@ -1,54 +1,61 @@
 # Appendix: Performance Evaluation with GstShark
 
-## Overview
-
 GstShark is a powerful performance analysis tool for GStreamer pipelines that provides comprehensive profiling capabilities including CPU usage, processing time, frame rate, and bitrate analysis. This appendix describes how to install and use GstShark for evaluating DX-STREAM pipeline performance.
 
 ## Installation
 
-DX-STREAM provides an automated installation script for GstShark. Simply run the following command from the project root directory:
+DX-Stream provides an automated installation script to simplify the setup of GstShark and its dependencies.
+Execute the following command from the DX-Stream project root directory:
 
 ```bash
 ./install_gstshark.sh
 ```
 
-This script will:
-- Install required dependencies (graphviz, libgraphviz-dev, etc.)
-- Clone the GstShark repository from GitHub
-- Build and install GstShark with proper configuration
-- Add GstShark graphics tools to your PATH
+This automated script performs the following actions required for a system-wide GstShark installation:
 
-> **Note**: The installation requires sudo privileges for system-wide installation of GstShark libraries.
+- **Dependency Installation**: Installs necessary system packages (e.g., graphviz, libgraphviz-dev).
+- **Source Acquisition**: Clones the GstShark repository from GitHub.
+- **Build and Configuration**: Compiles and installs GstShark with the appropriate GStreamer configurations.
+- **PATH Update**: Adds GstShark visualization and analysis tools to your system's PATH environment variable.
 
-## Basic Usage
 
-### Environment Variables
+!!! note "NOTE" 
 
-GstShark uses several environment variables to control its behavior:
+    The installation requires sudo privileges for system-wide installation of GstShark libraries and tools.
+
+## Usage and Analysis Methodology
+
+This section details how to use GstShark to analyze the performance of GStreamer pipelines, ranging from standard video processing to complex DX-Stream AI pipelines.
+
+### Basic Usage
+
+GstShark uses environment variables to control which performance data is collected and where the results are stored.
+
+#### Environment Variables
 
 - `GST_TRACER`: Specifies which GstShark tracers to use (semicolon-separated)
 - `GST_SHARK_LOCATION`: Directory where GstShark results will be saved
 - `GST_DEBUG`: Controls debug output level for tracer information
 
-### Available Tracers
+#### Available Tracers
 
 GstShark provides the following tracers for performance analysis:
 
-| Tracer | Description |
-|--------|-------------|
-| `cpuusage` | CPU usage per element |
-| `proctime` | Processing time per element |
-| `framerate` | Frame rate analysis |
-| `bitrate` | Bitrate monitoring |
-| `interlatency` | Inter-element latency |
-| `queuelevel` | Queue buffer levels |
-| `buffer` | Buffer flow analysis |
+| Tracer | Description | Key Metric Monitored |
+|--------|-------------|---------------------|
+| `cpuusage` | Measures CPU usage consumed per element. | Resource Utilization |
+| `proctime` | Measures the processing time (latency) spent inside each element. | Element Latency |
+| `framerate` | Analyzes the actual frame rate achieved by the pipeline. | Throughput |
+| `bitrate` | Monitors the data throughput (bitrate) of the stream. | Data Flow Rate |
+| `interlatency` | Measures latency between connected elements. | Inter-Element Delays |
+| `queuelevel` | Monitors Queue buffer levels to identify bottlenecks and backpressure. | Bottleneck Detection |
+| `buffer` | Provides detailed analysis of buffer flow and timestamping. | Data Consistency |
 
-## Sample Pipeline Analysis
+### Sample Pipeline Analysis
 
-### Basic Performance Evaluation
+#### Basic Performance Evaluation
 
-Here's a sample command to analyze a standard H.264 video processing pipeline:
+This command demonstrates how to use GstShark to analyze a standard H.264 video processing pipeline, displaying the output directly to the console:
 
 ```bash
 GST_DEBUG=GST_TRACER:7 GST_TRACERS="cpuusage;proctime;framerate;bitrate" \
@@ -56,9 +63,9 @@ GST_DEBUG=GST_TRACER:7 GST_TRACERS="cpuusage;proctime;framerate;bitrate" \
     qtdemux ! h264parse ! avdec_h264 ! videoconvert ! fakesink
 ```
 
-### Advanced Analysis with Result Storage
+#### Advanced Analysis with Result Storage
 
-For more detailed analysis with result storage:
+For persistent storage and graphical generation, specify the **GST_SHARK_LOCATION** environment variable.
 
 ```bash
 # Create result directory
@@ -75,9 +82,9 @@ GST_SHARK_LOCATION="/tmp/gst-shark-results" \
 ls -la /tmp/gst-shark-results/
 ```
 
-## DX-STREAM Pipeline Analysis
+### DX-STREAM Pipeline Analysis
 
-Analyze a basic DX-STREAM pipeline:
+To analyze the performance contribution of the NPU-accelerated elements (dxpreprocess, dxinfer, dxpostprocess), include them in the pipeline and use relevant tracers like queuelevel to detect bottlenecks around the NPU element.
 
 ```bash
 GST_DEBUG="GST_TRACER:7" GST_TRACERS="cpuusage;proctime;framerate;queuelevel" \
@@ -90,9 +97,9 @@ GST_DEBUG="GST_TRACER:7" GST_TRACERS="cpuusage;proctime;framerate;queuelevel" \
 ```
 
 
-## Result Analysis
+### Result Analysis
 
-### Console Output Analysis
+#### Console Output Analysis
 
 GstShark provides real-time performance information through console output. Key metrics to monitor:
 
@@ -101,9 +108,9 @@ GstShark provides real-time performance information through console output. Key 
 - **Frame Rate**: Actual vs expected frame rates
 - **Queue Levels**: Buffer queue status for bottleneck detection
 
-### Graphical Analysis
+#### Graphical Analysis
 
-If GstShark graphics tools are available, generate visual reports:
+If GstShark graphics tools (such as gstshark-plot) were installed with the necessary dependencies, you can generate visual reports for clearer performance trending and bottleneck visualization.
 
 ```bash
 # Generate performance graphs (if graphics tools are installed)
@@ -112,58 +119,77 @@ gstshark-plot /tmp/gst-shark-results/ -s pdf
 
 ## Performance Optimization Tips
 
+This section provides strategies for interpreting GstShark results and applying common optimization techniques to enhance DX-Stream pipeline performance.
+
 ### Identifying Bottlenecks
 
-1. **High Processing Time**: Look for elements with consistently high `proctime` values
-2. **CPU Hotspots**: Monitor `cpuusage` to identify CPU-intensive elements
-3. **Queue Overflow**: Check `queuelevel` for buffer overflow issues
-4. **Frame Drops**: Compare expected vs actual `framerate`
+GstShark tracers help pinpoint the exact location and nature of performance bottlenecks within the GStreamer pipeline.
+
+| Tracer/Metric | Bottleneck Indication | Description |
+|---------------|----------------------|-------------|
+| High Processing Time | Slow element processing (e.g., complex pre-processing or slow NPU execution). | Look for elements with consistently high `proctime` values. |
+| CPU Hotspots | Host CPU is overloaded by a specific element. | Monitor `cpuusage` to identify CPU-intensive elements (e.g., software video decoding). |
+| Queue Overflow | Backpressure issue where a producer is faster than the consumer. | Check `queuelevel` for buffer overflow issues, indicating a slow consumer. |
+| Frame Drops | Pipeline cannot maintain the required throughput. | Compare expected vs. actual `framerate` to quantify the performance deficit. |
 
 ### Common Optimization Strategies
 
-- **Element Configuration**: Adjust element-specific parameters
-- **Buffer Management**: Optimize queue sizes and buffer pools
-- **Threading**: Utilize multi-threaded elements where appropriate
-- **Hardware Acceleration**: Enable GPU acceleration for supported elements
+Applying these strategies can alleviate identified bottlenecks:
+
+- Element Configuration: Adjust element-specific parameters, such as quantization settings in the NPU elements or interpolation methods in video conversion elements.
+- Buffer Management: Optimize queue sizes and buffer pools to balance latency and throughput. Larger queues reduce frame drops but increase latency.
+- Threading: Utilize multi-threaded elements, where available, to leverage multiple CPU cores for parallel processing.
+- Hardware Acceleration: Crucially, ensure GPU acceleration (Mali-G610 MP4) is enabled for supported non-NPU elements (e.g., video conversion) to offload the host CPU.
+
 
 ## Troubleshooting
 
+This section addresses common issues encountered when using GstShark for performance analysis.
+
 ### Common Issues
 
-1. **No Tracer Output**: Ensure `GST_SHARK_LOCATION` is set and directory exists
-2. **Missing Graphics Tools**: Run `./install_gstshark.sh` to install all components
-3. **Permission Errors**: Check write permissions for result directory
+| Issue | Cause | Resolution |
+|-------|-------|------------|
+| No Tracer Output | GstShark is running but not logging data correctly. | Ensure the `GST_SHARK_LOCATION` environment variable is set and the specified directory exists. |
+| Missing Graphics Tools | Unable to run analysis commands like `gstshark-plot`. | Re-run the installation script (`./install_gstshark.sh`) to ensure all graphical components and dependencies are installed. |
+| Permission Errors | Cannot save results to the specified output directory. | Check write permissions for the result directory (e.g., use `sudo` or change permissions with `chmod`). |
 
 ### GStreamer Registry Issues
 
-If GstShark tracers are not recognized:
+If the GstShark tracers (e.g., sharktime, sharklog) are not recognized by GStreamer, the plugin registry cache is likely outdated. Follow these steps to force GStreamer to rescan and register the tracers.
 
-```bash
-# Clear GStreamer registry cache
-rm -rf ~/.cache/gstreamer-1.0/registry.*.bin
+- Clear GStreamer Registry Cache
 
-# Regenerate registry
-gst-inspect-1.0 > /dev/null 2>&1
+    This step removes the old, potentially corrupt, or incomplete cache files.
 
-# Verify GstShark installation
-gst-inspect-1.0 | grep shark
-```
+    ```
+    rm -rf ~/.cache/gstreamer-1.0/registry.*.bin
+    ```
 
-## Best Practices
+- Regenerate Registry
 
-1. **Baseline Measurement**: Always establish baseline performance before optimization
-2. **Controlled Environment**: Run tests in consistent system conditions
-3. **Multiple Iterations**: Average results across multiple test runs
-4. **Resource Monitoring**: Monitor system resources (CPU, memory, GPU) during testing
-5. **Documentation**: Document test configurations and results for reproducibility
+    Running the inspection tool forces GStreamer to scan all plugin paths and create a new, fresh registry file that includes GstShark.
 
-## References
+    ```
+    gst-inspect-1.0 > /dev/null 2>&1
+    ```
 
-- [GstShark GitHub Repository](https://github.com/RidgeRun/gst-shark)
-- [GStreamer Tracer Documentation](https://gstreamer.freedesktop.org/documentation/gstreamer/gsttracer.html)
-- DX-STREAM Element Reference (Section 3)
-- DX-STREAM Pipeline Examples (Section 5)
+- Verify GstShark Installation
 
----
+    Check if the GstShark elements are now successfully recognized by the system. If successful, you will see a list of tracers printed in your terminal.
 
-*This appendix provides comprehensive guidance for performance evaluation using GstShark. For additional support or advanced configuration, please refer to the main DX-STREAM documentation or contact technical support.*
+    ```
+    gst-inspect-1.0 | grep shark
+    ```
+
+
+
+!!! note "NOTE" 
+
+    **Best Practices for GstShark Analysis**
+
+    Baseline Measurement: Always establish baseline performance before optimization
+    Controlled Environment: Run tests in consistent system conditions
+    Multiple Iterations: Average results across multiple test runs
+    Resource Monitoring: Monitor system resources (CPU, memory, GPU) during testing
+    Documentation: Document test configurations and results for reproducibility

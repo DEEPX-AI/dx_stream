@@ -1,10 +1,10 @@
-**DxMsgConv** is an element that processes inference metadata from upstream **DxPostprocess** elements and converts it into message payloads in various formats.  
-The converted payloads are then passed to the DxMsgBroker element, which transmits them to a broker server.  
+**DxMsgConv** is an element that processes inference metadata from upstream **DxPostprocess** elements and converts it into message payloads in various formats.
 
-A user-defined custom library is required to implement the actual message format logic. Refer to the **Chapter 4. Writing Your Own Application `"Custom Message Convert Library Documentation"`**. user-defined custom library is required to implement the actual message format logic. Refer to the **Chapter 4. Writing Your Own Application `"Custom Message Convert Library Documentation"`**.MsgConv** is an element that processes inference metadata from upstream **DxPostprocess** elements and converts it into message payloads in various formats.  
-The converted payloads are then passed to the DxMsgBroker element, which transmits them to a broker server.  
+This element bridges internal AI pipeline processing and external communication systems. It receives the raw inference metadata—data about detected objects, classifications, and tracking—from the upstream **DxPostprocess** elements.
+**DxMsgConv** then transforms this complex metadata into structured message payloads using various standard formats, such as JSON or Protocol Buffers. Once converted, these payloads are passed downstream to the **DxMsgBroker** element, which is responsible for transmitting them reliably to an external broker server (like an MQTT or Kafka broker).
 
-A user-defined custom library is required to implement the actual message format logic. Refer to the **Chapter 4. Writing Your Own Application `“Custom Pre-Process Library Documentation”`**.  
+To properly implement the specific structure and content required for the final messages—referred to as the "actual message format logic"—a user-defined custom library is required. This library contains the unique code that dictates how the inference metadata is mapped into the desired message payload structure. For guidance on developing and integrating this custom logic, users must consult the relevant documentation, specifically: **Chapter. Writing Your Own Application "Custom Message Convert Library Documentation".**
+
 
 ### **Key Features**
 
@@ -50,7 +50,9 @@ The element processes metadata through the custom library to generate message pa
 }
 ```
 
-**Note:** The actual message format depends entirely on the implementation of your custom library. The above is just an example from the provided default library. For detailed implementation guidance and complete JSON structure examples, refer to **Chapter 4. Writing Your Own Application**.
+!!! note "NOTE" 
+
+    The actual message format depends entirely on the implementation of your custom library. The above is just an example from the provided default library. For detailed implementation guidance and complete JSON structure examples, refer to **Chapter 4. Writing Your Own Application**.
 
 ### **Hierarchy**
 
@@ -73,9 +75,9 @@ GObject
 
 ---
 
-**Notes.**  
+!!! note "NOTE"  
 
-- The element itself does not define the message format - this is entirely determined by your custom library implementation.
-- The default example library provided with DX-STREAM generates JSON format, but you can implement any message format in your custom library.  
+    - The element itself does not define the message format - this is entirely determined by your custom library implementation.
+    - The default example library provided with DX-STREAM generates JSON format, but you can implement any message format in your custom library.  
 
 ---
