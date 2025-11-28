@@ -39,8 +39,8 @@ GObject
 | `framerate`    | Sets the target framerate (FPS). This property must be configured.       | Integer   | `0`                |
 | `throttle`     | Determines whether to send Throttle QoS Events upstream on frame drops.  | Boolean   | `false`            |
 
-**Notes.**  
+!!! note "NOTE" 
 
-- The `framerate` property is mandatory and **must** be explicitly set for the element to function.
+    - The `framerate` property is mandatory and **must** be explicitly set for the element to function.
 
 ---

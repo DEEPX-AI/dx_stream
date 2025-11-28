@@ -57,9 +57,9 @@ GObject
 }
 ```
 
-**Notes.**  
+!!! note "NOTE" 
 
-- The pipeline must follow **[DxPreprocess] → [DxInfer] → [DxPostprocess]** for correct and stable operation.  
-- All properties can also be configured using a JSON file for enhanced usability and flexibility.  
+    - The pipeline must follow **[DxPreprocess] → [DxInfer] → [DxPostprocess]** for correct and stable operation.  
+    - All properties can also be configured using a JSON file for enhanced usability and flexibility.  
 
 ---

@@ -13,28 +13,33 @@ This section describes the hardware and software requirements for running **DX-S
 - **DX-RT must** be installed 3.0.0 or higher available 
 - The system **must** support connection to an **M1 M.2** module with the M.2 interface on the host PC. 
 
-![](./../resources/02_DX-M1_M.2_LPDDR5x2_PCP.png){ width=700px }
+<img src="./../resources/02_DX-M1_M.2_LPDDR5x2_PCP.png" alt="DX-M1 M.2 Module" width="700">
 
+!!! note "NOTE"
 
-**Note.** The **NPU Device Driver** and **DX-RT must** be installed. Refer to **DX-RT User Manual** for detailed instructions on installing NPU Device Driver and DX-RT. 
+    The **NPU Device Driver** and **DX-RT** must be installed. For detailed instructions on installing NPU Device Driver and DX-RT, refer to **DX-RT User Manual**.
 
 ---
 
 ## Install DX-STREAM
 
-**DX-STREAM** can be installed either by building from source or by using a pre-built Docker image (please refer to DX-AS Docs). This section explains both approaches.
+**DX-STREAM** can be installed in two ways:
 
-### Build from Sources
+- **Standalone source build**: Build DX-STREAM independently from source code
+- **DX-AS integrated build**: Build DX-STREAM as part of the DX-AS (DX All Suite) along with other DEEPX SDKs
 
-**1.** Unzip the Package  
+**DX-AS** provides comprehensive environment management with version compatibility for all required dependencies (DX-RT, DX-Driver, DX-FW, etc.) and supports both Docker-based and local installation methods. For detailed information about DX-AS installation and integrated build options, please refer to the **DX-AS User Manual**.
 
-Extract the **DX-STREAM** source files.  
+This section focuses on the **standalone source build** approach for DX-STREAM only.
+
+**1.** Clone the DEEPX-AI GitHub repository  
+
 ```
-$ unzip dxstream_vX.X.X.zip -d dx_stream
+$ git clone https://github.com/DEEPX-AI/dx_stream.git
 $ cd dx_stream
 ```
 
-**2.** Install Dependencies  
+**2.** Install dependencies  
 
 Run the provided script to automatically install all required packages.  
 ```
@@ -59,33 +64,40 @@ $ ./install.sh --wo-gst --wo-opencv
 $ ./install.sh --help
 ```
 
-**Note:** Use these options only if you have compatible versions already installed:
-- GStreamer 1.16.3 or higher
-- OpenCV 4.2.0 or higher
+!!! note "NOTE"
+
+    Use these options only if you have compatible versions already installed:
+
+    - GStreamer 1.16.3 or higher
+    - OpenCV 4.2.0 or higher
+
 
 **3.** Build **DX-STREAM**  
 
-Compile **DX-STREAM**.  
-```
-$ ./build.sh
-```
+    Compile **DX-STREAM**.  
+    ```
+    $ ./build.sh
+    ```
 
-(Optional) Build with debug symbols.  
-```
-$ ./build.sh --debug
-```
+    (Optional) Build with debug symbols.  
+    ```
+    $ ./build.sh --debug
+    ```
 
 **4.** Verify the installation  
 
 Check that the plugin is correctly installed.  
+
 ```
 $ gst-inspect-1.0 dxstream
 ```
 
-**Note.** If you want to remove **DX-STREAM**, use the following command.  
-```
-$ ./build.sh --uninstall
-```
+!!! note "NOTE" 
+
+    If you want to remove **DX-STREAM**, use the following command.  
+    ```
+    $ ./build.sh --uninstall
+    ```
 
 ## Run DX-STREAM
 
@@ -133,8 +145,10 @@ Enter the number corresponding to the desired demo to run it.
 
 If **no** input is provided within 10 seconds, the default option (`0: Object Detection (YOLOv5s)`) will be executed automatically.
 
-**Note:** Options with "PPU" suffix utilize **Post-Processing Unit (PPU)** acceleration, which performs model post-processing operations (such as bounding box decoding and score thresholding) directly on the NPU hardware instead of the CPU. This approach significantly improves inference performance by reducing CPU overhead.  
+!!! note "NOTE" 
 
-**Notes.** Each demo corresponds to a specific pipeline described in **Chapter 5. Pipeline Examples**.
+    Options with "PPU" suffix utilize **Post-Processing Unit (PPU)** acceleration, which performs model post-processing operations (such as bounding box decoding and score thresholding) directly on the NPU hardware instead of the CPU. This approach significantly improves inference performance by reducing CPU overhead.  
+
+    Each demo corresponds to a specific pipeline described in **Chapter. Pipeline Example**.
 
 ---

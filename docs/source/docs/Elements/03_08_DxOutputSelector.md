@@ -27,12 +27,12 @@ GObject
 |---------------|--------------------|-----------|--------------------|
 | `name`        | Sets the unique name of the DxOutputSelector element.    | String   | `"dxoutputselector0"`   |
 
-**Notes.**  
+!!! note "NOTE" 
 
-- `DxOutputSelector` requires asynchronous operation between its upstream and downstream elements. To achieve this, a `queue` element must be added to each of its src pads. Failure to do so may result in abnormal pipeline hangs.
+    - `DxOutputSelector` requires asynchronous operation between its upstream and downstream elements. To achieve this, a `queue` element must be added to each of its src pads. Failure to do so may result in abnormal pipeline hangs.
 
-- The `stream_id` from the `DXFrameMeta` of the buffer received on the sink pad is parsed and used as the index of the src pad. Therefore, if the `stream_id` does **not** correspond to a valid src pad index in `DxOutputSelector`, an error will occur.
+    - The `stream_id` from the `DXFrameMeta` of the buffer received on the sink pad is parsed and used as the index of the src pad. Therefore, if the `stream_id` does **not** correspond to a valid src pad index in `DxOutputSelector`, an error will occur.
 
-- `DxOSD` removes the original buffer and creates a new one for drawing. During this process, `DXFrameMeta` is discarded, which can cause issues if `DxOSD` is placed upstream of `DxOutputSelector`.
+    - `DxOSD` removes the original buffer and creates a new one for drawing. During this process, `DXFrameMeta` is discarded, which can cause issues if `DxOSD` is placed upstream of `DxOutputSelector`.
 
 ---

@@ -1,12 +1,12 @@
 This section describes model inference for a single video stream.  
-Although the example pipeline performs inference using the YOLOv7 model, it can be easily adapted to various vision tasks with different models. The pipeline below reads video frames from a file and performs a pre-infer-post process tailored to YOLOv7.  
+Although the example pipeline performs inference using the YOLOv5s model, it can be easily adapted to various vision tasks with different models. The pipeline below reads video frames from a file and performs a pre-infer-post process tailored to YOLOv5s.  
 
 The inference results are then drawn using `dxosd`, and the final output is displayed via a display sink.  
 
 ![](./../../resources/05_01_single_stream.png)
 
 The pipeline in the figure is defined in 
-`dx_stream/dx_stream/pipelines/single_network/object_detection/run_YOLOV7.sh` and can be used as a reference for execution.
+`dx_stream/dx_stream/pipelines/single_network/object_detection/run_YOLOV5S.sh` and can be used as a reference for execution.
 
 When performing object detection on a single stream input, multi-object tracking can be enabled by adding dxtracker.
 As shown below, by inserting the tracker after the YOLO object detection, detected objects can be tracked over time.
@@ -23,7 +23,7 @@ The pipeline in the figure is defined in
 - **`urisourcebin`**: Specifies the input video file. The `uri` property **must** be set to the file path of the video you wish to process.  
 - **`decodebin`**: Decodes the input video stream.  
 - **`dxpreprocess`**: Applies pre-processing according to the configuration file specified in the `config-file-path`.  
-- **`dxinfer`**: Runs inference using the YOLOv7 model. The model configuration file path is specified in `config-file-path`.  
+- **`dxinfer`**: Runs inference using the YOLOv5s model. The model configuration file path is specified in `config-file-path`.  
 - **`dxpostprocess`**: Post-processes the model's output tensor to extract metadata. The configuration file path is specified in `config-file-path`.  
 - **`dxtracker`**: Tracks objects detected by the YOLO model using the OC-SORT algorithm.  
 - **`dxosd`**: Draws object detection results (e.g., bounding boxes, class labels, etc.) on the video frames.  
@@ -33,7 +33,7 @@ The pipeline in the figure is defined in
 
 **Custom Models**  
 
-This pipeline is **not** limited to the YOLOv7 model. It can be easily adapted for other AI tasks by updating the corresponding model and configuration files.  
+This pipeline is **not** limited to the YOLOv5s model. It can be easily adapted for other AI tasks by updating the corresponding model and configuration files.  
 
 - **Classification**: Image classification tasks  
 - **Segmentation**: Ppixel-wise semantic segmentation  

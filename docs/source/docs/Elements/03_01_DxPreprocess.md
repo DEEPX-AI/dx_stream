@@ -107,9 +107,9 @@ This table provides a complete reference to the properties of the **DxPreprocess
 }
 ```
 
-**Notes**  
+!!! note "NOTE" 
 
-- For implementing custom preprocess logic, refer to **Chapter 4. Writing Your Own Application `“Custom Pre-Process Library Documentation”`**.  
-- All properties can also be configured using a JSON file for enhanced usability and flexibility.
+    - For implementing custom preprocess logic, refer to **Chapter. Writing Your Own Application `“Custom Pre-Process Library Documentation”`**.  
+    - All properties can also be configured using a JSON file for enhanced usability and flexibility.
 
 ---

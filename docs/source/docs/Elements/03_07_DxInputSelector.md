@@ -30,9 +30,9 @@ GObject
 |-------------|---------------------------|-----------|--------------------|
 | `name`     | Sets the unique name of the DxInputSelector element.  | String   | `"dxinputselector0"`   |
 
-**Notes.**  
+!!! note "NOTE" 
 
-- If an incoming buffer does **not** contain `DXFrameMeta`, the element creates a new `DXFrameMeta` and assigns the sink pad index as the `stream_id`.  
-- This metadata tagging is essential for downstream elements that rely on stream identification, such as `DxOutputSelector`.
+    - If an incoming buffer does **not** contain `DXFrameMeta`, the element creates a new `DXFrameMeta` and assigns the sink pad index as the `stream_id`.  
+    - This metadata tagging is essential for downstream elements that rely on stream identification, such as `DxOutputSelector`.
 
 ----
