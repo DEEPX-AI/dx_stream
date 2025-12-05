@@ -1,0 +1,7 @@
+{
+    "preprocess_id": 4,
+    "inference_id": 4,
+    "secondary_mode": true,
+    "model_path" : "./dx_stream/samples/models/SCRFD500M_PPU.dxnn",
+    "use_ort": false
+}

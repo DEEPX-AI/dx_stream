@@ -31,18 +31,9 @@ for INPUT_VIDEO_PATH in "${INPUT_VIDEO_PATH_LIST[@]}"; do
                     dxinfer config-file-path=$SRC_DIR/configs/Object_Detection/YOLOV5S_3/inference_config.json ! queue ! \
                     dxpostprocess config-file-path=$SRC_DIR/configs/Object_Detection/YOLOV5S_3/postprocess_config.json ! queue ! \
                     dxtracker config-file-path=$SRC_DIR/configs/tracker_config.json ! queue ! \
-                    tee name=t \
-                    t. ! queue ! \
-                    dxpreprocess config-file-path=$SRC_DIR/configs/Re-Identification/OSNet/preprocess_config.json ! queue ! \
-                    dxinfer config-file-path=$SRC_DIR/configs/Re-Identification/OSNet/inference_config.json ! queue ! \
-                    dxpostprocess config-file-path=$SRC_DIR/configs/Re-Identification/OSNet/postprocess_config.json ! queue ! \
-                    gather.sink_0 \
-                    t. ! queue ! \
-                    dxpreprocess config-file-path=$SRC_DIR/configs/Face_Detection/SCRFD/preprocess_config.json ! queue ! \
-                    dxinfer config-file-path=$SRC_DIR/configs/Face_Detection/SCRFD/inference_config.json ! queue ! \
-                    dxpostprocess config-file-path=$SRC_DIR/configs/Face_Detection/SCRFD/postprocess_config.json ! queue ! \
-                    gather.sink_1 \
-                    dxgather name=gather ! queue ! \
+                    dxpreprocess config-file-path=$SRC_DIR/configs/Face_Detection/SCRFD500M_PPU_SECOND/preprocess_config.json ! queue ! \
+                    dxinfer config-file-path=$SRC_DIR/configs/Face_Detection/SCRFD500M_PPU_SECOND/inference_config.json ! queue ! \
+                    dxpostprocess config-file-path=$SRC_DIR/configs/Face_Detection/SCRFD500M_PPU_SECOND/postprocess_config.json ! queue ! \
                     dxosd width=1280 height=720 ! queue ! \
-                    videoconvert ! fpsdisplaysink sync=false $VIDEO_SINK_ARGS
+                    videoconvert ! fpsdisplaysink sync=true $VIDEO_SINK_ARGS
 done
