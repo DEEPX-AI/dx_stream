@@ -27,7 +27,7 @@ bool Preprocessor::check_object(DXFrameMeta *frame_meta, DXObjectMeta *object_me
                 1;
         } else {
             element->_track_cnt[frame_meta->_stream_id][object_meta->_track_id] =
-                0;
+                1;
         }
 
         if (element->_track_cnt[frame_meta->_stream_id][object_meta->_track_id] <

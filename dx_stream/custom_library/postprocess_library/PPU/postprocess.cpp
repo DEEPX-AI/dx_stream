@@ -544,3 +544,86 @@ extern "C" void SCRFD500M_PPU(GstBuffer *buf,
         dx_add_object_meta_to_frame_meta(object_meta, frame_meta);
     }
 }
+
+extern "C" void SCRFD500M_PPU_SECOND(GstBuffer *buf,
+                                     std::vector<dxs::DXTensor> network_output,
+                                     DXFrameMeta *frame_meta,
+                                     DXObjectMeta *object_meta) {
+
+    YoloConfig config;
+
+    config.input_size = 640;
+    config.num_keypoints = 5;
+    config.num_classes = 1;
+    config.conf_threshold = 0.5f;
+    config.nms_threshold = 0.45f;
+    config.class_names = {"face"};
+    config.strides = {8, 16, 32};
+    config.anchors.clear();
+
+    std::vector<BoundingBox> all_boxes;
+
+    if (network_output.size() != 1) {
+        GST_ERROR("Unexpected number of outputs: %ld", network_output.size());
+        return;
+    }
+
+    if (network_output[0]._type != dxs::DataType::FACE) {
+        GST_ERROR("Data type is not FACE");
+        return;
+    }
+
+    all_boxes = decode_face(network_output[0], config);
+
+    auto results = nms(all_boxes, config.nms_threshold);
+
+    if (results.size() == 0) {
+        return;
+    }
+
+    auto ret = results[0];
+    
+    int origin_w = object_meta->_box[2] - object_meta->_box[0];
+    int origin_h = object_meta->_box[3] - object_meta->_box[1];
+    if (frame_meta->_roi[0] != -1 && frame_meta->_roi[1] != -1 &&
+        frame_meta->_roi[2] != -1 && frame_meta->_roi[3] != -1) {
+        origin_w = frame_meta->_roi[2] - frame_meta->_roi[0];
+        origin_h = frame_meta->_roi[3] - frame_meta->_roi[1];
+    }
+
+    float r = std::min(config.input_size / (float)origin_w,
+                        config.input_size / (float)origin_h);
+    float w_pad = (config.input_size - origin_w * r) / 2.;
+    float h_pad = (config.input_size - origin_h * r) / 2.;
+
+    float x1 = (ret.x1 - w_pad) / r;
+    float x2 = (ret.x2 - w_pad) / r;
+    float y1 = (ret.y1 - h_pad) / r;
+    float y2 = (ret.y2 - h_pad) / r;
+
+    x1 = std::min((float)origin_w, std::max((float)0.0, x1));
+    x2 = std::min((float)origin_w, std::max((float)0.0, x2));
+    y1 = std::min((float)origin_h, std::max((float)0.0, y1));
+    y2 = std::min((float)origin_h, std::max((float)0.0, y2));
+
+    object_meta->_face_confidence = ret.confidence;
+    object_meta->_label = ret.class_id;
+    object_meta->_label_name = g_string_new(ret.class_name.c_str());
+    object_meta->_face_box[0] = x1 + object_meta->_box[0];
+    object_meta->_face_box[1] = y1 + object_meta->_box[1];
+    object_meta->_face_box[2] = x2 + object_meta->_box[0];
+    object_meta->_face_box[3] = y2 + object_meta->_box[1];
+
+    object_meta->_face_landmarks.clear();
+    for (int k = 0; k < config.num_keypoints; k++) {
+        float kx = (ret.keypoints[k * 3 + 0] - w_pad) / r;
+        float ky = (ret.keypoints[k * 3 + 1] - h_pad) / r;
+        float ks = ret.keypoints[k * 3 + 2];
+
+        kx = std::max(0.0f, std::min(static_cast<float>(origin_w), kx));
+        ky = std::max(0.0f, std::min(static_cast<float>(origin_h), ky));
+
+        object_meta->_face_landmarks.push_back(dxs::Point_f(kx + object_meta->_box[0], ky + object_meta->_box[1], ks));
+    }
+
+}
