@@ -12,6 +12,7 @@
 - feat: enhance dependency installation for Debian 12
     - Smart version checking for meson (apt/backports/pip fallback)
     - Handle libdrm version conflicts without breaking HW acceleration
+- update secondary mode pipeline for SCRFD500M_PPU_SECOND
 
 ### 2. Fixed
 - **Setup Scripts**: Improved error handling and prevented excessive download retry attempts
@@ -20,6 +21,7 @@
 - **Registry Handling**: Fixed GStreamer registry cache issues with GstShark integration
 - Fixed an event processing timing issue in 'dxinputselector' that caused compositor pipeline freezes.
 - fix: add detection and installation of Rockchip-specific dependencies (librga-dev)
+- update MQTT configuration to include connection timeout and state management
 
 ### 3. Added
 - **PPU Support**: Integrated Post-Processing Unit functionality for YOLOv5s, SCRFD500M, and YOLOv5Pose models
@@ -35,10 +37,6 @@
     - Support for CPU usage, processing time, frame rate, and bitrate analysis
 - **Preprocessing Features**: Added preprocess skip functionality for conditional processing
 - **Build Support**: Added build configuration for v3 architecture
-
-### 4. Known Issues.
-- DeepLabV3 Semantic Segmentation model accuracy may be slightly degraded in dx-compiler(dx_com) v2.1.0. This will be fixed in the next release. The DeepLabV3 model used in the demo was converted using dx-compiler v2.0.0.
-- When using the PPU model for face detection & pose estimation, dx-compiler v2.1.0 does not currently support converting face and pose models to PPU format. This feature will be added in a future release. The PPU models used in the demo were converted using dx-compiler v1.0.0(dx_com v1.60.1).
 
 ## v2.0.0 / 2025-08-28
 
