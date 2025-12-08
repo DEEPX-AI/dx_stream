@@ -1,5 +1,6 @@
 # RELEASE_NOTES
-## v2.1.0 / 2025-11-28
+
+## DX-Stream v2.1.0 / 2025-11-28
 
 ### 1. Changed
 - **Model Configuration**: Updated default YOLOv5 from YOLOV5S_3 to YOLOV5S_4 with models-2_1_0.tar.gz
@@ -38,7 +39,9 @@
 - **Preprocessing Features**: Added preprocess skip functionality for conditional processing
 - **Build Support**: Added build configuration for v3 architecture
 
-## v2.0.0 / 2025-08-28
+---
+
+## DX-Stream v2.0.0 / 2025-08-28
 
 ### 1. Changed
 - Code Examples: The PostProcess examples have been separated and implemented on a per-model basis for clarity.
@@ -65,7 +68,10 @@
 - feat: add uninstall script and enhance color utility functions
   - Introduced a new uninstall.sh script for cleaning up project files and directories
 
-## v1.7.0 / 2025-07-16
+---
+
+## DX-Stream  v1.7.0 / 2025-07-16
+
 ### 1. Changed
 - dxinfer : Improved the buffer queue management mechanism. Instead of locking inputs based on queue size within the push thread, the system now adds a req_id to the buffer and utilizes a wait function for more efficient processing.
 - feat: auto run setup script when a file not found error occurs during example execution
@@ -74,21 +80,26 @@
 - dxpreprocess, dxosd: Resolved a video corruption issue that occurred in some streams. The problem was traced to incorrect stride and offset calculations from GstVideoMeta. The calculation now correctly uses GstVideoInfo included in the caps, ensuring stable video rendering.
 ### 3. Added
 
-## v1.6.4 / 2025-07-03
+---
+
+## DX-Stream  v1.6.4 / 2025-07-03
 ### 1. Changed
 - Auto dependency installation for Ubuntu 18.04
 ### 2. Fixed
 - memory issue in segmentation postprocess fixed
 ### 3. Added
 
-## v1.6.3 / 2025-06-25
+---
+
+## DX-Stream  v1.6.3 / 2025-06-25
 ### 1. Changed
 ### 2. Fixed
 - Display Crash in Orange Pi 5+ fixed
 ### 3. Added
 
+---
 
-## v1.6.1 / 2025-05-21
+## DX-Stream  v1.6.1 / 2025-05-21
 ### 1. Changed
 - None
 ### 2. Fixed
@@ -96,7 +107,9 @@
 ### 3. Added
 - None
 
-## v1.6.0 / 2025-05-09
+---
+
+## DX-Stream v1.6.0 / 2025-05-09
 ### 1. Changed
 - None
 ### 2. Fixed
@@ -105,7 +118,9 @@
 - Supporting the Ubuntu 18.04 OS environment
 - onnxruntime segmentation post process added
 
-## v1.5.0 / 2025-05-07
+---
+
+## DX-Stream v1.5.0 / 2025-05-07
 ### 1. Changed
 - OSD push resized BGR format Buffer (property fixed)
 - update multi-stream pipeline demo with compositor
@@ -114,7 +129,9 @@
 ### 3. Added
 - Add RGA based preprocess & osd process
 
-## v1.4.0 / 2025-04-24
+---
+
+## DX-Stream v1.4.0 / 2025-04-24
 ### 1. Changed
 - None
 ### 2. Fixed
@@ -122,7 +139,9 @@
 ### 3. Added
 - Add example for YOLOV5S Face Model
 
-## v1.3.1 / 2025-04-23
+---
+
+## DX-Stream v1.3.1 / 2025-04-23
 ### 1. Changed
 - None
 ### 2. Fixed
@@ -130,7 +149,9 @@
 ### 3. Added
 - None
 
-## v1.3.0 / 2025-04-10
+---
+
+## DX-Stream v1.3.0 / 2025-04-10
 ### 1. Changed
 - None
 ### 2. Fixed
@@ -139,7 +160,9 @@
 ### 3. Added
 - None
 
-## v1.2.2 / 2025-03-25
+---
+
+## DX-Stream v1.2.2 / 2025-03-25
 ### 1. Changed
 - None
 ### 2. Fixed
@@ -147,7 +170,9 @@
 ### 3. Added
 - None
 
-## v1.2.1 / 2025-03-20
+---
+
+## DX-Stream v1.2.1 / 2025-03-20
 ### 1. Changed
 - Download assets(model, video) from AWS S3
 ### 2. Fixed
@@ -155,7 +180,9 @@
 ### 3. Added
 - None
 
-## v1.2.0 / 2025-03-10
+---
+
+## DX-Stream v1.2.0 / 2025-03-10
 ### 1. Changed
 - None
 ### 2. Fixed
@@ -163,7 +190,9 @@
 ### 3. Added
 - Update pipeline scripts for supporting intel GPU HW Acceleration (VAAPI)
 
-## v1.1.1 / 2025-03-05
+---
+
+## DX-Stream v1.1.1 / 2025-03-05
 ### 1. Changed
 - DX-RT API interface changed (inference engine function)
 - setup_dxnn_assets.sh 실행 시, regression ID 번호를 인자로 받아서 해당하는 모델들을 복사해서 가져오도록 변경. (default regID : 3148)
