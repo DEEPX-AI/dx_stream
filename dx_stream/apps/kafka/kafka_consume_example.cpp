@@ -2,6 +2,7 @@
 #include <signal.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <json-glib/json-glib.h>
 
@@ -56,22 +57,66 @@ static void parse_message(rd_kafka_message_t *msg, int bPrintAll) {
     g_object_unref(parser);
 }
 
+static void print_usage() {
+    fprintf(stderr, "Usage: kafka_consume_example -n <hostname> -p <port> -t <topic>\n");
+    fprintf(stderr, "  -n <hostname>  Kafka broker hostname (e.g., localhost)\n");
+    fprintf(stderr, "  -p <port>      Kafka broker port (default: 9092)\n");
+    fprintf(stderr, "  -t <topic>     Topic name to subscribe to\n");
+}
+
+static bool parse_args(int argc, char *argv[], char **hostname, int *port, char **topic) {
+    int opt;
+    bool ret = true;
+
+    *hostname = nullptr;
+    *port = 9092; // default port
+    *topic = nullptr;
+
+    while ((opt = getopt(argc, argv, "n:p:t:")) != -1) {
+        switch (opt) {
+        case 'n':
+            *hostname = optarg;
+            break;
+        case 'p':
+            *port = atoi(optarg);
+            break;
+        case 't':
+            *topic = optarg;
+            break;
+        default:
+            print_usage();
+            ret = false;
+        }
+    }
+
+    if (*hostname == nullptr || *topic == nullptr) {
+        print_usage();
+        ret = false;
+    }
+    return ret;
+}
+
 int main(int argc, char **argv) {
     rd_kafka_t *rk;
     rd_kafka_conf_t *conf;
     rd_kafka_topic_partition_list_t *topic_list;
     char errstr[512];
+    char *hostname, *topic;
+    int port;
+    char broker[256];
 
-    if (argc != 3) {
-        fprintf(stderr, "Usage: %s <broker> <topic>\n", argv[0]);
+    if (!parse_args(argc, argv, &hostname, &port, &topic)) {
         return 1;
     }
+
+    // Construct broker address
+    snprintf(broker, sizeof(broker), "%s:%d", hostname, port);
 
     /* Create configuration objects */
     conf = rd_kafka_conf_new();
 
     /* Set configuration properties */
-    rd_kafka_conf_set(conf, "bootstrap.servers", argv[1], errstr,
+    rd_kafka_conf_set(conf, "bootstrap.servers", broker, errstr,
                       sizeof(errstr));
     rd_kafka_conf_set(conf, "group.id", "my-group", errstr, sizeof(errstr));
 
@@ -85,7 +130,7 @@ int main(int argc, char **argv) {
 
     /* Create topic partition list and add topic */
     topic_list = rd_kafka_topic_partition_list_new(1);
-    rd_kafka_topic_partition_list_add(topic_list, argv[2],
+    rd_kafka_topic_partition_list_add(topic_list, topic,
                                       RD_KAFKA_PARTITION_UA);
 
     /* Subscribe to topic */

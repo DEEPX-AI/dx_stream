@@ -60,11 +60,12 @@ GObject
 | `config-file-path`  | Path to the JSON config file containing the tracking algorithm and parameters.                       | String    | `null`             |
 | `tracker-name`      | Specifies the name of the tracking algorithm to use.                                                | String    | `"OC_SORT"`        |
 
-**Notes.**  
 
-- The JSON configuration file is required to customize tracking algorithm parameters.  
-- If **no** configuration file is provided, **DxTracker** uses `OC_SORT` with default settings.  
-- All parameters values **must** be defined within the params section of the JSON file.  
-- Track IDs are only assigned to successfully tracked objects. Objects that can **not** be tracked are removed and **not** passed downstream.  
+!!! note "NOTE" 
+
+    - The JSON configuration file is required to customize tracking algorithm parameters.  
+    - If **no** configuration file is provided, **DxTracker** uses `OC_SORT` with default settings.  
+    - All parameters values **must** be defined within the params section of the JSON file.  
+    - Track IDs are only assigned to successfully tracked objects. Objects that can **not** be tracked are removed and **not** passed downstream.  
 
 ---

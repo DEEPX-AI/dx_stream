@@ -8,9 +8,9 @@ OUTPUT_WIDTH=1280
 OUTPUT_HEIGHT=720
 VIDEO_DIR="${SRC_DIR}/samples/videos/"
 
-PREPROCESS_CONFIG="${SRC_DIR}/configs/Object_Detection/YOLOV5S_3/preprocess_config.json"
-INFER_CONFIG="${SRC_DIR}/configs/Object_Detection/YOLOV5S_3/inference_config.json"
-POSTPROCESS_CONFIG="${SRC_DIR}/configs/Object_Detection/YOLOV5S_3/postprocess_config.json"
+PREPROCESS_CONFIG="${SRC_DIR}/configs/Object_Detection/YOLOV5S_4/preprocess_config.json"
+INFER_CONFIG="${SRC_DIR}/configs/Object_Detection/YOLOV5S_4/inference_config.json"
+POSTPROCESS_CONFIG="${SRC_DIR}/configs/Object_Detection/YOLOV5S_4/postprocess_config.json"
 
 # check os version
 if [ "$(lsb_release -rs)" = "18.04" ]; then

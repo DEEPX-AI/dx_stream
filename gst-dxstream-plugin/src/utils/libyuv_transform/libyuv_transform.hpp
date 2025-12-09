@@ -14,7 +14,3 @@ void CvtColor(GstBuffer *buf, GstVideoInfo *input_info, uint8_t **dst, int width
                   const gchar *src_format, const gchar *dst_format);
 void Crop(GstBuffer *buf, GstVideoInfo *input_info, uint8_t **dst, int src_width, int src_height, int crop_x,
               int crop_y, int crop_width, int crop_height, const gchar *format);
-
-void SurfaceToOrigin(DXFrameMeta *frame_meta, GstVideoInfo *input_info, uint8_t *surface);
-void RGB24toNV12(DXFrameMeta *frame_meta, GstVideoInfo *input_info, uint8_t *surface);
-void RGB24toI420(DXFrameMeta *frame_meta, GstVideoInfo *input_info, uint8_t *surface);

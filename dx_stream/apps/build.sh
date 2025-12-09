@@ -52,7 +52,7 @@ build_and_install() {
         echo "Processing directory: $subdir"
         
         cd "$subdir" || exit 1
-        meson setup build --buildtype="$BUILD_TYPE"
+        meson setup build --buildtype="$BUILD_TYPE" --prefix="${PROJECT_ROOT}/install"
         if [ $? -ne 0 ]; then
             echo -e "Error: meson setup failed"
             exit 1

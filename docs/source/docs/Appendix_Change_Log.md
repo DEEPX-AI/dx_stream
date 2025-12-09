@@ -1,3 +1,40 @@
+## Version 2.1.0 (Nov 2025)
+
+#### Changed
+- **Model Configuration**: Updated default YOLOv5 from YOLOV5S_3 to YOLOV5S_4 with models-2_1_0.tar.gz
+- **Video Sink Settings**: Disabled synchronization in secondary mode for improved performance
+- **Demo Scripts**: Simplified video input paths in message broker demos
+- **Message Conversion**: Simplified message conversion configuration and improved JSON payload structure
+- **Buffer Processing**: Enhanced preprocessing and postprocessing to use direct buffer manipulation for better performance
+- **Configuration**: Streamlined msgconv configuration by removing unnecessary sections
+- Modified event handling logic in 'dxpreprocess', 'dxinfer', 'dxoutputselector' and 'dxosd' to align with updates to 'dxinputselector'.
+
+#### Fixed
+- **Setup Scripts**: Improved error handling and prevented excessive download retry attempts
+- **Shutdown Flow**: Improved shutdown signal processing in dx-infer element
+- **Memory Management**: Better buffer handling in preprocessing and postprocessing pipelines
+- **Registry Handling**: Fixed GStreamer registry cache issues with GstShark integration
+- Fixed an event processing timing issue in 'dxinputselector' that caused compositor pipeline freezes.
+
+#### Added
+- **PPU Support**: Integrated Post-Processing Unit functionality for YOLOv5s, SCRFD500M, and YOLOv5Pose models
+    - NPU-based bounding box decoding and NMS processing to reduce CPU overhead
+    - Three new demo options showcasing PPU capabilities
+- **Download Reliability**: Enhanced setup scripts with timeout limits and file integrity verification
+    - Automatic verification and cleanup of corrupted archives
+    - Prevents infinite retry loops that could cause hour-long hangs
+- Installation Guide for Orange Pi 5 Plus
+- Performance Analysis Tools: Added GstShark integration for comprehensive pipeline performance evaluation
+    - Automated installation script 'install_gstshark.sh' for easy setup
+    - Complete performance evaluation documentation with sample commands
+    - Support for CPU usage, processing time, frame rate, and bitrate analysis
+- **Preprocessing Features**: Added preprocess skip functionality for conditional processing
+- **Build Support**: Added build configuration for v3 architecture
+
+**Known Issues.** 
+- DeepLabV3 Semantic Segmentation model accuracy may be slightly degraded in dx-compiler(dx_com) v2.1.0. This will be fixed in the next release. The DeepLabV3 model used in the demo was converted using dx-compiler v2.0.0.
+- When using the PPU model for face detection & pose estimation, dx-compiler v2.1.0 does not currently support converting face and pose models to PPU format. This feature will be added in a future release. The PPU models used in the demo were converted using dx-compiler v1.0.0(dx_com v1.60.1).
+
 ## Version 2.0.0 (Aug 2025)
 
 #### Changed

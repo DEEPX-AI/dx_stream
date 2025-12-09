@@ -33,18 +33,19 @@ GObject
 
 | **Name**         | **Description**                                                      | **Type**  | **Default Value** |
 |-------------------|----------------------------------------------------------------------|-----------|--------------------|
-| `broker-name` | Name of message broker system (mqtt or kafka). **Required**. | String | `mqtt`             |
+| `broker-name` | Name of message broker system (mqtt or kafka). **Required**. | String | `"mqtt"`             |
 | `conn-info`      | Connection info in the format `host:port`. **Required**.             | String    | `null`             |
 | `topic`          | The topic name for publishing messages. **Required**.                | String    | `null`             |
 | `config`         | Path to the broker configuration file (optional).                    | String    | `null`             |
 
-### **Notes**  
 
-- The `broker-name` property is **required** for selecting a broker system (e.g., MQTT, Kafka).  
-- The `conn-info` property is **required** and **must** be sent to establish a connection to the broker (the `host:port` format).  
-- The `topic` property is **required** and defines the topic for messages publication.  
-- An optional configuration file can provide advanced settings, such as`SSL/TLS` encryption and
-authentication details.  
-- Ensure the `libmosquitto-dev` (for MQTT) and `librdkafka` (for Kafka) libraries are installed for proper broker support.  
+!!! note "NOTE" 
+
+    - The `broker-name` property determines which broker type to use. Supported values are `"mqtt"` and `"kafka"`. While "mqtt" is set as the initial value, this property is **required** to be explicitly set.
+    - The `conn-info` property is **required** and **must** be set to establish a connection to the broker in the `host:port` format.  
+    - The `topic` property is **required** and defines the topic for message publication.  
+    - An optional configuration file can provide advanced settings, such as `SSL/TLS` encryption and authentication details.  
+    - Ensure the `libmosquitto-dev` (for MQTT) and `librdkafka-dev` (for Kafka) libraries are installed for proper broker support.  
+    - The element uses a **Broker Abstraction Layer (BAL)** that provides a unified interface for different broker types, making it easy to switch between MQTT and Kafka without changing the pipeline structure.  
 
 ---

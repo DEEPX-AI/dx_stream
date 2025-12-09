@@ -11,12 +11,20 @@ Processed results are attached to `DXFrameMeta`, enabling downstream tasks such 
 - **Secondary Mode:**  Modifies existing `DXObjectMeta` based on updated inference results from **DxInfer**
 
 **Custom Postprocessing**  
-You can use a custom post-processing function by specifying.  
+You can use a custom post-processing function by specifying:  
 
 - `library-file-path`: Path to the shared object `(.so)` containing your custom function  
 - `function-name`: Name of the function to be called  
 
-This allows full flexibility to implement custom decoding, filtering, or data transformation logic.
+The custom function signature has been updated to include GstBuffer access:
+```cpp
+extern "C" void PostProcess(GstBuffer *buf,
+                           std::vector<dxs::DXTensor> network_output,
+                           DXFrameMeta *frame_meta,
+                           DXObjectMeta *object_meta);
+```
+
+This allows full flexibility to implement custom decoding, filtering, or data transformation logic with direct access to the GStreamer buffer.
 
 ### **Hierarchy**  
 
@@ -50,9 +58,9 @@ GObject
 }
 ```
 
-**Notes.**  
+!!! note "NOTE" 
 
-- All properties can also be configured using a JSON file for enhanced usability and flexibility.  
-- For implementing custom preprocess logic, refer to **Chapter 4. Writing Your Own Application `“Custom Post-Process Library Documentation”`**.  
+    - All properties can also be configured using a JSON file for enhanced usability and flexibility.  
+    - For implementing custom preprocess logic, refer to **Chapter. Writing Your Own Application `“Custom Post-Process Library Documentation”`**.  
 
 ---

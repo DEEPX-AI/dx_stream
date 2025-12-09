@@ -8,10 +8,10 @@ mqtt_sub = executable(
   'mqtt_sub_example.cpp',
   dependencies: [mosquitto_dep, json_glib_dep],
   install: true,
-  install_dir: '/usr/share/dx-stream/bin'
+  install_dir: 'bin'
 )
 
 install_data(
-  ['mqtt_sub_example.py', 'mqtt_sub_example_frame.py'],
-  install_dir: '/usr/share/dx-stream/bin'
+  ['mqtt_sub_example.py'],
+  install_dir: 'bin'
 )

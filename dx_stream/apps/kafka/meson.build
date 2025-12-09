@@ -9,10 +9,10 @@ kafka_consume = executable(
   'kafka_consume_example.cpp',
   dependencies: [librdkafka_dep, json_glib_dep],
   install: true,
-  install_dir: '/usr/share/dx-stream/bin'
+  install_dir: 'bin'
 )
 
 install_data(
-  ['kafka_consume_example.py', 'kafka_consume_example_frame.py'],
-  install_dir: '/usr/share/dx-stream/bin'
+  ['kafka_consume_example.py'],
+  install_dir: 'bin'
 )

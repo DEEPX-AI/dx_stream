@@ -12,17 +12,17 @@ typedef struct _DxMsgPayload {
 } DxMsgPayload;
 
 typedef struct _DxMsgContext {
-    gpointer _priv_data; // DxMsgContextPriv
+    gpointer _priv_data;
 } DxMsgContext;
 
-typedef struct _DxMsgMetaInfo {
+typedef struct _GstDxMsgMetaInfo {
     gpointer _frame_meta;
     gpointer _input_info;
     gboolean _include_frame;
 
-    /** debug purpose */
     guint64 _seq_id;
-} DxMsgMetaInfo;
+} GstDxMsgMetaInfo;
+
 typedef struct _GstDxMsgMeta {
     GstMeta meta;
 
@@ -35,8 +35,6 @@ const GstMetaInfo *gst_dxmsg_meta_get_info(void);
 
 #define GST_DXMSG_META_API_TYPE (gst_dxmsg_meta_api_get_type())
 #define GST_DXMSG_META_INFO (gst_dxmsg_meta_get_info())
-
-void gst_buffer_add_dxmsg_meta(GstBuffer *buffer, DxMsgPayload *payload);
 
 G_END_DECLS
 

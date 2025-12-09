@@ -26,10 +26,12 @@ typedef struct _GstDxInfer {
     guint _infer_id;
 
     gboolean _secondary_mode;
+    gboolean _use_ort;
     gchar *_model_path;
     gchar *_config_path;
 
     std::shared_ptr<dxrt::InferenceEngine> _ie;
+    std::shared_ptr<dxrt::InferenceOption> _infer_option;
     int _last_req_id;
 
     int _output_tensor_size;

@@ -1,8 +1,8 @@
 #ifndef __DX_MSGCONVL_PRIV_H__
 #define __DX_MSGCONVL_PRIV_H__
 
-#include "gst-dxmeta.hpp"
-#include "gst-dxmsgmeta.hpp"
+#include "dx_stream/gst-dxmeta.hpp"
+#include "dx_stream/gst-dxmsgmeta.hpp"
 
 // private property from config file
 typedef struct _DxMsgContextPriv {
@@ -18,6 +18,6 @@ bool dxcontext_parse_json_config(const gchar *file,
                                  DxMsgContextPriv *contextPriv);
 
 gchar *dxpayload_convert_to_json(DxMsgContext *context,
-                                 DxMsgMetaInfo *meta_info);
+                                 GstDxMsgMetaInfo *meta_info);
 
 #endif /* __DX_MSGCONVL_PRIV_H__ */

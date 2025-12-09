@@ -16,9 +16,7 @@ typedef struct _DXFrameMeta DXFrameMeta;
 
 struct _DXFrameMeta {
     GstMeta _meta;
-
-    GstBuffer *_buf;
-
+    
     gint _stream_id;
     gint _width;
     gint _height;

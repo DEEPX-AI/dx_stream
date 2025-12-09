@@ -1,5 +1,4 @@
-#include "dxcommon.hpp"
-#include "gst-dxmeta.hpp"
+#include "dx_stream/gst-dxmeta.hpp"
 #include <algorithm>
 #include <cmath>
 #include <vector>
@@ -292,9 +291,10 @@ FaceDetection scale_face(const FaceDetection& face, int orig_width, int orig_hei
  * @param frame_meta Frame metadata containing image dimensions and ROI
  * @param object_meta Object metadata (output parameter)
  */
-extern "C" void PostProcess(std::vector<dxs::DXTensor> network_output,
-                            DXFrameMeta *frame_meta, DXObjectMeta *object_meta) {
-    
+extern "C" void PostProcess(GstBuffer *buf,
+                            std::vector<dxs::DXTensor> network_output,
+                            DXFrameMeta *frame_meta,
+                            DXObjectMeta *object_meta) {
     // ============================================================================
     // CONFIGURATION SETUP
     // ============================================================================

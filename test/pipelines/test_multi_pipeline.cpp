@@ -225,14 +225,14 @@ GST_START_TEST(test_multi_pipeline) {
     GstElement *preprocess = gst_element_factory_make("dxpreprocess", NULL);
     fail_unless(preprocess != NULL, "Failed to create GstDxPreprocess element");
     g_object_set(preprocess, "config-file-path",
-                 "./../../../dx_stream/configs/Object_Detection/YOLOV5S_1/"
+                 "./../../../dx_stream/configs/Object_Detection/YOLOV5S_3/"
                  "preprocess_config.json",
                  NULL);
 
     GstElement *infer = gst_element_factory_make("dxinfer", NULL);
     fail_unless(infer != NULL, "Failed to create GstDxInfer element");
     g_object_set(infer, "model-path",
-                 "./../../../dx_stream/samples/models/YOLOV5S_1.dxnn", NULL);
+                 "./../../../dx_stream/samples/models/YOLOV5S_3.dxnn", NULL);
     g_object_set(infer, "preprocess-id", 1, NULL);
     g_object_set(infer, "inference-id", 1, NULL);
 
@@ -240,7 +240,7 @@ GST_START_TEST(test_multi_pipeline) {
     fail_unless(postprocess != NULL,
                 "Failed to create GstDxPostprocess element");
     g_object_set(postprocess, "config-file-path",
-                 "./../../../dx_stream/configs/Object_Detection/YOLOV5S_1/"
+                 "./../../../dx_stream/configs/Object_Detection/YOLOV5S_3/"
                  "postprocess_config.json",
                  NULL);
 

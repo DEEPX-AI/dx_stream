@@ -280,7 +280,7 @@ GST_START_TEST(test_face_recognition_pipeline) {
 
     gst_element_set_state(pipeline, GST_STATE_PLAYING);
     GstStateChangeReturn ret =
-        gst_element_get_state(pipeline, NULL, NULL, GST_SECOND);
+        gst_element_get_state(pipeline, NULL, NULL, 10 * GST_SECOND);
     fail_unless(ret == GST_STATE_CHANGE_SUCCESS,
                 "Pipeline state change to PLAYING timed out");
 

@@ -1,54 +1,194 @@
 # Troubleshooting and FAQ
 
-## Installation
+## Rendering Issues  
 
-**TBD**
+#### **Problem: Abnormal Behavior**
 
-## Runtime
+The pipeline may exhibit abnormal behavior or fail to display video when attempting to render the video stream on the screen.
 
-### Rendering Issues  
+#### **Cause: Unsupported Element**
 
-Rendering in GStreamer is generally performed using a sink element. If the specified displaysink element is **not** supported on the current PC environment, the pipeline may exhibit abnormal behavior. Therefore, it is essential to select an appropriate displaysink element based on the system's environment:  
+The root cause of abnormal behavior is:
+-	Incompatibility: The specified displaysink element is not supported by the current PC environment (e.g., due to unsupported graphics drivers or display server settings).
 
-- For CPU-based environments, ximagesink or xvimagesink can be used.  
-- For GPU-based environments, glimagesink or similar elements are recommended.  
-- Add videoconvert before display sink element  
+#### **Solution: Element Selection & Compatibility**
+
+It's essential to address both the hardware fit and the data format compatibility.
+
+**Solution 1: Element Selection**
+
+- For CPU-based Environments: Use ximagesink or xvimagesink.
+
+- For GPU-based Environments: Use glimagesink or similar GPU-accelerated elements.
+
+
+**Solution 2: Ensure Compatibility**
+
+Mandatory Step: Always add videoconvert directly before the displaysink element.
+
+- Purpose: This element correctly converts the video format from upstream elements into a format the chosen sink can process, preventing format mismatch errors.
+
     ```
-    $ gst-launch-1.0 ..... ! videoconvert ! autovideosink
+    $ gst-launch-1.0 .... ! videoconvert ! autovideosink
     ```
 
-### Buffer Delays in Sink Element  
+---
 
-When a PC has low performance or is under heavy load, GStreamer pipelines may experience delays in delivering buffers to the sink element (e.g., `ximagesink`, `glimagesink`, etc.). This can result in issues such as  
-
-- Stuttering or lagging video playback.  
-- Warning messages like "buffering too slow" or "dropped frames."  
-- Overall pipeline performance degradation.  
-
-**Optimize PC Performance**  
-
-- Terminate Background Processes: Free up CPU/GPU resources by closing unnecessary programs.  
-- Use Lower-Resolution Videos: Reduce decoding and rendering workload by downscaling input video resolution.  
-
-
-**Optimize the GStreamer Pipeline**  
-Add queue Elements:  
-
-- Insert queue elements at bottleneck points to decouple processing speeds.  
+## Display Sink Issues on Raspberry Pi 5
 
 ```
-gst-launch-1.0 filesrc location=video.mp4 ! decodebin ! queue ! autovideosink
+(ERROR: from element /GstPipeline:pipeline0/GstFPSDisplaySink:fpsdisplaysink0/GstAutoVideoSink:fps-display-video_sink/GstKMSSink:fps-display-video_sink-actual-sink-kms: GStreamer encountered a general resource error.
+Additional debug info:
+../sys/kms/gstkmssink.c(2032): gst_kms_sink_show_frame (): /GstPipeline:pipeline0/GstFPSDisplaySink:fpsdisplaysink0/GstAutoVideoSink:fps-display-video_sink/GstKMSSink:fps-display-video_sink-actual-sink-kms:
+drmModeSetPlane failed: Permission denied (13)
+ERROR: pipeline doesn't want to preroll.
+Setting pipeline to NULL ...)
 ```
 
-Use Asynchronous Rendering:  
+#### **Problem: Rendering Failure**
 
-- Disable real-time playback synchronization with `sync=false`.  
+The GStreamer pipeline fails to preroll and terminates prematurely, resulting in a general resource error. The specific error message indicates a system access issue: drmModeSetPlane failed: Permission denied (13).
 
-```
-gst-launch-1.0 ... autovideosink sync=false
-```
+#### **Cause: High-Ranked KMSSink Failure**
 
-### Kafka Pipeline  
+The issue stems from the automatic selection process of the sink element:
+
+**Automatic Selection**: The fpsdisplaysink element automatically selects the rendering sink with the highest RANK.
+
+**The Culprit**: In this environment, the high-ranked kmssink was automatically chosen.
+
+**Environmental Failure**: Due to environmental issues, likely related to permissions or system configuration specific to the Raspberry Pi 5 setup, the selected kmssink failed to operate normally, leading to the "Permission denied" error.
+
+#### **Solution: Manual Sink Replacement**
+
+The solution involves overriding the automatic, failing selection by manually specifying a stable, compatible sink element.
+
+**Action**: Modify the pipeline code to **replace the fpsdisplaysink element with ximagesink**.
+
+**Result**: **ximagesink uses CPU-based rendering** within an X11 environment, circumventing the resource and permission issues associated with kmssink to ensure proper display output.
+
+
+---
+
+## Buffer Delays in Sink Element  
+
+#### **Problem & Symptoms**
+
+The core problem is a performance bottleneck in the system, leading to noticeable playback degradation and warning messages.
+
+- Stuttering or lagging video playback.
+- Pipeline performance degradation.
+- Warning messages in the console, such as "buffering too slow" or "dropped frames."
+
+#### **Solutions: Performance Optimization**
+
+Solutions focus on optimizing both the PC environment and the GStreamer pipeline structure.
+
+**Solution 1: Optimize PC Performance**
+
+- **Terminate Background Processes**: Free up CPU/GPU resources by closing any unnecessary programs running in the background.
+
+- **Use Lower-Resolution Videos**: Reduce the decoding and rendering workload by using lower input video resolutions or downscaling the video stream early in the pipeline.
+
+**Solution 2: Optimize the GStreamer Pipeline**
+
+- **1. Add queue Elements (Decoupling):**
+
+    Insert queue elements at potential bottleneck points to decouple (separate) processing speeds between adjacent elements. This allows faster elements to process data ahead, mitigating delays caused by slower elements.
+
+    Example:
+
+    ```
+    gst-launch-1.0 filesrc location=video.mp4 ! decodebin ! queue ! autovideosink
+    ```
+
+- **2.	Use Asynchronous Rendering (Disable Synchronization):**
+
+    Disable real-time playback synchronization by setting sync=false on the sink element. This tells the sink to render frames as quickly as possible, ignoring the clock and often reducing perceived lag, though it may result in playback that is faster or slower than real-time.
+
+    Example:
+
+    ```
+    gst-launch-1.0 ... autovideosink sync=false
+    ```
+
+---
+
+## Troubleshooting Message Broker Issues
+
+#### **A. Common MQTT Problems**
+
+**Connection Refused**
+
+- Check Broker Status
+
+  ```bash
+  # Verify if Mosquitto is running
+  sudo systemctl status mosquitto
+  ```
+
+- Test Basic Connection
+
+  ```bash
+  # Attempt a basic publish operation
+  mosquitto_pub -h localhost -p 1883 -t test -m "hello"
+  ```
+
+**SSL Certificate Issues**
+
+- Verify Chain
+
+  ```bash
+  # Verify the certificate chain integrity
+  openssl verify -CAfile ca.crt server.crt
+  ```
+
+- Test SSL Connection
+
+  ```bash
+  # Test secure publishing
+  mosquitto_pub -h localhost -p 8883 --cafile ca.crt -t test -m "ssl_test"
+  ```
+
+#### **B. Common Kafka Problems**
+
+**Consumer Lag**
+
+- Check Consumer Group Status
+  ```bash
+  # monitor the consumer group status to identify lag
+  bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 --group dx_stream_group --describe
+  ```
+
+**SSL Handshake Failures**
+- Test SSL Connection
+  ```bash
+  # Test SSL connection
+  bin/kafka-console-producer.sh --bootstrap-server localhost:9093 --topic test \
+    --producer.config ssl.properties
+  ```
+
+#### **C. DX-STREAM Broker Element Issues**
+
+**Library Loading Errors**
+
+- Ensure message converter library path is correct
+- Verify library dependencies (json-glib-1.0, etc.) are installed and linked.
+
+**Message Format Issues**
+
+- Check if custom library implements all required functions
+- Verify that the final JSON output format matches expected structure
+
+**Performance Issues**
+
+- Adjust `message-interval` property to reduce message frequency
+- Monitor the broker server resources (CPU, memory, network)
+
+
+#### **D. Critical Kafka Connection Refusal Error** 
+
+A common error when using Kafka is connection refusal, as indicated by the following log.
 
 ```
 %3|1736310124.667|FAIL|rdkafka#producer-1| [thrd:localhost:9092/bootstrap]: localhost:9092/bootstrap: Connect to ipv4#127.0.0.1:9092 failed: Connection refused (after 0ms in state CONNECT)
@@ -56,43 +196,44 @@ ERROR: Pipeline doesn't want to pause.
 ERROR: from element /GstPipeline:pipeline0/GstDxMsgBroker:dxmsgbroker0: GStreamer error: state change failed and some element failed to post a proper error message with the reason for the failure.
 ```
 
-The following error might occur when using a message broker with Kafka, as shown in the log above. To resolve this, verify whether the Kafka broker is running. If it is **not** running, perform the steps below to start it and ensure normal operation.  
+This error usually means the Kafka broker is not running. To resolve this, verify its status and restart it if necessary.
 
+**Solution Stops (If Broker is Net Running)** 
 
 - Check Running Status  
 
-```
-$ ps -ef | grep kafka
-```
+    ```
+    $ ps -ef | grep kafka
+    ```
 
 
-- If **not** running, follow these steps  
+- Installation and Startup (If not running)
 
-Create a utilities directory and install required dependencies
+    Installation: Create a utilities directory and install required dependencies (Java JDK is essential). Download and extract the Kafka distribution:
 
-```
-$ mkdir utils && cd utils
-$ sudo apt update
-$ sudo apt-get install default-jdk
-$ wget https://downloads.apache.org/kafka/3.9.0/kafka_2.13-3.9.0.tgz
-$ tar -xzf kafka_2.13-3.9.0.tgz
-$ cd kafka_2.13-3.9.0
-```
+    ```
+    $ mkdir utils && cd utils
+    $ sudo apt update
+    $ sudo apt-get install default-jdk
+    $ wget https://downloads.apache.org/kafka/3.9.0/kafka_2.13-3.9.0.tgz
+    $ tar -xzf kafka_2.13-3.9.0.tgz
+    $ cd kafka_2.13-3.9.0
+    ```
 
-In separate terminal sessions, execute the following commands  
+    Start Zookeeper (terminal 1): Kafka requires Zookeeper to be running first
 
-**Terminal 1:** Start Zookeeper  
+    ```
+    $ bin/zookeeper-server-start.sh config/zookeeper.properties
+    ```
 
-```
-$ bin/zookeeper-server-start.sh config/zookeeper.properties
-```
+    Start Kafka Broker (Terminal 2): In a separate terminal session, start the Kafka broker
 
-**Terminal 2:** Start Kafka Broker  
+    ```
+    $ bin/kafka-server-start.sh config/server.properties
+    ```
 
-```
-$ bin/kafka-server-start.sh config/server.properties
-```
-
-Keep these terminals running while executing the pipeline to ensure proper operation.
+!!! note "NOTE" 
+  
+    Keep both terminal sessions running while the DX-STREAM pipeline is active to ensure proper operation.
 
 ---

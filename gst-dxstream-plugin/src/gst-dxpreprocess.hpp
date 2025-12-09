@@ -20,6 +20,9 @@
 #include "libyuv_transform/libyuv_transform.hpp"
 #endif
 
+// Forward declaration for preprocessor
+class Preprocessor;
+
 G_BEGIN_DECLS
 
 #define GST_TYPE_DXPREPROCESS (gst_dxpreprocess_get_type())
@@ -43,6 +46,9 @@ struct _GstDxPreprocess {
     guint _input_channel;
     gboolean _keep_ratio;
     guint _pad_value;
+    gboolean _transpose;
+
+    void* _transpose_data;
 
     gboolean _secondary_mode;
     gint _target_class_id;
@@ -63,14 +69,14 @@ struct _GstDxPreprocess {
     std::map<int, std::map<int, int>> _track_cnt;
 
     void *_library_handle;
-    bool (*_process_function)(DXFrameMeta *, DXObjectMeta *, void *);
+    bool (*_process_function)(GstBuffer *buf, DXFrameMeta *, DXObjectMeta *, void *);
 
-#ifdef HAVE_LIBRGA
-#else
+    // Preprocessor instance for object-oriented implementation
+    Preprocessor *_preprocessor;
+
     std::map<int, uint8_t *> _crop_frame;
     std::map<int, uint8_t *> _convert_frame;
     std::map<int, uint8_t *> _resized_frame;
-#endif
 };
 
 G_END_DECLS

@@ -1,4 +1,5 @@
 #include "gst-dxpreprocess.hpp"
+#include "preprocessors/preprocessor_factory.h"
 #include <chrono>
 #include <dlfcn.h>
 #include <gst/video/video.h>
@@ -23,6 +24,7 @@ enum {
     PROP_MIN_OBJECT_HEIGHT,
     PROP_INTERVAL,
     PROP_ROI,
+    PROP_TRANSPOSE,
     N_PROPERTIES
 };
 
@@ -144,6 +146,7 @@ static void parse_config(GstDxPreprocess *self) {
 
     set_boolean("keep_ratio", self->_keep_ratio);
     set_boolean("secondary_mode", self->_secondary_mode);
+    set_boolean("transpose", self->_transpose);
 
     g_object_unref(parser);
 }
@@ -179,6 +182,7 @@ static void dxpreprocess_set_property(GObject *object, guint property_id,
         break;
 
     case PROP_COLOR_FORMAT: {
+        g_free(self->_color_format);
         guint color_value = g_value_get_uint(value);
         if (color_value == 0) {
             self->_color_format = g_strdup("RGB");
@@ -207,6 +211,10 @@ static void dxpreprocess_set_property(GObject *object, guint property_id,
 
     case PROP_SECONDARY_MODE:
         self->_secondary_mode = g_value_get_boolean(value);
+        break;
+
+    case PROP_TRANSPOSE:
+        self->_transpose = g_value_get_boolean(value);
         break;
 
     case PROP_TARGET_CLASS_ID:
@@ -303,6 +311,10 @@ static void dxpreprocess_get_property(GObject *object, guint property_id,
         g_value_set_boolean(value, self->_secondary_mode);
         break;
 
+    case PROP_TRANSPOSE:
+        g_value_set_boolean(value, self->_transpose);
+        break;
+
     case PROP_TARGET_CLASS_ID:
         g_value_set_int(value, self->_target_class_id);
         break;
@@ -364,10 +376,18 @@ static void dxpreprocess_dispose(GObject *object) {
     }
     g_free(self->_color_format);
 
+    if (self->_preprocessor) {
+        delete self->_preprocessor;
+        self->_preprocessor = nullptr;
+    }
+
+    if (self->_transpose_data) {
+        free(self->_transpose_data);
+        self->_transpose_data = nullptr;
+    }
+
     self->_track_cnt.clear();
 
-#ifdef HAVE_LIBRGA
-#else
     for (std::map<int, uint8_t *>::iterator it = self->_crop_frame.begin();
          it != self->_crop_frame.end(); ++it) {
         if (it->second != nullptr) {
@@ -391,7 +411,6 @@ static void dxpreprocess_dispose(GObject *object) {
         }
     }
     self->_resized_frame.clear();
-#endif
 
     G_OBJECT_CLASS(parent_class)->dispose(object);
 }
@@ -426,35 +445,40 @@ static gboolean gst_dxpreprocess_set_caps(GstBaseTransform *trans,
     return TRUE;
 }
 
+void set_input_info(GstDxPreprocess *self, GstEvent *event, int stream_id) {
+    GstCaps *incaps = nullptr;
+    gst_event_parse_caps(event, &incaps);
+    if (incaps) {
+        if (self->_input_info.find(stream_id) == self->_input_info.end()) {
+            gst_video_info_init(&self->_input_info[stream_id]);
+            gst_video_info_from_caps(
+                &self->_input_info[stream_id], incaps);
+        }
+    }
+}
+
 static gboolean gst_dxpreprocess_sink_event(GstBaseTransform *trans,
                                             GstEvent *event) {
     GstDxPreprocess *self = GST_DXPREPROCESS(trans);
     GstPad *src_pad = GST_BASE_TRANSFORM_SRC_PAD(trans);
-    // g_print("Received event: %s \n", GST_EVENT_TYPE_NAME(event));
-    // gboolean res = TRUE;
+    GST_INFO_OBJECT(self, "Received event [%s] ", GST_EVENT_TYPE_NAME(event));
     switch (GST_EVENT_TYPE(event)) {
     case GST_EVENT_CUSTOM_DOWNSTREAM: {
+        // for inputselector event
         const GstStructure *s_check = gst_event_get_structure(event);
-        if (gst_structure_has_name(s_check, "application/x-dx-route-info")) {
+        if (gst_structure_has_name(s_check, "application/x-dx-wrapped-event")) {
             int stream_id = -1;
+            GstEvent *original_event = nullptr;
             gst_structure_get_int(s_check, "stream-id", &stream_id);
-            self->_last_stream_id = stream_id;
+            gst_structure_get(s_check, "event", GST_TYPE_EVENT, &original_event, NULL);
+            if (original_event && GST_EVENT_TYPE(original_event) == GST_EVENT_CAPS) {
+                set_input_info(self, original_event, stream_id);
+            }
         }
     } break;
     case GST_EVENT_CAPS: {
-        GstCaps *incaps = nullptr;
-        gst_event_parse_caps(event, &incaps);
-        // g_print("PREPROCESS_CAPS for stream %d: %s\n", self->_last_stream_id,
-        // gst_caps_to_string(incaps));
-        if (incaps) {
-            if (self->_input_info.find(self->_last_stream_id) ==
-                self->_input_info.end()) {
-                gst_video_info_init(&self->_input_info[self->_last_stream_id]);
-                gst_video_info_from_caps(
-                    &self->_input_info[self->_last_stream_id], incaps);
-            }
-            // gst_caps_unref(incaps);
-        }
+        // for single stream
+        set_input_info(self, event, 0);
     } break;
     default:
         break;
@@ -522,6 +546,11 @@ static void gst_dxpreprocess_class_init(GstDxPreprocessClass *klass) {
     obj_properties[PROP_SECONDARY_MODE] = g_param_spec_boolean(
         "secondary-mode", "Is Secondary Mode",
         "Enables Secondary Mode for processing object regions.", FALSE,
+        G_PARAM_READWRITE);
+
+    obj_properties[PROP_TRANSPOSE] = g_param_spec_boolean(
+        "transpose", "Is Transpose",
+        "Enables Transpose for processing object regions.", FALSE,
         G_PARAM_READWRITE);
 
     obj_properties[PROP_TARGET_CLASS_ID] =
@@ -606,6 +635,9 @@ static void gst_dxpreprocess_init(GstDxPreprocess *self) {
     self->_min_object_width = 0;
     self->_min_object_height = 0;
     self->_interval = 0;
+    self->_transpose = FALSE;
+    self->_transpose_data = nullptr;
+
     self->_cnt.clear();
 
     self->_acc_fps = 0;
@@ -624,12 +656,11 @@ static void gst_dxpreprocess_init(GstDxPreprocess *self) {
     self->_qos_timediff = 0;
     self->_throttling_delay = 0;
 
-#ifdef HAVE_LIBRGA
-#else
+    self->_preprocessor = nullptr;
+
     self->_crop_frame = std::map<int, uint8_t *>();
     self->_convert_frame = std::map<int, uint8_t *>();
     self->_resized_frame = std::map<int, uint8_t *>();
-#endif
 }
 
 static gboolean gst_dxpreprocess_start(GstBaseTransform *trans) {
@@ -653,7 +684,7 @@ static gboolean gst_dxpreprocess_start(GstBaseTransform *trans) {
         }
 
         self->_process_function =
-            (bool (*)(DXFrameMeta *, DXObjectMeta *, void *))func_ptr;
+            (bool (*)(GstBuffer *, DXFrameMeta *, DXObjectMeta *, void *))func_ptr;
         if (!self->_process_function) {
             g_print("Error: Process function is nullptr\n");
             return FALSE;
@@ -661,10 +692,26 @@ static gboolean gst_dxpreprocess_start(GstBaseTransform *trans) {
     }
 
     if (self->_resize_height > 0 && self->_resize_width > 0) {
+        if (self->_transpose) {
+            self->_transpose_data = (uint8_t *)malloc(
+                self->_resize_height * self->_resize_width * self->_input_channel);
+            if (!self->_transpose_data) {
+                g_error("Failed to allocate memory for transpose data");
+                return FALSE;
+            }
+        }
     } else {
         g_error("Invalid input size %d x %d", self->_resize_width,
                 self->_resize_height);
         return FALSE;
+    }
+
+    if (!self->_preprocessor) {
+        self->_preprocessor = PreprocessorFactory::create_preprocessor(self);
+        if (!self->_preprocessor) {
+            GST_ERROR_OBJECT(self, "Failed to create preprocessor instance");
+            return FALSE;
+        }
     }
 
     return TRUE;
@@ -673,270 +720,6 @@ static gboolean gst_dxpreprocess_start(GstBaseTransform *trans) {
 static gboolean gst_dxpreprocess_stop(GstBaseTransform *trans) {
     GST_DEBUG_OBJECT(trans, "stop");
     return TRUE;
-}
-
-#ifdef HAVE_LIBRGA
-bool calculate_nv12_strides_short(int w, int h, int wa, int ha, int *ws,
-                                  int *hs) {
-    if (!ws || !hs || w <= 0 || h <= 0 || (h % 2 != 0) || wa < 0 || ha < 0) {
-        return false;
-    }
-    *ws = (wa <= 1) ? w : (((w + wa - 1) / wa) * wa);
-    *hs = (ha <= 1) ? h : (((h + ha - 1) / ha) * ha);
-
-    return true;
-}
-
-bool preprocess(GstDxPreprocess *self, DXFrameMeta *frame_meta, void *output,
-                cv::Rect *roi) {
-    if (self->_resize_width % 16 != 0 || self->_resize_height % 2 != 0) {
-        g_error("ERROR : output W stride must be 16 (H stride 2) aligned ! \n");
-        return true;
-    }
-
-    if (!output) {
-        g_error("ERROR : output memory is nullptr! \n");
-        return false;
-    }
-
-    if (g_strcmp0(frame_meta->_format, "NV12") != 0) {
-        g_error("ERROR : not supported format (use NV12)! \n");
-        return false;
-    }
-
-    GstMapInfo map;
-    if (!gst_buffer_map(frame_meta->_buf, &map, GST_MAP_READ)) {
-        g_error("ERROR : Failed to map GstBuffer (dxpreprocess) \n");
-        return false;
-    }
-    int wstride, hstride;
-    calculate_nv12_strides_short(frame_meta->_width, frame_meta->_height, 16,
-                                 16, &wstride, &hstride);
-    rga_buffer_t src_img = wrapbuffer_virtualaddr(
-        reinterpret_cast<void *>(map.data), frame_meta->_width,
-        frame_meta->_height, RK_FORMAT_YCbCr_420_SP,
-        self->_input_info[frame_meta->_stream_id].stride[0], hstride);
-    rga_buffer_t dst_img;
-    if (g_strcmp0(self->_color_format, "RGB") == 0) {
-        dst_img = wrapbuffer_virtualaddr(
-            reinterpret_cast<void *>(output), self->_resize_width,
-            self->_resize_height, RK_FORMAT_RGB_888);
-    } else if (g_strcmp0(self->_color_format, "BGR") == 0) {
-        dst_img = wrapbuffer_virtualaddr(
-            reinterpret_cast<void *>(output), self->_resize_width,
-            self->_resize_height, RK_FORMAT_BGR_888);
-    } else {
-        g_warning("Invalid color mode: %s. Use RGB or BGR.",
-                  self->_color_format);
-        return false;
-    }
-
-    int width = frame_meta->_width;
-    int height = frame_meta->_height;
-
-    im_rect src_rect, dst_rect;
-    memset(&src_rect, 0, sizeof(src_rect));
-    memset(&dst_rect, 0, sizeof(dst_rect));
-
-    src_rect.x = 0;
-    src_rect.y = 0;
-    src_rect.width = frame_meta->_width;
-    src_rect.height = frame_meta->_height;
-
-    if (roi->width != 0 && roi->height != 0) {
-        src_rect.x = std::max(roi->x % 2 == 0 ? roi->x : roi->x + 1, 0);
-        src_rect.y = std::max(roi->y % 2 == 0 ? roi->y : roi->y + 1, 0);
-        src_rect.width =
-            std::max(roi->width % 2 == 0 ? roi->width : roi->width + 1, 0);
-        if (src_rect.width + src_rect.x > frame_meta->_width) {
-            src_rect.width = frame_meta->_width - src_rect.x;
-        }
-        src_rect.height =
-            std::max(roi->height % 2 == 0 ? roi->height : roi->height + 1, 0);
-        if (src_rect.height + src_rect.y > frame_meta->_height) {
-            src_rect.height = frame_meta->_height - src_rect.y;
-        }
-        width = src_rect.width;
-        height = src_rect.height;
-    }
-
-    if (self->_keep_ratio) {
-        float dw, dh;
-        uint16_t top, left;
-        float ratioDest = (float)self->_resize_width / self->_resize_height;
-        float ratioSrc = (float)width / height;
-        int newWidth, newHeight;
-        if (ratioSrc < ratioDest) {
-            newHeight = self->_resize_height;
-            newWidth = newHeight * ratioSrc;
-        } else {
-            newWidth = self->_resize_width;
-            newHeight = newWidth / ratioSrc;
-        }
-
-        dw = (self->_resize_width - newWidth) / 2.0;
-        dh = (self->_resize_height - newHeight) / 2.0;
-
-        top = (uint16_t)round(dh - 0.1);
-        left = (uint16_t)round(dw - 0.1);
-
-        dst_rect.x = left;
-        dst_rect.y = top;
-        dst_rect.width = newWidth;
-        dst_rect.height = newHeight;
-    } else {
-        dst_rect.x = 0;
-        dst_rect.y = 0;
-        dst_rect.width = self->_resize_width;
-        dst_rect.height = self->_resize_height;
-    }
-
-    imconfig(IM_CONFIG_SCHEDULER_CORE,
-             IM_SCHEDULER_RGA3_CORE0 | IM_SCHEDULER_RGA3_CORE1);
-    int ret = imcheck(src_img, dst_img, src_rect, dst_rect);
-    if (IM_STATUS_NOERROR != ret) {
-        std::cerr << "check error: " << ret << " - "
-                  << imStrError((IM_STATUS)ret) << std::endl;
-        return false;
-    }
-
-    if ((float)dst_rect.width / src_rect.width <= 0.125 ||
-        (float)dst_rect.width / src_rect.width >= 8 ||
-        (float)dst_rect.height / src_rect.height <= 0.125 ||
-        (float)dst_rect.height / src_rect.height >= 8) {
-        g_warning("DX Preprocess : scale check error, scale limit[1/8 ~ 8] \n");
-        return false;
-    }
-
-    if (src_rect.width < 68 || src_rect.height < 2 || src_rect.width > 8176 ||
-        src_rect.height > 8176) {
-        g_warning("DX Preprocess : resolution check error, input range[68x2 ~ "
-                  "8176x8176] \n");
-        return false;
-    }
-
-    if (dst_rect.width < 68 || dst_rect.height < 2 || dst_rect.width > 8128 ||
-        dst_rect.height > 8128) {
-        g_warning("DX Preprocess : resolution check error, output range[68x2 ~ "
-                  "8128x8128] \n");
-        return false;
-    }
-
-    ret = improcess(src_img, dst_img, {}, src_rect, dst_rect, {}, IM_SYNC);
-
-    gst_buffer_unmap(frame_meta->_buf, &map);
-    if (ret != IM_STATUS_SUCCESS) {
-        std::cerr << "RGA resize (imresize) failed: " << ret << " - "
-                  << imStrError((IM_STATUS)ret) << std::endl;
-        return false;
-    }
-    return true;
-}
-#else
-bool preprocess(GstDxPreprocess *self, DXFrameMeta *frame_meta, void *output,
-                cv::Rect *roi) {
-    int width = frame_meta->_width;
-    int height = frame_meta->_height;
-
-    if (self->_secondary_mode) {
-        if (self->_crop_frame[frame_meta->_stream_id]) {
-            free(self->_crop_frame[frame_meta->_stream_id]);
-            self->_crop_frame[frame_meta->_stream_id] = nullptr;
-        }
-        if (self->_resized_frame[frame_meta->_stream_id]) {
-            free(self->_resized_frame[frame_meta->_stream_id]);
-            self->_resized_frame[frame_meta->_stream_id] = nullptr;
-        }
-        if (self->_convert_frame[frame_meta->_stream_id]) {
-            free(self->_convert_frame[frame_meta->_stream_id]);
-            self->_convert_frame[frame_meta->_stream_id] = nullptr;
-        }
-    }
-
-    if (roi->width != 0 && roi->height != 0) {
-        Crop(frame_meta->_buf, &self->_input_info[frame_meta->_stream_id],
-             &self->_crop_frame[frame_meta->_stream_id], frame_meta->_width,
-             frame_meta->_height, roi->x, roi->y, roi->width, roi->height,
-             frame_meta->_format);
-        width = roi->width;
-        height = roi->height;
-    }
-
-    if (self->_keep_ratio) {
-        float dw, dh;
-        uint16_t top, bottom, left, right;
-        float ratioDest = (float)self->_resize_width / self->_resize_height;
-        float ratioSrc = (float)width / height;
-        int newWidth, newHeight;
-        if (ratioSrc < ratioDest) {
-            newHeight = self->_resize_height;
-            newWidth = newHeight * ratioSrc;
-        } else {
-            newWidth = self->_resize_width;
-            newHeight = newWidth / ratioSrc;
-        }
-
-        if (roi->width != 0 && roi->height != 0) {
-            Resize(self->_crop_frame[frame_meta->_stream_id],
-                   &self->_resized_frame[frame_meta->_stream_id], roi->width,
-                   roi->height, newWidth, newHeight, frame_meta->_format);
-        } else {
-            Resize(frame_meta->_buf, &self->_input_info[frame_meta->_stream_id],
-                   &self->_resized_frame[frame_meta->_stream_id],
-                   frame_meta->_width, frame_meta->_height, newWidth, newHeight,
-                   frame_meta->_format);
-        }
-
-        CvtColor(self->_resized_frame[frame_meta->_stream_id],
-                 &self->_convert_frame[frame_meta->_stream_id], newWidth,
-                 newHeight, frame_meta->_format, self->_color_format);
-        cv::Mat temp = cv::Mat(newHeight, newWidth, CV_8UC3,
-                               self->_convert_frame[frame_meta->_stream_id]);
-        dw = (self->_resize_width - newWidth) / 2.0;
-        dh = (self->_resize_height - newHeight) / 2.0;
-        top = (uint16_t)round(dh - 0.1);
-        bottom = (uint16_t)round(dh + 0.1);
-        left = (uint16_t)round(dw - 0.1);
-        right = (uint16_t)round(dw + 0.1);
-        cv::Mat resizedFrame(self->_resize_height, self->_resize_width, CV_8UC3,
-                             output);
-        cv::copyMakeBorder(
-            temp, resizedFrame, top, bottom, left, right, cv::BORDER_CONSTANT,
-            cv::Scalar(self->_pad_value, self->_pad_value, self->_pad_value));
-        temp.release();
-    } else {
-        if (roi->width != 0 && roi->height != 0) {
-            Resize(self->_crop_frame[frame_meta->_stream_id],
-                   &self->_resized_frame[frame_meta->_stream_id], width, height,
-                   self->_resize_width, self->_resize_height,
-                   frame_meta->_format);
-        } else {
-            Resize(frame_meta->_buf, &self->_input_info[frame_meta->_stream_id],
-                   &self->_resized_frame[frame_meta->_stream_id], width, height,
-                   self->_resize_width, self->_resize_height,
-                   frame_meta->_format);
-        }
-        CvtColor(self->_resized_frame[frame_meta->_stream_id],
-                 &self->_convert_frame[frame_meta->_stream_id],
-                 self->_resize_width, self->_resize_height, frame_meta->_format,
-                 self->_color_format);
-        memcpy(output, self->_convert_frame[frame_meta->_stream_id],
-               self->_resize_height * self->_resize_width * 3);
-    }
-    return true;
-}
-#endif
-
-bool check_object_roi(float *box, int *roi) {
-    if (int(box[0]) < roi[0])
-        return false;
-    if (int(box[1]) < roi[1])
-        return false;
-    if (int(box[2]) > roi[2])
-        return false;
-    if (int(box[3]) > roi[3])
-        return false;
-    return true;
 }
 
 static gboolean gst_dxpreprocess_src_event(GstBaseTransform *trans,
@@ -975,173 +758,6 @@ static gboolean gst_dxpreprocess_src_event(GstBaseTransform *trans,
     return GST_BASE_TRANSFORM_CLASS(parent_class)->src_event(trans, event);
 }
 
-bool check_object(GstDxPreprocess *self, DXFrameMeta *frame_meta,
-                  DXObjectMeta *object_meta) {
-    if (self->_target_class_id != -1 &&
-        object_meta->_label != self->_target_class_id) {
-        return false;
-    }
-
-    if (frame_meta->_roi[0] != -1 &&
-        !check_object_roi(object_meta->_box, frame_meta->_roi)) {
-        return false;
-    }
-
-    if (object_meta->_box[2] - object_meta->_box[0] < self->_min_object_width ||
-        object_meta->_box[3] - object_meta->_box[1] <
-            self->_min_object_height) {
-        return false;
-    }
-
-    if (object_meta->_track_id != -1) {
-        if (self->_track_cnt[frame_meta->_stream_id].count(
-                object_meta->_track_id) > 0) {
-            self->_track_cnt[frame_meta->_stream_id][object_meta->_track_id] +=
-                1;
-        } else {
-            self->_track_cnt[frame_meta->_stream_id][object_meta->_track_id] =
-                0;
-        }
-
-        if (self->_track_cnt[frame_meta->_stream_id][object_meta->_track_id] <
-            static_cast<int>(self->_interval)) {
-            return false;
-        }
-
-        self->_track_cnt[frame_meta->_stream_id][object_meta->_track_id] = 0;
-    } else {
-        // untracked
-        if (self->_cnt[frame_meta->_stream_id] < self->_interval) {
-            return false;
-        }
-    }
-    return true;
-}
-
-bool primary_process(GstDxPreprocess *self, DXFrameMeta *frame_meta) {
-    bool ret = true;
-    if (self->_roi[0] != -1) {
-        frame_meta->_roi[0] = std::max(self->_roi[0], 0);
-        frame_meta->_roi[1] = std::max(self->_roi[1], 0);
-        frame_meta->_roi[2] = std::min(self->_roi[2], frame_meta->_width - 1);
-        frame_meta->_roi[3] = std::min(self->_roi[3], frame_meta->_height - 1);
-    }
-
-    if (frame_meta->_input_tensors.find(self->_preprocess_id) !=
-        frame_meta->_input_tensors.end()) {
-        g_error("Preprocess ID %d already exists in the frame meta. check your "
-                "pipeline",
-                self->_preprocess_id);
-        ret = false;
-    }
-
-    dxs::DXTensors tensors;
-    tensors._mem_size =
-        self->_resize_height * self->_resize_width * self->_input_channel;
-    tensors._data = malloc(tensors._mem_size);
-    dxs::DXTensor tensor;
-    tensor._type = dxs::DataType::UINT8;
-    tensor._name = "input";
-    tensor._shape.push_back(self->_resize_height);
-    tensor._shape.push_back(self->_resize_width);
-    tensor._shape.push_back(self->_input_channel);
-    tensor._elemSize = 1;
-    tensors._tensors.push_back(tensor);
-
-    cv::Rect roi(cv::Point(frame_meta->_roi[0], frame_meta->_roi[1]),
-                 cv::Point(frame_meta->_roi[2], frame_meta->_roi[3]));
-
-    if (self->_process_function != nullptr) {
-        if (!self->_process_function(frame_meta, nullptr, tensors._data)) {
-            ret = false;
-        }
-    } else {
-        if (!preprocess(self, frame_meta, tensors._data, &roi)) {
-            ret = false;
-        }
-    }
-    if (ret) {
-        frame_meta->_input_tensors[self->_preprocess_id] = tensors;
-    } else {
-        free(tensors._data);
-        tensors._data = nullptr;
-    }
-    return ret;
-}
-
-bool process_object(GstDxPreprocess *self, DXFrameMeta *frame_meta,
-                    DXObjectMeta *object_meta, int &preprocess_id) {
-    if (object_meta->_input_tensors.find(preprocess_id) !=
-        object_meta->_input_tensors.end()) {
-        g_error("Preprocess ID %d already exists in the object meta. check "
-                "your pipeline",
-                preprocess_id);
-        return false;
-    }
-
-    if (!check_object(self, frame_meta, object_meta)) {
-        return false;
-    }
-
-    dxs::DXTensors tensors;
-    tensors._mem_size =
-        self->_resize_height * self->_resize_width * self->_input_channel;
-    tensors._data = malloc(tensors._mem_size);
-    dxs::DXTensor tensor;
-    tensor._type = dxs::DataType::UINT8;
-    tensor._name = "input";
-    tensor._shape.push_back(self->_resize_height);
-    tensor._shape.push_back(self->_resize_width);
-    tensor._shape.push_back(self->_input_channel);
-    tensor._elemSize = 1;
-    tensors._tensors.push_back(tensor);
-
-    cv::Rect roi(
-        cv::Point(std::max(int(object_meta->_box[0]), 0),
-                  std::max(int(object_meta->_box[1]), 0)),
-        cv::Point(std::min(int(object_meta->_box[2]), frame_meta->_width),
-                  std::min(int(object_meta->_box[3]), frame_meta->_height)));
-
-    bool ret = true;
-
-    if (self->_process_function) {
-        ret =
-            self->_process_function(frame_meta, object_meta, tensors._data);
-    } else {
-        ret = preprocess(self, frame_meta, tensors._data, &roi);
-    }
-
-    if (ret) {
-        object_meta->_input_tensors[preprocess_id] = tensors;
-    } else {
-        free(tensors._data);
-        tensors._data = nullptr;
-    }
-    return ret;
-}
-
-bool secondary_process(GstDxPreprocess *self, DXFrameMeta *frame_meta) {
-    if (self->_track_cnt.count(frame_meta->_stream_id) == 0) {
-        self->_track_cnt[frame_meta->_stream_id] = std::map<int, int>();
-    }
-
-    int objects_size = g_list_length(frame_meta->_object_meta_list);
-    int preprocess_id = self->_preprocess_id;
-
-    for (int o = 0; o < objects_size; o++) {
-        DXObjectMeta *object_meta =
-            (DXObjectMeta *)g_list_nth_data(frame_meta->_object_meta_list, o);
-        process_object(self, frame_meta, object_meta, preprocess_id);
-    }
-
-    if (self->_cnt[frame_meta->_stream_id] < self->_interval) {
-        self->_cnt[frame_meta->_stream_id] += 1;
-    } else {
-        self->_cnt[frame_meta->_stream_id] = 0;
-    }
-    return true;
-}
-
 bool gst_dxpreprocess_qos_process(GstDxPreprocess *self, GstBuffer *buf) {
     GstClockTime in_ts = GST_BUFFER_TIMESTAMP(buf);
 
@@ -1149,38 +765,24 @@ bool gst_dxpreprocess_qos_process(GstDxPreprocess *self, GstBuffer *buf) {
         return true;
     }
 
-    if (self->_qos_timediff > 0) {
+    GST_OBJECT_LOCK(self);
+    GstClockTimeDiff qos_timediff = self->_qos_timediff;
+    GstClockTime qos_timestamp = self->_qos_timestamp;
+    GstClockTimeDiff throttling_delay = self->_throttling_delay;
+    GST_OBJECT_UNLOCK(self);
 
+    if (qos_timediff > 0) {
         GstClockTimeDiff earliest_time;
-
-        if (self->_throttling_delay > 0) {
-            earliest_time = self->_qos_timestamp + 2 * self->_qos_timediff +
-                            self->_throttling_delay;
+        if (throttling_delay > 0) {
+            earliest_time = qos_timestamp + 2 * qos_timediff + throttling_delay;
         } else {
-            earliest_time = self->_qos_timestamp + self->_qos_timediff;
+            earliest_time = qos_timestamp + qos_timediff;
         }
 
         if (static_cast<GstClockTime>(earliest_time) > in_ts) {
-            // gst_buffer_unref(buf);
             return true;
         }
     }
-    return false;
-}
-
-bool check_primary_interval(GstDxPreprocess *self, DXFrameMeta *frame_meta) {
-    auto iter = self->_cnt.find(frame_meta->_stream_id);
-    if (iter == self->_cnt.end()) {
-        self->_cnt[frame_meta->_stream_id] = 0;
-    }
-    if (self->_secondary_mode) {
-        return false;
-    }
-    if (self->_cnt[frame_meta->_stream_id] < self->_interval) {
-        self->_cnt[frame_meta->_stream_id] += 1;
-        return true;
-    }
-    self->_cnt[frame_meta->_stream_id] = 0;
     return false;
 }
 
@@ -1188,9 +790,6 @@ DXFrameMeta *get_frame_meta(GstBuffer *buf, GstBaseTransform *trans) {
     DXFrameMeta *frame_meta =
         (DXFrameMeta *)gst_buffer_get_meta(buf, DX_FRAME_META_API_TYPE);
     if (!frame_meta) {
-        if (!gst_buffer_is_writable(buf)) {
-            buf = gst_buffer_make_writable(buf);
-        }
         frame_meta = (DXFrameMeta *)gst_buffer_add_meta(buf, DX_FRAME_META_INFO,
                                                         nullptr);
 
@@ -1205,15 +804,12 @@ DXFrameMeta *get_frame_meta(GstBuffer *buf, GstBaseTransform *trans) {
         gst_structure_get_fraction(s, "framerate", &num, &denom);
         frame_meta->_frame_rate = (gfloat)num / (gfloat)denom;
         frame_meta->_stream_id = 0;
-        frame_meta->_buf = buf;
         gst_caps_unref(caps);
     }
     return frame_meta;
 }
 
 void check_temp_buffers(GstDxPreprocess *self, DXFrameMeta *frame_meta) {
-#ifdef HAVE_LIBRGA
-#else
     auto iter = self->_crop_frame.find(frame_meta->_stream_id);
     if (iter == self->_crop_frame.end()) {
         self->_crop_frame[frame_meta->_stream_id] = nullptr;
@@ -1228,30 +824,24 @@ void check_temp_buffers(GstDxPreprocess *self, DXFrameMeta *frame_meta) {
     if (iter == self->_resized_frame.end()) {
         self->_resized_frame[frame_meta->_stream_id] = nullptr;
     }
-#endif
 }
 
 static GstFlowReturn gst_dxpreprocess_transform_ip(GstBaseTransform *trans,
                                                    GstBuffer *buf) {
     GstDxPreprocess *self = GST_DXPREPROCESS(trans);
 
-    DXFrameMeta *frame_meta = get_frame_meta(buf, trans);
-    check_temp_buffers(self, frame_meta);
-
-    if (check_primary_interval(self, frame_meta)) {
-        return GST_FLOW_OK;
-    }
-
     if (gst_dxpreprocess_qos_process(self, buf)) {
         return GST_BASE_TRANSFORM_FLOW_DROPPED;
     }
 
+    self->_preprocessor->check_frame_meta(buf);
+
     if (self->_secondary_mode) {
-        if (!secondary_process(self, frame_meta)) {
+        if (!self->_preprocessor->secondary_process(buf)) {
             return GST_FLOW_ERROR;
         }
     } else {
-        if (!primary_process(self, frame_meta)) {
+        if (!self->_preprocessor->primary_process(buf)) {
             return GST_FLOW_ERROR;
         }
     }

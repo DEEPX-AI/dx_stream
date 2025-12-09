@@ -1,7 +1,7 @@
 **DxInfer** is an element that performs AI model inference using the **DEEPX** NPU. It processes input tensors received from **DxPreprocess** elements and produces output tensors for downstream processing.  
 
 - **Input tensors:** **DxInfer** receives preprocessed input tensors from **DxPreprocess** and performs inference using a specified AI model.  
-- **Output tensors:** Each output tensor is assigned an ID using the `inference-id` property, allowing downstream elements such as **DxPreprocess** to retrieve the correct output.  
+- **Output tensors:** Each output tensor is assigned an ID using the `inference-id` property, allowing downstream elements such as **DxPostprocess** to retrieve the correct output.  
 - **Model configuration:** The AI model used for inference must be specified using the `model-path` property, which points to a compiled `.dxnn` file.
 
 ### **Key Features**
@@ -57,9 +57,9 @@ GObject
 }
 ```
 
-**Notes.**  
+!!! note "NOTE" 
 
-- The pipeline must follow **[DxPreprocess] → [DxInfer] → [DxPostprocess]** for correct and stable operation.  
-- All properties can also be configured using a JSON file for enhanced usability and flexibility.  
+    - The pipeline must follow **[DxPreprocess] → [DxInfer] → [DxPostprocess]** for correct and stable operation.  
+    - All properties can also be configured using a JSON file for enhanced usability and flexibility.  
 
 ---

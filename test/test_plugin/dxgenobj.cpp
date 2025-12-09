@@ -166,7 +166,6 @@ static GstFlowReturn gst_dxgenobj_transform_ip(GstBaseTransform *trans,
 
     if (!frame_meta) {
         frame_meta = dx_create_frame_meta(buf);
-        frame_meta->_buf = buf;
         frame_meta->_format = "I420";
         frame_meta->_name = "test";
         DXObjectMeta *tmp_object_meta = dx_create_object_meta(buf);
