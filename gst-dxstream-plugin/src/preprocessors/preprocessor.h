@@ -23,7 +23,7 @@ public:
     bool primary_process(GstBuffer* buf);
     bool secondary_process(GstBuffer* buf);
 
-    void check_frame_meta(GstBuffer* buf);
+    GstBuffer* check_frame_meta(GstBuffer* buf);
     
     bool check_primary_interval(GstBuffer* buf);
 

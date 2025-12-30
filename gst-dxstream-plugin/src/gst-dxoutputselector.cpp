@@ -1,5 +1,6 @@
 #include "gst-dxoutputselector.hpp"
-#include "gst-dxmeta.hpp"
+#include "./../metadata/gst-dxframemeta.hpp"
+#include "./../metadata/gst-dxobjectmeta.hpp"
 #include "utils.hpp"
 
 GST_DEBUG_CATEGORY_STATIC(gst_dxoutputselector_debug_category);

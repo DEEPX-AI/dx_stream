@@ -32,6 +32,8 @@ DX-Stream is a GStreamer-based Vision AI application development tool that allow
 [**6. Trouble Shooting & FAQ**](./docs/source/docs/06_Troubleshooting_and_FAQ.md)
 
 **Appendix**
-- [Change Log](./docs/source/docs/Appendix_Change_Log.md)
+- [User Metadata Guide](./docs/source/docs/Appendix_User_Metadata_Guide.md)
 - [Build on Orange Pi 5 Plus](./docs/source/docs/Appendix_Build_on_OrangePi5Plus.md)
+- [Performance Evaluation With GstShark](./docs/source/docs/Appendix_Performance_Evaluation_with_GstShark.md)
+- [Change Log](./docs/source/docs/Appendix_Change_Log.md)
 

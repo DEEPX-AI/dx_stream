@@ -1,6 +1,7 @@
 #include "gst-dxtracker.hpp"
 #include "TrackerFactory.hpp"
-#include "gst-dxmeta.hpp"
+#include "./../metadata/gst-dxframemeta.hpp"
+#include "./../metadata/gst-dxobjectmeta.hpp"
 #include <glib.h>
 #include <json-glib/json-glib.h>
 
@@ -295,7 +296,8 @@ void track(GstDxTracker *self, DXFrameMeta *frame_meta, GstBuffer *buf) {
                 frame_meta->_object_meta_list =
                     g_list_remove_link(frame_meta->_object_meta_list, list);
                 g_list_free_1(list);
-                gst_buffer_remove_meta(buf, (GstMeta *)object_meta);
+                // Remove object metadata using new API
+                dx_release_obj_meta(object_meta);
             }
         }
     }

@@ -1,4 +1,5 @@
-#include "dx_stream/gst-dxmeta.hpp"
+#include "dx_stream/gst-dxframemeta.hpp"
+#include "dx_stream/gst-dxobjectmeta.hpp"
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -362,7 +363,7 @@ extern "C" void YOLOV5S_PPU(GstBuffer *buf,
         y1 = std::min((float)origin_h, std::max((float)0.0, y1));
         y2 = std::min((float)origin_h, std::max((float)0.0, y2));
 
-        DXObjectMeta *object_meta = dx_create_object_meta(buf);
+        DXObjectMeta *object_meta = dx_acquire_obj_meta_from_pool();
         object_meta->_confidence = ret.confidence;
         object_meta->_label = ret.class_id;
         object_meta->_label_name = g_string_new(ret.class_name.c_str());
@@ -370,7 +371,7 @@ extern "C" void YOLOV5S_PPU(GstBuffer *buf,
         object_meta->_box[1] = y1;
         object_meta->_box[2] = x2;
         object_meta->_box[3] = y2;
-        dx_add_object_meta_to_frame_meta(object_meta, frame_meta);
+        dx_add_obj_meta_to_frame(frame_meta, object_meta);
     }
 }
 
@@ -433,7 +434,7 @@ extern "C" void YOLOV5Pose_PPU(GstBuffer *buf,
         y1 = std::min((float)origin_h, std::max((float)0.0, y1));
         y2 = std::min((float)origin_h, std::max((float)0.0, y2));
 
-        DXObjectMeta *object_meta = dx_create_object_meta(buf);
+        DXObjectMeta *object_meta = dx_acquire_obj_meta_from_pool();
         object_meta->_confidence = ret.confidence;
         object_meta->_label = ret.class_id;
         object_meta->_label_name = g_string_new(ret.class_name.c_str());
@@ -458,7 +459,7 @@ extern "C" void YOLOV5Pose_PPU(GstBuffer *buf,
             object_meta->_keypoints.push_back(ks);
         }
 
-        dx_add_object_meta_to_frame_meta(object_meta, frame_meta);
+        dx_add_obj_meta_to_frame(frame_meta, object_meta);
     }
 }
 
@@ -518,7 +519,7 @@ extern "C" void SCRFD500M_PPU(GstBuffer *buf,
         y1 = std::min((float)origin_h, std::max((float)0.0, y1));
         y2 = std::min((float)origin_h, std::max((float)0.0, y2));
 
-        DXObjectMeta *object_meta = dx_create_object_meta(buf);
+        DXObjectMeta *object_meta = dx_acquire_obj_meta_from_pool();
         object_meta->_face_confidence = ret.confidence;
         object_meta->_label = ret.class_id;
         object_meta->_label_name = g_string_new(ret.class_name.c_str());
@@ -541,7 +542,7 @@ extern "C" void SCRFD500M_PPU(GstBuffer *buf,
             }
         }
 
-        dx_add_object_meta_to_frame_meta(object_meta, frame_meta);
+        dx_add_obj_meta_to_frame(frame_meta, object_meta);
     }
 }
 

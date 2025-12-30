@@ -1,5 +1,6 @@
 #include "gst-dxmsgconv.hpp"
-#include "gst-dxmeta.hpp"
+#include "./../metadata/gst-dxframemeta.hpp"
+#include "./../metadata/gst-dxmsgmeta.hpp"
 #include "gst-dxmsgmeta.hpp"
 #include <dlfcn.h>
 #include <json-glib/json-glib.h>

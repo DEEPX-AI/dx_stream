@@ -159,7 +159,8 @@ install_build_dependencies() {
     sudo apt-get install -y \
         flex bison nasm \
         libglib2.0-dev libjpeg-dev libpng-dev \
-        liborc-0.4-dev libgirepository1.0-dev
+        liborc-0.4-dev libgirepository1.0-dev \
+        gobject-introspection
 }
 
 # Build GStreamer core
@@ -194,7 +195,7 @@ build_gstreamer_core() {
     meson setup build --prefix=/usr/local \
         -Dtests=disabled \
         -Dexamples=disabled \
-        -Dintrospection=disabled
+        -Dintrospection=enabled
     
     if ! ninja -C build; then
         print_message "error" "Failed to build gstreamer core"
@@ -244,18 +245,18 @@ build_gst_plugins_base() {
     local meson_opts="--prefix=/usr/local"
     
     if meson setup build $meson_opts \
-        -Dintrospection=disabled \
+        -Dintrospection=enabled \
         -Dexamples=disabled \
-        -Dtests=disabled \
-        -Dgl=disabled 2>/dev/null; then
+        -Dtests=disabled 2>/dev/null; then
         print_message "success" "Meson setup succeeded with all options"
     else
         print_message "warning" "Some meson options not supported, trying fallback..."
         rm -rf build
         if ! meson setup build $meson_opts \
+            -Dintrospection=enabled \
             -Dtests=disabled 2>/dev/null; then
             rm -rf build
-            if ! meson setup build $meson_opts; then
+            if ! meson setup build $meson_opts -Dintrospection=enabled; then
                 print_message "error" "Meson setup failed"
                 return 1
             fi
@@ -387,7 +388,7 @@ build_gst_plugins_bad() {
     local meson_opts="--prefix=/usr/local"
     
     if meson setup build $meson_opts \
-        -Dintrospection=disabled \
+        -Dintrospection=enabled \
         -Dexamples=disabled \
         -Dtests=disabled \
         -Dopencv=disabled \
@@ -397,9 +398,10 @@ build_gst_plugins_bad() {
         print_message "warning" "Some meson options not supported, trying fallback..."
         rm -rf build
         if ! meson setup build $meson_opts \
+            -Dintrospection=enabled \
             -Dtests=disabled 2>/dev/null; then
             rm -rf build
-            if ! meson setup build $meson_opts; then
+            if ! meson setup build $meson_opts -Dintrospection=enabled; then
                 print_message "error" "Meson setup failed"
                 return 1
             fi
@@ -583,12 +585,116 @@ install_gstreamer_from_source() {
     # Cleanup
     rm -rf "$build_dir"
     
+    # Return to project directory before Python verification
+    cd "$DX_SRC_DIR"
+    
     print_message "success" "GStreamer source build completed!"
+    
+    # Setup Python bindings for source-built GStreamer
+    print_message "info" "Setting up Python bindings for source-built GStreamer..."
+    
+    # Install base Python GI bindings (no GStreamer dependency)
+    local base_bindings=("python3-gi" "python3-gi-cairo")
+    local missing_bindings=()
+    
+    for binding in "${base_bindings[@]}"; do
+        if ! is_package_installed "$binding"; then
+            missing_bindings+=("$binding")
+        fi
+    done
+    
+    if [ ${#missing_bindings[@]} -gt 0 ]; then
+        print_message "install" "Installing base Python bindings: ${missing_bindings[*]}"
+        sudo apt-get install -y "${missing_bindings[@]}"
+        
+        if [ $? -eq 0 ]; then
+            print_message "success" "Base Python bindings installed successfully"
+        else
+            print_message "warning" "Failed to install some Python bindings"
+            return 1
+        fi
+    else
+        print_message "success" "Base Python bindings already installed"
+    fi
+    
+    # Configure GObject Introspection path for source-built GStreamer
+    # Find the actual girepository path (architecture-dependent)
+    local typelib_paths=(
+        "/usr/local/lib/x86_64-linux-gnu/girepository-1.0"
+        "/usr/local/lib/aarch64-linux-gnu/girepository-1.0"
+        "/usr/local/lib/arm-linux-gnueabihf/girepository-1.0"
+        "/usr/local/lib/girepository-1.0"
+    )
+    
+    local found_typelib_path=""
+    for path in "${typelib_paths[@]}"; do
+        if [ -d "$path" ] && [ -n "$(ls -A "$path" 2>/dev/null)" ]; then
+            found_typelib_path="$path"
+            break
+        fi
+    done
+    
+    if [ -n "$found_typelib_path" ]; then
+        print_message "info" "Configuring GObject Introspection path: $found_typelib_path"
+        
+        # Add to profile.d for system-wide availability
+        if [ ! -f /etc/profile.d/gstreamer.sh ] || ! grep -q "GI_TYPELIB_PATH" /etc/profile.d/gstreamer.sh 2>/dev/null; then
+            {
+                echo "export GI_TYPELIB_PATH=$found_typelib_path:\${GI_TYPELIB_PATH}"
+                echo "export LD_LIBRARY_PATH=/usr/local/lib:\${LD_LIBRARY_PATH}"
+                echo "export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:\${PKG_CONFIG_PATH}"
+            } | sudo tee -a /etc/profile.d/gstreamer.sh >/dev/null
+            print_message "success" "GStreamer environment configured in /etc/profile.d/gstreamer.sh"
+        else
+            print_message "success" "GStreamer environment already configured"
+        fi
+        
+        # Update library cache
+        sudo ldconfig 2>/dev/null || true
+        
+        print_message "success" "Python bindings configured for source-built GStreamer"
+    else
+        print_message "warning" "Introspection files not found in any expected location"
+        print_message "info" "Searched paths: ${typelib_paths[*]}"
+        print_message "info" "Python bindings may not work correctly with this build"
+        return 1
+    fi
+    
+    # Source the environment file to ensure variables are properly loaded
+    source /etc/profile.d/gstreamer.sh
+    
+    # Verify Python bindings
+    print_message "info" "Verifying Python bindings..."
+    local verify_output
+    verify_output=$(/usr/bin/python3 -c "import gi; gi.require_version('Gst', '1.0'); from gi.repository import Gst; print('Gst version:', Gst.version_string())" 2>&1)
+    local verify_exit=$?
+    
+    if [ $verify_exit -eq 0 ]; then
+        print_message "success" "GStreamer Python bindings verified: $verify_output"
+    else
+        print_message "warning" "GStreamer Python bindings verification failed"
+        print_message "info" "Error output: $verify_output"
+        print_message "info" "GI_TYPELIB_PATH: $GI_TYPELIB_PATH"
+        print_message "info" "LD_LIBRARY_PATH: $LD_LIBRARY_PATH"
+        print_message "info" ""
+        print_message "info" "To fix in current shell:"
+        print_message "info" "  source /etc/profile.d/gstreamer.sh"
+        print_message "info" ""
+        print_message "info" "For virtual environments:"
+        print_message "info" "  python3 -m venv --system-site-packages venv"
+        print_message "info" "  OR edit venv/pyvenv.cfg: include-system-site-packages = true"
+        print_message "info" ""
+        print_message "info" "Note: GStreamer is installed, but Python bindings need manual setup"
+        # Don't return 1 - GStreamer itself is installed successfully
+    fi
     
     # Verify installation
     if command -v gst-inspect-1.0 >/dev/null 2>&1; then
         local final_version=$(gst-inspect-1.0 --version 2>/dev/null | head -1 | awk '{print $3}')
         print_message "success" "GStreamer $final_version ready"
+    else
+        print_message "warning" "gst-inspect-1.0 command not found after installation"
+        return 1
     fi
 }
 
@@ -1085,6 +1191,37 @@ install_gstreamer_smart() {
     else
         print_message "error" "GStreamer installation verification failed"
         exit 1
+    fi
+    
+    # Install GStreamer Python bindings (required for pydxs)
+    print_message "info" "Installing GStreamer Python bindings for pydxs..."
+    local python_bindings=("python3-gi" "python3-gi-cairo" "gir1.2-gstreamer-1.0")
+    local missing_bindings=()
+    
+    for binding in "${python_bindings[@]}"; do
+        if ! is_package_installed "$binding"; then
+            missing_bindings+=("$binding")
+        fi
+    done
+    
+    if [ ${#missing_bindings[@]} -gt 0 ]; then
+        print_message "install" "Installing missing Python bindings: ${missing_bindings[*]}"
+        sudo apt-get install -y "${missing_bindings[@]}" 2>&1 | grep -v "Note, selecting"
+        
+        if [ $? -eq 0 ]; then
+            print_message "success" "GStreamer Python bindings installed successfully"
+        else
+            print_message "warning" "Failed to install some GStreamer Python bindings"
+        fi
+    else
+        print_message "success" "GStreamer Python bindings already installed"
+    fi
+    
+    # Verify Python bindings
+    if python3 -c "import gi; gi.require_version('Gst', '1.0'); from gi.repository import Gst" 2>/dev/null; then
+        print_message "success" "GStreamer Python bindings verified successfully"
+    else
+        print_message "warning" "GStreamer Python bindings verification failed (may need to install manually)"
     fi
 }
 
