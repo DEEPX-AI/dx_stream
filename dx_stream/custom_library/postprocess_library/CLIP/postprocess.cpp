@@ -1,4 +1,5 @@
-#include "dx_stream/gst-dxmeta.hpp"
+#include "dx_stream/gst-dxframemeta.hpp"
+#include "dx_stream/gst-dxobjectmeta.hpp"
 #include <cmath>
 #include <iostream>
 #include <vector>
@@ -123,7 +124,7 @@ extern "C" void PostProcess(GstBuffer *buf,
                 last_similarity = best_similarity;
             }
         }
-        DXObjectMeta *new_object_meta = dx_create_object_meta(buf);
+        DXObjectMeta *new_object_meta = dx_acquire_obj_meta_from_pool();
         new_object_meta->_label_name = g_string_new(last_label.c_str());
         new_object_meta->_confidence = last_similarity;
         new_object_meta->_label = -1;
@@ -131,6 +132,6 @@ extern "C" void PostProcess(GstBuffer *buf,
         new_object_meta->_box[1] = -1;
         new_object_meta->_box[2] = -1;
         new_object_meta->_box[3] = -1;
-        dx_add_object_meta_to_frame_meta(new_object_meta, frame_meta);
+        dx_add_obj_meta_to_frame(frame_meta, new_object_meta);
     }
 }

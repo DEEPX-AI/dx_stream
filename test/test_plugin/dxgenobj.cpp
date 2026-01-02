@@ -1,5 +1,6 @@
 #include "dxgenobj.hpp"
-#include "gst-dxmeta.hpp"
+#include "gst-dxframemeta.hpp"
+#include "gst-dxobjectmeta.hpp"
 
 enum {
     PROP_0,
@@ -161,22 +162,17 @@ static gboolean gst_dxgenobj_stop(GstBaseTransform *trans) {
 static GstFlowReturn gst_dxgenobj_transform_ip(GstBaseTransform *trans,
                                                GstBuffer *buf) {
     GstDxGenObj *self = GST_DXGENOBJ(trans);
-    DXFrameMeta *frame_meta =
-        (DXFrameMeta *)gst_buffer_get_meta(buf, DX_FRAME_META_API_TYPE);
+    DXFrameMeta *frame_meta = dx_get_frame_meta(buf);
 
     if (!frame_meta) {
         frame_meta = dx_create_frame_meta(buf);
         frame_meta->_format = "I420";
         frame_meta->_name = "test";
-        DXObjectMeta *tmp_object_meta = dx_create_object_meta(buf);
-        dx_add_object_meta_to_frame_meta(tmp_object_meta, frame_meta);
     }
 
-    DXObjectMeta *object_meta =
-        (DXObjectMeta *)gst_buffer_get_meta(buf, DX_OBJECT_META_API_TYPE);
-
+    DXObjectMeta *object_meta = dx_acquire_obj_meta_from_pool();
     if (!object_meta) {
-        g_error("No DXObjectMeta in GstBuffer \n");
+        g_error("Failed to acquire DXObjectMeta from pool \n");
     }
 
     if (self->_box) {
@@ -200,6 +196,8 @@ static GstFlowReturn gst_dxgenobj_transform_ip(GstBaseTransform *trans,
     if (self->_track_id) {
         object_meta->_track_id = 11;
     }
+
+    dx_add_obj_meta_to_frame(frame_meta, object_meta);
 
     return GST_FLOW_OK;
 }

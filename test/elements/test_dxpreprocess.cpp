@@ -1,4 +1,5 @@
-#include <dx_stream/gst-dxmeta.hpp>
+#include <dx_stream/gst-dxframemeta.hpp>
+#include <dx_stream/gst-dxobjectmeta.hpp>
 #include <gst/check/gstcheck.h>
 #include <gst/gst.h>
 
@@ -181,29 +182,22 @@ static GstPadProbeReturn probe_primary(GstPad *pad, GstPadProbeInfo *info,
                                        gpointer user_data) {
     GstBuffer *buffer = GST_PAD_PROBE_INFO_BUFFER(info);
     buffer = gst_buffer_ref(buffer);
-    GstMeta *meta;
-    gpointer state = NULL;
 
     GstClockTime current_pts = GST_BUFFER_PTS(buffer);
     fail_unless(current_pts != GST_CLOCK_TIME_NONE, "Buffer has no PTS.");
 
     _interval++;
-    while ((meta = gst_buffer_iterate_meta(buffer, &state))) {
-        GType meta_type = meta->info->api;
-        const gchar *type_name = g_type_name(meta_type);
-
-        if (meta_type == DX_FRAME_META_API_TYPE) {
-            DXFrameMeta *frame_meta = (DXFrameMeta *)meta;
-            if (_interval == 3) {
-                fail_unless(frame_meta->_input_tensors.find(2) !=
-                                frame_meta->_input_tensors.end(),
-                            "Preprocess ID Failed");
-                _interval = 0;
-            } else {
-                fail_unless(frame_meta->_input_tensors.find(2) ==
-                                frame_meta->_input_tensors.end(),
-                            "Preprocess ID Exist");
-            }
+    DXFrameMeta *frame_meta = dx_get_frame_meta(buffer);
+    if (frame_meta) {
+        if (_interval == 3) {
+            fail_unless(frame_meta->_input_tensors.find(2) !=
+                            frame_meta->_input_tensors.end(),
+                        "Preprocess ID Failed");
+            _interval = 0;
+        } else {
+            fail_unless(frame_meta->_input_tensors.find(2) ==
+                            frame_meta->_input_tensors.end(),
+                        "Preprocess ID Exist");
         }
     }
     gst_buffer_unref(buffer);

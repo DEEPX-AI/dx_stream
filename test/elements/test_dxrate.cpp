@@ -1,4 +1,3 @@
-#include <dx_stream/gst-dxmeta.hpp>
 #include <gst/check/gstcheck.h>
 #include <gst/gst.h>
 #include <unistd.h>

@@ -45,6 +45,25 @@ uninstall_common_files() {
     delete_dir "${DOWNLOAD_DIR}" 
 }
 
+uninstall_pydxs() {
+    print_colored_v2 "INFO" "Uninstalling pydxs from current Python environment..."
+    
+    # Check if pydxs is installed in the current Python environment
+    if python3 -c "import pydxs" 2>/dev/null; then
+        if [ -n "$VIRTUAL_ENV" ]; then
+            print_colored_v2 "INFO" "Removing pydxs from virtual environment: $VIRTUAL_ENV"
+        else
+            print_colored_v2 "INFO" "Removing pydxs from system Python"
+        fi
+        
+        python3 -m pip uninstall -y pydxs || {
+            print_colored_v2 "WARNING" "Failed to uninstall pydxs (this is non-fatal)"
+        }
+    else
+        print_colored_v2 "INFO" "pydxs not found in current Python environment (skipping)"
+    fi
+}
+
 uninstall_project_specific_files() {
     print_colored_v2 "INFO" "Uninstalling ${PROJECT_NAME} specific files..."
     ./build.sh --uninstall || {
@@ -54,6 +73,9 @@ uninstall_project_specific_files() {
     }
     
     delete_symlinks "dx_stream/samples/"
+    
+    # Uninstall pydxs from current Python environment
+    uninstall_pydxs
 }
 
 main() {

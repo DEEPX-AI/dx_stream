@@ -1,5 +1,6 @@
 #include "gst-dxinputselector.hpp"
-#include "gst-dxmeta.hpp"
+#include "./../metadata/gst-dxframemeta.hpp"
+#include "./../metadata/gst-dxobjectmeta.hpp"
 #include "utils.hpp"
 #include <algorithm>
 #include <list>

@@ -1,4 +1,5 @@
-#include "dx_stream/gst-dxmeta.hpp"
+#include "dx_stream/gst-dxframemeta.hpp"
+#include "dx_stream/gst-dxobjectmeta.hpp"
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -591,7 +592,7 @@ void YOLOPostProcess(GstBuffer *buf,
         y1 = std::min((float)origin_h, std::max((float)0.0, y1));
         y2 = std::min((float)origin_h, std::max((float)0.0, y2));
 
-        DXObjectMeta *object_meta = dx_create_object_meta(buf);
+        DXObjectMeta *object_meta = dx_acquire_obj_meta_from_pool();
         object_meta->_confidence = ret.score;
         object_meta->_label = ret.label;
         object_meta->_label_name = g_string_new(ret.labelname.c_str());
@@ -615,7 +616,7 @@ void YOLOPostProcess(GstBuffer *buf,
 
             object_meta->_keypoints.push_back(ks);
         }
-        dx_add_object_meta_to_frame_meta(object_meta, frame_meta);
+        dx_add_obj_meta_to_frame(frame_meta, object_meta);
     }
 }
 
@@ -661,7 +662,7 @@ void YOLOFacePostProcess(GstBuffer *buf,
         y1 = std::min((float)origin_h, std::max((float)0.0, y1));
         y2 = std::min((float)origin_h, std::max((float)0.0, y2));
 
-        DXObjectMeta *object_meta = dx_create_object_meta(buf);
+        DXObjectMeta *object_meta = dx_acquire_obj_meta_from_pool();
         object_meta->_confidence = ret.score;
         object_meta->_label = ret.label;
         object_meta->_label_name = g_string_new(ret.labelname.c_str());
@@ -682,7 +683,7 @@ void YOLOFacePostProcess(GstBuffer *buf,
                 object_meta->_face_landmarks.push_back(dxs::Point_f(kx, ky));
             }
         }
-        dx_add_object_meta_to_frame_meta(object_meta, frame_meta);
+        dx_add_obj_meta_to_frame(frame_meta, object_meta);
     }
 }
 

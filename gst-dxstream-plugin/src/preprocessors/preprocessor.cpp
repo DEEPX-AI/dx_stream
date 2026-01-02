@@ -1,6 +1,7 @@
 #include "preprocessor.h"
 #include "gst-dxpreprocess.hpp"
-#include "gst-dxmeta.hpp"
+#include "./../metadata/gst-dxframemeta.hpp"
+#include "./../metadata/gst-dxobjectmeta.hpp"
 #include <algorithm>
 
 bool Preprocessor::check_object(DXFrameMeta *frame_meta, DXObjectMeta *object_meta) {
@@ -77,7 +78,7 @@ bool Preprocessor::check_primary_interval(GstBuffer *buf) {
     return false;
 }
 
-void Preprocessor::check_frame_meta(GstBuffer *buf) {
+GstBuffer* Preprocessor::check_frame_meta(GstBuffer *buf) {
     DXFrameMeta *frame_meta = dx_get_frame_meta(buf);
     if (!frame_meta) {
         if (!gst_buffer_is_writable(buf)) {
@@ -99,6 +100,7 @@ void Preprocessor::check_frame_meta(GstBuffer *buf) {
         frame_meta->_stream_id = 0;
         gst_caps_unref(caps);
     }
+    return buf;
 }
 
 void Preprocessor::cleanup_temp_buffers(int stream_id) {
