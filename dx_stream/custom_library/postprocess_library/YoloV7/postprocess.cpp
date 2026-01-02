@@ -1,4 +1,5 @@
-#include "dx_stream/gst-dxmeta.hpp"
+#include "dx_stream/gst-dxframemeta.hpp"
+#include "dx_stream/gst-dxobjectmeta.hpp"
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -491,7 +492,7 @@ extern "C" void PostProcess(GstBuffer *buf,
         scaled_box.y2 = std::max(0.0f, std::min(static_cast<float>(orig_height), scaled_box.y2));
         
         // Create DX Stream object metadata
-        DXObjectMeta *obj_meta = dx_create_object_meta(buf);
+        DXObjectMeta *obj_meta = dx_acquire_obj_meta_from_pool();
         obj_meta->_confidence = scaled_box.confidence;
         obj_meta->_label = scaled_box.class_id;
         obj_meta->_label_name = g_string_new(scaled_box.class_name.c_str());
@@ -510,6 +511,6 @@ extern "C" void PostProcess(GstBuffer *buf,
         }
         
         // Add object to frame metadata
-        dx_add_object_meta_to_frame_meta(obj_meta, frame_meta);
+        dx_add_obj_meta_to_frame(frame_meta, obj_meta);
     }
 }

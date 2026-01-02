@@ -1,4 +1,5 @@
-#include <dx_stream/gst-dxmeta.hpp>
+#include <dx_stream/gst-dxframemeta.hpp>
+#include <dx_stream/gst-dxobjectmeta.hpp>
 #include <gst/check/gstcheck.h>
 #include <gst/gst.h>
 #include <unistd.h>
@@ -118,16 +119,15 @@ probe_create_callback(GstPad *pad, GstPadProbeInfo *info, gpointer user_data) {
         buffer = gst_buffer_make_writable(buffer);
     }
 
-    DXFrameMeta *frame_meta =
-        (DXFrameMeta *)gst_buffer_add_meta(buffer, DX_FRAME_META_INFO, NULL);
+    // Create frame meta using new API
+    DXFrameMeta *frame_meta = dx_create_frame_meta(buffer);
     frame_meta->_stream_id = 0;
-    frame_meta->_format = "I420";
-    frame_meta->_name = "test";
+    frame_meta->_format = g_strdup("I420");
+    frame_meta->_name = g_strdup("test");
 
-    DXObjectMeta *object_meta =
-        (DXObjectMeta *)gst_buffer_add_meta(buffer, DX_OBJECT_META_INFO, NULL);
-
-    dx_add_object_meta_to_frame_meta(object_meta, frame_meta);
+    // Create object meta using new API
+    DXObjectMeta *object_meta = dx_acquire_obj_meta_from_pool();
+    dx_add_obj_meta_to_frame(frame_meta, object_meta);
 
     return GST_PAD_PROBE_OK;
 }
@@ -137,54 +137,47 @@ static GstPadProbeReturn probe_callback(GstPad *pad, GstPadProbeInfo *info,
     GstBuffer *buffer = GST_PAD_PROBE_INFO_BUFFER(info);
     GstClockTime current_pts = GST_BUFFER_PTS(buffer);
     fail_unless(current_pts != GST_CLOCK_TIME_NONE, "Buffer has no PTS.");
-    GstMeta *meta;
-    gpointer state = NULL;
+
+    // Get frame meta using new API
+    DXFrameMeta *frame_meta = dx_get_frame_meta(buffer);
+    fail_unless(frame_meta != nullptr, "No frame meta found in buffer");
 
     gboolean is_valid = FALSE;
-    while ((meta = gst_buffer_iterate_meta(buffer, &state))) {
-        GType meta_type = meta->info->api;
-        const gchar *type_name = g_type_name(meta_type);
-
-        if (meta_type == DX_OBJECT_META_API_TYPE) {
-            DXObjectMeta *object_meta = (DXObjectMeta *)meta;
-            // g_print("PTS: %" GST_TIME_FORMAT
-            //         " Label : %d  Conf : %f Track : %d BOX : [%f %f %f %f] "
-            //         "FACE BOX : [%f %f %f %f]\n",
-            //         GST_TIME_ARGS(current_pts), object_meta->_label,
-            //         object_meta->_confidence, object_meta->_box[0],
-            //         object_meta->_track_id, object_meta->_box[1],
-            //         object_meta->_box[2], object_meta->_box[3],
-            //         object_meta->_face_box[0], object_meta->_face_box[1],
-            //         object_meta->_face_box[2], object_meta->_face_box[3]);
-            if (object_meta->_box[0] != 0) {
-                if (object_meta->_box[0] != BOX_X1 ||
-                    object_meta->_box[1] != BOX_Y1 ||
-                    object_meta->_box[2] != BOX_X2 ||
-                    object_meta->_box[3] != BOX_Y2) {
-                    continue;
-                }
-            }
-            if (object_meta->_face_box[0] != 0) {
-                if (object_meta->_face_box[0] != FACE_BOX_X1 ||
-                    object_meta->_face_box[1] != FACE_BOX_Y1 ||
-                    object_meta->_face_box[2] != FACE_BOX_X2 ||
-                    object_meta->_face_box[3] != FACE_BOX_Y2) {
-                    continue;
-                }
-            }
-            if (object_meta->_label != -1 && object_meta->_label != LABEL) {
+    
+    // Iterate through object meta list in frame meta
+    for (GList *l = frame_meta->_object_meta_list; l != nullptr; l = l->next) {
+        DXObjectMeta *object_meta = (DXObjectMeta *)l->data;
+        
+        // Validate object meta data
+        if (object_meta->_box[0] != 0) {
+            if (object_meta->_box[0] != BOX_X1 ||
+                object_meta->_box[1] != BOX_Y1 ||
+                object_meta->_box[2] != BOX_X2 ||
+                object_meta->_box[3] != BOX_Y2) {
                 continue;
             }
-            if (object_meta->_confidence != (gfloat)-1 &&
-                object_meta->_confidence != (gfloat)CONFIDENCE) {
-                continue;
-            }
-            if (object_meta->_track_id != -1 &&
-                object_meta->_track_id != TRACK_ID) {
-                continue;
-            }
-            is_valid = TRUE;
         }
+        if (object_meta->_face_box[0] != 0) {
+            if (object_meta->_face_box[0] != FACE_BOX_X1 ||
+                object_meta->_face_box[1] != FACE_BOX_Y1 ||
+                object_meta->_face_box[2] != FACE_BOX_X2 ||
+                object_meta->_face_box[3] != FACE_BOX_Y2) {
+                continue;
+            }
+        }
+        if (object_meta->_label != -1 && object_meta->_label != LABEL) {
+            continue;
+        }
+        if (object_meta->_confidence != (gfloat)-1 &&
+            object_meta->_confidence != (gfloat)CONFIDENCE) {
+            continue;
+        }
+        if (object_meta->_track_id != -1 &&
+            object_meta->_track_id != TRACK_ID) {
+            continue;
+        }
+        is_valid = TRUE;
+        break;
     }
 
     fail_unless(is_valid == TRUE, "Not Valid DXObjectMeta.");
@@ -209,10 +202,13 @@ GST_START_TEST(test_flow) {
     GstElement *q3 = gst_element_factory_make("queue", NULL);
 
     GstElement *genobj1 = gst_element_factory_make("dxgenobj", NULL);
+    fail_unless(genobj1 != NULL, "Failed to create dxgenobj element");
     g_object_set(genobj1, "box", TRUE, NULL);
     GstElement *genobj2 = gst_element_factory_make("dxgenobj", NULL);
+    fail_unless(genobj2 != NULL, "Failed to create dxgenobj element");
     g_object_set(genobj2, "face-box", TRUE, NULL);
     GstElement *genobj3 = gst_element_factory_make("dxgenobj", NULL);
+    fail_unless(genobj3 != NULL, "Failed to create dxgenobj element");
     g_object_set(genobj3, "confidence", TRUE, NULL);
 
     GstElement *gather = gst_element_factory_make("dxgather", NULL);

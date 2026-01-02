@@ -1,7 +1,8 @@
 #include <cmath>
 #include <numeric>
 
-#include "dx_stream/gst-dxmeta.hpp"
+#include "dx_stream/gst-dxframemeta.hpp"
+#include "dx_stream/gst-dxobjectmeta.hpp"
 
 struct segmentationParams {
     bool needArgmax;
@@ -44,7 +45,7 @@ void Segmentation(GstBuffer *buf,
                     std::vector<dxs::DXTensor> outputs, 
                     DXFrameMeta *frame_meta,
                     segmentationParams &params) {
-    DXObjectMeta *object_meta = dx_create_object_meta(buf);
+    DXObjectMeta *object_meta = dx_acquire_obj_meta_from_pool();
 
     int width = params.input_width;
     int height = params.input_height;
@@ -75,7 +76,7 @@ void Segmentation(GstBuffer *buf,
         }
     }
 
-    dx_add_object_meta_to_frame_meta(object_meta, frame_meta);
+    dx_add_obj_meta_to_frame(frame_meta, object_meta);
 }
 
 extern "C" void PostProcess(GstBuffer *buf,

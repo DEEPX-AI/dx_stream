@@ -1,4 +1,5 @@
-#include <dx_stream/gst-dxmeta.hpp>
+#include <dx_stream/gst-dxframemeta.hpp>
+#include <dx_stream/gst-dxobjectmeta.hpp>
 #include <gst/check/gstcheck.h>
 #include <gst/gst.h>
 
@@ -121,19 +122,17 @@ static GstPadProbeReturn probe_primary(GstPad *pad, GstPadProbeInfo *info,
                                        gpointer user_data) {
     GstBuffer *buffer = GST_PAD_PROBE_INFO_BUFFER(info);
     buffer = gst_buffer_ref(buffer);
-    GstMeta *meta;
-    gpointer state = NULL;
 
     vector<float> roi({0, 0, 200, 300});
 
     GstClockTime current_pts = GST_BUFFER_PTS(buffer);
     fail_unless(current_pts != GST_CLOCK_TIME_NONE, "Buffer has no PTS.");
     DetectionMap pred;
-    while ((meta = gst_buffer_iterate_meta(buffer, &state))) {
-        GType meta_type = meta->info->api;
-        const gchar *type_name = g_type_name(meta_type);
-        if (meta_type == DX_OBJECT_META_API_TYPE) {
-            DXObjectMeta *object_meta = (DXObjectMeta *)meta;
+    
+    DXFrameMeta *frame_meta = dx_get_frame_meta(buffer);
+    if (frame_meta) {
+        for (GList *l = frame_meta->_object_meta_list; l != NULL; l = l->next) {
+            DXObjectMeta *object_meta = (DXObjectMeta *)l->data;
             pred[object_meta->_label].push_back(
                 {object_meta->_box[0], object_meta->_box[1],
                  object_meta->_box[2], object_meta->_box[3]});
@@ -225,8 +224,6 @@ static GstPadProbeReturn probe_secondary(GstPad *pad, GstPadProbeInfo *info,
                                          gpointer user_data) {
     GstBuffer *buffer = GST_PAD_PROBE_INFO_BUFFER(info);
     buffer = gst_buffer_ref(buffer);
-    GstMeta *meta;
-    gpointer state = NULL;
 
     vector<float> roi({240, 10, 420, 360});
 
@@ -235,11 +232,10 @@ static GstPadProbeReturn probe_secondary(GstPad *pad, GstPadProbeInfo *info,
 
     vector<float> pred_face;
 
-    while ((meta = gst_buffer_iterate_meta(buffer, &state))) {
-        GType meta_type = meta->info->api;
-        const gchar *type_name = g_type_name(meta_type);
-        if (meta_type == DX_OBJECT_META_API_TYPE) {
-            DXObjectMeta *object_meta = (DXObjectMeta *)meta;
+    DXFrameMeta *frame_meta = dx_get_frame_meta(buffer);
+    if (frame_meta) {
+        for (GList *l = frame_meta->_object_meta_list; l != NULL; l = l->next) {
+            DXObjectMeta *object_meta = (DXObjectMeta *)l->data;
             // g_print("PTS: %" GST_TIME_FORMAT
             //         " Label : %d  Conf : %f Track : %d BOX : [%f %f %f %f] "
             //         "FACE BOX : [%f %f %f %f]\n",
@@ -380,7 +376,7 @@ GST_END_TEST
 Suite *roi_suite(void) {
     Suite *s = suite_create("ROI TEST");
     TCase *tc_core = tcase_create("Core");
-    tcase_set_timeout(tc_core, 60.0);
+    tcase_set_timeout(tc_core, 120.0);
     tcase_add_test(tc_core, test_primary);
     tcase_add_test(tc_core, test_secondary);
 

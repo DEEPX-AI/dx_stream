@@ -1,5 +1,4 @@
 #include "gst-dxrate.hpp"
-#include "gst-dxmeta.hpp"
 
 #ifndef ABSDIFF
 #define ABSDIFF(a, b) (((a) > (b)) ? (a) - (b) : (b) - (a))

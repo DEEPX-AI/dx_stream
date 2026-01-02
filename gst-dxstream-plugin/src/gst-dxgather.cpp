@@ -1,5 +1,7 @@
 #include "gst-dxgather.hpp"
-#include "gst-dxmeta.hpp"
+#include "./../metadata/gst-dxframemeta.hpp"
+#include "./../metadata/gst-dxobjectmeta.hpp"
+#include "./../metadata/gst-dxusermeta.hpp"
 
 GST_DEBUG_CATEGORY_STATIC(gst_dxgather_debug_category);
 #define GST_CAT_DEFAULT gst_dxgather_debug_category
@@ -355,10 +357,8 @@ void merge_object_meta(DXObjectMeta *dst, DXObjectMeta *src) {
 }
 
 void frame_meta_merge(GstBuffer **buf0, GstBuffer *buf1) {
-    DXFrameMeta *frame_meta0 =
-        (DXFrameMeta *)gst_buffer_get_meta(*buf0, DX_FRAME_META_API_TYPE);
-    DXFrameMeta *frame_meta1 =
-        (DXFrameMeta *)gst_buffer_get_meta(buf1, DX_FRAME_META_API_TYPE);
+    DXFrameMeta *frame_meta0 = dx_get_frame_meta(*buf0);
+    DXFrameMeta *frame_meta1 = dx_get_frame_meta(buf1);
 
     if (!frame_meta1) {
         return;
@@ -386,20 +386,17 @@ void frame_meta_merge(GstBuffer **buf0, GstBuffer *buf1) {
         }
 
         if (!found) {
-            DXObjectMeta *obj_meta0 = dx_create_object_meta(*buf0);
+            DXObjectMeta *obj_meta0 = dx_acquire_obj_meta_from_pool();
             copy_object_meta(obj_meta0, obj_meta1);
 
-            frame_meta0->_object_meta_list =
-                g_list_append(frame_meta0->_object_meta_list, obj_meta0);
+            dx_add_obj_meta_to_frame(frame_meta0, obj_meta0);
         }
     }
 }
 
 gboolean check_same_source(GstBuffer *buf0, GstBuffer *buf1) {
-    DXFrameMeta *frame_meta0 =
-        (DXFrameMeta *)gst_buffer_get_meta(buf0, DX_FRAME_META_API_TYPE);
-    DXFrameMeta *frame_meta1 =
-        (DXFrameMeta *)gst_buffer_get_meta(buf1, DX_FRAME_META_API_TYPE);
+    DXFrameMeta *frame_meta0 = dx_get_frame_meta(buf0);
+    DXFrameMeta *frame_meta1 = dx_get_frame_meta(buf1);
 
     if (!frame_meta0) {
         return TRUE;

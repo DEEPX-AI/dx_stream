@@ -1,8 +1,9 @@
 #ifndef __DX_MSGCONVL_PRIV_H__
 #define __DX_MSGCONVL_PRIV_H__
 
-#include "dx_stream/gst-dxmeta.hpp"
 #include "dx_stream/gst-dxmsgmeta.hpp"
+#include <vector>
+#include <string>
 
 // private property from config file
 typedef struct _DxMsgContextPriv {

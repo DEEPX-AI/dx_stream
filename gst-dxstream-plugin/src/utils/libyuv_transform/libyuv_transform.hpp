@@ -1,4 +1,3 @@
-#include "gst-dxmeta.hpp"
 #include <gst/gst.h>
 #include <gst/video/video.h>
 #include <libyuv.h>
