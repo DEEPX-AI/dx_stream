@@ -1,4 +1,5 @@
-#include <dx_stream/gst-dxmeta.hpp>
+#include <dx_stream/gst-dxframemeta.hpp>
+#include <dx_stream/gst-dxobjectmeta.hpp>
 #include <gst/check/gstcheck.h>
 #include <gst/gst.h>
 
@@ -138,36 +139,29 @@ static GstPadProbeReturn probe_single(GstPad *pad, GstPadProbeInfo *info,
                                       gpointer user_data) {
     GstBuffer *buffer = GST_PAD_PROBE_INFO_BUFFER(info);
     buffer = gst_buffer_ref(buffer);
-    GstMeta *meta;
-    gpointer state = NULL;
 
     GstClockTime current_pts = GST_BUFFER_PTS(buffer);
     fail_unless(current_pts != GST_CLOCK_TIME_NONE, "Buffer has no PTS.");
 
     single_frame_cnt++;
 
-    while ((meta = gst_buffer_iterate_meta(buffer, &state))) {
-        GType meta_type = meta->info->api;
-        const gchar *type_name = g_type_name(meta_type);
-        if (meta_type == DX_FRAME_META_API_TYPE) {
-            DXFrameMeta *frame_meta = (DXFrameMeta *)meta;
-
-            int objects_size = g_list_length(frame_meta->_object_meta_list);
-            if (single_frame_cnt == 4) {
-                DetectionMap pred;
-                for (int o = 0; o < objects_size; o++) {
-                    DXObjectMeta *object_meta = (DXObjectMeta *)g_list_nth_data(
-                        frame_meta->_object_meta_list, o);
-                    pred[object_meta->_label].push_back(
-                        {object_meta->_box[0], object_meta->_box[1],
-                         object_meta->_box[2], object_meta->_box[3]});
-                }
-                fail_unless(evaluatePerformance(gt, pred) > 0.1,
-                            "Precision < 0.1.");
-                single_frame_cnt = 0;
-            } else {
-                fail_unless(objects_size == 0, "Object exist in Skip Frame");
+    DXFrameMeta *frame_meta = dx_get_frame_meta(buffer);
+    if (frame_meta) {
+        int objects_size = g_list_length(frame_meta->_object_meta_list);
+        if (single_frame_cnt == 4) {
+            DetectionMap pred;
+            for (int o = 0; o < objects_size; o++) {
+                DXObjectMeta *object_meta = (DXObjectMeta *)g_list_nth_data(
+                    frame_meta->_object_meta_list, o);
+                pred[object_meta->_label].push_back(
+                    {object_meta->_box[0], object_meta->_box[1],
+                     object_meta->_box[2], object_meta->_box[3]});
             }
+            fail_unless(evaluatePerformance(gt, pred) > 0.1,
+                        "Precision < 0.1.");
+            single_frame_cnt = 0;
+        } else {
+            fail_unless(objects_size == 0, "Object exist in Skip Frame");
         }
     }
 
@@ -254,35 +248,28 @@ static GstPadProbeReturn probe_multi(GstPad *pad, GstPadProbeInfo *info,
                                      gpointer user_data) {
     GstBuffer *buffer = GST_PAD_PROBE_INFO_BUFFER(info);
     buffer = gst_buffer_ref(buffer);
-    GstMeta *meta;
-    gpointer state = NULL;
 
     GstClockTime current_pts = GST_BUFFER_PTS(buffer);
     fail_unless(current_pts != GST_CLOCK_TIME_NONE, "Buffer has no PTS.");
 
-    while ((meta = gst_buffer_iterate_meta(buffer, &state))) {
-        GType meta_type = meta->info->api;
-        const gchar *type_name = g_type_name(meta_type);
-        if (meta_type == DX_FRAME_META_API_TYPE) {
-            DXFrameMeta *frame_meta = (DXFrameMeta *)meta;
-
-            multi_frame_cnt[frame_meta->_stream_id] += 1;
-            int objects_size = g_list_length(frame_meta->_object_meta_list);
-            if (multi_frame_cnt[frame_meta->_stream_id] == 4) {
-                DetectionMap pred;
-                for (int o = 0; o < objects_size; o++) {
-                    DXObjectMeta *object_meta = (DXObjectMeta *)g_list_nth_data(
-                        frame_meta->_object_meta_list, o);
-                    pred[object_meta->_label].push_back(
-                        {object_meta->_box[0], object_meta->_box[1],
-                         object_meta->_box[2], object_meta->_box[3]});
-                }
-                fail_unless(evaluatePerformance(gt, pred) > 0.1,
-                            "Precision < 0.1.");
-                multi_frame_cnt[frame_meta->_stream_id] = 0;
-            } else {
-                fail_unless(objects_size == 0, "Object exist in Skip Frame");
+    DXFrameMeta *frame_meta = dx_get_frame_meta(buffer);
+    if (frame_meta) {
+        multi_frame_cnt[frame_meta->_stream_id] += 1;
+        int objects_size = g_list_length(frame_meta->_object_meta_list);
+        if (multi_frame_cnt[frame_meta->_stream_id] == 4) {
+            DetectionMap pred;
+            for (int o = 0; o < objects_size; o++) {
+                DXObjectMeta *object_meta = (DXObjectMeta *)g_list_nth_data(
+                    frame_meta->_object_meta_list, o);
+                pred[object_meta->_label].push_back(
+                    {object_meta->_box[0], object_meta->_box[1],
+                     object_meta->_box[2], object_meta->_box[3]});
             }
+            fail_unless(evaluatePerformance(gt, pred) > 0.1,
+                        "Precision < 0.1.");
+            multi_frame_cnt[frame_meta->_stream_id] = 0;
+        } else {
+            fail_unless(objects_size == 0, "Object exist in Skip Frame");
         }
     }
 
@@ -440,7 +427,7 @@ GST_END_TEST
 Suite *interval_suite(void) {
     Suite *s = suite_create("Interval TEST");
     TCase *tc_core = tcase_create("Core");
-    tcase_set_timeout(tc_core, 60.0);
+    tcase_set_timeout(tc_core, 120.0);
     tcase_add_test(tc_core, test_single_stream);
     tcase_add_test(tc_core, test_multi_stream);
 

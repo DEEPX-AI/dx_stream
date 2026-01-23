@@ -1,9 +1,14 @@
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include "rga_preprocessor.h"
 
 #ifdef HAVE_LIBRGA
 
 #include "gst-dxpreprocess.hpp"
-#include "gst-dxmeta.hpp"
+#include "../metadata/gst-dxframemeta.hpp"
+#include "../metadata/gst-dxobjectmeta.hpp"
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include <rga/rga.h>
@@ -27,23 +32,23 @@ bool RgaPreprocessor::calculate_nv12_strides_short(int w, int h, int wa, int ha,
 
 bool RgaPreprocessor::preprocess(GstBuffer* buf, DXFrameMeta *frame_meta, void *output, cv::Rect *roi) {
     if (element->_resize_width % 16 != 0 || element->_resize_height % 2 != 0) {
-        g_error("ERROR : output W stride must be 16 (H stride 2) aligned ! \n");
-        return true;
+        GST_ERROR_OBJECT(element, "ERROR : output W stride must be 16 (H stride 2) aligned ! \n");
+        return false;
     }
 
     if (!output) {
-        g_error("ERROR : output memory is nullptr! \n");
+        GST_ERROR_OBJECT(element, "ERROR : output memory is nullptr! \n");
         return false;
     }
 
     if (g_strcmp0(frame_meta->_format, "NV12") != 0) {
-        g_error("ERROR : not supported format (use NV12)! \n");
+        GST_ERROR_OBJECT(element, "ERROR : not supported format (use NV12)! \n");
         return false;
     }
 
     GstMapInfo map;
     if (!gst_buffer_map(buf, &map, GST_MAP_READ)) {
-        g_error("ERROR : Failed to map GstBuffer (dxpreprocess) \n");
+        GST_ERROR_OBJECT(element, "ERROR : Failed to map GstBuffer (dxpreprocess) \n");
         return false;
     }
     
@@ -65,7 +70,7 @@ bool RgaPreprocessor::preprocess(GstBuffer* buf, DXFrameMeta *frame_meta, void *
             reinterpret_cast<void *>(output), element->_resize_width,
             element->_resize_height, RK_FORMAT_BGR_888);
     } else {
-        g_warning("Invalid color mode: %s. Use RGB or BGR.", element->_color_format);
+        GST_WARNING_OBJECT(element, "Invalid color mode: %s. Use RGB or BGR.", element->_color_format);
         gst_buffer_unmap(buf, &map);
         return false;
     }
@@ -87,7 +92,7 @@ bool RgaPreprocessor::preprocess(GstBuffer* buf, DXFrameMeta *frame_meta, void *
         if (roi->x < 0 || roi->y < 0 || 
             roi->x + roi->width > frame_meta->_width ||
             roi->y + roi->height > frame_meta->_height) {
-            g_warning("Invalid ROI: (%d,%d,%d,%d) for frame (%dx%d)", 
+            GST_WARNING_OBJECT(element, "Invalid ROI: (%d,%d,%d,%d) for frame (%dx%d)", 
                      roi->x, roi->y, roi->width, roi->height,
                      frame_meta->_width, frame_meta->_height);
             gst_buffer_unmap(buf, &map);
@@ -140,8 +145,7 @@ bool RgaPreprocessor::preprocess(GstBuffer* buf, DXFrameMeta *frame_meta, void *
              IM_SCHEDULER_RGA3_CORE0 | IM_SCHEDULER_RGA3_CORE1);
     int ret = imcheck(src_img, dst_img, src_rect, dst_rect);
     if (IM_STATUS_NOERROR != ret) {
-        std::cerr << "check error: " << ret << " - "
-                  << imStrError((IM_STATUS)ret) << std::endl;
+        GST_ERROR_OBJECT(element, "check error: %d - %s", ret, imStrError((IM_STATUS)ret));
         gst_buffer_unmap(buf, &map);
         return false;
     }
@@ -150,14 +154,14 @@ bool RgaPreprocessor::preprocess(GstBuffer* buf, DXFrameMeta *frame_meta, void *
         (float)dst_rect.width / src_rect.width >= 8 ||
         (float)dst_rect.height / src_rect.height <= 0.125 ||
         (float)dst_rect.height / src_rect.height >= 8) {
-        g_warning("DX Preprocess : scale check error, scale limit[1/8 ~ 8] \n");
+        GST_WARNING_OBJECT(element, "DX Preprocess : scale check error, scale limit[1/8 ~ 8] \n");
         gst_buffer_unmap(buf, &map);
         return false;
     }
 
     if (src_rect.width < 68 || src_rect.height < 2 || src_rect.width > 8176 ||
         src_rect.height > 8176) {
-        g_warning("DX Preprocess : resolution check error, input range[68x2 ~ "
+        GST_WARNING_OBJECT(element, "DX Preprocess : resolution check error, input range[68x2 ~ "
                   "8176x8176] \n");
         gst_buffer_unmap(buf, &map);
         return false;
@@ -165,7 +169,7 @@ bool RgaPreprocessor::preprocess(GstBuffer* buf, DXFrameMeta *frame_meta, void *
 
     if (dst_rect.width < 68 || dst_rect.height < 2 || dst_rect.width > 8128 ||
         dst_rect.height > 8128) {
-        g_warning("DX Preprocess : resolution check error, output range[68x2 ~ "
+        GST_WARNING_OBJECT(element, "DX Preprocess : resolution check error, output range[68x2 ~ "
                   "8128x8128] \n");
         gst_buffer_unmap(buf, &map);
         return false;
@@ -175,8 +179,7 @@ bool RgaPreprocessor::preprocess(GstBuffer* buf, DXFrameMeta *frame_meta, void *
 
     gst_buffer_unmap(buf, &map);
     if (ret != IM_STATUS_SUCCESS) {
-        std::cerr << "RGA resize (imresize) failed: " << ret << " - "
-                  << imStrError((IM_STATUS)ret) << std::endl;
+        GST_ERROR_OBJECT(element, "RGA resize (imresize) failed: %d - %s", ret, imStrError((IM_STATUS)ret));
         return false;
     }
     return true;

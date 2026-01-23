@@ -2,7 +2,8 @@
 #define GST_DXPOSTPROCESS_H
 
 #include "dxcommon.hpp"
-#include "gst-dxmeta.hpp"
+#include "./../metadata/gst-dxframemeta.hpp"
+#include "./../metadata/gst-dxobjectmeta.hpp"
 #include <gst/base/gstbasetransform.h>
 #include <gst/gst.h>
 

@@ -1,13 +1,6 @@
 #include "gst-dxobjectmeta.hpp"
-#include "gst-dxmeta.hpp"
+#include "gst-dxusermeta.hpp"
 #include <zlib.h>
-
-static gboolean dx_object_meta_init(GstMeta *meta, gpointer params,
-                                    GstBuffer *buffer);
-static void dx_object_meta_free(GstMeta *meta, GstBuffer *buffer);
-static gboolean dx_object_meta_transform(GstBuffer *dest, GstMeta *meta,
-                                         GstBuffer *buffer, GQuark type,
-                                         gpointer data);
 
 static gint generate_meta_id_uuid() {
     std::string uuid_str = g_uuid_string_random();
@@ -19,100 +12,73 @@ static gint generate_meta_id_uuid() {
     return static_cast<gint>(crc & G_MAXINT);
 }
 
-GType dx_object_meta_api_get_type(void) {
-    static GType type;
+DXObjectMeta* dx_acquire_obj_meta_from_pool(void) {
+    DXObjectMeta *obj_meta = g_new0(DXObjectMeta, 1);
 
-    static const gchar *tags[] = {"dx_object_meta", nullptr};
-
-    if (g_once_init_enter(&type)) {
-        GType _type = gst_meta_api_type_register("DXObjectMetaAPI", tags);
-        g_once_init_leave(&type, _type);
-    }
-
-    return type;
-}
-
-const GstMetaInfo *dx_object_meta_get_info(void) {
-    static const GstMetaInfo *meta_info = nullptr;
-
-    if (g_once_init_enter(&meta_info)) {
-        const GstMetaInfo *mi = gst_meta_register(
-            DX_OBJECT_META_API_TYPE, "DXObjectMeta", sizeof(DXObjectMeta),
-            (GstMetaInitFunction)dx_object_meta_init,
-            (GstMetaFreeFunction)dx_object_meta_free,
-            (GstMetaTransformFunction)dx_object_meta_transform);
-        g_once_init_leave(&meta_info, mi);
-    }
-    return meta_info;
-}
-
-static gboolean dx_object_meta_init(GstMeta *meta, gpointer params,
-                                    GstBuffer *buffer) {
-    DXObjectMeta *dx_meta = (DXObjectMeta *)meta;
-
-    dx_meta->_meta_id = generate_meta_id_uuid();
+    obj_meta->_meta_id = generate_meta_id_uuid();
 
     // body
-    dx_meta->_track_id = -1;
-    dx_meta->_label = -1;
-    dx_meta->_label_name = nullptr;
-    dx_meta->_confidence = -1.0;
-    new (&dx_meta->_keypoints) std::vector<float>();
-    dx_meta->_keypoints.clear();
-    new (&dx_meta->_body_feature) std::vector<float>();
-    dx_meta->_body_feature.clear();
-    dx_meta->_box[0] = 0;
-    dx_meta->_box[1] = 0;
-    dx_meta->_box[2] = 0;
-    dx_meta->_box[3] = 0;
+    obj_meta->_track_id = -1;
+    obj_meta->_label = -1;
+    obj_meta->_label_name = nullptr;
+    obj_meta->_confidence = -1.0;
+    new (&obj_meta->_keypoints) std::vector<float>();
+    obj_meta->_keypoints.clear();
+    new (&obj_meta->_body_feature) std::vector<float>();
+    obj_meta->_body_feature.clear();
+    obj_meta->_box[0] = 0;
+    obj_meta->_box[1] = 0;
+    obj_meta->_box[2] = 0;
+    obj_meta->_box[3] = 0;
 
     // face
-    dx_meta->_face_confidence = -1.0;
-    new (&dx_meta->_face_landmarks) std::vector<dxs::Point_f>();
-    dx_meta->_face_landmarks.clear();
-    new (&dx_meta->_face_feature) std::vector<float>();
-    dx_meta->_face_feature.clear();
-    dx_meta->_face_box[0] = 0;
-    dx_meta->_face_box[1] = 0;
-    dx_meta->_face_box[2] = 0;
-    dx_meta->_face_box[3] = 0;
+    obj_meta->_face_confidence = -1.0;
+    new (&obj_meta->_face_landmarks) std::vector<dxs::Point_f>();
+    obj_meta->_face_landmarks.clear();
+    new (&obj_meta->_face_feature) std::vector<float>();
+    obj_meta->_face_feature.clear();
+    obj_meta->_face_box[0] = 0;
+    obj_meta->_face_box[1] = 0;
+    obj_meta->_face_box[2] = 0;
+    obj_meta->_face_box[3] = 0;
 
     // segmentation
-    new (&dx_meta->_seg_cls_map) dxs::SegClsMap();
-    // dx_meta->_seg_cls_map.data.clear();
-    // dx_meta->_seg_cls_map.width = 0;
-    // dx_meta->_seg_cls_map.height = 0;
+    new (&obj_meta->_seg_cls_map) dxs::SegClsMap();
 
-    new (&dx_meta->_input_tensors) std::map<int, dxs::DXTensors>();
-    new (&dx_meta->_output_tensors) std::map<int, dxs::DXTensors>();
+    // user meta
+    obj_meta->_obj_user_meta_list = nullptr;
+    obj_meta->_num_obj_user_meta = 0;
 
-    return TRUE;
+    new (&obj_meta->_input_tensors) std::map<int, dxs::DXTensors>();
+    new (&obj_meta->_output_tensors) std::map<int, dxs::DXTensors>();
+
+    return obj_meta;
 }
 
-static void dx_object_meta_free(GstMeta *meta, GstBuffer *buffer) {
-    DXObjectMeta *dx_meta = (DXObjectMeta *)meta;
+void dx_release_obj_meta(DXObjectMeta *obj_meta) {
+    if (!obj_meta) return;
 
-    if (dx_meta->_label_name) {
-        g_string_free(dx_meta->_label_name, TRUE);
-        dx_meta->_label_name = nullptr;
+    if (obj_meta->_label_name) {
+        g_string_free(obj_meta->_label_name, TRUE);
+        obj_meta->_label_name = nullptr;
     }
     
     using point_f_vec = std::vector<dxs::Point_f>;
     using float_vec = std::vector<float>;
     
-    dx_meta->_keypoints.~float_vec();
-    dx_meta->_body_feature.~float_vec();
-    dx_meta->_face_landmarks.~point_f_vec();
-    dx_meta->_face_feature.~float_vec();
+    obj_meta->_keypoints.~float_vec();
+    obj_meta->_body_feature.~float_vec();
+    obj_meta->_face_landmarks.~point_f_vec();
+    obj_meta->_face_feature.~float_vec();
 
-    for (auto &tensors : dx_meta->_input_tensors) {
+    for (auto &tensors : obj_meta->_input_tensors) {
         if (tensors.second._data) {
             free(tensors.second._data);
             tensors.second._data = nullptr;
         }
         tensors.second._tensors.clear();
     }
-    for (auto &tensors : dx_meta->_output_tensors) {
+    for (auto &tensors : obj_meta->_output_tensors) {
         if (tensors.second._data) {
             free(tensors.second._data);
             tensors.second._data = nullptr;
@@ -120,105 +86,108 @@ static void dx_object_meta_free(GstMeta *meta, GstBuffer *buffer) {
         tensors.second._tensors.clear();
     }
 
-    dx_meta->_seg_cls_map.~SegClsMap();
+    // user meta
+    for (GList *l = obj_meta->_obj_user_meta_list; l != nullptr; l = l->next) {
+        DXUserMeta *user_meta = (DXUserMeta *)l->data;
+        dx_release_user_meta(user_meta);
+    }
+    g_list_free(obj_meta->_obj_user_meta_list);
+    obj_meta->_obj_user_meta_list = nullptr;
+
+    obj_meta->_seg_cls_map.~SegClsMap();
+    
+    g_free(obj_meta);
 }
 
-void copy_tensor(DXObjectMeta *src_meta, DXObjectMeta *dst_meta) {
-    // copy tensor
+void dx_copy_obj_meta(DXObjectMeta *src_meta, DXObjectMeta *dst_meta) {
+    if (!src_meta || !dst_meta) return;
+
+    dst_meta->_meta_id = src_meta->_meta_id;
+    dst_meta->_track_id = src_meta->_track_id;
+    dst_meta->_label = src_meta->_label;
+    
+    if (src_meta->_label_name) {
+        dst_meta->_label_name = g_string_new_len(src_meta->_label_name->str,
+                                                src_meta->_label_name->len);
+    } else {
+        dst_meta->_label_name = nullptr;
+    }
+    
+    dst_meta->_confidence = src_meta->_confidence;
+    dst_meta->_box[0] = src_meta->_box[0];
+    dst_meta->_box[1] = src_meta->_box[1];
+    dst_meta->_box[2] = src_meta->_box[2];
+    dst_meta->_box[3] = src_meta->_box[3];
+    
+    if (!src_meta->_keypoints.empty()) {
+        dst_meta->_keypoints = src_meta->_keypoints;
+    }
+    if (!src_meta->_body_feature.empty()) {
+        dst_meta->_body_feature = src_meta->_body_feature;
+    }
+
+    dst_meta->_face_box[0] = src_meta->_face_box[0];
+    dst_meta->_face_box[1] = src_meta->_face_box[1];
+    dst_meta->_face_box[2] = src_meta->_face_box[2];
+    dst_meta->_face_box[3] = src_meta->_face_box[3];
+    dst_meta->_face_confidence = src_meta->_face_confidence;
+    
+    for (const auto &point : src_meta->_face_landmarks) {
+        dst_meta->_face_landmarks.push_back(point);
+    }
+    if (!src_meta->_face_feature.empty()) {
+        dst_meta->_face_feature = src_meta->_face_feature;
+    }
+
+    if (src_meta->_seg_cls_map.data.size() > 0) {
+        dst_meta->_seg_cls_map.data = src_meta->_seg_cls_map.data;
+        dst_meta->_seg_cls_map.width = src_meta->_seg_cls_map.width;
+        dst_meta->_seg_cls_map.height = src_meta->_seg_cls_map.height;
+    }
+
+    // Copy tensors
     for (auto &input_tensors : src_meta->_input_tensors) {
         dxs::DXTensors new_tensors;
-
         new_tensors._mem_size = input_tensors.second._mem_size;
         new_tensors._data = malloc(new_tensors._mem_size);
-        memcpy(new_tensors._data, input_tensors.second._data,
-               new_tensors._mem_size);
+        memcpy(new_tensors._data, input_tensors.second._data, new_tensors._mem_size);
         new_tensors._tensors = input_tensors.second._tensors;
-
         dst_meta->_input_tensors[input_tensors.first] = new_tensors;
     }
 
     for (auto &output_tensors : src_meta->_output_tensors) {
         dxs::DXTensors new_tensors;
-
         new_tensors._mem_size = output_tensors.second._mem_size;
         new_tensors._data = malloc(new_tensors._mem_size);
-        memcpy(new_tensors._data, output_tensors.second._data,
-               new_tensors._mem_size);
+        memcpy(new_tensors._data, output_tensors.second._data, new_tensors._mem_size);
         new_tensors._tensors = output_tensors.second._tensors;
-
         dst_meta->_output_tensors[output_tensors.first] = new_tensors;
     }
-}
 
-static gboolean dx_object_meta_transform(GstBuffer *dest, GstMeta *meta,
-                                         GstBuffer *buffer, GQuark type,
-                                         gpointer data) {
-    DXObjectMeta *src_object_meta = (DXObjectMeta *)meta;
-    DXFrameMeta *frame_meta =
-        (DXFrameMeta *)gst_buffer_get_meta(dest, DX_FRAME_META_API_TYPE);
-
-    if (!frame_meta) {
-        return FALSE;
-    }
-
-    size_t object_length = (size_t)g_list_length(frame_meta->_object_meta_list);
-    for (size_t i = 0; i < object_length; i++) {
-        DXObjectMeta *object_meta =
-            (DXObjectMeta *)g_list_nth_data(frame_meta->_object_meta_list, i);
-        if (object_meta->_meta_id == src_object_meta->_meta_id) {
-            return FALSE;
+    dst_meta->_obj_user_meta_list = nullptr;
+    dst_meta->_num_obj_user_meta = 0;
+    
+    for (GList *l = src_meta->_obj_user_meta_list; l != nullptr; l = l->next) {
+        DXUserMeta *src_user_meta = (DXUserMeta *)l->data;
+        DXUserMeta *dst_user_meta = dx_acquire_user_meta_from_pool();
+        
+        if (!src_user_meta->copy_func || !src_user_meta->release_func) {
+            g_warning("UserMeta missing required copy_func or release_func - skipping copy");
+            dx_release_user_meta(dst_user_meta);
+            continue;
         }
+        
+        if (src_user_meta->user_meta_data) {
+            dst_user_meta->user_meta_data = src_user_meta->copy_func(src_user_meta->user_meta_data);
+        } else {
+            dst_user_meta->user_meta_data = nullptr;
+        }
+        
+        dst_user_meta->user_meta_size = src_user_meta->user_meta_size;
+        dst_user_meta->user_meta_type = src_user_meta->user_meta_type;
+        dst_user_meta->release_func = src_user_meta->release_func;
+        dst_user_meta->copy_func = src_user_meta->copy_func;
+        
+        dx_add_user_meta_to_obj(dst_meta, dst_user_meta);
     }
-
-    DXObjectMeta *dest_object_meta =
-        (DXObjectMeta *)gst_buffer_add_meta(dest, DX_OBJECT_META_INFO, nullptr);
-
-    dest_object_meta->_meta_id = src_object_meta->_meta_id;
-
-    dest_object_meta->_track_id = src_object_meta->_track_id;
-    dest_object_meta->_label = src_object_meta->_label;
-    if (src_object_meta->_label_name) {
-        dest_object_meta->_label_name =
-            g_string_new_len(src_object_meta->_label_name->str,
-                             src_object_meta->_label_name->len);
-    } else {
-        dest_object_meta->_label_name = nullptr;
-    }
-    dest_object_meta->_confidence = src_object_meta->_confidence;
-    dest_object_meta->_box[0] = src_object_meta->_box[0];
-    dest_object_meta->_box[1] = src_object_meta->_box[1];
-    dest_object_meta->_box[2] = src_object_meta->_box[2];
-    dest_object_meta->_box[3] = src_object_meta->_box[3];
-    if (!src_object_meta->_keypoints.empty()) {
-        dest_object_meta->_keypoints = src_object_meta->_keypoints;
-    }
-    if (!src_object_meta->_body_feature.empty()) {
-        dest_object_meta->_body_feature = src_object_meta->_body_feature;
-    }
-
-    dest_object_meta->_face_box[0] = src_object_meta->_face_box[0];
-    dest_object_meta->_face_box[1] = src_object_meta->_face_box[1];
-    dest_object_meta->_face_box[2] = src_object_meta->_face_box[2];
-    dest_object_meta->_face_box[3] = src_object_meta->_face_box[3];
-    dest_object_meta->_face_confidence = src_object_meta->_face_confidence;
-    for (const auto &point : src_object_meta->_face_landmarks) {
-        dest_object_meta->_face_landmarks.push_back(point);
-    }
-    if (!src_object_meta->_face_feature.empty()) {
-        dest_object_meta->_face_feature = src_object_meta->_face_feature;
-    }
-
-    if (src_object_meta->_seg_cls_map.data.size() > 0) {
-        dest_object_meta->_seg_cls_map.data =
-            src_object_meta->_seg_cls_map.data;
-        dest_object_meta->_seg_cls_map.width =
-            src_object_meta->_seg_cls_map.width;
-        dest_object_meta->_seg_cls_map.height =
-            src_object_meta->_seg_cls_map.height;
-    }
-
-    copy_tensor(src_object_meta, dest_object_meta);
-
-    dx_add_object_meta_to_frame_meta(dest_object_meta, frame_meta);
-    return TRUE;
 }

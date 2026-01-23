@@ -46,6 +46,11 @@ show_help() {
   echo "  [--uninstall]   Remove installed files."
   echo "  [--debug]       Build for debug"
   echo "  [--help]        Show this help message"
+  echo ""
+  echo "Python Environment:"
+  echo "  To install pydxs in a virtual environment, activate it before running build.sh:"
+  echo "    source venv/bin/activate"
+  echo "    ./build.sh"
 
   if [ "$1" == "error" ]; then
     echo "Error: Invalid or missing arguments."
@@ -155,7 +160,6 @@ build() {
     if [ "$V3_MODE" == "--v3" ]; then
         echo "Skipping Application build in V3 mode."
         echo "Skipping test_plugin build in V3 mode."
-        echo "Skipping Installation step in V3 mode."
         return 0
     fi
 
@@ -163,13 +167,6 @@ build() {
     ./build.sh ${DEBUG_ARG} ${SONAR_MODE_ARG}
     if [ $? -ne 0 ]; then
         echo -e "Error: apps build failed"
-        exit 1
-    fi
-
-    cd $WRC/dx_stream/test/test_plugin
-    ./build.sh ${DEBUG_ARG} ${SONAR_MODE_ARG}
-    if [ $? -ne 0 ]; then
-        echo -e "Error: test_plugin build failed"
         exit 1
     fi
 
@@ -235,6 +232,13 @@ install() {
     echo "Installing dx_stream applications to /usr/share/dx-stream/bin"
     sudo cp -r ${PROJECT_ROOT}/install/bin/* /usr/share/dx-stream/bin
     sudo chmod +x /usr/share/dx-stream/bin/*
+    
+    # Install Python bindings (pydxs) - skip in V3 mode
+    if [ "$V3_MODE" != "--v3" ]; then
+        install_pydxs
+    else
+        echo "Skipping pydxs installation in V3 mode."
+    fi
 
     exit 0
 }
@@ -246,6 +250,64 @@ activate_venv() {
         echo -e "[ERROR] Failed to activate venv. Please run 'install.sh' first to set up the venv environment, then try again."
         exit 1
     fi
+}
+
+install_pydxs() {
+    echo ""
+    echo "=================================================="
+    echo "🐍 Python Bindings Installation (pydxs)"
+    echo "=================================================="
+    
+    deactivate 2>/dev/null || true
+
+    local python_version=$(/usr/bin/python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
+    echo "→ Python version: ${python_version}"
+    echo "→ Build type: ${BUILD_TYPE}"
+    echo ""
+    
+    # Create/activate virtual environment
+    if [ ! -d "${VENV_PATH}" ]; then
+        echo "→ Creating virtual environment: ${VENV_PATH}"
+        /usr/bin/python3 -m venv --system-site-packages "${VENV_PATH}" || exit 1
+    fi
+
+    echo "→ Activating virtual environment"
+    source "${VENV_PATH}/bin/activate" || exit 1
+
+    # Install build dependencies based on Python version
+    local py_minor=$(echo $python_version | cut -d. -f2)
+    if [ "$py_minor" -le 7 ]; then
+        echo "→ Installing dependencies (Python ≤3.7 legacy mode)..."
+        python3 -m pip install -q --upgrade "pip<21.0" "setuptools<60.0" "wheel<0.38" "pybind11>=2.6.0,<2.11.0"
+    else
+        echo "→ Installing dependencies (Python ≥3.8 modern mode)..."
+        python3 -m pip install -q --upgrade pip setuptools wheel scikit-build-core pybind11
+    fi
+    
+    [ $? -ne 0 ] && { echo "✗ Dependency installation failed"; deactivate; exit 1; }
+
+    # Install pydxs
+    cd "${PROJECT_ROOT}/bindings/python/pydxs"
+    echo "→ Installing pydxs..."
+    
+    export PROJECT_ROOT="${PROJECT_ROOT}"
+    [ "$py_minor" -ge 8 ] && export SKBUILD_CMAKE_ARGS="-DCMAKE_BUILD_TYPE=${BUILD_TYPE^}"
+    
+    if python3 -m pip install -q .; then
+        echo "✓ pydxs installed successfully"
+        python3 -c "import pydxs" 2>/dev/null && echo "✓ Import verified" || { echo "✗ Import failed"; cd "${PROJECT_ROOT}"; deactivate; exit 1; }
+    else
+        echo "✗ Installation failed"
+        echo "→ Try: source ${VENV_PATH}/bin/activate && cd ${PROJECT_ROOT}/bindings/python/pydxs && python3 -m pip install -v ."
+        cd "${PROJECT_ROOT}"
+        deactivate
+        exit 1
+    fi
+    
+    cd "${PROJECT_ROOT}"
+    deactivate
+    echo "=================================================="
+    echo ""
 }
 
 # Parse arguments
@@ -281,6 +343,10 @@ done
 
 # activate_venv
 build
+if [ "$V3_MODE" == "--v3" ]; then
+    echo "Skipping Installation step in V3 mode."
+    exit 0
+fi
 install
 
 exit 0

@@ -1,5 +1,32 @@
 # RELEASE_NOTES
 
+## DX-Stream v2.2.0 / 2025-12-30
+
+### 1. Changed
+- Modified gst-dxpreprocess to automatically deep copy buffers when ref_count > 1 (e.g., after tee element)
+- **Metadata Architecture**: Separated existing gst-dxmeta.cpp/hpp into individual metadata files (frame, object, user metadata) and enhanced structures with user metadata lists and count fields
+- **Test Framework**: Refactored metadata handling in test files to use dx_get_frame_meta for improved performance and added test plugin installation step in unit test workflow
+- docs: update OS requirements in installation guide for debian
+
+### 2. Fixed
+- Fixed race condition and segfaults in secondary inference mode when multiple streams access shared buffer metadata
+- **API Migration**: Updated object metadata removal to use new API in track function
+- **Error Handling**: Enhanced error handling for compilation failures in test scripts
+
+### 3. Added
+- Added prepare_output_buffer() override to detect and copy shared buffers
+- Added `pydxs` Python binding module for DX Stream metadata,.
+- Python bindings for `DXFrameMeta`, `DXObjectMeta`, `DXUserMeta`, and related value types.
+- Helper APIs to acquire and attach `DXObjectMeta` to frames and to manage user metadata from Python.
+- A `writable_buffer` context manager to safely ensure buffer writability and create/retrieve `DXFrameMeta` inside GStreamer pad probes.
+- A new Python sample app `usermeta_app.py` demonstrating creation, attachment, and reading of frame/object/user metadata using `pydxs`.
+- **User Metadata Interface**: New API allowing developers to attach custom metadata to frames and objects
+- **Management Functions**: Comprehensive metadata structures and management functions (create, copy, release)
+- **Test Suite**: Dedicated user metadata test suite (test_usermeta.cpp) with validation framework
+- **Documentation**: User Metadata Guide documentation and README updates
+
+---
+
 ## DX-Stream v2.1.0 / 2025-11-28
 
 ### 1. Changed

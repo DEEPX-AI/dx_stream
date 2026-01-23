@@ -1,6 +1,7 @@
 #include "libyuv_preprocessor.h"
 #include "gst-dxpreprocess.hpp"
-#include "gst-dxmeta.hpp"
+#include "./../metadata/gst-dxframemeta.hpp"
+#include "./../metadata/gst-dxobjectmeta.hpp"
 #include "utils/libyuv_transform/libyuv_transform.hpp"
 #include <algorithm>
 #include <iostream>

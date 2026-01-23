@@ -6,7 +6,8 @@
 #endif
 
 #include "dxcommon.hpp"
-#include "gst-dxmeta.hpp"
+#include "gst-dxframemeta.hpp"
+#include "gst-dxobjectmeta.hpp"
 #include <gst/base/gstbasetransform.h>
 #include <gst/gst.h>
 #include <gst/video/video.h>

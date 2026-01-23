@@ -1,4 +1,6 @@
 #include "libyuv_transform.hpp"
+#include "./../../metadata/gst-dxframemeta.hpp"
+#include "./../../metadata/gst-dxobjectmeta.hpp"
 
 #define ALIGN_UP(value, align) (((value) + (align) - 1) & ~((align) - 1))
 

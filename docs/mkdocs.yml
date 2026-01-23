@@ -57,6 +57,7 @@ nav:
       - MsgBroker Pipeline: docs/Pipeline_Example/05_04_MsgBroker.md
   - Troubleshooting and FAQ: docs/06_Troubleshooting_and_FAQ.md
   - Appendix:
+      - User Metadata Guide: docs/Appendix_User_Metadata_Guide.md
       - Build on OrangePi5Plus: docs/Appendix_Build_on_OrangePi5Plus.md
       - Performance Evaluation With GsgShark: docs/Appendix_Performance_Evaluation_with_GstShark.md
   - Change Log: docs/Appendix_Change_Log.md
@@ -69,7 +70,7 @@ plugins:
       #
       #cover: false
       cover_title: DXNN Streamer (DX-STREAM) User Manual
-      cover_subtitle: v2.1.0
+      cover_subtitle: v2.2.0 (Dec 2025)
       cover_logo: img/deepx.png
       custom_template_path: docs/stylesheets
       #back_cover: true
@@ -95,7 +96,7 @@ plugins:
       #render_js: true
       #headless_chrome_path: headless-chromium
       #
-      output_path: ../DEEPX_DX-STREAM_UM_v2.1.0.pdf
+      output_path: ../DEEPX_DX-STREAM_UM_v2.2.0.pdf
       #enabled_if_env: ENABLE_PDF_EXPORT
       #
       #debug_html: true

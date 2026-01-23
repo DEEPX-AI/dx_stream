@@ -15,6 +15,6 @@ gstdxstream = library('gstdxtest',
     sources: ['dxtest.cpp', 'dxgenobj.cpp', 'dxgenbuffer.cpp'],
     dependencies : [gst_dep, gstbase_dep, dx_stream_dep],
     install : true,
-    install_dir : './install',
+    install_dir : meson.current_source_dir() + '/install',
 )
 

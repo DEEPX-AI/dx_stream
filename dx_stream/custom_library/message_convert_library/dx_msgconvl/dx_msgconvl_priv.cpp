@@ -3,6 +3,8 @@
 #include <json-glib/json-glib.h>
 
 #include "dx_msgconvl_priv.hpp"
+#include "dx_stream/gst-dxframemeta.hpp"
+#include "dx_stream/gst-dxobjectmeta.hpp"
 
 DxMsgContextPriv *dxcontext_create_contextPriv(void) {
     DxMsgContextPriv *contextPriv = g_new0(DxMsgContextPriv, 1);

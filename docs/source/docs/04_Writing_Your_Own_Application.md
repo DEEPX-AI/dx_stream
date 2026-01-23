@@ -4,7 +4,7 @@ This chapter  describes how to integrate a custom AI model and implement user-de
 
 - Inference is performed on the entire frame.  
 - Postprocessing is responsible for creating new objects (`DXObjectMeta`) based on the model's output.  
-- Use `dx_create_object_meta(buf)` to create new objects.
+- Use `dx_acquire_obj_meta_from_pool()` to create new objects and `dx_add_obj_meta_to_frame()` to add them to the frame.
 - These new objects are then added to the associated `DXFrameMeta`.  
 
 **Secondary Mode**  
@@ -17,9 +17,127 @@ This chapter  describes how to integrate a custom AI model and implement user-de
 
 - The `frame_meta->_buf` member has been removed to eliminate circular references.
 - All functions now receive `GstBuffer *buf` as the first parameter for direct buffer access.
+- Object creation has changed from `dx_create_object_meta(buf)` to `dx_acquire_obj_meta_from_pool()`.
+- Use `dx_add_obj_meta_to_frame()` to add objects to frame metadata.
 - Custom libraries must be updated to use the new function signatures.to `.dxnn` format using **DX-COM**. For details on model compilation, refer to **DX-COM User Manual**.  
 
 This guide focuses on how to configure and integrate custom logic into the **DX-STREAM** pipeline using modular elements such as **DxPreprocess, DxInfer,** and **DxPostprocess**.
+
+## DX-STREAM Metadata System Overview
+
+DX-STREAM provides a comprehensive metadata framework for handling inference results and custom data throughout the pipeline. The system is designed with a hierarchical structure that enables efficient data organization and access.
+
+### **Metadata Architecture**
+
+DX-STREAM uses a hierarchical metadata structure that follows this organization:
+
+**Buffer → Frame → Object → User Meta**
+
+- **GstBuffer**: Contains video frame data and top-level frame metadata
+- **DXFrameMeta**: Frame-level metadata (dimensions, stream info, object list)
+- **DXObjectMeta**: Object-level metadata (detection results, features)
+- **DXUserMeta**: User-defined custom metadata attached to frames or objects
+
+### **Core Metadata Types**
+
+**DXFrameMeta Structure:**
+```cpp
+struct _DXFrameMeta {
+    GstMeta _meta;                          // GStreamer metadata base
+    
+    gint _stream_id;                        // Stream identifier
+    gint _width, _height;                   // Frame dimensions
+    const gchar *_format, *_name;           // Format and stream name
+    gfloat _frame_rate;                     // Frame rate
+    int _roi[4];                           // Region of interest
+    
+    GList *_object_meta_list;              // List of DXObjectMeta
+    GList *_frame_user_meta_list;          // Frame-level user metadata
+    guint _num_frame_user_meta;            // Count of frame user metadata
+    
+    std::map<int, dxs::DXTensors> _input_tensors;   // Input tensors
+    std::map<int, dxs::DXTensors> _output_tensors;  // Output tensors
+};
+```
+
+**DXObjectMeta Structure:**
+```cpp
+typedef struct _DXObjectMeta {
+    gint _meta_id;                         // Unique object identifier
+    
+    // Detection results
+    gint _track_id;                        // Tracking ID
+    gint _label;                           // Class label ID
+    GString *_label_name;                  // Class name
+    gfloat _confidence;                    // Detection confidence
+    float _box[4];                         // Bounding box [x1, y1, x2, y2]
+    
+    // Body analysis
+    std::vector<float> _keypoints;         // Pose keypoints
+    std::vector<float> _body_feature;      // Body feature vector
+    
+    // Face analysis
+    float _face_box[4];                    // Face bounding box
+    gfloat _face_confidence;               // Face detection confidence
+    std::vector<dxs::Point_f> _face_landmarks;  // Face landmarks
+    std::vector<float> _face_feature;      // Face feature vector
+    
+    // Segmentation
+    dxs::SegClsMap _seg_cls_map;          // Segmentation mask
+    
+    // User metadata
+    GList *_obj_user_meta_list;           // Object-level user metadata
+    guint _num_obj_user_meta;             // Count of object user metadata
+    
+    // Tensors
+    std::map<int, dxs::DXTensors> _input_tensors;   // Object input tensors
+    std::map<int, dxs::DXTensors> _output_tensors;  // Object output tensors
+} DXObjectMeta;
+```
+
+### **Metadata API Functions**
+
+**Frame Metadata Operations:**
+```cpp
+// Create and access frame metadata
+DXFrameMeta *dx_create_frame_meta(GstBuffer *buffer);
+DXFrameMeta *dx_get_frame_meta(GstBuffer *buffer);
+
+// Object management in frame
+gboolean dx_add_obj_meta_to_frame(DXFrameMeta *frame_meta, DXObjectMeta *obj_meta);
+gboolean dx_remove_obj_meta_from_frame(DXFrameMeta *frame_meta, DXObjectMeta *obj_meta);
+```
+
+**Object Metadata Operations:**
+```cpp
+// Object lifecycle management
+DXObjectMeta* dx_acquire_obj_meta_from_pool(void);
+void dx_release_obj_meta(DXObjectMeta *obj_meta);
+void dx_copy_obj_meta(DXObjectMeta *src_meta, DXObjectMeta *dst_meta);
+```
+
+**User Metadata Operations:**
+```cpp
+// User metadata lifecycle
+DXUserMeta* dx_acquire_user_meta_from_pool(void);
+void dx_release_user_meta(DXUserMeta *user_meta);
+
+// Data management with required safety functions
+gboolean dx_user_meta_set_data(DXUserMeta *user_meta, 
+                              gpointer data, 
+                              gsize size, 
+                              guint meta_type, 
+                              GDestroyNotify release_func,    // Required: cleanup function
+                              GBoxedCopyFunc copy_func);      // Required: copy function
+
+// Attachment to frame/object
+gboolean dx_add_user_meta_to_frame(DXFrameMeta *frame_meta, DXUserMeta *user_meta);
+gboolean dx_add_user_meta_to_obj(DXObjectMeta *obj_meta, DXUserMeta *user_meta);
+
+// Retrieval (returns all user metadata)
+GList* dx_get_frame_user_metas(DXFrameMeta *frame_meta);
+GList* dx_get_object_user_metas(DXObjectMeta *obj_meta);
+```
 
 ## Custom Library for Model Inference  
 
@@ -41,6 +159,171 @@ The **DX-STREAM** inference pipeline is composed of the following elements.
 - Access the output tensor from `dxinfer` and executes the custom postprocessing algorithm defined in a custom library.  
 - A custom postprocessing implementation is required for each model.  
 - Example libraries for common vision tasks can be found in `dx_stream/custom_library/postprocess_library`.  
+
+### **DX-STREAM Metadata Architecture**
+
+DX-STREAM uses a hierarchical metadata structure that follows this organization:
+
+**Buffer → Frame → Object → User Meta**
+
+- **GstBuffer**: Contains video frame data and top-level frame metadata
+- **DXFrameMeta**: Frame-level metadata (dimensions, stream info, object list)
+- **DXObjectMeta**: Object-level metadata (detection results, features)
+- **DXUserMeta**: User-defined custom metadata attached to frames or objects
+
+#### **Using User Meta System**
+
+The DX-STREAM framework provides a simplified user metadata system for storing custom data. The system supports two main categories of user metadata:
+
+**User Meta Types:**
+```cpp
+typedef enum {
+    DX_USER_META_FRAME = 0x1000,   // Frame-level user metadata
+    DX_USER_META_OBJECT = 0x2000,  // Object-level user metadata
+} DXUserMetaType;
+```
+
+**DXUserMeta Structure:**
+```cpp
+struct _DXUserMeta {
+    gpointer user_meta_data;        // Pointer to user data
+    gsize user_meta_size;           // Size of user data
+    guint user_meta_type;           // Type (FRAME or OBJECT)
+    
+    GDestroyNotify release_func;    // Required: data cleanup function
+    GBoxedCopyFunc copy_func;       // Required: data copy function
+};
+```
+
+**Adding Custom Metadata to Frame:**
+```cpp
+// Define custom data structure
+typedef struct {
+    gint custom_id;
+    gchar *custom_name;
+    gfloat custom_score;
+} MyFrameData;
+
+// Copy function for your data
+static gpointer my_frame_data_copy(gconstpointer src) {
+    const MyFrameData *src_data = (const MyFrameData *)src;
+    MyFrameData *dst_data = g_new0(MyFrameData, 1);
+    dst_data->custom_id = src_data->custom_id;
+    dst_data->custom_name = g_strdup(src_data->custom_name);
+    dst_data->custom_score = src_data->custom_score;
+    return dst_data;
+}
+
+// Cleanup function for your data
+static void my_frame_data_free(gpointer data) {
+    MyFrameData *frame_data = (MyFrameData *)data;
+    g_free(frame_data->custom_name);
+    g_free(frame_data);
+}
+
+// Create and set user metadata
+DXUserMeta *user_meta = dx_acquire_user_meta_from_pool();
+
+MyFrameData *custom_data = g_new0(MyFrameData, 1);
+custom_data->custom_id = 123;
+custom_data->custom_name = g_strdup("example_frame");
+custom_data->custom_score = 0.95f;
+
+// Set data with required copy and release functions
+dx_user_meta_set_data(user_meta, 
+                     custom_data, 
+                     sizeof(MyFrameData),
+                     DX_USER_META_FRAME,
+                     my_frame_data_free,          // Required cleanup function
+                     my_frame_data_copy);         // Required copy function
+
+// Add to frame
+dx_add_user_meta_to_frame(frame_meta, user_meta);
+```
+
+**Adding Custom Metadata to Object:**
+```cpp
+// Define object-specific data
+typedef struct {
+    gint feature_count;
+    gfloat *features;
+    gchar *feature_name;
+} MyObjectFeature;
+
+// Copy function for object data
+static gpointer my_object_feature_copy(gconstpointer src) {
+    const MyObjectFeature *src_data = (const MyObjectFeature *)src;
+    MyObjectFeature *dst_data = g_new0(MyObjectFeature, 1);
+    dst_data->feature_count = src_data->feature_count;
+    dst_data->features = g_new(gfloat, src_data->feature_count);
+    memcpy(dst_data->features, src_data->features, 
+           src_data->feature_count * sizeof(gfloat));
+    dst_data->feature_name = g_strdup(src_data->feature_name);
+    return dst_data;
+}
+
+// Cleanup function for object data
+static void my_object_feature_free(gpointer data) {
+    MyObjectFeature *obj_data = (MyObjectFeature *)data;
+    g_free(obj_data->features);
+    g_free(obj_data->feature_name);
+    g_free(obj_data);
+}
+
+// Create user meta for object
+DXUserMeta *obj_user_meta = dx_acquire_user_meta_from_pool();
+
+MyObjectFeature *feature_data = g_new0(MyObjectFeature, 1);
+feature_data->feature_count = 128;
+feature_data->features = g_new(gfloat, 128);
+// ... populate features array ...
+feature_data->feature_name = g_strdup("resnet_features");
+
+dx_user_meta_set_data(obj_user_meta,
+                     feature_data,
+                     sizeof(MyObjectFeature), 
+                     DX_USER_META_OBJECT,
+                     my_object_feature_free,      // Required cleanup function
+                     my_object_feature_copy);     // Required copy function
+
+// Add to object
+dx_add_user_meta_to_obj(obj_meta, obj_user_meta);
+```
+
+**Retrieving User Metadata:**
+```cpp
+// Get all frame user metadata
+GList *frame_metas = dx_get_frame_user_metas(frame_meta);
+for (GList *l = frame_metas; l != nullptr; l = l->next) {
+    DXUserMeta *user_meta = (DXUserMeta *)l->data;
+    
+    // Check if this is frame-type metadata
+    if (user_meta->user_meta_type == DX_USER_META_FRAME) {
+        MyFrameData *data = (MyFrameData *)user_meta->user_meta_data;
+        g_print("Frame data: ID=%d, Name=%s, Score=%.2f\n", 
+                data->custom_id, data->custom_name, data->custom_score);
+    }
+}
+
+// Get all object user metadata  
+GList *obj_metas = dx_get_object_user_metas(obj_meta);
+for (GList *l = obj_metas; l != nullptr; l = l->next) {
+    DXUserMeta *user_meta = (DXUserMeta *)l->data;
+    
+    // Check if this is object-type metadata
+    if (user_meta->user_meta_type == DX_USER_META_OBJECT) {
+        MyObjectFeature *feature = (MyObjectFeature *)user_meta->user_meta_data;
+        g_print("Object feature: %s with %d dimensions\n", 
+                feature->feature_name, feature->feature_count);
+    }
+}
+```
+
+**Important Safety Requirements:**
+- **Copy Function**: Always provide a proper copy function that performs deep copy of your data
+- **Release Function**: Always provide a cleanup function that properly frees all allocated memory
+- **Memory Management**: The UserMeta system will automatically handle lifecycle management using your provided functions
+- **Type Checking**: Always verify the metadata type before casting to your custom structure
 
 ### **Writing Custom Pre-Process Function**
 For models requiring additional preprocessing beyond the default functionality, you can implement a **Custom Pre-Process Function** using a user-defined library.  
@@ -138,8 +421,11 @@ extern "C" void YOLOV7(GstBuffer *buf,
     // Convert output tensor to bounding box information
     
     // Example of creating new object metadata:
-    DXObjectMeta *obj_meta = dx_create_object_meta(buf);
+    DXObjectMeta *obj_meta = dx_acquire_obj_meta_from_pool();
     // ... populate object metadata ...
+    
+    // Add object to frame
+    dx_add_obj_meta_to_frame(frame_meta, obj_meta);
 }
 ```
 

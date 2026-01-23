@@ -33,6 +33,8 @@ GST_DEBUG_CATEGORY_STATIC(gst_dxpreprocess_debug_category);
 
 static GstFlowReturn gst_dxpreprocess_transform_ip(GstBaseTransform *trans,
                                                    GstBuffer *buf);
+static GstFlowReturn gst_dxpreprocess_prepare_output_buffer(
+    GstBaseTransform *trans, GstBuffer *inbuf, GstBuffer **outbuf);
 static gboolean gst_dxpreprocess_start(GstBaseTransform *trans);
 static gboolean gst_dxpreprocess_stop(GstBaseTransform *trans);
 static gboolean gst_dxpreprocess_src_event(GstBaseTransform *trans,
@@ -607,6 +609,8 @@ static void gst_dxpreprocess_class_init(GstDxPreprocessClass *klass) {
     base_transform_class->src_event =
         GST_DEBUG_FUNCPTR(gst_dxpreprocess_src_event);
 
+    base_transform_class->prepare_output_buffer =
+        GST_DEBUG_FUNCPTR(gst_dxpreprocess_prepare_output_buffer);
     base_transform_class->start = GST_DEBUG_FUNCPTR(gst_dxpreprocess_start);
     base_transform_class->stop = GST_DEBUG_FUNCPTR(gst_dxpreprocess_stop);
     base_transform_class->sink_event =
@@ -758,6 +762,34 @@ static gboolean gst_dxpreprocess_src_event(GstBaseTransform *trans,
     return GST_BASE_TRANSFORM_CLASS(parent_class)->src_event(trans, event);
 }
 
+static GstFlowReturn gst_dxpreprocess_prepare_output_buffer(
+    GstBaseTransform *trans, GstBuffer *inbuf, GstBuffer **outbuf) {
+    GstDxPreprocess *self = GST_DXPREPROCESS(trans);
+    
+    gint ref_count = GST_MINI_OBJECT_REFCOUNT(inbuf);
+    
+    if (ref_count > 1) {
+        GST_DEBUG_OBJECT(self, 
+            "🔴 Buffer shared (ref_count=%d), creating deep copy", ref_count);
+        
+        *outbuf = gst_buffer_copy_deep(inbuf);
+        
+        if (*outbuf == NULL) {
+            GST_ERROR_OBJECT(self, "Failed to create deep copy of buffer");
+            return GST_FLOW_ERROR;
+        }
+        
+        gint new_ref = GST_MINI_OBJECT_REFCOUNT(*outbuf);
+        GST_DEBUG_OBJECT(self, 
+            "🟢 Deep copy created! new_ref=%d", new_ref);
+        
+        return GST_FLOW_OK;
+    }
+    
+    *outbuf = inbuf;
+    return GST_FLOW_OK;
+}
+
 bool gst_dxpreprocess_qos_process(GstDxPreprocess *self, GstBuffer *buf) {
     GstClockTime in_ts = GST_BUFFER_TIMESTAMP(buf);
 
@@ -786,46 +818,6 @@ bool gst_dxpreprocess_qos_process(GstDxPreprocess *self, GstBuffer *buf) {
     return false;
 }
 
-DXFrameMeta *get_frame_meta(GstBuffer *buf, GstBaseTransform *trans) {
-    DXFrameMeta *frame_meta =
-        (DXFrameMeta *)gst_buffer_get_meta(buf, DX_FRAME_META_API_TYPE);
-    if (!frame_meta) {
-        frame_meta = (DXFrameMeta *)gst_buffer_add_meta(buf, DX_FRAME_META_INFO,
-                                                        nullptr);
-
-        GstPad *sinkpad = GST_BASE_TRANSFORM_SINK_PAD(trans);
-        GstCaps *caps = gst_pad_get_current_caps(sinkpad);
-        GstStructure *s = gst_caps_get_structure(caps, 0);
-        frame_meta->_name = gst_structure_get_name(s);
-        frame_meta->_format = gst_structure_get_string(s, "format");
-        gst_structure_get_int(s, "width", &frame_meta->_width);
-        gst_structure_get_int(s, "height", &frame_meta->_height);
-        gint num, denom;
-        gst_structure_get_fraction(s, "framerate", &num, &denom);
-        frame_meta->_frame_rate = (gfloat)num / (gfloat)denom;
-        frame_meta->_stream_id = 0;
-        gst_caps_unref(caps);
-    }
-    return frame_meta;
-}
-
-void check_temp_buffers(GstDxPreprocess *self, DXFrameMeta *frame_meta) {
-    auto iter = self->_crop_frame.find(frame_meta->_stream_id);
-    if (iter == self->_crop_frame.end()) {
-        self->_crop_frame[frame_meta->_stream_id] = nullptr;
-    }
-
-    iter = self->_convert_frame.find(frame_meta->_stream_id);
-    if (iter == self->_convert_frame.end()) {
-        self->_convert_frame[frame_meta->_stream_id] = nullptr;
-    }
-
-    iter = self->_resized_frame.find(frame_meta->_stream_id);
-    if (iter == self->_resized_frame.end()) {
-        self->_resized_frame[frame_meta->_stream_id] = nullptr;
-    }
-}
-
 static GstFlowReturn gst_dxpreprocess_transform_ip(GstBaseTransform *trans,
                                                    GstBuffer *buf) {
     GstDxPreprocess *self = GST_DXPREPROCESS(trans);
@@ -834,7 +826,14 @@ static GstFlowReturn gst_dxpreprocess_transform_ip(GstBaseTransform *trans,
         return GST_BASE_TRANSFORM_FLOW_DROPPED;
     }
 
-    self->_preprocessor->check_frame_meta(buf);
+    gint ref_count = GST_MINI_OBJECT_REFCOUNT(buf);
+    if (ref_count > 1) {
+        GST_WARNING_OBJECT(self, "Buffer still shared (ref_count=%d) after "
+                                 "prepare_output_buffer. This should not happen.",
+                           ref_count);
+    }
+
+    buf = self->_preprocessor->check_frame_meta(buf);
 
     if (self->_secondary_mode) {
         if (!self->_preprocessor->secondary_process(buf)) {

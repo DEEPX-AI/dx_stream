@@ -1,5 +1,6 @@
 #include "gst-dxosd.hpp"
-#include "gst-dxmeta.hpp"
+#include "./../metadata/gst-dxframemeta.hpp"
+#include "./../metadata/gst-dxobjectmeta.hpp"
 
 #include <cmath>
 #include <cstdio>

@@ -70,9 +70,9 @@ endif
 
 install_headers = [
   './general/dxcommon.hpp',
-  './metadata/gst-dxmeta.hpp',
   './metadata/gst-dxframemeta.hpp',
   './metadata/gst-dxobjectmeta.hpp',
+  './metadata/gst-dxusermeta.hpp',
 
 ]
 

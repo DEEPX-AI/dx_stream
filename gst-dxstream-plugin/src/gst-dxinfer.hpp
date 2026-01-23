@@ -1,7 +1,8 @@
 #ifndef GST_DXINFER_H
 #define GST_DXINFER_H
 
-#include "gst-dxmeta.hpp"
+#include "./../metadata/gst-dxframemeta.hpp"
+#include "./../metadata/gst-dxobjectmeta.hpp"
 #include <condition_variable>
 #include <dxrt/dxrt_api.h>
 #include <gst/gst.h>

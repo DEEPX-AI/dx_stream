@@ -1,4 +1,5 @@
-#include "dx_stream/gst-dxmeta.hpp"
+#include "dx_stream/gst-dxframemeta.hpp"
+#include "dx_stream/gst-dxobjectmeta.hpp"
 #include <algorithm>
 #include <cmath>
 #include <vector>

@@ -3,18 +3,13 @@
 
 #include "dxcommon.hpp"
 #include <glib.h>
-#include <gst/gst.h>
 #include <map>
 #include <string>
 #include <vector>
 
 G_BEGIN_DECLS
 
-#define DX_OBJECT_META_API_TYPE (dx_object_meta_api_get_type())
-#define DX_OBJECT_META_INFO (dx_object_meta_get_info())
-
 typedef struct _DXObjectMeta {
-    GstMeta _meta;
     gint _meta_id;
 
     // body
@@ -35,13 +30,18 @@ typedef struct _DXObjectMeta {
     // segmentation
     dxs::SegClsMap _seg_cls_map;
 
+    // user meta
+    GList *_obj_user_meta_list;
+    guint _num_obj_user_meta;
+
     std::map<int, dxs::DXTensors> _input_tensors;
     std::map<int, dxs::DXTensors> _output_tensors;
 
 } DXObjectMeta;
 
-GType dx_object_meta_api_get_type(void);
-const GstMetaInfo *dx_object_meta_get_info(void);
+DXObjectMeta* dx_acquire_obj_meta_from_pool(void);
+void dx_release_obj_meta(DXObjectMeta *obj_meta);
+void dx_copy_obj_meta(DXObjectMeta *src_meta, DXObjectMeta *dst_meta);
 
 G_END_DECLS
 

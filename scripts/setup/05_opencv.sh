@@ -47,23 +47,45 @@ install_opencv_build_dependencies() {
     print_message "install" "Installing OpenCV build dependencies..."
     
     sudo apt-get update
-    sudo apt-get install -y \
-        libjpeg-dev \
-        libpng-dev \
-        libtiff-dev \
-        libavcodec-dev \
-        libavformat-dev \
-        libswscale-dev \
-        libxvidcore-dev \
-        libavutil-dev \
-        libtbb-dev \
-        libeigen3-dev \
-        libx264-dev \
-        libv4l-dev \
-        v4l-utils \
-        libgtk2.0-dev \
-        libopenexr-dev \
-        unzip wget
+    
+    # Check if FFmpeg is already installed from source (in /usr/local)
+    local ffmpeg_from_source=false
+    if [ -f "/usr/local/lib/libavcodec.so" ] || [ -f "/usr/local/lib/libavformat.so" ]; then
+        print_message "success" "FFmpeg libraries detected in /usr/local (source build)"
+        ffmpeg_from_source=true
+    fi
+    
+    # Install dependencies, but skip FFmpeg libraries if built from source
+    local deps=(
+        "libjpeg-dev"
+        "libpng-dev"
+        "libtiff-dev"
+        "libxvidcore-dev"
+        "libtbb-dev"
+        "libeigen3-dev"
+        "libx264-dev"
+        "libv4l-dev"
+        "v4l-utils"
+        "libgtk2.0-dev"
+        "libopenexr-dev"
+        "unzip"
+        "wget"
+    )
+    
+    # Add FFmpeg dev packages only if NOT built from source
+    if [ "$ffmpeg_from_source" = false ]; then
+        print_message "info" "Adding FFmpeg development libraries from APT"
+        deps+=(
+            "libavcodec-dev"
+            "libavformat-dev"
+            "libswscale-dev"
+            "libavutil-dev"
+        )
+    else
+        print_message "info" "Skipping APT FFmpeg libraries (using source-built version)"
+    fi
+    
+    sudo apt-get install -y "${deps[@]}"
 }
 
 # Build OpenCV from source

@@ -71,3 +71,28 @@ static gboolean gst_dxmsg_meta_transform(GstBuffer *dest, GstMeta *meta,
     }
     return TRUE;
 }
+
+GstDxMsgMeta *dx_create_msg_meta(GstBuffer *buffer) {
+    if (!gst_buffer_is_writable(buffer)) {
+        buffer = gst_buffer_make_writable(buffer);
+    }
+    GstDxMsgMeta *msg_meta =
+        (GstDxMsgMeta *)gst_buffer_add_meta(buffer, GST_DXMSG_META_INFO, nullptr);
+    return msg_meta;
+}
+
+GstDxMsgMeta *dx_get_msg_meta(GstBuffer *buffer) {
+    GstDxMsgMeta *msg_meta =
+        (GstDxMsgMeta *)gst_buffer_get_meta(buffer, GST_DXMSG_META_API_TYPE);
+    return msg_meta;
+}
+
+void dx_add_payload_to_buffer(GstBuffer *buffer, DxMsgPayload *payload) {
+    GstDxMsgMeta *msg_meta = dx_create_msg_meta(buffer);
+    DxMsgPayload *msgPayload = g_new0(DxMsgPayload, 1);
+    msgPayload->_data = g_memdup(payload->_data, payload->_size);
+    msgPayload->_size = payload->_size;
+
+    msg_meta->_payload = (gpointer)msgPayload;
+}
+

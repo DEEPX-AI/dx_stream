@@ -15,7 +15,7 @@ setup_essential_tools() {
     print_message "info" "Checking essential build tools..."
     
     # Check and install essential build tools if needed
-    local essential_tools=("build-essential" "make" "git" "curl" "wget" "tar" "zip" "unzip" "pkg-config")
+    local essential_tools=("build-essential" "make" "git" "curl" "wget" "tar" "zip" "unzip" "pkg-config" "python3-dev" "python3-pip")
     local missing_tools=()
     
     for tool in "${essential_tools[@]}"; do

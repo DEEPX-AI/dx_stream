@@ -30,9 +30,9 @@ sources = [
     'gst-dxinputselector.cpp',
     'gst-dxoutputselector.cpp',
 
-    './../metadata/gst-dxmeta.cpp',
     './../metadata/gst-dxframemeta.cpp',
     './../metadata/gst-dxobjectmeta.cpp',
+    './../metadata/gst-dxusermeta.cpp',
 
     'tracker/common/src/TrackerFactory.cpp',
     'tracker/OC_SORT/src/Association.cpp',

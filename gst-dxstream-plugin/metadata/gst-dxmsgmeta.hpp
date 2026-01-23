@@ -36,6 +36,11 @@ const GstMetaInfo *gst_dxmsg_meta_get_info(void);
 #define GST_DXMSG_META_API_TYPE (gst_dxmsg_meta_api_get_type())
 #define GST_DXMSG_META_INFO (gst_dxmsg_meta_get_info())
 
+
+GstDxMsgMeta *dx_create_msg_meta(GstBuffer *buffer);
+GstDxMsgMeta *dx_get_msg_meta(GstBuffer *buffer);
+void dx_add_payload_to_buffer(GstBuffer *buffer, DxMsgPayload *payload);
+
 G_END_DECLS
 
 #endif /* __GST_DXMSGMETA_H__ */

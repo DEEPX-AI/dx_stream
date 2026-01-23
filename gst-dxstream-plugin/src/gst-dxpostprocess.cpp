@@ -1,5 +1,6 @@
 #include "gst-dxpostprocess.hpp"
-#include "gst-dxmeta.hpp"
+#include "./../metadata/gst-dxframemeta.hpp"
+#include "./../metadata/gst-dxobjectmeta.hpp"
 #include <dlfcn.h>
 #include <json-glib/json-glib.h>
 
