@@ -10,6 +10,11 @@ Python bindings for DX-Stream metadata API.
 - Add custom user metadata to frames and objects
 - Read and iterate through metadata in GStreamer pipelines
 
+## Requirements
+
+- **Python:** 3.6 or higher
+- **Build System:** setuptools + pybind11 (automatically installed)
+- **Dependencies:** GStreamer 1.0, DX-Stream plugin
 
 ## Installation
 
@@ -19,17 +24,23 @@ Python bindings for DX-Stream metadata API.
 # 1. Install dependencies
 ./install.sh
 
-# 2. Build DX-Stream (automatically installs pydxs into venv-dx_)
+# 2. Build DX-Stream (automatically installs pydxs into venv-dx_stream)
 ./build.sh
 ```
 
 **What happens:**
 - [`./install.sh`](../../../install.sh): Installs GStreamer, OpenCV, python3-gi, and other dependencies
 - [`./build.sh`](../../../build.sh):
-    - Builds DX-Stream
+    - Builds DX-Stream with setuptools
     - Creates a dedicated virtual environment at `PROJECT_ROOT/venv-dx_stream`
     - Uses `python3 -m venv --system-site-packages` so the venv can access system-installed `python3-gi`
     - Installs `pydxs` into this `venv-dx_stream` environment
+    - **Automatically sets rpath** so `libgstdxstream.so` is found at runtime (no `LD_LIBRARY_PATH` needed)
+
+**Supported Python Versions:**
+- Python 3.6-3.7: Legacy mode with setuptools + pybind11
+- Python 3.8+: Modern mode with setuptools + pybind11
+- Compatible with Ubuntu 18.04 (Python 3.6) and newer
 
 **Why a dedicated virtual environment?**
 - DX-Stream Python apps rely on the GStreamer Python bindings (`gi`, from the `python3-gi` package), which are installed into the **system** Python via your package manager (for example, `apt-get install python3-gi`).
@@ -119,7 +130,7 @@ def probe_callback(pad, info):
 Directly creates new frame metadata and attaches to buffer.
 
 ```python
-frame_meta = pydxs.dx_create_frame_meta(hash(buffer))
+buffer = pydxs.dx_create_frame_meta(hash(buffer))
 ```
 
 **Get frame metadata** - `dx_get_frame_meta(buffer_address)`

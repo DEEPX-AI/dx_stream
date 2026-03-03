@@ -3,44 +3,71 @@
 #include "gst-dxobjectmeta.hpp"
 #include <string.h>
 
+GST_DEBUG_CATEGORY_EXTERN(dxobjectmeta_cat);
+
+#define GST_CAT_DEBUG_SAFE(cat, ...) \
+    G_STMT_START { \
+        if (cat) { \
+            gst_debug_log(cat, GST_LEVEL_DEBUG, __FILE__, GST_FUNCTION, __LINE__, NULL, __VA_ARGS__); \
+        } \
+    } G_STMT_END
+
+#define GST_CAT_ERROR_SAFE(cat, ...) \
+    G_STMT_START { \
+        if (cat) { \
+            gst_debug_log(cat, GST_LEVEL_ERROR, __FILE__, GST_FUNCTION, __LINE__, NULL, __VA_ARGS__); \
+        } \
+    } G_STMT_END
+
+#define GST_CAT_WARNING_SAFE(cat, ...) \
+    G_STMT_START { \
+        if (cat) { \
+            gst_debug_log(cat, GST_LEVEL_WARNING, __FILE__, GST_FUNCTION, __LINE__, NULL, __VA_ARGS__); \
+        } \
+    } G_STMT_END
+
 DXUserMeta* dx_acquire_user_meta_from_pool(void) {
-    DXUserMeta *user_meta = g_new0(DXUserMeta, 1);
+    GST_CAT_DEBUG_SAFE(dxobjectmeta_cat, "Acquiring DXUserMeta from pool");
+    auto *user_meta = g_new0(DXUserMeta, 1);
     
-    user_meta->user_meta_data = NULL;
+    user_meta->user_meta_data = nullptr;
     user_meta->user_meta_size = 0;
-    user_meta->user_meta_type = DX_USER_META_FRAME;  // Default to frame type
+    user_meta->user_meta_type = DXUserMetaType::DX_USER_META_FRAME;
     
-    // Set to NULL to force user to provide proper functions
-    user_meta->release_func = NULL;
-    user_meta->copy_func = NULL;
+    // Set to nullptr to force user to provide proper functions
+    user_meta->release_func = nullptr;
+    user_meta->copy_func = nullptr;
     
     return user_meta;
 }
 
 void dx_release_user_meta(DXUserMeta *user_meta) {
+    GST_CAT_DEBUG_SAFE(dxobjectmeta_cat, "Releasing DXUserMeta");
     if (!user_meta) return;
     
     if (user_meta->user_meta_data) {
         if (user_meta->release_func) {
             user_meta->release_func(user_meta->user_meta_data);
         } else {
-            g_warning("No release_func set - potential memory leak!");
+            GST_CAT_WARNING_SAFE(dxobjectmeta_cat, "No release_func set for user metadata - potential memory leak!");
         }
     }
     
     g_free(user_meta);
 }
 
+// NOSONAR - GLib API requires C function pointers (GDestroyNotify, GBoxedCopyFunc) for compatibility
 gboolean dx_user_meta_set_data(DXUserMeta *user_meta,
-                              gpointer data,
-                              gsize size,
-                              guint meta_type,
-                              GDestroyNotify release_func,
-                              GBoxedCopyFunc copy_func) {
+                              void* data,
+                              size_t size,
+                              DXUserMetaType meta_type, // NOSONAR
+                              GDestroyNotify release_func, // NOSONAR
+                              GBoxedCopyFunc copy_func) { // NOSONAR
+    GST_CAT_DEBUG_SAFE(dxobjectmeta_cat, "Setting data for DXUserMeta of type %d", static_cast<int>(meta_type));
     if (!user_meta) return FALSE;
     
     if (!release_func || !copy_func) {
-        g_warning("Both release_func and copy_func are required for user metadata");
+        GST_CAT_WARNING_SAFE(dxobjectmeta_cat, "Both release_func and copy_func are required for user metadata");
         return FALSE;
     }
     
@@ -58,45 +85,47 @@ gboolean dx_user_meta_set_data(DXUserMeta *user_meta,
 }
 
 gboolean dx_add_user_meta_to_frame(DXFrameMeta *frame_meta, DXUserMeta *user_meta) {
+    GST_CAT_DEBUG_SAFE(dxobjectmeta_cat, "Adding DXUserMeta to frame");
     if (!frame_meta || !user_meta) {
         return FALSE;
     }
     
     if (!user_meta->release_func || !user_meta->copy_func) {
-        g_warning("DXUserMeta must have both release_func and copy_func set before adding to frame");
+        GST_CAT_WARNING_SAFE(dxobjectmeta_cat, "DXUserMeta must have both release_func and copy_func set before adding to frame");
         return FALSE;
     }
     
-    frame_meta->_frame_user_meta_list = g_list_append(frame_meta->_frame_user_meta_list, user_meta);
-    frame_meta->_num_frame_user_meta++;
+    frame_meta->_frame_user_meta_list.push_back(user_meta);
     
     return TRUE;
 }
 
 gboolean dx_add_user_meta_to_obj(DXObjectMeta *obj_meta, DXUserMeta *user_meta) {
+    GST_CAT_DEBUG_SAFE(dxobjectmeta_cat, "Adding DXUserMeta to object");
     if (!obj_meta || !user_meta) {
         return FALSE;
     }
     
     if (!user_meta->release_func || !user_meta->copy_func) {
-        g_warning("DXUserMeta must have both release_func and copy_func set before adding to object");
+        GST_CAT_WARNING_SAFE(dxobjectmeta_cat, "DXUserMeta must have both release_func and copy_func set before adding to object");
         return FALSE;
     }
     
-    obj_meta->_obj_user_meta_list = g_list_append(obj_meta->_obj_user_meta_list, user_meta);
-    obj_meta->_num_obj_user_meta++;
+    obj_meta->_obj_user_meta_list.push_back(user_meta);
     
     return TRUE;
 }
 
-GList* dx_get_frame_user_metas(DXFrameMeta *frame_meta) {
-    if (!frame_meta) return NULL;
+std::vector<DXUserMeta*>* dx_get_frame_user_metas(DXFrameMeta *frame_meta) {
+    GST_CAT_DEBUG_SAFE(dxobjectmeta_cat, "Getting user metas from frame");
+    if (!frame_meta) return nullptr;
     
-    return g_list_copy(frame_meta->_frame_user_meta_list);
+    return &frame_meta->_frame_user_meta_list;
 }
 
-GList* dx_get_object_user_metas(DXObjectMeta *obj_meta) {
-    if (!obj_meta) return NULL;
+std::vector<DXUserMeta*>* dx_get_object_user_metas(DXObjectMeta *obj_meta) {
+    GST_CAT_DEBUG_SAFE(dxobjectmeta_cat, "Getting user metas from object");
+    if (!obj_meta) return nullptr;
     
-    return g_list_copy(obj_meta->_obj_user_meta_list);
+    return &obj_meta->_obj_user_meta_list;
 }

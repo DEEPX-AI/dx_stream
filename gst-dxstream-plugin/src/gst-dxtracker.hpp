@@ -18,7 +18,7 @@ struct _GstDxTracker {
 
     gchar *_config_file_path;
     gchar *_tracker_name;
-    std::map<std::string, std::string> _params;
+    std::map<std::string, std::string, std::less<>> _params;
 
     gboolean _first_frame_processed;
 

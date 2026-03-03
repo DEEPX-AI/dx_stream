@@ -1,8 +1,12 @@
-#include "dx_stream/gst-dxframemeta.hpp"
-#include "dx_stream/gst-dxobjectmeta.hpp"
+#include "gstdxstream/gst-dxframemeta.hpp"
+#include "gstdxstream/gst-dxobjectmeta.hpp"
+#include <dxrt/dxrt_api.h>
 #include <algorithm>
 #include <cmath>
 #include <vector>
+#include <tuple>
+#include <glib.h>
+#include <gst/gst.h>
 
 // ============================================================================
 // SCRFD Face Detection Post-Processing Library for DX Stream
@@ -24,7 +28,10 @@
  * @brief Face detection result structure
  */
 struct FaceDetection {
-    float x1, y1, x2, y2;      // Bounding box coordinates (left, top, right, bottom)
+    float x1;
+    float y1;
+    float x2;
+    float y2;
     float confidence;           // Detection confidence (0.0 to 1.0)
     std::vector<std::pair<float, float>> keypoints;  // 5 facial keypoints
     
@@ -66,9 +73,9 @@ struct SCRFDConfig {
  * @param tensor_name Name of the tensor to search for
  * @return Index of the tensor if found, -1 otherwise
  */
- inline int get_index_by_tensor_name(const std::vector<dxs::DXTensor>& network_output, const std::string& tensor_name) {
+ inline int get_index_by_tensor_name(const dxrt::TensorPtrs& network_output, const std::string& tensor_name) {
     for (size_t i = 0; i < network_output.size(); i++) {
-        if (network_output[i]._name == tensor_name) {
+        if (network_output[i]->name() == tensor_name) {
             return static_cast<int>(i);
         }
     }
@@ -154,7 +161,7 @@ std::vector<FaceDetection> nms(std::vector<FaceDetection>& faces, float threshol
  * @param config Configuration parameters
  * @return Vector of detected faces
  */
-std::vector<FaceDetection> parse_scrfd_outputs(const std::vector<dxs::DXTensor>& network_output,
+std::vector<FaceDetection> parse_scrfd_outputs(const dxrt::TensorPtrs& network_output,
                                               const SCRFDConfig& config) {
     std::vector<FaceDetection> faces;
     
@@ -164,10 +171,6 @@ std::vector<FaceDetection> parse_scrfd_outputs(const std::vector<dxs::DXTensor>&
         int stride = config.strides[scale_idx];
         
         // Find tensors for current scale
-        const dxs::DXTensor* score_tensor = nullptr;
-        const dxs::DXTensor* bbox_tensor = nullptr;
-        const dxs::DXTensor* kps_tensor = nullptr;
-
         int score_idx = get_index_by_tensor_name(network_output, "score_" + std::to_string(static_cast<int>(anchor_scale)));
         int bbox_idx = get_index_by_tensor_name(network_output, "bbox_" + std::to_string(static_cast<int>(anchor_scale)));
         int kps_idx = get_index_by_tensor_name(network_output, "kps_" + std::to_string(static_cast<int>(anchor_scale)));
@@ -177,16 +180,16 @@ std::vector<FaceDetection> parse_scrfd_outputs(const std::vector<dxs::DXTensor>&
             continue;
         }
         
-        score_tensor = &network_output[score_idx];
-        bbox_tensor = &network_output[bbox_idx];
-        kps_tensor = &network_output[kps_idx];
+        const auto& score_tensor = network_output[score_idx];
+        const auto& bbox_tensor = network_output[bbox_idx];
+        const auto& kps_tensor = network_output[kps_idx];
         
-        const float* score_data = static_cast<const float*>(score_tensor->_data);
-        const float* bbox_data = static_cast<const float*>(bbox_tensor->_data);
-        const float* kps_data = static_cast<const float*>(kps_tensor->_data);
+        const auto* score_data = static_cast<const float*>(score_tensor->data());
+        const auto* bbox_data = static_cast<const float*>(bbox_tensor->data());
+        const auto* kps_data = static_cast<const float*>(kps_tensor->data());
         
         // Tensor shape: [B, N, features]
-        int num_detections = score_tensor->_shape[1];
+        auto num_detections = static_cast<int>(score_tensor->shape()[1]);
 
         // Feature map size inferred from stride (H, W)
         const int feature_map_width = config.input_width / stride;
@@ -209,8 +212,8 @@ std::vector<FaceDetection> parse_scrfd_outputs(const std::vector<dxs::DXTensor>&
             const int grid_y = loc_idx / feature_map_width;
             
             // 그리드 기준점(cx, cy) 계산: 셀 중심이 아닌 좌상단 격자 기준
-            const float cx = static_cast<float>(grid_x * stride);
-            const float cy = static_cast<float>(grid_y * stride);
+            const auto cx = static_cast<float>(grid_x * stride);
+            const auto cy = static_cast<float>(grid_y * stride);
 
             // --- 2. Bounding Box 디코딩 ---
             // bbox_data는 (l, t, r, b) 거리 값을 의미
@@ -220,10 +223,10 @@ std::vector<FaceDetection> parse_scrfd_outputs(const std::vector<dxs::DXTensor>&
             float b = bbox_data[det * 4 + 3];
 
             // 중심점과 거리를 이용해 실제 좌표(x1, y1, x2, y2) 계산
-            float x1 = cx - (l * stride);
-            float y1 = cy - (t * stride);
-            float x2 = cx + (r * stride);
-            float y2 = cy + (b * stride);
+            float x1 = cx - (l * static_cast<float>(stride));
+            float y1 = cy - (t * static_cast<float>(stride));
+            float x2 = cx + (r * static_cast<float>(stride));
+            float y2 = cy + (b * static_cast<float>(stride));
 
             // Create face detection
             FaceDetection face(x1, y1, x2, y2, score_data[det]);
@@ -235,8 +238,8 @@ std::vector<FaceDetection> parse_scrfd_outputs(const std::vector<dxs::DXTensor>&
                 float kp_offset_y = kps_data[det * 10 + kp * 2 + 1];
 
                 // 중심점과 오프셋을 이용해 실제 키포인트 좌표 계산
-                face.keypoints[kp].first = cx + (kp_offset_x * stride);
-                face.keypoints[kp].second = cy + (kp_offset_y * stride);
+                face.keypoints[kp].first = cx + (kp_offset_x * static_cast<float>(stride));
+                face.keypoints[kp].second = cy + (kp_offset_y * static_cast<float>(stride));
             }
             
             faces.push_back(face);
@@ -256,12 +259,12 @@ std::vector<FaceDetection> parse_scrfd_outputs(const std::vector<dxs::DXTensor>&
 FaceDetection scale_face(const FaceDetection& face, int orig_width, int orig_height, 
                         int model_width, int model_height) {
     // Calculate scaling ratio (maintains aspect ratio)
-    float r = std::min(static_cast<float>(model_width) / orig_width,
-                       static_cast<float>(model_height) / orig_height);
+    float r = std::min(static_cast<float>(model_width) / static_cast<float>(orig_width),
+                       static_cast<float>(model_height) / static_cast<float>(orig_height));
     
     // Calculate padding that was added during preprocessing
-    float w_pad = (model_width - orig_width * r) / 2.0f;
-    float h_pad = (model_height - orig_height * r) / 2.0f;
+    float w_pad = (static_cast<float>(model_width) - static_cast<float>(orig_width) * r) / 2.0f;
+    float h_pad = (static_cast<float>(model_height) - static_cast<float>(orig_height) * r) / 2.0f;
     
     // Remove padding and scale to original image coordinates
     float x1 = (face.x1 - w_pad) / r;
@@ -292,10 +295,13 @@ FaceDetection scale_face(const FaceDetection& face, int orig_width, int orig_hei
  * @param frame_meta Frame metadata containing image dimensions and ROI
  * @param object_meta Object metadata (output parameter)
  */
-extern "C" void PostProcess(GstBuffer *buf,
-                            std::vector<dxs::DXTensor> network_output,
-                            DXFrameMeta *frame_meta,
-                            DXObjectMeta *object_meta) {
+extern "C" void PostProcess(GstBuffer* buf,
+                            const dxrt::TensorPtrs& network_output,
+                            DXFrameMeta* frame_meta,
+                            DXObjectMeta* object_meta) {
+    std::ignore = buf;
+    std::ignore = object_meta;
+    std::ignore = frame_meta;
     // ============================================================================
     // CONFIGURATION SETUP
     // ============================================================================
@@ -321,8 +327,8 @@ extern "C" void PostProcess(GstBuffer *buf,
     // COORDINATE SCALING
     // ============================================================================
     // Get original image dimensions
-    int orig_width = object_meta->_box[2] - object_meta->_box[0];
-    int orig_height = object_meta->_box[3] - object_meta->_box[1];
+    auto orig_width = static_cast<int>(object_meta->_box[2] - object_meta->_box[0]);
+    auto orig_height = static_cast<int>(object_meta->_box[3] - object_meta->_box[1]);
     
     // ============================================================================
     // RESULT CONVERSION
@@ -342,7 +348,7 @@ extern "C" void PostProcess(GstBuffer *buf,
         // Create DX Stream object metadata
         object_meta->_confidence = scaled_face.confidence;
         object_meta->_label = 0;  // Face class
-        object_meta->_label_name = g_string_new("face");
+        object_meta->_label_name = "face";
         object_meta->_face_box[0] = scaled_face.x1 + object_meta->_box[0];
         object_meta->_face_box[1] = scaled_face.y1 + object_meta->_box[1];
         object_meta->_face_box[2] = scaled_face.x2 + object_meta->_box[0];
@@ -360,7 +366,9 @@ extern "C" void PostProcess(GstBuffer *buf,
             ky = std::max(0.0f, std::min(static_cast<float>(orig_height), ky));
             
             // Add to face landmarks
-            object_meta->_face_landmarks.push_back(dxs::Point_f(kx + object_meta->_box[0], ky + object_meta->_box[1], ks));
+            object_meta->_face_landmarks.push_back(kx + object_meta->_box[0]);
+            object_meta->_face_landmarks.push_back(ky + object_meta->_box[1]);
+            object_meta->_face_landmarks.push_back(ks);
         }
     }
 }

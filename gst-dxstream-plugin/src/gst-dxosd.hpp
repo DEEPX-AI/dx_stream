@@ -1,14 +1,11 @@
 #ifndef GST_DXOSD_H
 #define GST_DXOSD_H
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
 #include <cstdint>
 #include <gst/gst.h>
 #include <gst/video/video.h>
 #include <map>
+#include <vector>
 
 #ifdef HAVE_LIBRGA
 #include "rga/RgaUtils.h"
@@ -37,7 +34,9 @@ struct _GstDxOsd {
 
 #ifdef HAVE_LIBRGA
 #else
-    std::map<int, uint8_t *> _resized_frame;
+    // Buffer caches for RAII pattern (automatic memory management)
+    std::map<int, std::vector<uint8_t>> _resized_frame;
+    std::map<int, std::vector<uint8_t>> _convert_buffer;
 #endif
 };
 

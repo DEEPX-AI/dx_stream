@@ -1,22 +1,21 @@
-common_args = ['-DHAVE_CONFIG_H']
+common_args = [
+  '-DPACKAGE_VERSION="' + project_version + '"',
+  '-DPACKAGE="gst-dxstream"',
+  '-DGST_LICENSE="LGPL"',
+  '-DGST_PACKAGE_NAME="GStreamer DEEPX DX-Stream Plugins"',
+  '-DGST_PACKAGE_ORIGIN="https://github.com/DEEPX-AI/dx_stream"'
+]
 
-cdata = configuration_data()
-cdata.set_quoted('PACKAGE_VERSION', project_version)
-cdata.set_quoted('PACKAGE', 'gst-dxstream')
-cdata.set_quoted('GST_LICENSE', 'LGPL')
-cdata.set_quoted('GST_PACKAGE_NAME', 'GStreamer DEEPX DX-Stream Plugins')
-cdata.set_quoted('GST_PACKAGE_ORIGIN', 'https://github.com/DEEPX-AI/dx_stream')
-
-if have_librga_flag
-  cdata.set('HAVE_LIBRGA', true)
+# Add feature flags
+if librga_flag
+  common_args += '-DHAVE_LIBRGA'
 endif
 
-if v3_mode
-  cdata.set('DEEPX_V3', true)
+if v3_flag
+  common_args += [
+    '-DDEEPX_V3'
+  ]
 endif
-
-
-configure_file(output : 'config.h', configuration : cdata)
 
 sources = [
     'gst-dxstream.cpp',
@@ -28,7 +27,8 @@ sources = [
     'gst-dxtracker.cpp',
     'gst-dxgather.cpp',
     'gst-dxinputselector.cpp',
-    'gst-dxoutputselector.cpp',
+  	'gst-dxoutputselector.cpp',
+    'dxosd_common.cpp',
 
     './../metadata/gst-dxframemeta.cpp',
     './../metadata/gst-dxobjectmeta.cpp',
@@ -40,18 +40,33 @@ sources = [
     'tracker/OC_SORT/src/KalmanFilter.cpp',
     'tracker/OC_SORT/src/lapjv.cpp',
     'tracker/OC_SORT/src/OCSort.cpp',
-    'tracker/OC_SORT/src/Utilities.cpp'
-]
+    'tracker/OC_SORT/src/Utilities.cpp',
 
-sources += [
     'utils/libyuv_transform/libyuv_transform.cpp',
     'preprocessors/preprocessor.cpp',
-    'preprocessors/preprocessor_factory.cpp',
-    'preprocessors/libyuv_preprocessor.cpp',
-    'preprocessors/rga_preprocessor.cpp'
+    'preprocessors/preprocessor_factory.cpp'
 ]
 
-if v3_mode == false
+if v3_flag
+  sources += [
+    'preprocessors/v3_dsp_preprocessor.cpp',
+
+    'v3_elements/gst-dxvideoconvert.cpp',
+    'v3_elements/gst-dxvideoscale.cpp',
+    'v3_elements/gst-dxosd_v3.cpp'
+  ]
+elif librga_flag
+  sources += [
+    'preprocessors/rga_preprocessor.cpp'
+  ]
+else
+  sources += [
+    'preprocessors/libyuv_preprocessor.cpp'
+  ]
+endif
+
+
+if v3_flag == false
   sources += [
     'gst-dxmsgconv.cpp',
     'gst-dxmsgbroker.cpp',
@@ -61,12 +76,34 @@ if v3_mode == false
   ]
 endif
 
-# Install to lib directory relative to prefix
-gstdxstream = library('gstdxstream',
+# Install to GStreamer plugin directory under libdir
+gst_plugin_dir = get_option('libdir') / 'gstreamer-1.0'
+
+message('GStreamer plugin will be installed to: ' + get_option('prefix') / gst_plugin_dir)
+
+# Build and install the shared library
+gstdxstream = shared_library('gstdxstream',
     sources,
     cpp_args: common_args,
     include_directories: include_dirs,
     dependencies : extra_deps,
     install : true,
-    install_dir : 'lib/gstreamer-1.0',
+    install_dir : gst_plugin_dir,
+    version: project_version,
+    soversion: '0'
+)
+
+# Generate pkg-config file
+pkg = import('pkgconfig')
+pkg.generate(
+    gstdxstream,
+    name: 'gstdxstream',
+    filebase: 'gstdxstream',
+    description: 'DeepX Stream GStreamer Plugin',
+    requires: ['gstreamer-1.0 >= 1.0'],
+    variables: [
+        'plugindir=' + '${libdir}' / 'gstreamer-1.0'
+    ],
+    # Install to lib/pkgconfig (standard location, not lib/arch/pkgconfig!)
+    install_dir: join_paths(get_option('prefix'), 'lib', 'pkgconfig')
 )

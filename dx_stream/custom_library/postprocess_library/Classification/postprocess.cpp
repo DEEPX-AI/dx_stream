@@ -1,7 +1,11 @@
-#include "dx_stream/gst-dxframemeta.hpp"
-#include "dx_stream/gst-dxobjectmeta.hpp"
+#include "gstdxstream/gst-dxframemeta.hpp"
+#include "gstdxstream/gst-dxobjectmeta.hpp"
+#include <dxrt/dxrt_api.h>
 #include <cmath>
 #include <numeric>
+#include <tuple>
+#include <glib.h>
+#include <gst/gst.h>
 
 struct classificationParams {
     bool needArgmax;
@@ -9,10 +13,9 @@ struct classificationParams {
     std::vector<std::string> classNames;
 };
 
-template <typename T> int getArgmax(T *input, int size) {
+template <typename T> int getArgmax(T* input, int size) {
     int max_idx = 0;
-    max_idx = 0;
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < size; ++i) {
         if (input[max_idx] < input[i]) {
             max_idx = i;
         }
@@ -20,42 +23,43 @@ template <typename T> int getArgmax(T *input, int size) {
     return max_idx;
 }
 
-std::vector<float> getSoftmax(float *data, int size) {
+std::vector<float> getSoftmax(const float* data, int size) {
     std::vector<float> result;
     std::vector<double> exp_data;
     double exp_data_sum = 0.0;
 
-    for (int i = 0; i < size; i++) {
+    for (int i = 0; i < size; ++i) {
         exp_data.emplace_back(std::exp(data[i]));
     }
 
     exp_data_sum =
-        (double)std::accumulate(exp_data.begin(), exp_data.end(), 0.0);
+        std::accumulate(exp_data.begin(), exp_data.end(), 0.0);
 
-    for (int i = 0; i < size; i++) {
-        result.emplace_back((float)(exp_data[i] / exp_data_sum));
+    for (int i = 0; i < size; ++i) {
+        result.emplace_back(static_cast<float>(exp_data[i] / exp_data_sum));
     }
     return result;
 }
 
-void Classification(std::vector<dxs::DXTensor> outputs, DXFrameMeta *frame_meta,
-                    DXObjectMeta *object_meta, classificationParams &params) {
+void Classification(const dxrt::TensorPtrs& outputs, DXFrameMeta* frame_meta,
+                    DXObjectMeta* object_meta, const classificationParams& params) {
+    std::ignore = frame_meta;
 
     if (params.needArgmax) {
         std::vector<float> scores =
-            getSoftmax((float *)outputs[0]._data, params.numClasses);
+            getSoftmax(static_cast<float*>(outputs[0]->data()), params.numClasses);
         object_meta->_label = getArgmax(scores.data(), params.numClasses);
     } else {
-        object_meta->_label = *(uint16_t *)outputs[0]._data;
+        object_meta->_label = *static_cast<uint16_t*>(outputs[0]->data());
     }
-    object_meta->_label_name =
-        g_string_new(params.classNames[object_meta->_label].c_str());
+    object_meta->_label_name = params.classNames[object_meta->_label];
 }
 
-extern "C" void PostProcess(GstBuffer *buf,
-                            std::vector<dxs::DXTensor> network_output,
-                            DXFrameMeta *frame_meta,
-                            DXObjectMeta *object_meta) {
+extern "C" void PostProcess(GstBuffer* buf,
+                            const dxrt::TensorPtrs& network_output,
+                            DXFrameMeta* frame_meta,
+                            DXObjectMeta* object_meta) {
+    std::ignore = buf;
 
     classificationParams params = {
         .needArgmax = false,

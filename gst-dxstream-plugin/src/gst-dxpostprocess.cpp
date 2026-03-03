@@ -4,7 +4,7 @@
 #include <dlfcn.h>
 #include <json-glib/json-glib.h>
 
-enum {
+enum class PropertyID {
     PROP_0,
     PROP_CONFIG_FILE_PATH,
     PROP_LIBRARY_FILE_PATH,
@@ -17,6 +17,7 @@ enum {
 GST_DEBUG_CATEGORY_STATIC(gst_dxpostprocess_debug_category);
 #define GST_CAT_DEFAULT gst_dxpostprocess_debug_category
 
+// NOSONAR - GStreamer API requires non-const GstStaticPadTemplate* for gst_static_pad_template_get()
 static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE(
     "sink", GST_PAD_SINK, GST_PAD_ALWAYS, GST_STATIC_CAPS_ANY);
 
@@ -30,13 +31,9 @@ static gboolean gst_dxpostprocess_stop(GstBaseTransform *trans);
 static gboolean gst_dxpostprocess_sink_event(GstBaseTransform *trans,
                                              GstEvent *event);
 
-G_DEFINE_TYPE_WITH_CODE(
-    GstDxPostprocess, gst_dxpostprocess, GST_TYPE_BASE_TRANSFORM,
-    GST_DEBUG_CATEGORY_INIT(gst_dxpostprocess_debug_category,
-                            "gst-dxpostprocess", 0,
-                            "debug category for gst-dxpostprocess element"))
+G_DEFINE_TYPE(GstDxPostprocess, gst_dxpostprocess, GST_TYPE_BASE_TRANSFORM);
 
-static GstElementClass *parent_class = nullptr;
+static GstElementClass *parent_class = nullptr;  // NOSONAR - GStreamer standard pattern with G_DEFINE_TYPE macro
 
 static void parse_config(GstDxPostprocess *self) {
     if (!g_file_test(self->_config_file_path, G_FILE_TEST_EXISTS)) {
@@ -68,10 +65,10 @@ static void parse_config(GstDxPostprocess *self) {
     set_string_property("function_name", "function-name");
 
     if (json_object_has_member(object, "inference_id")) {
-        gint val = json_object_get_int_member(object, "inference_id");
+        gint64 val = json_object_get_int_member(object, "inference_id");
         if (val < 0) {
             g_error("[dxpostprocess] Member inference_id has a negative value "
-                    "(%d) and cannot be converted to unsigned.",
+                    "(%ld) and cannot be converted to unsigned.",
                     val);
         }
         self->_infer_id = static_cast<guint>(val);
@@ -89,33 +86,33 @@ static void dxpostprocess_set_property(GObject *object, guint property_id,
                                        const GValue *value, GParamSpec *pspec) {
     GstDxPostprocess *self = GST_DXPOSTPROCESS(object);
 
-    switch (property_id) {
-    case PROP_CONFIG_FILE_PATH:
+    switch (static_cast<PropertyID>(property_id)) {
+    case PropertyID::PROP_CONFIG_FILE_PATH:
         if (nullptr != self->_config_file_path)
             g_free(self->_config_file_path);
         self->_config_file_path = g_strdup(g_value_get_string(value));
         parse_config(self);
         break;
 
-    case PROP_LIBRARY_FILE_PATH:
+    case PropertyID::PROP_LIBRARY_FILE_PATH:
         if (self->_library_file_path) {
             g_free(self->_library_file_path);
         }
         self->_library_file_path = g_value_dup_string(value);
         break;
 
-    case PROP_FUNCTION_NAME:
+    case PropertyID::PROP_FUNCTION_NAME:
         if (self->_function_name) {
             g_free(self->_function_name);
         }
         self->_function_name = g_value_dup_string(value);
         break;
 
-    case PROP_SECONDARY_MODE:
+    case PropertyID::PROP_SECONDARY_MODE:
         self->_secondary_mode = g_value_get_boolean(value);
         break;
 
-    case PROP_INFER_ID: {
+    case PropertyID::PROP_INFER_ID: {
         self->_infer_id = g_value_get_uint(value);
         break;
     }
@@ -128,26 +125,26 @@ static void dxpostprocess_set_property(GObject *object, guint property_id,
 
 static void dxpostprocess_get_property(GObject *object, guint property_id,
                                        GValue *value, GParamSpec *pspec) {
-    GstDxPostprocess *self = GST_DXPOSTPROCESS(object);
+    const GstDxPostprocess *self = GST_DXPOSTPROCESS(object);
 
-    switch (property_id) {
-    case PROP_CONFIG_FILE_PATH:
+    switch (static_cast<PropertyID>(property_id)) {
+    case PropertyID::PROP_CONFIG_FILE_PATH:
         g_value_set_string(value, self->_config_file_path);
         break;
 
-    case PROP_LIBRARY_FILE_PATH:
+    case PropertyID::PROP_LIBRARY_FILE_PATH:
         g_value_set_string(value, self->_library_file_path);
         break;
 
-    case PROP_FUNCTION_NAME:
+    case PropertyID::PROP_FUNCTION_NAME:
         g_value_set_string(value, self->_function_name);
         break;
 
-    case PROP_SECONDARY_MODE:
+    case PropertyID::PROP_SECONDARY_MODE:
         g_value_set_boolean(value, self->_secondary_mode);
         break;
 
-    case PROP_INFER_ID:
+    case PropertyID::PROP_INFER_ID:
         g_value_set_uint(value, self->_infer_id);
         break;
 
@@ -177,7 +174,7 @@ dxpostprocess_change_state(GstElement *element, GstStateChange transition) {
                 self->_library_handle = nullptr;
             }
             self->_postproc_function =
-                (void (*)(GstBuffer *, std::vector<dxs::DXTensor>, DXFrameMeta *,
+                (void (*)(GstBuffer *, const dxrt::TensorPtrs&, DXFrameMeta *,
                           DXObjectMeta *))func_ptr;
         }
         break;
@@ -198,7 +195,7 @@ dxpostprocess_change_state(GstElement *element, GstStateChange transition) {
 
     GstStateChangeReturn result =
         GST_ELEMENT_CLASS(parent_class)->change_state(element, transition);
-    GST_INFO_OBJECT(self, "State change return: %d", result);
+    GST_DEBUG_OBJECT(self, "State change completed: %d", result);
     return result;
 }
 
@@ -227,41 +224,41 @@ static void gst_dxpostprocess_class_init(GstDxPostprocessClass *klass) {
     GST_DEBUG_CATEGORY_INIT(gst_dxpostprocess_debug_category, "dxpostprocess",
                             0, "DXPostprocess plugin");
 
-    GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
+    auto *gobject_class = G_OBJECT_CLASS(klass);
     gobject_class->set_property = dxpostprocess_set_property;
     gobject_class->get_property = dxpostprocess_get_property;
     gobject_class->dispose = dxpostprocess_dispose;
 
-    static GParamSpec *obj_properties[N_PROPERTIES] = {
+    static std::array<GParamSpec*, static_cast<int>(PropertyID::N_PROPERTIES)> obj_properties = {
         nullptr,
     };
 
-    obj_properties[PROP_CONFIG_FILE_PATH] = g_param_spec_string(
+    obj_properties[static_cast<int>(PropertyID::PROP_CONFIG_FILE_PATH)] = g_param_spec_string(
         "config-file-path", "Config File Path",
         "Path to the configuration file", nullptr, G_PARAM_READWRITE);
 
-    obj_properties[PROP_LIBRARY_FILE_PATH] = g_param_spec_string(
+    obj_properties[static_cast<int>(PropertyID::PROP_LIBRARY_FILE_PATH)] = g_param_spec_string(
         "library-file-path", "Library File Path",
         "Path to the shared library file", nullptr, G_PARAM_READWRITE);
 
-    obj_properties[PROP_FUNCTION_NAME] = g_param_spec_string(
+    obj_properties[static_cast<int>(PropertyID::PROP_FUNCTION_NAME)] = g_param_spec_string(
         "function-name", "Function Name", "Name of the function to be used",
         nullptr, G_PARAM_READWRITE);
 
-    obj_properties[PROP_INFER_ID] =
+    obj_properties[static_cast<int>(PropertyID::PROP_INFER_ID)] =
         g_param_spec_uint("inference-id", "inference id", "set inference id", 0,
                           1000, 0, G_PARAM_READWRITE);
 
-    obj_properties[PROP_SECONDARY_MODE] = g_param_spec_boolean(
+    obj_properties[static_cast<int>(PropertyID::PROP_SECONDARY_MODE)] = g_param_spec_boolean(
         "secondary-mode", "secondary mode", "is secondary inference mode",
         FALSE, G_PARAM_READWRITE);
 
-    g_object_class_install_properties(gobject_class, N_PROPERTIES,
-                                      obj_properties);
+    g_object_class_install_properties(gobject_class, static_cast<int>(PropertyID::N_PROPERTIES),
+                                      obj_properties.data());
 
-    GstBaseTransformClass *base_transform_class =
+    auto *base_transform_class =
         GST_BASE_TRANSFORM_CLASS(klass);
-    GstElementClass *element_class = GST_ELEMENT_CLASS(klass);
+    auto *element_class = GST_ELEMENT_CLASS(klass);
     gst_element_class_set_static_metadata(
         element_class, "DXPostprocess", "Generic",
         "Postprocesses inference results", "Jo Sangil <sijo@deepx.ai>");
@@ -292,12 +289,14 @@ static void gst_dxpostprocess_init(GstDxPostprocess *self) {
 }
 
 static gboolean gst_dxpostprocess_start(GstBaseTransform *trans) {
-    GST_DEBUG_OBJECT(trans, "start");
+    GstDxPostprocess *self = GST_DXPOSTPROCESS(trans);
+    GST_INFO_OBJECT(self, "Postprocessor starting (secondary_mode=%d)", self->_secondary_mode);
     return TRUE;
 }
 
 static gboolean gst_dxpostprocess_stop(GstBaseTransform *trans) {
-    GST_DEBUG_OBJECT(trans, "stop");
+    GstDxPostprocess *self = GST_DXPOSTPROCESS(trans);
+    GST_INFO_OBJECT(self, "Postprocessor stopping");
     return TRUE;
 }
 
@@ -305,8 +304,11 @@ static gboolean gst_dxpostprocess_sink_event(GstBaseTransform *trans,
                                              GstEvent *event) {
     GstDxPostprocess *self = GST_DXPOSTPROCESS(trans);
     GstPad *src_pad = GST_BASE_TRANSFORM_SRC_PAD(trans);
-    // g_print("POSTPROCESS_RECEIVED_EVENT: %s \n", GST_EVENT_TYPE_NAME(event));
     
+    if (GST_EVENT_TYPE(event) == GST_EVENT_EOS) {
+        GST_INFO_OBJECT(self, "Received EOS event");
+    }
+
     gboolean res = gst_pad_push_event(src_pad, event);
     
     if (!res) {
@@ -318,39 +320,40 @@ static gboolean gst_dxpostprocess_sink_event(GstBaseTransform *trans,
 
 static void process_secondary_mode(GstBuffer *buf,
                                    DXFrameMeta *frame_meta,
-                                   GstDxPostprocess *self) {
-    int objects_size = g_list_length(frame_meta->_object_meta_list);
-    for (int o = 0; o < objects_size; o++) {
-        DXObjectMeta *object_meta =
-            (DXObjectMeta *)g_list_nth_data(frame_meta->_object_meta_list, o);
+                                   const GstDxPostprocess *self) {
+    size_t objects_size = frame_meta->_object_meta_list.size();
+    for (size_t o = 0; o < objects_size; o++) {
+        DXObjectMeta *object_meta = frame_meta->_object_meta_list[o];
         auto iter = object_meta->_output_tensors.find(self->_infer_id);
         if (iter == object_meta->_output_tensors.end())
             return;
 
-        if (iter->second._tensors.empty())
+        if (iter->second.empty())
             return;
 
-        self->_postproc_function(buf, iter->second._tensors, frame_meta, object_meta);
+        self->_postproc_function(buf, iter->second, frame_meta, object_meta);
     }
 }
 
 static GstFlowReturn gst_dxpostprocess_transform_ip(GstBaseTransform *trans,
                                                     GstBuffer *buf) {
     GstDxPostprocess *self = GST_DXPOSTPROCESS(trans);
+    GST_INFO_OBJECT(self, "DXPostprocess Transform IP called");
 
-    DXFrameMeta *frame_meta =
-        (DXFrameMeta *)gst_buffer_get_meta(buf, DX_FRAME_META_API_TYPE);
+    auto *frame_meta = dx_get_frame_meta(buf);
     if (!frame_meta) {
         GST_WARNING_OBJECT(self, "No DXFrameMeta in GstBuffer \n");
         return GST_FLOW_OK;
     }
 
     if (self->_secondary_mode) {
+        GST_INFO_OBJECT(self, "Processing in secondary mode");
         process_secondary_mode(buf, frame_meta, self);
     } else {
+        GST_INFO_OBJECT(self, "Processing in primary mode");
         auto iter = frame_meta->_output_tensors.find(self->_infer_id);
         if (iter != frame_meta->_output_tensors.end()) {
-            self->_postproc_function(buf, iter->second._tensors, frame_meta, nullptr);
+            self->_postproc_function(buf, iter->second, frame_meta, nullptr);
         }
     }
 

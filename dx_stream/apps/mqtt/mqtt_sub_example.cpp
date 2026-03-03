@@ -4,25 +4,29 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <string>
+#include <tuple>
 
 #include <json-glib/json-glib.h>
 
-typedef struct _myData_t {
-    char topic[32];
-} myData_t;
+struct myData_t {
+    std::string topic;
+};
 
 /* Callback called when the client receives a CONNACK message from the broker.
  */
 void on_connect(struct mosquitto *mosq, void *obj, int reason_code) {
+    std::ignore = mosq;
+    std::ignore = reason_code;
     int rc;
-    myData_t *myData = (myData_t *)obj;
+    const auto *myData = static_cast<const myData_t *>(obj);
 
     printf("on_connect: %s\n", mosquitto_connack_string(reason_code));
     if (reason_code != 0) {
         mosquitto_disconnect(mosq);
     }
 
-    rc = mosquitto_subscribe(mosq, nullptr, myData->topic, 0);
+    rc = mosquitto_subscribe(mosq, nullptr, myData->topic.c_str(), 0);
     if (rc != MOSQ_ERR_SUCCESS) {
         fprintf(stderr, "Error subscribing: %s\n", mosquitto_strerror(rc));
         mosquitto_disconnect(mosq);
@@ -32,10 +36,11 @@ void on_connect(struct mosquitto *mosq, void *obj, int reason_code) {
 /* Callback called when the broker sends a SUBACK in response to a SUBSCRIBE. */
 void on_subscribe(struct mosquitto *mosq, void *obj, int mid, int qos_count,
                   const int *granted_qos) {
-    int i;
+    std::ignore = obj;
+    std::ignore = mid;
     bool have_subscription = false;
 
-    for (i = 0; i < qos_count; i++) {
+    for (int i = 0; i < qos_count; i++) {
         printf("on_subscribe: %d:granted qos = %d\n", i, granted_qos[i]);
         if (granted_qos[i] <= 2) {
             have_subscription = true;
@@ -50,9 +55,11 @@ void on_subscribe(struct mosquitto *mosq, void *obj, int mid, int qos_count,
 /* Callback called when the client receives a message. */
 void on_message(struct mosquitto *mosq, void *obj,
                 const struct mosquitto_message *msg) {
-    char *payload = (char *)msg->payload;
+    std::ignore = mosq;
+    std::ignore = obj;
 
-    // printf("%s %d %s\n", msg->topic, msg->qos, (char *)msg->payload);
+    const auto *payload = (char *)msg->payload;
+
     JsonParser *parser;
     JsonNode *root;
     GError *error = nullptr;
@@ -71,16 +78,6 @@ void on_message(struct mosquitto *mosq, void *obj,
         char *formatted = json_to_string(root, true);
         printf("Received JSON payload: %s\n", formatted);
         g_free(formatted);
-
-        // /* print only seqId */
-        // JsonObject *object = json_node_get_object(root);
-        // if (0 && json_object_has_member(object, "seqId")) {
-        //     JsonNode *seqId_node = json_object_get_member(object, "seqId");
-        //     if (JSON_NODE_HOLDS_VALUE(seqId_node)) {
-        //         int seqId = json_node_get_int(seqId_node);
-        //         printf("seqId: %d\n", seqId);
-        //     }
-        // }
     } else {
         fprintf(stderr, "Received payload is not a JSON object.\n");
     }
@@ -129,7 +126,8 @@ int main(int argc, char *argv[]) {
     struct mosquitto *mosq;
     int rc;
 
-    char *hostname, *topic;
+    char *hostname;
+    char *topic;
     int port;
     myData_t data;
 
@@ -146,8 +144,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    snprintf(data.topic, sizeof(data.topic), "%s", topic);
-    data.topic[sizeof(data.topic) - 1] = '\0';
+    data.topic = topic;
     mosquitto_user_data_set(mosq, &data);
 
     mosquitto_connect_callback_set(mosq, on_connect);

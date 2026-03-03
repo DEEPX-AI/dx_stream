@@ -17,10 +17,10 @@ The recommended pipeline chain is **[DxPreprocess] → [DxInfer] → [DxPostproc
 When using features like `secondary-mode`, the configuration must be consistently applied across all three elements (**DxPreprocess , DxInfer and DxPostprocess**).  
 
 **QoS Handling**  
-If the downstream sink element has `sync-true`, input buffers may be dropped based on their timestamps to maintain real-time processing performance.  
+If the downstream sink element has `sync=true`, input buffers may be dropped based on their timestamps to maintain real-time processing performance.  
 
 **Throttle QoS Events**  
-When **DxRate** sends a Throttle QoS Event, **DxInfer** delays inference by the `throttling_delay` interval. This avoids unnecessary NPU computation in low-framerate pipelines and promotes smooth and consistent streaming. 
+When **DxRate** sends a Throttle QoS Event, **DxInfer** drops incoming frames until the accumulated time between frames exceeds the `throttling_delay` value. This avoids unnecessary NPU computation in low-framerate pipelines and promotes smooth and consistent streaming. 
 
 **JSON Configuration**  
 All properties can be configured through a JSON file using the `config-file-path` property. This enables reusable, clean, and scalable configuration of inference behavior. 
@@ -42,9 +42,10 @@ GObject
 | `name`             | Sets the unique name of the DxInfer element.                                                        | String    | `"dxinfer0"`       |
 | `config-file-path` | Path to the JSON config file containing the element's properties.                                    | String    | `null`             |
 | `model-path`       | Path to the `.dxnn` model file used for inference.                                                  | String    | `null`             |
-| `preprocess-id`    | Specifies the ID of the input tensor to be used for **inference**.                                       | Integer   | `0`                |
-| `inference-id`     | Specifies the ID of the output tensor to be used for **postprocess**.                                                       | Integer   | `0`                |
+| `preprocess-id`    | Specifies the ID of the input tensor to be used for **inference**.                                       | Unsigned Integer | `0`                |
+| `inference-id`     | Specifies the ID of the output tensor to be used for **postprocess**.                                    | Unsigned Integer | `0`                |
 | `secondary-mode`   | Determines whether to operate in primary mode or secondary mode.                                     | Boolean   | `false`            |
+| `use-ort`          | Determines whether to use ONNX Runtime (ORT) for inference.                                          | Boolean   | `true`             |
 
 
 ### **Example JSON Configuration**

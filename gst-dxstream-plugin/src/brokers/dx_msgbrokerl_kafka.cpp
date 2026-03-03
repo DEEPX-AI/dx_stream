@@ -7,6 +7,7 @@
 #include <librdkafka/rdkafka.h>
 
 #include <algorithm>
+#include <atomic>
 #include <fstream>
 #include <map>
 #include <sstream>
@@ -16,15 +17,10 @@
 GST_DEBUG_CATEGORY_STATIC(broker);
 #define GST_CAT_DEFAULT broker
 
-/* Local */
-constexpr int MAX_KAFKA_FIELD_LEN = 1024;
-typedef struct {
-    rd_kafka_t *_rk; /* Kafka producer instance handle */
-
-    /* if any msgbroker global config, then add member */
-
-} KafkaClientInfo_t;
-// typedef KafkaClientInfo_t *KafkaClientHandle_t;
+struct KafkaClientInfo_t {
+    rd_kafka_t *_rk;
+    std::atomic<int> error_cnt{0};
+};
 
 static void trim(std::string &str) {
     str.erase(str.begin(),
@@ -39,21 +35,21 @@ static void trim(std::string &str) {
 static DxMsg_Bal_Error_t dxmsg_bal_setconf_kafka(rd_kafka_conf_t *conf,
                                                  const char *key,
                                                  const char *val) {
-    char errstr[512];
+    std::string errstr(512, '\0');
 
-    if (rd_kafka_conf_set(conf, key, val, errstr, sizeof(errstr)) !=
+    if (rd_kafka_conf_set(conf, key, val, &errstr[0], errstr.size()) !=
         RD_KAFKA_CONF_OK) {
-        GST_ERROR("Error, Failed to set conf %s: %s\n", key, errstr);
-        return DXMSG_BAL_ERR_BROKER;
+        GST_ERROR("Error, Failed to set conf %s: %s\n", key, errstr.c_str());
+        return DxMsg_Bal_Error::DXMSG_BAL_ERR_BROKER;
     } else {
         GST_INFO("set conf %s to %s\n", key, val);
-        return DXMSG_BAL_OK;
+        return DxMsg_Bal_Error::DXMSG_BAL_OK;
     }
 }
 
 static void process_config_line(
     const std::string &line, std::string &currentSection,
-    std::map<std::string, std::map<std::string, std::string>> &config) {
+    std::map<std::string, std::map<std::string, std::string, std::less<>>, std::less<>> &config) {
     std::string trimmedLine = line;
     trim(trimmedLine);
     if (trimmedLine.empty() || trimmedLine[0] == '#')
@@ -89,7 +85,7 @@ static void process_config_line(
 }
 
 static void log_section(const std::string &sectionName,
-                        const std::map<std::string, std::string> &kvs,
+                        const std::map<std::string, std::string, std::less<>> &kvs,
                         rd_kafka_conf_t *conf) {
     GST_INFO("[%s]\n", sectionName.c_str());
 
@@ -104,20 +100,21 @@ static void log_section(const std::string &sectionName,
     }
 }
 
-static DxMsg_Bal_Error_t dxmsg_bal_read_config_kafka(DxMsg_Bal_Handle_t handle,
+static DxMsg_Bal_Error_t dxmsg_bal_read_config_kafka(const DxMsg_Bal_Handle_t *const handle,
                                                      const char *cfg_file,
                                                      rd_kafka_conf_t *conf) {
-    g_return_val_if_fail(handle != nullptr, DXMSG_BAL_ERR_INVALID);
-    g_return_val_if_fail(cfg_file != nullptr, DXMSG_BAL_ERR_INVALID);
-    g_return_val_if_fail(conf != nullptr, DXMSG_BAL_ERR_INVALID);
+    g_return_val_if_fail(handle != nullptr, DxMsg_Bal_Error::DXMSG_BAL_ERR_INVALID);
+    g_return_val_if_fail(cfg_file != nullptr, DxMsg_Bal_Error::DXMSG_BAL_ERR_INVALID);
+    g_return_val_if_fail(conf != nullptr, DxMsg_Bal_Error::DXMSG_BAL_ERR_INVALID);
 
     std::ifstream file(cfg_file);
     if (!file.is_open()) {
-        return DXMSG_BAL_ERR_UNKNOWN;
+        return DxMsg_Bal_Error::DXMSG_BAL_ERR_UNKNOWN;
     }
 
-    std::string line, currentSection;
-    std::map<std::string, std::map<std::string, std::string>> config;
+    std::string line;
+    std::string currentSection;
+    std::map<std::string, std::map<std::string, std::string, std::less<>>, std::less<>> config;
 
     while (std::getline(file, line)) {
         process_config_line(line, currentSection, config);
@@ -127,7 +124,7 @@ static DxMsg_Bal_Error_t dxmsg_bal_read_config_kafka(DxMsg_Bal_Handle_t handle,
         log_section(sectionPair.first, sectionPair.second, conf);
     }
 
-    return DXMSG_BAL_OK;
+    return DxMsg_Bal_Error::DXMSG_BAL_OK;
 }
 
 static bool dxmsg_bal_is_valid_connInfo_kafka(const char *conn_info,
@@ -151,9 +148,9 @@ static bool dxmsg_bal_is_valid_connInfo_kafka(const char *conn_info,
             return false;
         }
         *portnum = port;
-    } catch (const std::invalid_argument &e) {
+    } catch (const std::invalid_argument &) {
         return false;
-    } catch (const std::out_of_range &e) {
+    } catch (const std::out_of_range &) {
         return false;
     }
 
@@ -173,6 +170,8 @@ static bool dxmsg_bal_is_valid_connInfo_kafka(const char *conn_info,
  */
 static void dr_msg_cb(rd_kafka_t *rk, const rd_kafka_message_t *rkmessage,
                       void *opaque) {
+    std::ignore = rk;
+    std::ignore = opaque;
     if (rkmessage->err)
         GST_WARNING("Message delivery failed: %s\n",
                     rd_kafka_err2str(rkmessage->err));
@@ -182,29 +181,32 @@ static void dr_msg_cb(rd_kafka_t *rk, const rd_kafka_message_t *rkmessage,
                   rkmessage->len, rkmessage->partition);
 }
 
-static int _kafka_error_cnt = 0;
 /**
  * The callback is triggered from rd_kafka_poll()
  */
 static void error_cb(rd_kafka_t *rk, int err, const char *reason,
                      void *opaque) {
+    std::ignore = rk;
     rd_kafka_resp_err_t orig_err;
-    char errstr[512];
+    std::string errstr;
 
     GST_ERROR("Error(%d): %s: %s\n", err,
               rd_kafka_err2name((rd_kafka_resp_err_t)err), reason);
 
     if (err == RD_KAFKA_RESP_ERR__FAIL) {
         orig_err = rd_kafka_last_error();
-        GST_ERROR("FATAL ERROR: %s: %s\n", rd_kafka_err2name(orig_err), errstr);
+        GST_ERROR("FATAL ERROR: %s: %s\n", rd_kafka_err2name(orig_err), errstr.c_str());
     }
 
-    _kafka_error_cnt++;
+    if (opaque != nullptr) {
+        auto *pClient = static_cast<KafkaClientInfo_t *>(opaque);
+        pClient->error_cnt++;
+    }
     /* how to handle in delivery message ??? */
 }
 
 DxMsg_Bal_Handle_t dxmsg_bal_connect_kafka(char *conn_info, char *cfg_path) {
-    KafkaClientInfo_t *pClient = g_new0(KafkaClientInfo_t, 1);
+    auto *pClient = g_new0(KafkaClientInfo_t, 1);
     rd_kafka_conf_t *conf;
 
     std::string host = "";
@@ -213,7 +215,6 @@ DxMsg_Bal_Handle_t dxmsg_bal_connect_kafka(char *conn_info, char *cfg_path) {
     GST_DEBUG_CATEGORY_INIT(broker, "broker", 0,
                             "broker category for dxmsgbroker element");
     GST_TRACE("|JCP|\n");
-    // GST_CAT_TRACE(broker, "|kafka|\n");
 
     /* conn_info => host, port */
     if (!dxmsg_bal_is_valid_connInfo_kafka(conn_info, host, &port)) {
@@ -231,19 +232,17 @@ DxMsg_Bal_Handle_t dxmsg_bal_connect_kafka(char *conn_info, char *cfg_path) {
     }
 
     /* read config file */
-    if (cfg_path != nullptr) {
-        if (dxmsg_bal_read_config_kafka((DxMsg_Bal_Handle_t)pClient, cfg_path,
-                                        conf) != DXMSG_BAL_OK) {
-            GST_ERROR("Error, Failed to read config file: %s\n", cfg_path);
-            rd_kafka_conf_destroy(conf);
-            g_free(pClient);
-            return nullptr;
-        }
+    if (cfg_path != nullptr &&
+        dxmsg_bal_read_config_kafka((const DxMsg_Bal_Handle_t *const)pClient, cfg_path,
+                                    conf) != DxMsg_Bal_Error::DXMSG_BAL_OK) {
+        GST_ERROR("Error, Failed to read config file: %s\n", cfg_path);
+        rd_kafka_conf_destroy(conf);
+        g_free(pClient);
+        return nullptr;
     }
 
-    char broker_list[1024];
-    snprintf(broker_list, sizeof(broker_list), "%s:%d", host.c_str(), port);
-    if (rd_kafka_conf_set(conf, "bootstrap.servers", broker_list, nullptr, 0) !=
+    std::string broker_list = host + ":" + std::to_string(port);
+    if (rd_kafka_conf_set(conf, "bootstrap.servers", broker_list.c_str(), nullptr, 0) !=
         RD_KAFKA_CONF_OK) {
         GST_ERROR("Error, Failed to set broker list\n");
         rd_kafka_conf_destroy(conf);
@@ -253,6 +252,7 @@ DxMsg_Bal_Handle_t dxmsg_bal_connect_kafka(char *conn_info, char *cfg_path) {
 
     rd_kafka_conf_set_dr_msg_cb(conf, dr_msg_cb);
     rd_kafka_conf_set_error_cb(conf, error_cb);
+    rd_kafka_conf_set_opaque(conf, pClient);
 
     /* create Kafka producer */
     pClient->_rk = rd_kafka_new(RD_KAFKA_PRODUCER, conf, nullptr, 0);
@@ -268,7 +268,7 @@ DxMsg_Bal_Handle_t dxmsg_bal_connect_kafka(char *conn_info, char *cfg_path) {
      */
     rd_kafka_poll(pClient->_rk, 1000); /* timeout 1000ms */
 
-    if (_kafka_error_cnt > 0) {
+    if (pClient->error_cnt > 0) {
         GST_ERROR("Error, Failed to connect to Kafka broker\n");
         rd_kafka_destroy(pClient->_rk);
         g_free(pClient);
@@ -278,20 +278,20 @@ DxMsg_Bal_Handle_t dxmsg_bal_connect_kafka(char *conn_info, char *cfg_path) {
     return (DxMsg_Bal_Handle_t)pClient;
 }
 
-DxMsg_Bal_Error_t dxmsg_bal_send_kafka(DxMsg_Bal_Handle_t handle, char *topic,
+DxMsg_Bal_Error_t dxmsg_bal_send_kafka(DxMsg_Bal_Handle_t handle, const char *topic,
                                        const void *payload, int payload_len) {
-    KafkaClientInfo_t *pClient = (KafkaClientInfo_t *)handle;
-    DxMsg_Bal_Error_t balError = DXMSG_BAL_OK;
+    auto *pClient = (KafkaClientInfo_t *)handle;
+    DxMsg_Bal_Error_t balError = DxMsg_Bal_Error::DXMSG_BAL_OK;
     rd_kafka_resp_err_t err; /* Error code */
 
     GST_TRACE("|JCP|\n");
     if (pClient == nullptr || topic == nullptr || payload == nullptr ||
         payload_len <= 0) {
         GST_ERROR("Error, Failed to publish message: %s\n", "Invalid argument");
-        return DXMSG_BAL_ERR_INVALID;
+        return DxMsg_Bal_Error::DXMSG_BAL_ERR_INVALID;
     }
 
-    err = (rd_kafka_resp_err_t)rd_kafka_producev(
+    err = rd_kafka_producev(
         pClient->_rk, RD_KAFKA_V_TOPIC(topic),
         RD_KAFKA_V_MSGFLAGS(RD_KAFKA_MSG_F_COPY),
         RD_KAFKA_V_VALUE((void *)payload, payload_len),
@@ -320,19 +320,18 @@ DxMsg_Bal_Error_t dxmsg_bal_send_kafka(DxMsg_Bal_Handle_t handle, char *topic,
      * delivery report callback served (and any other callbacks
      * you register).
      * */
-    rd_kafka_poll(pClient->_rk,
-                  0); // non-blocking, FIXME: need to do it continually
+    rd_kafka_poll(pClient->_rk, 0);
     return balError;
 }
 
 DxMsg_Bal_Error_t dxmsg_bal_disconnect_kafka(DxMsg_Bal_Handle_t handle) {
-    KafkaClientInfo_t *pClient = (KafkaClientInfo_t *)handle;
-    DxMsg_Bal_Error_t balError = DXMSG_BAL_OK;
+    auto *pClient = (KafkaClientInfo_t *)handle;
+    DxMsg_Bal_Error_t balError = DxMsg_Bal_Error::DXMSG_BAL_OK;
 
     GST_TRACE("|JCP|\n");
     if (pClient == nullptr) {
         GST_ERROR("Error, Failed to disconnect: %s\n", "Invalid argument");
-        return DXMSG_BAL_ERR_INVALID;
+        return DxMsg_Bal_Error::DXMSG_BAL_ERR_INVALID;
     }
 
     /* Wait for messages to be delivered */

@@ -8,10 +8,10 @@
 
 class RgaPreprocessor : public Preprocessor {
 public:
-    RgaPreprocessor(GstDxPreprocess *elem);
-    ~RgaPreprocessor();
+    explicit RgaPreprocessor(GstDxPreprocess *elem);
+    ~RgaPreprocessor() override;
 
-    bool preprocess(GstBuffer* buf, DXFrameMeta *frame_meta, void *output, cv::Rect *roi) override;
+    bool preprocess(GstBuffer* buf, DXFrameMeta *frame_meta, uint8_t *output, cv::Rect *roi) override;
 
 private:
     bool calculate_nv12_strides_short(int w, int h, int wa, int ha, int *ws, int *hs);

@@ -18,6 +18,19 @@ else
     VIDEO_SINK_ARGS=""
 fi
 
+# Default videoconvert pipeline
+VIDEOCONVERT_PIPELINE="videoconvert"
+
+# NOTE: If you experience rendering issues (corrupted/distorted video output) on Orange Pi 5 Plus
+# with Debian 12, uncomment the lines below to force I420 format conversion.
+# See troubleshooting documentation for more details.
+# if grep -q "rk3588" /proc/device-tree/compatible 2>/dev/null; then
+#     if [ "$(lsb_release -rs)" = "12" ]; then
+#         echo "Detected Orange Pi 5 Plus with Debian 12 - using I420 format"
+#         VIDEOCONVERT_PIPELINE="videoconvert ! video/x-raw,format=I420"
+#     fi
+# fi
+
 # check 'vaapidecodebin'
 if gst-inspect-1.0 vaapidecodebin &>/dev/null; then
     DECODE_PIPELINE="qtdemux ! vaapidecodebin"
@@ -44,5 +57,5 @@ for INPUT_VIDEO_PATH in "${INPUT_VIDEO_PATH_LIST[@]}"; do
                     gather.sink_1 \
                     dxgather name=gather ! queue ! \
                     dxosd width=1280 height=720 ! queue ! \
-                    videoconvert ! fpsdisplaysink sync=false $VIDEO_SINK_ARGS
+                    $VIDEOCONVERT_PIPELINE ! fpsdisplaysink sync=false $VIDEO_SINK_ARGS
 done

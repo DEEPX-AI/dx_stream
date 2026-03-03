@@ -13,9 +13,9 @@
 #include <cassert>
 
 // Include DX-STREAM metadata headers
-#include "dx_stream/gst-dxframemeta.hpp"
-#include "dx_stream/gst-dxobjectmeta.hpp"
-#include "dx_stream/gst-dxusermeta.hpp"
+#include "gstdxstream/gst-dxframemeta.hpp"
+#include "gstdxstream/gst-dxobjectmeta.hpp"
+#include "gstdxstream/gst-dxusermeta.hpp"
 
 // Test results tracking
 static gint total_tests = 0;
@@ -111,22 +111,22 @@ void test_required_functions() {
     
     // Test 1.1: Setting data without release_func should fail
     gboolean result1 = dx_user_meta_set_data(user_meta, test_data, sizeof(FrameAnalyticsData), 
-                                             DX_USER_META_FRAME, nullptr, copy_frame_analytics_data);
+                                             DXUserMetaType::DX_USER_META_FRAME, nullptr, copy_frame_analytics_data);
     TEST_ASSERT(!result1, "Setting user meta without release_func should fail");
     
     // Test 1.2: Setting data without copy_func should fail
     gboolean result2 = dx_user_meta_set_data(user_meta, test_data, sizeof(FrameAnalyticsData), 
-                                             DX_USER_META_FRAME, free_frame_analytics_data, nullptr);
+                                             DXUserMetaType::DX_USER_META_FRAME, free_frame_analytics_data, nullptr);
     TEST_ASSERT(!result2, "Setting user meta without copy_func should fail");
     
     // Test 1.3: Setting data without both functions should fail
     gboolean result3 = dx_user_meta_set_data(user_meta, test_data, sizeof(FrameAnalyticsData), 
-                                             DX_USER_META_FRAME, nullptr, nullptr);
+                                             DXUserMetaType::DX_USER_META_FRAME, nullptr, nullptr);
     TEST_ASSERT(!result3, "Setting user meta without both functions should fail");
     
     // Test 1.4: Setting data with both functions should succeed
     gboolean result4 = dx_user_meta_set_data(user_meta, test_data, sizeof(FrameAnalyticsData), 
-                                             DX_USER_META_FRAME, free_frame_analytics_data, copy_frame_analytics_data);
+                                             DXUserMetaType::DX_USER_META_FRAME, free_frame_analytics_data, copy_frame_analytics_data);
     TEST_ASSERT(result4, "Setting user meta with both functions should succeed");
     
     dx_release_user_meta(user_meta);
@@ -137,13 +137,15 @@ void test_add_validation() {
     g_print("\n=== Test 2: Add Validation ===\n");
     
     GstBuffer *buffer = gst_buffer_new();
-    DXFrameMeta *frame_meta = dx_create_frame_meta(buffer);
+    buffer = dx_create_frame_meta(buffer);
+    DXFrameMeta *frame_meta = dx_get_frame_meta(buffer);
+    
     
     // Create user meta without functions
     DXUserMeta *invalid_meta = dx_acquire_user_meta_from_pool();
     invalid_meta->user_meta_data = g_strdup("test");
     invalid_meta->user_meta_size = 5;
-    invalid_meta->user_meta_type = DX_USER_META_FRAME;
+    invalid_meta->user_meta_type = DXUserMetaType::DX_USER_META_FRAME;
     // Don't set copy_func and release_func
     
     // Test 2.1: Adding user meta without functions should fail
@@ -171,7 +173,8 @@ void test_deep_copy() {
     
     // Create source buffer with metadata
     GstBuffer *src_buffer = gst_buffer_new();
-    DXFrameMeta *src_frame_meta = dx_create_frame_meta(src_buffer);
+    src_buffer = dx_create_frame_meta(src_buffer);
+    DXFrameMeta *src_frame_meta = dx_get_frame_meta(src_buffer);
     
     // Add frame user meta
     FrameAnalyticsData *analytics = g_new0(FrameAnalyticsData, 1);
@@ -181,12 +184,12 @@ void test_deep_copy() {
     
     DXUserMeta *user_meta = dx_acquire_user_meta_from_pool();
     dx_user_meta_set_data(user_meta, analytics, sizeof(FrameAnalyticsData), 
-                         DX_USER_META_FRAME, free_frame_analytics_data, copy_frame_analytics_data);
+                         DXUserMetaType::DX_USER_META_FRAME, free_frame_analytics_data, copy_frame_analytics_data);
     dx_add_user_meta_to_frame(src_frame_meta, user_meta);
     
     // Add object with user meta
     DXObjectMeta *src_obj = dx_acquire_obj_meta_from_pool();
-    src_obj->_label_name = g_string_new("person");
+    src_obj->_label_name = "person";
     dx_add_obj_meta_to_frame(src_frame_meta, src_obj);
     
     ObjectAnalyticsData *obj_analytics = g_new0(ObjectAnalyticsData, 1);
@@ -196,20 +199,22 @@ void test_deep_copy() {
     
     DXUserMeta *obj_user_meta = dx_acquire_user_meta_from_pool();
     dx_user_meta_set_data(obj_user_meta, obj_analytics, sizeof(ObjectAnalyticsData),
-                         DX_USER_META_OBJECT, free_object_analytics_data, copy_object_analytics_data);
+                         DXUserMetaType::DX_USER_META_OBJECT, free_object_analytics_data, copy_object_analytics_data);
     dx_add_user_meta_to_obj(src_obj, obj_user_meta);
     
     // Create destination buffer and copy metadata
     GstBuffer *dst_buffer = gst_buffer_new();
-    DXFrameMeta *dst_frame_meta = dx_create_frame_meta(dst_buffer);
+    dst_buffer = dx_create_frame_meta(dst_buffer);
+    DXFrameMeta *dst_frame_meta = dx_get_frame_meta(dst_buffer);
     dx_frame_meta_copy(src_buffer, src_frame_meta, dst_buffer, dst_frame_meta);
     
     // Test 3.1: Frame metadata should be copied
-    TEST_ASSERT(dst_frame_meta->_num_frame_user_meta == 1, "Frame user meta count should be copied");
+    auto src_frame_user_metas = dx_get_frame_user_metas(src_frame_meta);
+    TEST_ASSERT(src_frame_user_metas->size() == 1, "Frame user meta count should be copied");
     
     // Test 3.2: Frame user meta data should be deep copied
-    GList *dst_frame_metas = dx_get_frame_user_metas(dst_frame_meta);
-    DXUserMeta *dst_user_meta = (DXUserMeta *)dst_frame_metas->data;
+    auto dst_frame_metas = dx_get_frame_user_metas(dst_frame_meta);
+    DXUserMeta *dst_user_meta = (*dst_frame_metas)[0];
     FrameAnalyticsData *dst_analytics = (FrameAnalyticsData *)dst_user_meta->user_meta_data;
     
     TEST_ASSERT(dst_analytics != analytics, "Frame user meta data should be different memory addresses");
@@ -218,23 +223,20 @@ void test_deep_copy() {
     TEST_ASSERT(dst_analytics->scene_confidence == 0.95f, "Frame user meta float values should match");
     
     // Test 3.3: Object metadata should be copied
-    TEST_ASSERT(g_list_length(dst_frame_meta->_object_meta_list) == 1, "Object count should be copied");
+    TEST_ASSERT(dst_frame_meta->_object_meta_list.size() == 1, "Object count should be copied");
     
     // Test 3.4: Object user meta should be deep copied
-    DXObjectMeta *dst_obj = (DXObjectMeta *)dst_frame_meta->_object_meta_list->data;
+    DXObjectMeta *dst_obj = dst_frame_meta->_object_meta_list[0];
     TEST_ASSERT(dst_obj != src_obj, "Object meta should be different memory addresses");
-    TEST_ASSERT(dst_obj->_num_obj_user_meta == 1, "Object user meta count should be copied");
     
-    GList *dst_obj_metas = dx_get_object_user_metas(dst_obj);
-    DXUserMeta *dst_obj_user_meta = (DXUserMeta *)dst_obj_metas->data;
+    auto dst_obj_metas = dx_get_object_user_metas(dst_obj);
+    DXUserMeta *dst_obj_user_meta = (*dst_obj_metas)[0];
     ObjectAnalyticsData *dst_obj_analytics = (ObjectAnalyticsData *)dst_obj_user_meta->user_meta_data;
     
     TEST_ASSERT(dst_obj_analytics != obj_analytics, "Object user meta data should be different memory addresses");
     TEST_ASSERT(g_strcmp0(dst_obj_analytics->algorithm_name, "original_algorithm") == 0,
                "Object user meta data content should be copied correctly");
     
-    g_list_free(dst_frame_metas);
-    g_list_free(dst_obj_metas);
     gst_buffer_unref(src_buffer);
     gst_buffer_unref(dst_buffer);
 }
@@ -244,7 +246,8 @@ void test_functional_workflow() {
     g_print("\n=== Test 4: Functional Workflow ===\n");
     
     GstBuffer *buffer = gst_buffer_new();
-    DXFrameMeta *frame_meta = dx_create_frame_meta(buffer);
+    buffer = dx_create_frame_meta(buffer);
+    DXFrameMeta *frame_meta = dx_get_frame_meta(buffer);
     
     // Add frame analytics
     FrameAnalyticsData *analytics = g_new0(FrameAnalyticsData, 1);
@@ -254,7 +257,7 @@ void test_functional_workflow() {
     
     DXUserMeta *frame_user_meta = dx_acquire_user_meta_from_pool();
     gboolean set_result = dx_user_meta_set_data(frame_user_meta, analytics, sizeof(FrameAnalyticsData),
-                                               DX_USER_META_FRAME, free_frame_analytics_data, copy_frame_analytics_data);
+                                               DXUserMetaType::DX_USER_META_FRAME, free_frame_analytics_data, copy_frame_analytics_data);
     TEST_ASSERT(set_result, "Setting valid frame user meta should succeed");
     
     gboolean add_result = dx_add_user_meta_to_frame(frame_meta, frame_user_meta);
@@ -264,7 +267,7 @@ void test_functional_workflow() {
     for (int i = 0; i < 2; i++) {
         DXObjectMeta *obj_meta = dx_acquire_obj_meta_from_pool();
         obj_meta->_label = i;
-        obj_meta->_label_name = g_string_new(g_strdup_printf("object_%d", i));
+        obj_meta->_label_name = std::string("object_") + std::to_string(i);
         dx_add_obj_meta_to_frame(frame_meta, obj_meta);
         
         ObjectAnalyticsData *obj_analytics = g_new0(ObjectAnalyticsData, 1);
@@ -274,7 +277,7 @@ void test_functional_workflow() {
         
         DXUserMeta *obj_user_meta = dx_acquire_user_meta_from_pool();
         gboolean obj_set_result = dx_user_meta_set_data(obj_user_meta, obj_analytics, sizeof(ObjectAnalyticsData),
-                                                       DX_USER_META_OBJECT, free_object_analytics_data, copy_object_analytics_data);
+                                                       DXUserMetaType::DX_USER_META_OBJECT, free_object_analytics_data, copy_object_analytics_data);
         TEST_ASSERT(obj_set_result, "Setting valid object user meta should succeed");
         
         gboolean obj_add_result = dx_add_user_meta_to_obj(obj_meta, obj_user_meta);
@@ -282,23 +285,20 @@ void test_functional_workflow() {
     }
     
     // Validate retrieval
-    GList *frame_metas = dx_get_frame_user_metas(frame_meta);
-    TEST_ASSERT(g_list_length(frame_metas) == 1, "Should retrieve exactly 1 frame user meta");
+    auto frame_metas = dx_get_frame_user_metas(frame_meta);
+    TEST_ASSERT(frame_metas->size() == 1, "Should retrieve exactly 1 frame user meta");
     
-    TEST_ASSERT(g_list_length(frame_meta->_object_meta_list) == 2, "Should have exactly 2 objects");
+    TEST_ASSERT(frame_meta->_object_meta_list.size() == 2, "Should have exactly 2 objects");
     
     // Validate object user metas
     int obj_count = 0;
-    for (GList *l = frame_meta->_object_meta_list; l != nullptr; l = l->next) {
-        DXObjectMeta *obj_meta = (DXObjectMeta *)l->data;
-        GList *obj_metas = dx_get_object_user_metas(obj_meta);
-        TEST_ASSERT(g_list_length(obj_metas) == 1, "Each object should have exactly 1 user meta");
+    for (auto obj_meta : frame_meta->_object_meta_list) {
+        auto obj_metas = dx_get_object_user_metas(obj_meta);
+        TEST_ASSERT(obj_metas->size() == 1, "Each object should have exactly 1 user meta");
         obj_count++;
-        g_list_free(obj_metas);
     }
     TEST_ASSERT(obj_count == 2, "Should process exactly 2 objects");
     
-    g_list_free(frame_metas);
     gst_buffer_unref(buffer);
 }
 

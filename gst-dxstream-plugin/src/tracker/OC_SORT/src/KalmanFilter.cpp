@@ -1,10 +1,8 @@
 ﻿#include "../include/KalmanFilter.hpp"
 #include <iostream>
 namespace ocsort {
-KalmanFilterNew::KalmanFilterNew() {};
-KalmanFilterNew::KalmanFilterNew(int dim_x_, int dim_z_) {
-    dim_x = dim_x_;
-    dim_z = dim_z_;
+KalmanFilterNew::KalmanFilterNew() : I(Eigen::MatrixXf::Identity(7, 7)) {};
+KalmanFilterNew::KalmanFilterNew(int dim_x_, int dim_z_) : I(Eigen::MatrixXf::Identity(dim_x_, dim_x_)) {
     x = Eigen::VectorXf::Zero(dim_x_, 1);
     P = Eigen::MatrixXf::Identity(dim_x_, dim_x_);
     Q = Eigen::MatrixXf::Identity(dim_x_, dim_x_);
@@ -26,7 +24,7 @@ KalmanFilterNew::KalmanFilterNew(int dim_x_, int dim_z_) {
 };
 void KalmanFilterNew::predict() {
     x = F * x;
-    P = _alpha_sq * ((F * P), F.transpose()) + Q;
+    P = _alpha_sq * (F * P * F.transpose()) + Q;
     x_prior = x;
     P_prior = P;
 }
@@ -36,10 +34,10 @@ void KalmanFilterNew::update(const Eigen::VectorXf &z_) {
         if (true == observed)
             freeze();
         observed = false;
-        z = Eigen::VectorXf::Zero(dim_z, 1);
+        z = Eigen::VectorXf::Zero(H.rows(), 1);
         x_post = x;
         P_post = P;
-        y = Eigen::VectorXf::Zero(dim_z, 1);
+        y = Eigen::VectorXf::Zero(H.rows(), 1);
         return;
     }
     if (false == observed)
@@ -108,7 +106,8 @@ void KalmanFilterNew::unfreeze() {
 
     int lastNotNullIndex = -1;
     int secondLastNotNullIndex = -1;
-    Eigen::VectorXf box1, box2;
+    Eigen::VectorXf box1;
+    Eigen::VectorXf box2;
 
     for (int i = static_cast<int>(new_history.size()) - 1; i >= 0; --i) {
         if (new_history[i].size() == 0) {
@@ -158,7 +157,7 @@ void KalmanFilterNew::unfreeze() {
         double r = w_interp / h_interp;
 
         Eigen::VectorXf new_box(4);
-        new_box << x_interp, y_interp, s, r;
+        new_box << static_cast<float>(x_interp), static_cast<float>(y_interp), static_cast<float>(s), static_cast<float>(r);
 
         y = new_box - H * x;
         Eigen::MatrixXf PHT = P * H.transpose();

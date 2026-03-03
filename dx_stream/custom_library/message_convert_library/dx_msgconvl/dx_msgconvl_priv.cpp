@@ -3,11 +3,11 @@
 #include <json-glib/json-glib.h>
 
 #include "dx_msgconvl_priv.hpp"
-#include "dx_stream/gst-dxframemeta.hpp"
-#include "dx_stream/gst-dxobjectmeta.hpp"
+#include "gstdxstream/gst-dxframemeta.hpp"
+#include "gstdxstream/gst-dxobjectmeta.hpp"
 
 DxMsgContextPriv *dxcontext_create_contextPriv(void) {
-    DxMsgContextPriv *contextPriv = g_new0(DxMsgContextPriv, 1);
+    auto *contextPriv = g_new0(DxMsgContextPriv, 1);
     return contextPriv;
 }
 
@@ -26,7 +26,7 @@ static void add_object_to_json(JsonObject *jobj_parent,
               "Label Name: %s",
               obj_meta->_label, obj_meta->_confidence, obj_meta->_box[0],
               obj_meta->_box[1], obj_meta->_box[2], obj_meta->_box[3],
-              obj_meta->_label_name->str);
+              obj_meta->_label_name.c_str());
 
     JsonObject *jobj_object = json_object_new();
     json_object_set_int_member(jobj_object, "label_id", obj_meta->_label);
@@ -34,7 +34,7 @@ static void add_object_to_json(JsonObject *jobj_parent,
     json_object_set_double_member(jobj_object, "confidence",
                                   obj_meta->_confidence);
     json_object_set_string_member(jobj_object, "name",
-                                  obj_meta->_label_name->str);
+                                  obj_meta->_label_name.c_str());
 
     JsonObject *jobj_box = json_object_new();
     json_object_set_double_member(jobj_box, "startX", obj_meta->_box[0]);
@@ -46,7 +46,7 @@ static void add_object_to_json(JsonObject *jobj_parent,
     // body_feature 추가
     if (!obj_meta->_body_feature.empty()) {
         JsonArray *jarray_body = json_array_new();
-        for (auto &val : obj_meta->_body_feature) {
+        for (const auto &val : obj_meta->_body_feature) {
             json_array_add_element(jarray_body, json_node_init_double(json_node_alloc(), val));
         }
         json_object_set_array_member(jobj_object, "body_feature", jarray_body);
@@ -87,10 +87,10 @@ static void add_object_to_json(JsonObject *jobj_parent,
     // face 추가 (object 내부로)
     if (!obj_meta->_face_landmarks.empty()) {
         JsonArray *jarray = json_array_new();
-        for (auto &landmark : obj_meta->_face_landmarks) {
+        for (size_t i = 0; i < obj_meta->_face_landmarks.size(); i += 3) {
             JsonObject *jobj_point = json_object_new();
-            json_object_set_double_member(jobj_point, "x", landmark._x);
-            json_object_set_double_member(jobj_point, "y", landmark._y);
+            json_object_set_double_member(jobj_point, "x", obj_meta->_face_landmarks[i]);
+            json_object_set_double_member(jobj_point, "y", obj_meta->_face_landmarks[i+1]);
             json_array_add_element(
                 jarray, json_node_init_object(json_node_alloc(), jobj_point));
         }
@@ -111,7 +111,7 @@ static void add_object_to_json(JsonObject *jobj_parent,
         // face_feature 추가
         if (!obj_meta->_face_feature.empty()) {
             JsonArray *jarray_face = json_array_new();
-            for (auto &val : obj_meta->_face_feature) {
+            for (const auto &val : obj_meta->_face_feature) {
                 json_array_add_element(jarray_face, json_node_init_double(json_node_alloc(), val));
             }
             json_object_set_array_member(jobj_face, "face_feature", jarray_face);
@@ -187,8 +187,8 @@ static void add_object_meta_to_json(JsonArray *jarray_objects,
  */
 gchar *dxpayload_convert_to_json(DxMsgContext *context,
                                  GstDxMsgMetaInfo *meta_info) {
-    DXFrameMeta *frame_meta = (DXFrameMeta *)(meta_info->_frame_meta);
-    DxMsgContextPriv *contextPriv = (DxMsgContextPriv *)context->_priv_data;
+    std::ignore = context;
+    const auto *frame_meta = (DXFrameMeta *)(meta_info->_frame_meta);
 
     JsonNode *jnode_root = json_node_new(JSON_NODE_OBJECT);
     JsonObject *jobj_root = json_object_new();
@@ -201,10 +201,7 @@ gchar *dxpayload_convert_to_json(DxMsgContext *context,
     JsonArray *jarray_objects = json_array_new();
     json_object_set_array_member(jobj_root, "objects", jarray_objects);
 
-    unsigned int object_length = g_list_length(frame_meta->_object_meta_list);
-    for (size_t i = 0; i < object_length; i++) {
-        DXObjectMeta *obj_meta =
-            (DXObjectMeta *)g_list_nth_data(frame_meta->_object_meta_list, i);
+    for (const auto obj_meta : frame_meta->_object_meta_list) {
         add_object_meta_to_json(jarray_objects, obj_meta);
     }
 

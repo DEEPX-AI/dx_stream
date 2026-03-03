@@ -118,12 +118,11 @@ OBJECT_TYPES = ["person", "car", "bike", "dog", "cat", "truck", "bus"]
 
 def get_random_scene_type():
     """Get random scene type for simulation"""
-    return random.choice(SCENE_TYPES)  # noqa: S311
+    return random.choice(SCENE_TYPES) # NOSONAR
 
 def get_random_object_type():
     """Get random object type for simulation"""
-    return random.choice(OBJECT_TYPES)  # noqa: S311
-
+    return random.choice(OBJECT_TYPES)  # NOSONAR
 def get_quality_grade(score):
     """Convert quality score to grade string"""
     if score >= 0.8:
@@ -173,12 +172,12 @@ def add_metadata_probe(pad, info, user_data):
         # === Add Frame Analytics Data ===
         frame_analytics = FrameAnalyticsData()
         frame_analytics.scene_type = get_random_scene_type()
-        frame_analytics.brightness_level = random.random()  # noqa: S311
-        frame_analytics.motion_level = random.random()  # noqa: S311
+        frame_analytics.brightness_level = random.random()  # NOSONAR
+        frame_analytics.motion_level = random.random()  # NOSONAR
         frame_analytics.timestamp = int(time.time() * 1000000)  # microseconds
         
         # Simulate detected objects count (1-5 objects)
-        frame_analytics.detected_objects = random.randint(1, 5)  # noqa: S311
+        frame_analytics.detected_objects = random.randint(1, 5)  # NOSONAR
         
         frame_meta.dx_add_user_meta_to_frame(frame_analytics, FRAME_ANALYTICS_TYPE)
         
@@ -189,9 +188,9 @@ def add_metadata_probe(pad, info, user_data):
         
         # === Add Quality Assessment Data ===
         quality_data = QualityAssessmentData()
-        quality_data.overall_quality = random.random()  # noqa: S311
-        quality_data.sharpness = random.random()  # noqa: S311
-        quality_data.exposure = random.random()  # noqa: S311
+        quality_data.overall_quality = random.random()  # NOSONAR
+        quality_data.sharpness = random.random()  # NOSONAR
+        quality_data.exposure = random.random()  # NOSONAR
         quality_data.quality_grade = get_quality_grade(quality_data.overall_quality)
         
         frame_meta.dx_add_user_meta_to_frame(quality_data, QUALITY_ASSESSMENT_TYPE)
@@ -207,21 +206,21 @@ def add_metadata_probe(pad, info, user_data):
             
             # Set object properties
             obj_meta.label = i % 3  # Simulate different classes (0, 1, 2)
-            obj_meta.confidence = 0.5 + random.random() * 0.5  # 0.5-1.0  # noqa: S311
+            obj_meta.confidence = 0.5 + random.random() * 0.5  # 0.5-1.0  # NOSONAR
             
             # Set bounding box (simulate random positions)
             obj_meta.box = [
-                random.uniform(0.0, 800.0),   # x  # noqa: S311
-                random.uniform(0.0, 600.0),   # y  # noqa: S311
-                random.uniform(50.0, 250.0),  # width  # noqa: S311
-                random.uniform(50.0, 250.0)   # height  # noqa: S311
+                random.uniform(0.0, 800.0),   # x  # NOSONAR
+                random.uniform(0.0, 600.0),   # y  # NOSONAR
+                random.uniform(50.0, 250.0),  # width  # NOSONAR
+                random.uniform(50.0, 250.0)   # height  # NOSONAR
             ]
             
             # Add object detection user metadata
             obj_detection = ObjectDetectionData()
             obj_detection.object_type = get_random_object_type()
-            obj_detection.detection_confidence = 0.5 + random.random() * 0.5  # 0.5-1.0  # noqa: S311
-            obj_detection.quality_score = random.random()  # noqa: S311
+            obj_detection.detection_confidence = 0.5 + random.random() * 0.5  # 0.5-1.0  # NOSONAR
+            obj_detection.quality_score = random.random()  # NOSONAR
             obj_detection.tracking_id = tracking_id_counter
             tracking_id_counter += 1
             obj_detection.bbox = obj_meta.box.copy()

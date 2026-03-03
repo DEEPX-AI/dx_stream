@@ -4,6 +4,7 @@
 #include "dxcommon.hpp"
 #include "./../metadata/gst-dxframemeta.hpp"
 #include "./../metadata/gst-dxobjectmeta.hpp"
+#include <dxrt/dxrt_api.h>
 #include <gst/base/gstbasetransform.h>
 #include <gst/gst.h>
 
@@ -27,7 +28,7 @@ struct _GstDxPostprocess {
     double _acc_fps;
 
     void *_library_handle;
-    void (*_postproc_function)(GstBuffer *, std::vector<dxs::DXTensor>, DXFrameMeta *,
+    void (*_postproc_function)(GstBuffer *, const dxrt::TensorPtrs&, DXFrameMeta *,
                                DXObjectMeta *);
 };
 

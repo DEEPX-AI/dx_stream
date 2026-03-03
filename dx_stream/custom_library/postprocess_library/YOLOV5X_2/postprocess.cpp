@@ -1,9 +1,13 @@
-#include "dx_stream/gst-dxframemeta.hpp"
-#include "dx_stream/gst-dxobjectmeta.hpp"
+#include "gstdxstream/gst-dxframemeta.hpp"
+#include "gstdxstream/gst-dxobjectmeta.hpp"
+#include <dxrt/dxrt_api.h>
 #include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <vector>
+#include <tuple>
+#include <glib.h>
+#include <gst/gst.h>
 
 // ============================================================================
 // YOLO Post-Processing Library for DX Stream
@@ -31,7 +35,10 @@
  * - Class ID and class name
  */
 struct BoundingBox {
-    float x1, y1, x2, y2;      // Bounding box coordinates (left, top, right, bottom)
+    float x1;
+    float y1;
+    float x2;
+    float y2;
     float confidence;           // Detection confidence (0.0 to 1.0)
     int class_id;              // Class ID (0-based index)
     std::string class_name;    // Human-readable class name
@@ -86,9 +93,9 @@ struct YoloConfig {
  * @param tensor_name Name of the tensor to search for
  * @return Index of the tensor if found, -1 otherwise
  */
- inline int get_index_by_tensor_name(const std::vector<dxs::DXTensor>& network_output, const std::string& tensor_name) {
+ inline int get_index_by_tensor_name(const dxrt::TensorPtrs& network_output, const std::string& tensor_name) {
     for (size_t i = 0; i < network_output.size(); i++) {
-        if (network_output[i]._name == tensor_name) {
+        if (network_output[i]->name() == tensor_name) {
             return static_cast<int>(i);
         }
     }
@@ -128,44 +135,65 @@ float calculate_iou(const BoundingBox& box1, const BoundingBox& box2) {
     return intersection / (area1 + area2 - intersection);
 }
 
-/**
- * @brief Non-Maximum Suppression (NMS) to remove overlapping detections
- * @param boxes Vector of detected bounding boxes
- * @param threshold IoU threshold for suppression
- * @return Filtered bounding boxes after NMS
- */
-std::vector<BoundingBox> nms(std::vector<BoundingBox>& boxes, float threshold) {
-    if (boxes.empty()) return {};
+// Helper function: Perform NMS on boxes of a single class
+std::vector<BoundingBox> nms_single_class(std::vector<BoundingBox>& boxes_per_class, float threshold) {
+    if (boxes_per_class.empty()) return {};
     
     // Sort boxes by confidence (highest first)
-    std::sort(boxes.begin(), boxes.end(), 
+    std::sort(boxes_per_class.begin(), boxes_per_class.end(), 
               [](const BoundingBox& a, const BoundingBox& b) {
                   return a.confidence > b.confidence;
               });
     
-    std::vector<bool> suppressed(boxes.size(), false);
+    std::vector<bool> suppressed(boxes_per_class.size(), false);
     std::vector<BoundingBox> result;
     
-    for (size_t i = 0; i < boxes.size(); ++i) {
+    for (size_t i = 0; i < boxes_per_class.size(); ++i) {
         if (suppressed[i]) continue;
         
-        // Keep the current box
-        result.push_back(boxes[i]);
+        result.push_back(boxes_per_class[i]);
         
         // Check overlap with remaining boxes
-        for (size_t j = i + 1; j < boxes.size(); ++j) {
+        for (size_t j = i + 1; j < boxes_per_class.size(); ++j) {
             if (suppressed[j]) continue;
             
-            // Only suppress boxes of the same class
-            if (boxes[i].class_id == boxes[j].class_id) {
-                if (calculate_iou(boxes[i], boxes[j]) > threshold) {
-                    suppressed[j] = true;
-                }
+            if (calculate_iou(boxes_per_class[i], boxes_per_class[j]) > threshold) {
+                suppressed[j] = true;
             }
         }
     }
     
     return result;
+}
+
+std::vector<BoundingBox> nms(const std::vector<BoundingBox>& boxes, float threshold, int num_classes) {
+    if (boxes.empty()) return {};
+    
+    // Group boxes by class
+    std::vector<std::vector<BoundingBox>> class_boxes(num_classes);
+    for (auto& box : boxes) {
+        if (box.class_id >= 0 && box.class_id < num_classes) {
+            class_boxes[box.class_id].push_back(box);
+        }
+    }
+    
+    std::vector<BoundingBox> final_boxes;
+    
+    // Perform NMS for each class separately
+    for (auto& boxes_per_class : class_boxes) {
+        if (boxes_per_class.empty()) continue;
+        
+        auto class_result = nms_single_class(boxes_per_class, threshold);
+        final_boxes.insert(final_boxes.end(), class_result.begin(), class_result.end());
+    }
+    
+    // Sort final results by confidence
+    std::sort(final_boxes.begin(), final_boxes.end(), 
+              [](const BoundingBox& a, const BoundingBox& b) {
+                  return a.confidence > b.confidence;
+              });
+    
+    return final_boxes;
 }
 
 // ============================================================================
@@ -183,14 +211,14 @@ std::vector<BoundingBox> nms(std::vector<BoundingBox>& boxes, float threshold) {
  * @param config YOLO configuration
  * @return Vector of detected bounding boxes
  */
-std::vector<BoundingBox> parse_single_output(const dxs::DXTensor& output, 
+std::vector<BoundingBox> parse_single_output(const std::shared_ptr<dxrt::Tensor>& output, 
                                              const YoloConfig& config) {
     std::vector<BoundingBox> boxes;
-    const float* data = static_cast<const float*>(output._data);
+    const auto* data = static_cast<const float*>(output->data());
     
     // Tensor shape: [batch, num_detections, 5 + num_classes]
-    int num_detections = output._shape[1];
-    int features_per_detection = output._shape[2];  // 5 + num_classes
+    auto num_detections = static_cast<int>(output->shape()[1]);
+    auto features_per_detection = static_cast<int>(output->shape()[2]);  // 5 + num_classes
     
     for (int i = 0; i < num_detections; i++) {
         // Get data for current detection
@@ -242,7 +270,7 @@ std::vector<BoundingBox> parse_single_output(const dxs::DXTensor& output,
  * @param config YOLO configuration
  * @return Vector of detected bounding boxes
  */
-std::vector<BoundingBox> parse_multi_output(const std::vector<dxs::DXTensor>& outputs,
+std::vector<BoundingBox> parse_multi_output(const dxrt::TensorPtrs& outputs,
                                             const YoloConfig& config) {
     std::vector<BoundingBox> boxes;
 
@@ -265,17 +293,17 @@ std::vector<BoundingBox> parse_multi_output(const std::vector<dxs::DXTensor>& ou
     };
 
     // Process each output layer
-    for (int layer_idx = 0; layer_idx < tensor_names.size(); layer_idx++) {
+    for (size_t layer_idx = 0; layer_idx < tensor_names.size(); ++layer_idx) {
         const auto& output = outputs[get_index_by_tensor_name(outputs, tensor_names[layer_idx])];
-        const float* data = static_cast<const float*>(output._data);
+        const auto* data = static_cast<const float*>(output->data());
 
         // ============================================================================
         // TENSOR DIMENSIONS (NCHW format)
         // ============================================================================
-        // output._shape = [batch, channels, height, width]
-        int channels = output._shape[1];      // Total channels (3 * (5 + num_classes))
-        int height = output._shape[2];        // Grid height (64, 32, or 16)
-        int width = output._shape[3];         // Grid width (64, 32, or 16)
+        // output->shape() = [batch, channels, height, width]
+        auto channels = static_cast<int>(output->shape()[1]);      // Total channels (3 * (5 + num_classes))
+        auto height = static_cast<int>(output->shape()[2]);        // Grid height (64, 32, or 16)
+        auto width = static_cast<int>(output->shape()[3]);         // Grid width (64, 32, or 16)
 
         // Calculate stride for coordinate scaling
         int stride_x = config.input_width / width;
@@ -356,10 +384,10 @@ std::vector<BoundingBox> parse_multi_output(const std::vector<dxs::DXTensor>& ou
                     // ============================================================================
                     // Decode coordinates from network predictions to pixel coordinates
                     // This formula may vary depending on your YOLO version
-                    float x = (sigmoid(tx) * 2.0f - 0.5f + gx) * stride_x;
-                    float y = (sigmoid(ty) * 2.0f - 0.5f + gy) * stride_y;
-                    float w = std::pow(sigmoid(tw) * 2.0f, 2) * anchors[layer_idx][anchor].first;
-                    float h = std::pow(sigmoid(th) * 2.0f, 2) * anchors[layer_idx][anchor].second;
+                    float x = (sigmoid(tx) * 2.0f - 0.5f + static_cast<float>(gx)) * static_cast<float>(stride_x);
+                    float y = (sigmoid(ty) * 2.0f - 0.5f + static_cast<float>(gy)) * static_cast<float>(stride_y);
+                    float w = std::pow(sigmoid(tw) * 2.0f, 2.0f) * anchors[layer_idx][anchor].first;
+                    float h = std::pow(sigmoid(th) * 2.0f, 2.0f) * anchors[layer_idx][anchor].second;
 
                     // Convert center coordinates to corner coordinates
                     boxes.emplace_back(x - w / 2, y - h / 2, x + w / 2, y + h / 2,
@@ -392,12 +420,12 @@ std::vector<BoundingBox> parse_multi_output(const std::vector<dxs::DXTensor>& ou
 BoundingBox scale_box(const BoundingBox& box, int orig_width, int orig_height, 
                       int model_width, int model_height) {
     // Calculate scaling ratio (maintains aspect ratio)
-    float r = std::min(static_cast<float>(model_width) / orig_width,
-                       static_cast<float>(model_height) / orig_height);
+    float r = std::min(static_cast<float>(model_width) / static_cast<float>(orig_width),
+                       static_cast<float>(model_height) / static_cast<float>(orig_height));
     
     // Calculate padding that was added during preprocessing
-    float w_pad = (model_width - orig_width * r) / 2.0f;
-    float h_pad = (model_height - orig_height * r) / 2.0f;
+    float w_pad = (static_cast<float>(model_width) - static_cast<float>(orig_width) * r) / 2.0f;
+    float h_pad = (static_cast<float>(model_height) - static_cast<float>(orig_height) * r) / 2.0f;
     
     // Remove padding and scale to original image coordinates
     float x1 = (box.x1 - w_pad) / r;
@@ -427,10 +455,12 @@ BoundingBox scale_box(const BoundingBox& box, int orig_width, int orig_height,
  * @param frame_meta Frame metadata containing image dimensions and ROI
  * @param object_meta Object metadata (output parameter)
  */
-extern "C" void PostProcess(GstBuffer *buf,
-                            std::vector<dxs::DXTensor> network_output,
-                            DXFrameMeta *frame_meta,
-                            DXObjectMeta *object_meta) {
+extern "C" void PostProcess(GstBuffer* buf,
+                            const dxrt::TensorPtrs& network_output,
+                            DXFrameMeta* frame_meta,
+                            DXObjectMeta* object_meta) {
+    std::ignore = buf;
+    std::ignore = object_meta;
     // ============================================================================
     // CONFIGURATION SETUP
     // ============================================================================
@@ -459,7 +489,7 @@ extern "C" void PostProcess(GstBuffer *buf,
     // NON-MAXIMUM SUPPRESSION
     // ============================================================================
     // Remove overlapping detections
-    auto final_boxes = nms(all_boxes, config.nms_threshold);
+    auto final_boxes = nms(all_boxes, config.nms_threshold, config.num_classes);
     
     // ============================================================================
     // COORDINATE SCALING
@@ -494,7 +524,7 @@ extern "C" void PostProcess(GstBuffer *buf,
         DXObjectMeta *obj_meta = dx_acquire_obj_meta_from_pool();
         obj_meta->_confidence = scaled_box.confidence;
         obj_meta->_label = scaled_box.class_id;
-        obj_meta->_label_name = g_string_new(scaled_box.class_name.c_str());
+        obj_meta->_label_name = scaled_box.class_name;
         obj_meta->_box[0] = scaled_box.x1;
         obj_meta->_box[1] = scaled_box.y1;
         obj_meta->_box[2] = scaled_box.x2;
@@ -503,10 +533,10 @@ extern "C" void PostProcess(GstBuffer *buf,
         // Adjust coordinates if ROI is specified
         if (frame_meta->_roi[0] != -1 && frame_meta->_roi[1] != -1 &&
             frame_meta->_roi[2] != -1 && frame_meta->_roi[3] != -1) {
-            obj_meta->_box[0] += frame_meta->_roi[0];
-            obj_meta->_box[1] += frame_meta->_roi[1];
-            obj_meta->_box[2] += frame_meta->_roi[0];
-            obj_meta->_box[3] += frame_meta->_roi[1];
+            obj_meta->_box[0] += static_cast<float>(frame_meta->_roi[0]);
+            obj_meta->_box[1] += static_cast<float>(frame_meta->_roi[1]);
+            obj_meta->_box[2] += static_cast<float>(frame_meta->_roi[0]);
+            obj_meta->_box[3] += static_cast<float>(frame_meta->_roi[1]);
         }
         
         // Add object to frame metadata

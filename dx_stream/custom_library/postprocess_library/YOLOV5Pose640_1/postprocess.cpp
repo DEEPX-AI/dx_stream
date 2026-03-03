@@ -1,8 +1,12 @@
-#include "dx_stream/gst-dxframemeta.hpp"
-#include "dx_stream/gst-dxobjectmeta.hpp"
+#include "gstdxstream/gst-dxframemeta.hpp"
+#include "gstdxstream/gst-dxobjectmeta.hpp"
+#include <dxrt/dxrt_api.h>
 #include <algorithm>
 #include <cmath>
 #include <vector>
+#include <tuple>
+#include <glib.h>
+#include <gst/gst.h>
 
 // ============================================================================
 // YOLOV5 Pose Detection Post-Processing Library for DX Stream
@@ -28,7 +32,10 @@
  * - 17 pose keypoints (conf, x, y for each keypoint)
  */
 struct PoseDetection {
-    float x1, y1, x2, y2;      // Bounding box coordinates (left, top, right, bottom)
+    float x1;
+    float y1;
+    float x2;
+    float y2;
     float confidence;           // Detection confidence (0.0 to 1.0)
     std::vector<std::tuple<float, float, float>> keypoints;  // 17 pose keypoints (conf, x, y)
     
@@ -62,9 +69,9 @@ struct PoseConfig {
  * @param tensor_name Name of the tensor to search for
  * @return Index of the tensor if found, -1 otherwise
  */
- inline int get_index_by_tensor_name(const std::vector<dxs::DXTensor>& network_output, const std::string& tensor_name) {
+ inline int get_index_by_tensor_name(const dxrt::TensorPtrs& network_output, const std::string& tensor_name) {
     for (size_t i = 0; i < network_output.size(); i++) {
-        if (network_output[i]._name == tensor_name) {
+        if (network_output[i]->name() == tensor_name) {
             return static_cast<int>(i);
         }
     }
@@ -147,14 +154,14 @@ std::vector<PoseDetection> nms(std::vector<PoseDetection>& poses, float threshol
  * @param config Configuration parameters
  * @return Vector of detected poses
  */
-std::vector<PoseDetection> parse_pose_output(const dxs::DXTensor& output, 
+std::vector<PoseDetection> parse_pose_output(const std::shared_ptr<dxrt::Tensor>& output, 
                                             const PoseConfig& config) {
     std::vector<PoseDetection> poses;
-    const float* data = static_cast<const float*>(output._data);
+    const auto* data = static_cast<const float*>(output->data());
     
     // Tensor shape: [batch, num_detections, 57]
-    int num_detections = output._shape[1];
-    int features_per_detection = output._shape[2];  // 57
+    auto num_detections = static_cast<int>(output->shape()[1]);
+    auto features_per_detection = static_cast<int>(output->shape()[2]);
     
     for (int i = 0; i < num_detections; i++) {
         // Get data for current detection
@@ -212,12 +219,12 @@ std::vector<PoseDetection> parse_pose_output(const dxs::DXTensor& output,
 PoseDetection scale_pose(const PoseDetection& pose, int orig_width, int orig_height, 
                         int model_width, int model_height) {
     // Calculate scaling ratio (maintains aspect ratio)
-    float r = std::min(static_cast<float>(model_width) / orig_width,
-                       static_cast<float>(model_height) / orig_height);
+    float r = std::min(static_cast<float>(model_width) / static_cast<float>(orig_width),
+                       static_cast<float>(model_height) / static_cast<float>(orig_height));
     
     // Calculate padding that was added during preprocessing
-    float w_pad = (model_width - orig_width * r) / 2.0f;
-    float h_pad = (model_height - orig_height * r) / 2.0f;
+    float w_pad = (static_cast<float>(model_width) - static_cast<float>(orig_width) * r) / 2.0f;
+    float h_pad = (static_cast<float>(model_height) - static_cast<float>(orig_height) * r) / 2.0f;
     
     // Remove padding and scale to original image coordinates
     float x1 = (pose.x1 - w_pad) / r;
@@ -255,10 +262,12 @@ PoseDetection scale_pose(const PoseDetection& pose, int orig_width, int orig_hei
  * @param frame_meta Frame metadata containing image dimensions and ROI
  * @param object_meta Object metadata (output parameter)
  */
-extern "C" void PostProcess(GstBuffer *buf,
-                            std::vector<dxs::DXTensor> network_output,
-                            DXFrameMeta *frame_meta,
-                            DXObjectMeta *object_meta) {
+extern "C" void PostProcess(GstBuffer* buf,
+                            const dxrt::TensorPtrs& network_output,
+                            DXFrameMeta* frame_meta,
+                            DXObjectMeta* object_meta) {
+    std::ignore = buf;
+    std::ignore = object_meta;
     // ============================================================================
     // CONFIGURATION SETUP
     // ============================================================================
@@ -318,7 +327,7 @@ extern "C" void PostProcess(GstBuffer *buf,
         DXObjectMeta *obj_meta = dx_acquire_obj_meta_from_pool();
         obj_meta->_confidence = scaled_pose.confidence;
         obj_meta->_label = 0;  // Person class
-        obj_meta->_label_name = g_string_new("person");
+        obj_meta->_label_name = "person";
         obj_meta->_box[0] = scaled_pose.x1;
         obj_meta->_box[1] = scaled_pose.y1;
         obj_meta->_box[2] = scaled_pose.x2;
@@ -332,31 +341,32 @@ extern "C" void PostProcess(GstBuffer *buf,
             float ky = std::get<2>(scaled_pose.keypoints[k]);
             
             // Only add keypoints with sufficient confidence
-            if (conf >= config.kpt_conf_threshold) {
-                // Clamp keypoint coordinates to image boundaries
-                kx = std::max(0.0f, std::min(static_cast<float>(orig_width), kx));
-                ky = std::max(0.0f, std::min(static_cast<float>(orig_height), ky));
-                
-                // Add keypoints in x, y, confidence order
-                if (frame_meta->_roi[0] != -1 && frame_meta->_roi[1] != -1 &&
-                    frame_meta->_roi[2] != -1 && frame_meta->_roi[3] != -1) {
-                    obj_meta->_keypoints.push_back(kx + frame_meta->_roi[0]);
-                    obj_meta->_keypoints.push_back(ky + frame_meta->_roi[1]);
-                } else {
-                    obj_meta->_keypoints.push_back(kx);
-                    obj_meta->_keypoints.push_back(ky);
-                }
-                obj_meta->_keypoints.push_back(conf);
+            if (conf < config.kpt_conf_threshold) {
+                continue;
             }
+            // Clamp keypoint coordinates to image boundaries
+            kx = std::max(0.0f, std::min(static_cast<float>(orig_width), kx));
+            ky = std::max(0.0f, std::min(static_cast<float>(orig_height), ky));
+            
+            // Add keypoints in x, y, confidence order
+            if (frame_meta->_roi[0] != -1 && frame_meta->_roi[1] != -1 &&
+                frame_meta->_roi[2] != -1 && frame_meta->_roi[3] != -1) {
+                obj_meta->_keypoints.push_back(kx + static_cast<float>(frame_meta->_roi[0]));
+                obj_meta->_keypoints.push_back(ky + static_cast<float>(frame_meta->_roi[1]));
+            } else {
+                obj_meta->_keypoints.push_back(kx);
+                obj_meta->_keypoints.push_back(ky);
+            }
+            obj_meta->_keypoints.push_back(conf);
         }
         
         // Adjust coordinates if ROI is specified
         if (frame_meta->_roi[0] != -1 && frame_meta->_roi[1] != -1 &&
             frame_meta->_roi[2] != -1 && frame_meta->_roi[3] != -1) {
-            obj_meta->_box[0] += frame_meta->_roi[0];
-            obj_meta->_box[1] += frame_meta->_roi[1];
-            obj_meta->_box[2] += frame_meta->_roi[0];
-            obj_meta->_box[3] += frame_meta->_roi[1];
+            obj_meta->_box[0] += static_cast<float>(frame_meta->_roi[0]);
+            obj_meta->_box[1] += static_cast<float>(frame_meta->_roi[1]);
+            obj_meta->_box[2] += static_cast<float>(frame_meta->_roi[0]);
+            obj_meta->_box[3] += static_cast<float>(frame_meta->_roi[1]);
         }
         
         // Add object to frame metadata

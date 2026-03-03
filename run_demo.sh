@@ -10,9 +10,30 @@ pushd $DX_STREAM_PATH
 
 print_colored "DX_STREAM_PATH: $DX_STREAM_PATH" "INFO"
 
-if ! test -e "/usr/local/lib/libgstdxstream.so"; then
-    print_colored "dx_stream is not built. Building dx_stream first before running the demo." "INFO"
-    ./build.sh
+if ! gst-inspect-1.0 dxstream >/dev/null 2>&1; then
+    print_colored "dxstream plugin not found. Trying to reload environment variables..." "WARNING"
+    
+    # Try sourcing bashrc to load environment variables
+    if [ -f "$HOME/.bashrc" ]; then
+        source "$HOME/.bashrc" 2>/dev/null
+        
+        # Check again after sourcing
+        if gst-inspect-1.0 dxstream >/dev/null 2>&1; then
+            print_colored "dxstream plugin found after reloading environment." "SUCCESS"
+        else
+            print_colored "dxstream plugin still not found." "ERROR"
+            print_colored "Please build DX-STREAM first:" "ERROR"
+            print_colored "  $ ./build.sh" "INFO"
+            print_colored "Or if already built, try:" "INFO"
+            print_colored "  $ source ~/.bashrc" "INFO"
+            print_colored "  $ ./run_demo.sh" "INFO"
+            exit 1
+        fi
+    else
+        print_colored "~/.bashrc not found. Please build DX-STREAM first:" "ERROR"
+        print_colored "  $ ./build.sh" "INFO"
+        exit 1
+    fi
 fi
 
 check_valid_dir_or_symlink() {
