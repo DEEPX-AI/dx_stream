@@ -1,3 +1,8 @@
+## Version 2.2.1 (Feb 2026)
+
+#### Changed
+- Update sample models version from dx_com v2.2.0 to v2.2.1
+
 ## Version 2.2.0 (Dec 2025)
 
 #### Changed
