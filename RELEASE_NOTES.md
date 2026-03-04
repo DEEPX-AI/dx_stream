@@ -1,5 +1,10 @@
 # RELEASE_NOTES
 
+## DX-Stream 2.2.1 / 2025-02-28
+
+### 1. Changed
+- Update sample models version from dx_com v2.2.0 to v2.2.1
+
 ## DX-Stream v2.2.0 / 2025-12-30
 
 ### 1. Changed
