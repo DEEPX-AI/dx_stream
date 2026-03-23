@@ -8,12 +8,19 @@
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
 #include <gst/gst.h>
+#include <dxrt/dxrt_api.h>
 
 #include "gst-dxframemeta.hpp"
 #include "gst-dxobjectmeta.hpp"
 #include "gst-dxusermeta.hpp"
 
 namespace py = pybind11;
+
+// Custom exception for unsupported tensor data types
+class UnsupportedTensorDataTypeException : public std::runtime_error {
+public:
+    using std::runtime_error::runtime_error;
+};
 
 // Python-owned user meta values need manual ref counting hooks.
 void python_object_free_cb(void *data) {
@@ -30,87 +37,76 @@ void *python_object_copy_cb(void *data) {
 }
 
 // Helper function to convert DataType to numpy dtype
-py::dtype get_numpy_dtype(dxs::DataType type) {
+py::dtype get_numpy_dtype(dxrt::DataType type) {
     switch (type) {
-        case dxs::DataType::FLOAT:
+        case dxrt::DataType::FLOAT:
             return py::dtype::of<float>();
-        case dxs::DataType::UINT8:
+        case dxrt::DataType::UINT8:
             return py::dtype::of<uint8_t>();
-        case dxs::DataType::INT8:
+        case dxrt::DataType::INT8:
             return py::dtype::of<int8_t>();
-        case dxs::DataType::UINT16:
+        case dxrt::DataType::UINT16:
             return py::dtype::of<uint16_t>();
-        case dxs::DataType::INT16:
+        case dxrt::DataType::INT16:
             return py::dtype::of<int16_t>();
-        case dxs::DataType::INT32:
+        case dxrt::DataType::INT32:
             return py::dtype::of<int32_t>();
-        case dxs::DataType::INT64:
+        case dxrt::DataType::INT64:
             return py::dtype::of<int64_t>();
-        case dxs::DataType::UINT32:
+        case dxrt::DataType::UINT32:
             return py::dtype::of<uint32_t>();
-        case dxs::DataType::UINT64:
+        case dxrt::DataType::UINT64:
             return py::dtype::of<uint64_t>();
         default:
-            throw std::runtime_error("Unsupported tensor data type");
+            throw UnsupportedTensorDataTypeException("Unsupported tensor data type");
     }
 }
 
-// Get tensor as numpy array (zero-copy, writable)
-py::array get_tensor_as_numpy(const dxs::DXTensor &tensor) {
-    if (tensor._data == nullptr) {
-        throw std::runtime_error("Tensor data is null");
-    }
-    
-    if (tensor._shape.empty()) {
-        throw std::runtime_error("Tensor shape is empty");
-    }
-    
-    // Convert shape from int64_t to py::ssize_t
-    std::vector<py::ssize_t> shape(tensor._shape.begin(), tensor._shape.end());
-    
-    // Calculate strides (row-major/C-contiguous)
-    std::vector<py::ssize_t> strides(shape.size());
-    py::ssize_t stride = tensor._elemSize;
-    for (int i = shape.size() - 1; i >= 0; --i) {
-        strides[i] = stride;
-        stride *= shape[i];
-    }
-    
-    // Get numpy dtype
-    py::dtype dtype = get_numpy_dtype(tensor._type);
-    
-    // Create numpy array (no copy, reference to original data)
-    // ⚠️ WARNING: Array is WRITABLE - modifying it will affect the pipeline!
-    // Use .copy() if you need to modify without affecting the original data.
-    py::array result(dtype, shape, strides, tensor._data, py::none());
-    
-    // Array is writable by default (no read-only flag set)
-    // Advanced users can modify tensor data in-place if needed
-    
-    return result;
-}
-
-// Convert DXTensors to Python list of numpy arrays
-py::list convert_dxtensors_to_list(const dxs::DXTensors &tensors) {
-    py::list result;
-    for (const auto &tensor : tensors._tensors) {
-        result.append(get_tensor_as_numpy(tensor));
-    }
-    return result;
-}
-
-// Convert std::map<int, dxs::DXTensors> to Python dict {network_id: [tensor1, tensor2, ...]}
-py::dict convert_tensor_map_to_dict(const std::map<int, dxs::DXTensors> &tensor_map) {
+// Convert std::map<int, dxrt::TensorPtrs> to Python dict {network_id: [tensor_info, ...]}
+// Note: Direct tensor data access removed - tensors are managed by dxrt
+py::dict convert_tensor_map_to_dict(const std::map<int, dxrt::TensorPtrs> &tensor_map) {
     py::dict result;
-    for (const auto &[network_id, tensors] : tensor_map) {
-        result[py::int_(network_id)] = convert_dxtensors_to_list(tensors);
+    for (const auto &entry : tensor_map) {
+        py::list tensor_list;
+        for (const auto &tensor : entry.second) {
+            py::dict info;
+            info["name"] = tensor->name();
+            // Shape and data access would require dxrt API exposure
+            tensor_list.append(info);
+        }
+        result[py::int_(entry.first)] = tensor_list;
     }
     return result;
+}
+
+// Convert std::map<int, dxs::InputBuffers> to Python dict {network_id: [buffer_info, ...]}
+py::dict convert_input_buffer_map_to_dict(const std::map<int, dxs::InputBuffers> &buffer_map) {
+    py::dict result;
+    for (const auto &entry : buffer_map) {
+        py::list buffer_list;
+        for (const auto &buffer : entry.second) {
+            py::dict info;
+            info["name"] = buffer.name;
+            info["size"] = buffer.size;
+            // Shape and data access would need additional implementation
+            buffer_list.append(info);
+        }
+        result[py::int_(entry.first)] = buffer_list;
+    }
+    return result;
+}
+
+// Helper function for converting Python integer address to C++ pointer.
+// This is required for Python bindings where addresses are passed as integers.
+// NOSONAR: cpp:S3630 - reinterpret_cast is necessary for address-to-pointer conversion in FFI
+template<typename T>
+T* address_to_pointer(size_t address) {
+    return reinterpret_cast<T*>(address);  // NOSONAR
 }
 
 // Fetch DXFrameMeta from a raw GstBuffer address.
 DXFrameMeta *py_dx_get_frame_meta(size_t gst_buffer_address) {
-    GstBuffer *buffer = reinterpret_cast<GstBuffer *>(gst_buffer_address);
+    auto *buffer = address_to_pointer<GstBuffer>(gst_buffer_address);
     if (!buffer) {
         return nullptr;
     }
@@ -120,16 +116,18 @@ DXFrameMeta *py_dx_get_frame_meta(size_t gst_buffer_address) {
         return nullptr;
     }
 
-    return reinterpret_cast<DXFrameMeta *>(gst_buffer_get_meta(buffer, api_type));
+    // NOSONAR: cpp:S3630 - GstMeta to DXFrameMeta requires reinterpret_cast
+    return reinterpret_cast<DXFrameMeta *>(gst_buffer_get_meta(buffer, api_type));  // NOSONAR
 }
 
 // Create new DXFrameMeta and attach to GstBuffer.
 DXFrameMeta *py_dx_create_frame_meta(size_t gst_buffer_address) {
-    GstBuffer *buffer = reinterpret_cast<GstBuffer *>(gst_buffer_address);
+    auto *buffer = address_to_pointer<GstBuffer>(gst_buffer_address);
     if (!buffer) {
         return nullptr;
     }
-    return dx_create_frame_meta(buffer);
+    buffer = dx_create_frame_meta(buffer);
+    return dx_get_frame_meta(buffer);
 }
 
 // Add DXObjectMeta to DXFrameMeta.
@@ -151,25 +149,20 @@ bool py_dx_remove_obj_meta_from_frame(DXFrameMeta *frame_meta, DXObjectMeta *obj
 // Ensure buffer is writable and create/get DXFrameMeta.
 // This solves the Python refcount issue by handling writability in C++.
 DXFrameMeta *py_dx_ensure_writable_and_create_meta(size_t probe_info_address) {
-    GstPadProbeInfo *info = reinterpret_cast<GstPadProbeInfo *>(probe_info_address);
+    auto *info = address_to_pointer<GstPadProbeInfo>(probe_info_address);
     
     if (!info) return nullptr;
 
-    GstBuffer *buffer = GST_PAD_PROBE_INFO_BUFFER(info);
+    auto *buffer = GST_PAD_PROBE_INFO_BUFFER(info);
     if (!buffer) return nullptr;
 
-    // 1. Make buffer writable (may create a copy)
-    // Performed at C++ level, so Python refcount is not an issue
-    buffer = gst_buffer_make_writable(buffer);
-    
-    // 2. Update the buffer pointer in ProbeInfo
-    // This ensures the pipeline uses the new (writable) buffer downstream
     GST_PAD_PROBE_INFO_DATA(info) = buffer;
 
     // 3. Get or create metadata
     DXFrameMeta *meta = dx_get_frame_meta(buffer);
     if (!meta) {
-        meta = dx_create_frame_meta(buffer);
+        buffer = dx_create_frame_meta(buffer);
+        meta = dx_get_frame_meta(buffer);
     }
     
     return meta;
@@ -178,7 +171,7 @@ DXFrameMeta *py_dx_ensure_writable_and_create_meta(size_t probe_info_address) {
 // Context Manager helper struct for "with pydxs.writable_buffer(info) as meta:"
 struct WritableBufferContext {
     size_t probe_info_address;
-    WritableBufferContext(size_t addr) : probe_info_address(addr) {}
+    explicit WritableBufferContext(size_t addr) : probe_info_address(addr) {}
 };
 
 PYBIND11_MODULE(pydxs, m) {
@@ -206,6 +199,14 @@ PYBIND11_MODULE(pydxs, m) {
     if (!gst_is_initialized()) {
         gst_init(nullptr, nullptr);
     }
+
+    // =========================================================================
+    // Enums
+    // =========================================================================
+    py::enum_<DXUserMetaType>(m, "DXUserMetaType", "User metadata type enumeration")
+        .value("FRAME", DXUserMetaType::DX_USER_META_FRAME, "Frame-level user metadata")
+        .value("OBJECT", DXUserMetaType::DX_USER_META_OBJECT, "Object-level user metadata")
+        .export_values();
 
     // =========================================================================
     // Context Manager
@@ -246,7 +247,7 @@ PYBIND11_MODULE(pydxs, m) {
         .def_property(
             "data",
             [](dxs::SegClsMap &seg) {
-                return py::bytes(reinterpret_cast<const char *>(seg.data.data()), seg.data.size());
+                return py::bytes(static_cast<const char *>(static_cast<const void *>(seg.data.data())), seg.data.size());
             },
             [](dxs::SegClsMap &seg, py::bytes payload) {
                 std::string buffer = payload;
@@ -279,28 +280,14 @@ PYBIND11_MODULE(pydxs, m) {
         .def_readwrite("confidence", &DXObjectMeta::_confidence, "Detection confidence")
         .def_readwrite("face_confidence", &DXObjectMeta::_face_confidence, "Face detection confidence")
         
-        // Read-only properties (computed)
-        .def_property_readonly(
-            "num_obj_user_meta",
-            [](const DXObjectMeta &meta) { return meta._num_obj_user_meta; },
-            "Number of attached user metadata")
-        
         // Read/write properties (strings)
         .def_property(
             "label_name",
             [](const DXObjectMeta &meta) {
-                return meta._label_name ? std::string(meta._label_name->str) : std::string("");
+                return meta._label_name;
             },
             [](DXObjectMeta &meta, const std::string &name) {
-                // Release existing GString if present
-                if (meta._label_name) {
-                    g_string_free(meta._label_name, TRUE);
-                    meta._label_name = nullptr;
-                }
-                // Create new GString with provided name
-                if (!name.empty()) {
-                    meta._label_name = g_string_new(name.c_str());
-                }
+                meta._label_name = name;
             },
             "Human-readable label name (e.g., 'person', 'car')")
         
@@ -314,7 +301,7 @@ PYBIND11_MODULE(pydxs, m) {
                 if (v.size() < 4) {
                     throw std::runtime_error("Box must contain 4 floats");
                 }
-                std::copy(v.begin(), v.begin() + 4, meta._box);
+                std::copy(v.begin(), v.begin() + 4, meta._box.begin());
             },
             "Bounding box [left, top, right, bottom] (x1, y1, x2, y2)")
         .def_property(
@@ -325,7 +312,7 @@ PYBIND11_MODULE(pydxs, m) {
             },
             [](DXObjectMeta &meta, const std::vector<float> &v) {
                 if (v.size() >= 4) {
-                    std::copy(v.begin(), v.begin() + 4, meta._face_box);
+                    std::copy(v.begin(), v.begin() + 4, meta._face_box.begin());
                 }
             },
             "Face bounding box [left, top, right, bottom] (x1, y1, x2, y2)")
@@ -344,8 +331,8 @@ PYBIND11_MODULE(pydxs, m) {
         .def_property(
             "face_landmarks",
             [](DXObjectMeta &meta) { return meta._face_landmarks; },
-            [](DXObjectMeta &meta, const std::vector<dxs::Point_f> &pts) { meta._face_landmarks = pts; },
-            "Face landmarks")
+            [](DXObjectMeta &meta, const std::vector<float> &pts) { meta._face_landmarks = pts; },
+            "Face landmarks (flat array: x, y, conf, x, y, conf, ...)")
         .def_property(
             "face_feature",
             [](DXObjectMeta &meta) { return meta._face_feature; },
@@ -368,7 +355,7 @@ PYBIND11_MODULE(pydxs, m) {
 
                 PyObject *py_obj = data.ptr();
                 Py_XINCREF(py_obj);
-                dx_user_meta_set_data(new_meta, (void *)py_obj, sizeof(PyObject *), static_cast<guint>(type_id),
+                dx_user_meta_set_data(new_meta, (void *)py_obj, sizeof(PyObject *), static_cast<DXUserMetaType>(type_id),
                                       python_object_free_cb, python_object_copy_cb);
                 dx_add_user_meta_to_obj(&self, new_meta);
                 return true;
@@ -379,11 +366,10 @@ PYBIND11_MODULE(pydxs, m) {
             "dx_get_object_user_metas",
             [](DXObjectMeta &self) {
                 py::list result;
-                GList *meta_list = dx_get_object_user_metas(&self);
-                for (GList *l = meta_list; l != nullptr; l = l->next) {
-                    result.append(static_cast<DXUserMeta *>(l->data));
+                auto meta_list = dx_get_object_user_metas(&self);
+                for (auto user_meta : *meta_list) {
+                    result.append(user_meta);
                 }
-                g_list_free(meta_list);
                 return result;
             },
             "Get list of attached DXUserMeta objects")
@@ -392,7 +378,7 @@ PYBIND11_MODULE(pydxs, m) {
         .def_property_readonly(
             "input_tensors",
             [](DXObjectMeta &self) -> py::dict {
-                return convert_tensor_map_to_dict(self._input_tensors);
+                return convert_input_buffer_map_to_dict(self._input_tensors);
             },
             "Get input tensors as dict {network_id: [tensor1, tensor2, ...]} (zero-copy)")
         .def_property_readonly(
@@ -416,19 +402,15 @@ PYBIND11_MODULE(pydxs, m) {
         .def_property_readonly(
             "format",
             [](const DXFrameMeta &meta) {
-                return meta._format ? std::string(meta._format) : std::string("");
+                return meta._format;
             },
             "Video format string (e.g., 'NV12', 'RGB')")
         .def_property_readonly(
             "name",
             [](const DXFrameMeta &meta) {
-                return meta._name ? std::string(meta._name) : std::string("");
+                return meta._name;
             },
             "Stream name")
-        .def_property_readonly(
-            "num_frame_user_meta",
-            [](const DXFrameMeta &meta) { return meta._num_frame_user_meta; },
-            "Number of attached user metadata")
         
         // Read/write properties (arrays)
         .def_property(
@@ -449,10 +431,9 @@ PYBIND11_MODULE(pydxs, m) {
             "object_meta_list",
             [](DXFrameMeta &meta) {
                 py::list objects;
-                for (GList *l = meta._object_meta_list; l != nullptr; l = l->next) {
-                    if (l->data) {
-                        objects.append(py::cast(static_cast<DXObjectMeta *>(l->data),
-                                                py::return_value_policy::reference));
+                for (auto obj_meta : meta._object_meta_list) {
+                    if (obj_meta) {
+                        objects.append(py::cast(obj_meta, py::return_value_policy::reference));
                     }
                 }
                 return objects;
@@ -463,10 +444,9 @@ PYBIND11_MODULE(pydxs, m) {
         .def("__iter__",
             [](DXFrameMeta &meta) {
                 py::list objects;
-                for (GList *l = meta._object_meta_list; l != nullptr; l = l->next) {
-                    if (l->data) {
-                        objects.append(py::cast(static_cast<DXObjectMeta *>(l->data),
-                                                py::return_value_policy::reference));
+                for (auto obj_meta : meta._object_meta_list) {
+                    if (obj_meta) {
+                        objects.append(py::cast(obj_meta, py::return_value_policy::reference));
                     }
                 }
                 return py::iter(objects);
@@ -484,7 +464,7 @@ PYBIND11_MODULE(pydxs, m) {
 
                 PyObject *py_obj = data.ptr();
                 Py_XINCREF(py_obj);
-                dx_user_meta_set_data(new_meta, (void *)py_obj, sizeof(PyObject *), static_cast<guint>(type_id),
+                dx_user_meta_set_data(new_meta, (void *)py_obj, sizeof(PyObject *), static_cast<DXUserMetaType>(type_id),
                                       python_object_free_cb, python_object_copy_cb);
                 dx_add_user_meta_to_frame(&self, new_meta);
                 return true;
@@ -495,11 +475,10 @@ PYBIND11_MODULE(pydxs, m) {
             "dx_get_frame_user_metas",
             [](DXFrameMeta &self) {
                 py::list result;
-                GList *meta_list = dx_get_frame_user_metas(&self);
-                for (GList *l = meta_list; l != nullptr; l = l->next) {
-                    result.append(static_cast<DXUserMeta *>(l->data));
+                auto meta_list = dx_get_frame_user_metas(&self);
+                for (auto user_meta : *meta_list) {
+                    result.append(user_meta);
                 }
-                g_list_free(meta_list);
                 return result;
             },
             "Get list of attached DXUserMeta objects")
@@ -508,7 +487,7 @@ PYBIND11_MODULE(pydxs, m) {
         .def_property_readonly(
             "input_tensors",
             [](DXFrameMeta &self) -> py::dict {
-                return convert_tensor_map_to_dict(self._input_tensors);
+                return convert_input_buffer_map_to_dict(self._input_tensors);
             },
             "Get input tensors as dict {network_id: [tensor1, tensor2, ...]} (zero-copy)")
         .def_property_readonly(

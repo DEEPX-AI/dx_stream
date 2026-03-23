@@ -1,5 +1,5 @@
-#include <dx_stream/gst-dxframemeta.hpp>
-#include <dx_stream/gst-dxobjectmeta.hpp>
+#include <gstdxstream/gst-dxframemeta.hpp>
+#include <gstdxstream/gst-dxobjectmeta.hpp>
 #include <gst/check/gstcheck.h>
 #include <gst/gst.h>
 
@@ -80,14 +80,14 @@ static gboolean bus_call(GstBus *bus, GstMessage *msg, gpointer data) {
     GMainLoop *loop = (GMainLoop *)data;
 
     switch (GST_MESSAGE_TYPE(msg)) {
-    case GST_MESSAGE_EOS:
+    case GST_MESSAGE_EOS: {
         g_print("End-of-Stream received\n");
         g_main_loop_quit(loop);
-        break;
-    case GST_MESSAGE_ERROR:
+    } break;
+    case GST_MESSAGE_ERROR: {
         g_print("Error received in pipeline\n");
         g_main_loop_quit(loop);
-        break;
+    } break;
     default:
         break;
     }
@@ -106,8 +106,7 @@ static GstPadProbeReturn probe_primary(GstPad *pad, GstPadProbeInfo *info,
     
     DXFrameMeta *frame_meta = dx_get_frame_meta(buffer);
     if (frame_meta) {
-        for (GList *l = frame_meta->_object_meta_list; l != NULL; l = l->next) {
-            DXObjectMeta *object_meta = (DXObjectMeta *)l->data;
+        for (auto object_meta : frame_meta->_object_meta_list) {
             pred[object_meta->_label].push_back(
                 {object_meta->_box[0], object_meta->_box[1],
                  object_meta->_box[2], object_meta->_box[3]});
@@ -119,6 +118,7 @@ static GstPadProbeReturn probe_primary(GstPad *pad, GstPadProbeInfo *info,
 }
 
 void yolo_pipeline(std::string models) {
+    g_print("Running for model: %s\n", models.c_str());
     GMainLoop *loop = g_main_loop_new(NULL, FALSE);
     GstElement *pipeline = gst_pipeline_new("test-pipeline");
     GstBus *bus = gst_element_get_bus(pipeline);
@@ -133,7 +133,7 @@ void yolo_pipeline(std::string models) {
     gst_value_set_fraction(&framerate, 30, 1);
     g_object_set_property(G_OBJECT(videosrc), "framerate", &framerate);
     g_value_unset(&framerate);
-    g_object_set(videosrc, "num-buffers", 3, NULL);
+    g_object_set(videosrc, "num-buffers", 10, NULL);
 
     GstElement *jpegparse = gst_element_factory_make("jpegparse", NULL);
     fail_unless(jpegparse != NULL, "Failed to create jpegparse element");
@@ -197,6 +197,7 @@ void yolo_pipeline(std::string models) {
 }
 
 void yolo_pose_pipeline(std::string models) {
+    g_print("Running for model: %s\n", models.c_str());
     GMainLoop *loop = g_main_loop_new(NULL, FALSE);
     GstElement *pipeline = gst_pipeline_new("test-pipeline");
     GstBus *bus = gst_element_get_bus(pipeline);

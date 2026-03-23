@@ -1,6 +1,6 @@
 #include "dxgenobj.hpp"
-#include "gst-dxframemeta.hpp"
-#include "gst-dxobjectmeta.hpp"
+#include "gstdxstream/gst-dxframemeta.hpp"
+#include "gstdxstream/gst-dxobjectmeta.hpp"
 
 enum {
     PROP_0,
@@ -165,7 +165,8 @@ static GstFlowReturn gst_dxgenobj_transform_ip(GstBaseTransform *trans,
     DXFrameMeta *frame_meta = dx_get_frame_meta(buf);
 
     if (!frame_meta) {
-        frame_meta = dx_create_frame_meta(buf);
+        buf = dx_create_frame_meta(buf);
+        frame_meta = dx_get_frame_meta(buf);
         frame_meta->_format = "I420";
         frame_meta->_name = "test";
     }

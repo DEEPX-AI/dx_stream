@@ -123,7 +123,7 @@ void collectSimpleMatches(
         for (int j = 0; j < a.cols(); ++j) {
             if (a(i, j) > 0) {
                 Eigen::RowVectorXf row(2);
-                row << i, j;
+                row << static_cast<float>(i), static_cast<float>(j);
                 matched_indices.conservativeResize(matched_indices.rows() + 1,
                                                    Eigen::NoChange);
                 matched_indices.row(matched_indices.rows() - 1) = row;
@@ -142,14 +142,12 @@ void fillCostIouMatrix(const Eigen::MatrixXf &cost_matrix,
 }
 
 void collectHungarianMatches(
-    const std::vector<int> &rowsol, const std::vector<int> &colsol,
-    Eigen::Matrix<float, Eigen::Dynamic, 2> &matched_indices) {
+    const std::vector<int> &rowsol, Eigen::Matrix<float, Eigen::Dynamic, 2> &matched_indices) {
     for (size_t i = 0; i < rowsol.size(); ++i) {
         if (rowsol[i] >= 0) {
             Eigen::RowVectorXf row(2);
-            row << colsol[rowsol[i]], rowsol[i];
-            matched_indices.conservativeResize(matched_indices.rows() + 1,
-                                               Eigen::NoChange);
+            row << static_cast<float>(i), static_cast<float>(rowsol[i]);
+            matched_indices.conservativeResize(matched_indices.rows() + 1, Eigen::NoChange);
             matched_indices.row(matched_indices.rows() - 1) = row;
         }
     }
@@ -170,7 +168,8 @@ associate(Eigen::MatrixXf detections, Eigen::MatrixXf trackers,
                                unmatched_dets, std::vector<int>());
     }
 
-    Eigen::MatrixXf Y, X;
+    Eigen::MatrixXf Y;
+    Eigen::MatrixXf X;
     std::tie(Y, X) = speed_direction_batch(detections, previous_obs_);
 
     Eigen::MatrixXf inertia_Y = velocities.col(0);
@@ -220,23 +219,24 @@ associate(Eigen::MatrixXf detections, Eigen::MatrixXf trackers,
                 cost_matrix.rows(), std::vector<float>(cost_matrix.cols()));
             fillCostIouMatrix(cost_matrix, cost_iou_matrix);
 
-            std::vector<int> rowsol, colsol;
+            std::vector<int> rowsol;
+            std::vector<int> colsol;
             execLapjv(cost_iou_matrix, rowsol, colsol, true, 0.01f, true);
 
-            collectHungarianMatches(rowsol, colsol, matched_indices);
+            collectHungarianMatches(rowsol, matched_indices);
         }
     }
 
     std::vector<int> unmatched_detections;
     for (int i = 0; i < detections.rows(); ++i) {
-        if ((matched_indices.col(0).array() == i).sum() == 0) {
+        if ((matched_indices.col(0).array() == static_cast<float>(i)).sum() == 0) {
             unmatched_detections.push_back(i);
         }
     }
 
     std::vector<int> unmatched_trackers;
     for (int i = 0; i < trackers.rows(); ++i) {
-        if ((matched_indices.col(1).array() == i).sum() == 0) {
+        if ((matched_indices.col(1).array() == static_cast<float>(i)).sum() == 0) {
             unmatched_trackers.push_back(i);
         }
     }

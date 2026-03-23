@@ -1,9 +1,13 @@
-#include "dx_stream/gst-dxframemeta.hpp"
-#include "dx_stream/gst-dxobjectmeta.hpp"
+#include "gstdxstream/gst-dxframemeta.hpp"
+#include "gstdxstream/gst-dxobjectmeta.hpp"
+#include <dxrt/dxrt_api.h>
 #include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <vector>
+#include <tuple>
+#include <glib.h>
+#include <gst/gst.h>
 
 // YOLO Post-Processing Library for DX Stream
 // This is a template implementation for YOLO object detection post-processing.
@@ -17,7 +21,10 @@
  * @brief Simple bounding box structure for detected objects
  */
 struct BoundingBox {
-    float x1, y1, x2, y2;      // Bounding box coordinates (left, top, right, bottom)
+    float x1;
+    float y1;
+    float x2;
+    float y2;
     float confidence;           // Detection confidence (0.0 to 1.0)
     int class_id;              // Class ID (0-based index)
     std::string class_name;    // Human-readable class name
@@ -69,9 +76,9 @@ struct YoloConfig {
  * @param tensor_name Name of the tensor to search for
  * @return Index of the tensor if found, -1 otherwise
  */
- inline int get_index_by_tensor_name(const std::vector<dxs::DXTensor>& network_output, const std::string& tensor_name) {
+ inline int get_index_by_tensor_name(const dxrt::TensorPtrs& network_output, const std::string& tensor_name) {
     for (size_t i = 0; i < network_output.size(); i++) {
-        if (network_output[i]._name == tensor_name) {
+        if (network_output[i]->name() == tensor_name) {
             return static_cast<int>(i);
         }
     }
@@ -106,41 +113,68 @@ float calculate_iou(const BoundingBox& box1, const BoundingBox& box2) {
     return intersection / (area1 + area2 - intersection);
 }
 
-/**
- * @brief Non-Maximum Suppression (NMS) to remove overlapping detections
- */
-std::vector<BoundingBox> nms(std::vector<BoundingBox>& boxes, float threshold) {
-    if (boxes.empty()) return {};
+// Helper function: Perform NMS on boxes of a single class
+std::vector<BoundingBox> nms_single_class(std::vector<BoundingBox>& boxes_per_class, float threshold) {
+    if (boxes_per_class.empty()) return {};
     
     // Sort boxes by confidence (highest first)
-    std::sort(boxes.begin(), boxes.end(), 
+    std::sort(boxes_per_class.begin(), boxes_per_class.end(), 
               [](const BoundingBox& a, const BoundingBox& b) {
                   return a.confidence > b.confidence;
               });
     
-    std::vector<bool> suppressed(boxes.size(), false);
+    std::vector<bool> suppressed(boxes_per_class.size(), false);
     std::vector<BoundingBox> result;
     
-    for (size_t i = 0; i < boxes.size(); ++i) {
+    for (size_t i = 0; i < boxes_per_class.size(); ++i) {
         if (suppressed[i]) continue;
         
-        // Keep the current box
-        result.push_back(boxes[i]);
+        result.push_back(boxes_per_class[i]);
         
         // Check overlap with remaining boxes
-        for (size_t j = i + 1; j < boxes.size(); ++j) {
+        for (size_t j = i + 1; j < boxes_per_class.size(); ++j) {
             if (suppressed[j]) continue;
             
-            // Only suppress boxes of the same class
-            if (boxes[i].class_id == boxes[j].class_id) {
-                if (calculate_iou(boxes[i], boxes[j]) > threshold) {
-                    suppressed[j] = true;
-                }
+            if (calculate_iou(boxes_per_class[i], boxes_per_class[j]) > threshold) {
+                suppressed[j] = true;
             }
         }
     }
     
     return result;
+}
+
+/**
+ * @brief Non-Maximum Suppression (NMS) to remove overlapping detections
+ */
+std::vector<BoundingBox> nms(const std::vector<BoundingBox>& boxes, float threshold, int num_classes) {
+    if (boxes.empty()) return {};
+    
+    // Group boxes by class
+    std::vector<std::vector<BoundingBox>> class_boxes(num_classes);
+    for (auto& box : boxes) {
+        if (box.class_id >= 0 && box.class_id < num_classes) {
+            class_boxes[box.class_id].push_back(box);
+        }
+    }
+    
+    std::vector<BoundingBox> final_boxes;
+    
+    // Perform NMS for each class separately
+    for (auto& boxes_per_class : class_boxes) {
+        if (boxes_per_class.empty()) continue;
+        
+        auto class_result = nms_single_class(boxes_per_class, threshold);
+        final_boxes.insert(final_boxes.end(), class_result.begin(), class_result.end());
+    }
+    
+    // Sort final results by confidence
+    std::sort(final_boxes.begin(), final_boxes.end(), 
+              [](const BoundingBox& a, const BoundingBox& b) {
+                  return a.confidence > b.confidence;
+              });
+    
+    return final_boxes;
 }
 
 // ============================================================================
@@ -154,14 +188,14 @@ std::vector<BoundingBox> nms(std::vector<BoundingBox>& boxes, float threshold) {
  * [num_detections, 5 + num_classes] where each row contains:
  * [x_center, y_center, width, height, objectness, class_scores...]
  */
-std::vector<BoundingBox> parse_single_output(const dxs::DXTensor& output, 
+std::vector<BoundingBox> parse_single_output(const std::shared_ptr<dxrt::Tensor>& output, 
                                              const YoloConfig& config) {
     std::vector<BoundingBox> boxes;
-    const float* data = static_cast<const float*>(output._data);
+    const auto* data = static_cast<const float*>(output->data());
     
     // Tensor shape: [batch, num_detections, 5 + num_classes]
-    int num_detections = output._shape[1];
-    int features_per_detection = output._shape[2];  // 5 + num_classes
+    auto num_detections = static_cast<int>(output->shape()[1]);
+    auto features_per_detection = static_cast<int>(output->shape()[2]);  // 5 + num_classes
     
     for (int i = 0; i < num_detections; i++) {
         // Get data for current detection
@@ -214,10 +248,12 @@ std::vector<BoundingBox> parse_single_output(const dxs::DXTensor& output,
  * 
  * The function then applies NMS and scales coordinates to original image space.
  */
-extern "C" void PostProcess(GstBuffer *buf,
-                            std::vector<dxs::DXTensor> network_output,
-                            DXFrameMeta *frame_meta,
-                            DXObjectMeta *object_meta) {
+extern "C" void PostProcess(GstBuffer* buf,
+                            const dxrt::TensorPtrs& network_output,
+                            DXFrameMeta* frame_meta,
+                            DXObjectMeta* object_meta) {
+    std::ignore = buf;
+    std::ignore = object_meta;
     // Configuration setup
     YoloConfig config;
     
@@ -233,7 +269,7 @@ extern "C" void PostProcess(GstBuffer *buf,
     }
     
     // Non-Maximum Suppression
-    auto final_boxes = nms(all_boxes, config.nms_threshold);
+    auto final_boxes = nms(all_boxes, config.nms_threshold, config.num_classes);
     
     // Get original image dimensions
     int orig_width = frame_meta->_width;
@@ -250,12 +286,12 @@ extern "C" void PostProcess(GstBuffer *buf,
     for (const auto& box : final_boxes) {
         // Scale coordinates to original image space
         // Calculate scaling ratio (maintains aspect ratio)
-        float r = std::min(static_cast<float>(config.input_width) / orig_width,
-                           static_cast<float>(config.input_height) / orig_height);
+        float r = std::min(static_cast<float>(config.input_width) / static_cast<float>(orig_width),
+                           static_cast<float>(config.input_height) / static_cast<float>(orig_height));
         
         // Calculate padding that was added during preprocessing
-        float w_pad = (config.input_width - orig_width * r) / 2.0f;
-        float h_pad = (config.input_height - orig_height * r) / 2.0f;
+        float w_pad = (static_cast<float>(config.input_width) - static_cast<float>(orig_width) * r) / 2.0f;
+        float h_pad = (static_cast<float>(config.input_height) - static_cast<float>(orig_height) * r) / 2.0f;
         
         // Remove padding and scale to original image coordinates
         float x1 = (box.x1 - w_pad) / r;
@@ -273,7 +309,7 @@ extern "C" void PostProcess(GstBuffer *buf,
         DXObjectMeta *obj_meta = dx_acquire_obj_meta_from_pool();
         obj_meta->_confidence = box.confidence;
         obj_meta->_label = box.class_id;
-        obj_meta->_label_name = g_string_new(box.class_name.c_str());
+        obj_meta->_label_name = box.class_name;
         obj_meta->_box[0] = x1;
         obj_meta->_box[1] = y1;
         obj_meta->_box[2] = x2;
@@ -282,10 +318,10 @@ extern "C" void PostProcess(GstBuffer *buf,
         // Adjust coordinates if ROI is specified
         if (frame_meta->_roi[0] != -1 && frame_meta->_roi[1] != -1 &&
             frame_meta->_roi[2] != -1 && frame_meta->_roi[3] != -1) {
-            obj_meta->_box[0] += frame_meta->_roi[0];
-            obj_meta->_box[1] += frame_meta->_roi[1];
-            obj_meta->_box[2] += frame_meta->_roi[0];
-            obj_meta->_box[3] += frame_meta->_roi[1];
+            obj_meta->_box[0] += static_cast<float>(frame_meta->_roi[0]);
+            obj_meta->_box[1] += static_cast<float>(frame_meta->_roi[1]);
+            obj_meta->_box[2] += static_cast<float>(frame_meta->_roi[0]);
+            obj_meta->_box[3] += static_cast<float>(frame_meta->_roi[1]);
         }
         
         // Add object to frame metadata

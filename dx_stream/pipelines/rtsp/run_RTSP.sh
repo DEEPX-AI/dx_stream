@@ -12,7 +12,16 @@ INFER_CONFIG="${SRC_DIR}/configs/Object_Detection/YOLOV5S_3/inference_config.jso
 POSTPROCESS_CONFIG="${SRC_DIR}/configs/Object_Detection/YOLOV5S_3/postprocess_config.json"
 
 RTSP_PUBLIC_URL="rtsp://210.99.70.120:1935"
-# RTSP_INTERNAL_URL="rtsp://192.168.30.11:8554"
+RTSP_INTERNAL_URL="rtsp://192.168.30.100:8554"
+USE_INTERNAL_RTSP=0
+
+for arg in "$@"; do
+    case "$arg" in
+        --internal-rtsp)
+            USE_INTERNAL_RTSP=1
+            ;;
+    esac
+done
 
 if [ "$(lsb_release -rs)" = "18.04" ]; then
     echo -e "Using X11 video sink forcely on ubuntu 18.04"
@@ -20,6 +29,19 @@ if [ "$(lsb_release -rs)" = "18.04" ]; then
 else
     VIDEO_SINK_ARGS=""
 fi
+
+# Default videoconvert pipeline
+VIDEOCONVERT_PIPELINE="videoconvert"
+
+# NOTE: If you experience rendering issues (corrupted/distorted video output) on Orange Pi 5 Plus
+# with Debian 12, uncomment the lines below to force I420 format conversion.
+# See troubleshooting documentation for more details.
+# if grep -q "rk3588" /proc/device-tree/compatible 2>/dev/null; then
+#     if [ "$(lsb_release -rs)" = "12" ]; then
+#         echo "Detected Orange Pi 5 Plus with Debian 12 - using I420 format"
+#         VIDEOCONVERT_PIPELINE="videoconvert ! video/x-raw,format=I420"
+#     fi
+# fi
 
 # check 'vaapidecodebin'
 if gst-inspect-1.0 vaapidecodebin &>/dev/null; then
@@ -41,10 +63,13 @@ echo "Total output resolution: ${OUTPUT_WIDTH}x${OUTPUT_HEIGHT}"
 
 for i in $(seq 0 $((num_pipelines - 1))); do
     rtsp_channel=$(( 2 + i ))
-    formatted_channel=$(printf "%03d" "$rtsp_channel")
-    uri="${RTSP_PUBLIC_URL}/live/cctv${formatted_channel}.stream"
-    # formatted_channel=$(printf "%d" "$rtsp_channel")
-    # uri="${RTSP_INTERNAL_URL}/stream${formatted_channel}"
+    if [ "$USE_INTERNAL_RTSP" -eq 1 ]; then
+        formatted_channel=$(printf "%d" "$rtsp_channel")
+        uri="${RTSP_INTERNAL_URL}/stream${formatted_channel}"
+    else
+        formatted_channel=$(printf "%03d" "$rtsp_channel")
+        uri="${RTSP_PUBLIC_URL}/live/cctv${formatted_channel}.stream"
+    fi
     echo "  Adding pipeline for: ${uri}"
 
     row_idx=$(( i / cols ))
@@ -56,13 +81,13 @@ for i in $(seq 0 $((num_pipelines - 1))); do
         dxpreprocess config-file-path=${PREPROCESS_CONFIG} ! queue max-size-buffers=10 ! \
         dxinfer config-file-path=${INFER_CONFIG} ! queue max-size-buffers=10 ! \
         dxpostprocess config-file-path=${POSTPROCESS_CONFIG} ! queue max-size-buffers=10 ! \
-        dxosd width=${STREAM_WIDTH} height=${STREAM_HEIGHT} "
+        dxosd "
 
-    pipeline_str+="${src_pipe} ! queue max-size-buffers=10 ! comp.sink_${i}"
-    compositor_props+=" sink_${i}::xpos=${xpos} sink_${i}::ypos=${ypos} sink_${i}::width=${STREAM_WIDTH} sink_${i}::height=${STREAM_HEIGHT}"
+    pipeline_str+="${src_pipe} ! queue max-size-buffers=10 ! dxscale width=${STREAM_WIDTH} height=${STREAM_HEIGHT} ! queue max-size-buffers=10 ! comp.sink_${i}"
+    compositor_props+=" sink_${i}::xpos=${xpos} sink_${i}::ypos=${ypos}"
 done
 
-launch_cmd="gst-launch-1.0 ${pipeline_str} compositor name=comp ${compositor_props} ! videoconvert ! fpsdisplaysink $VIDEO_SINK_ARGS"
+launch_cmd="gst-launch-1.0 ${pipeline_str} compositor name=comp ${compositor_props} ! $VIDEOCONVERT_PIPELINE ! fpsdisplaysink $VIDEO_SINK_ARGS"
 echo "--------------------------------------------------"
 echo "Generated gst-launch-1.0 command:"
 echo "${launch_cmd}"

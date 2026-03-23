@@ -1,7 +1,3 @@
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
 #include "gst-dxgather.hpp"
 #include "gst-dxinfer.hpp"
 #include "gst-dxinputselector.hpp"
@@ -10,16 +6,26 @@
 #include "gst-dxpostprocess.hpp"
 #include "gst-dxpreprocess.hpp"
 #include "gst-dxrate.hpp"
+#include "gst-dxscale.hpp"
+#include "gst-dxconvert.hpp"
 #include "gst-dxtracker.hpp"
 #include <gst/gst.h>
 
-#ifdef DEEPX_V3
-#else
+#ifndef DEEPX_V3
 #include "gst-dxmsgbroker.hpp"
 #include "gst-dxmsgconv.hpp"
 #endif
 
+GST_DEBUG_CATEGORY(dxframemeta_cat);
+GST_DEBUG_CATEGORY(dxobjectmeta_cat);
+GST_DEBUG_CATEGORY(dxusermeta_cat);
+
 static gboolean plugin_init(GstPlugin *plugin) {
+    // debug category
+    GST_DEBUG_CATEGORY_INIT(dxframemeta_cat, "dxframemeta", 0, "DX Frame Meta");
+    GST_DEBUG_CATEGORY_INIT(dxobjectmeta_cat, "dxobjectmeta", 0, "DX Object Meta");
+    GST_DEBUG_CATEGORY_INIT(dxusermeta_cat, "dxusermeta", 0, "DX User Meta");
+
     // Pipeline Design Elements
     if (!gst_element_register(plugin, "dxoutputselector", GST_RANK_NONE,
                               GST_TYPE_DXOUTPUTSELECTOR)) {
@@ -34,8 +40,15 @@ static gboolean plugin_init(GstPlugin *plugin) {
         return FALSE;
     }
     // Utility Elements
-#ifdef DEEPX_V3
-#else
+    if (!gst_element_register(plugin, "dxscale", GST_RANK_NONE,
+                              GST_TYPE_DXSCALE)) {
+        return FALSE;
+    }
+    if (!gst_element_register(plugin, "dxconvert", GST_RANK_NONE,
+                              GST_TYPE_DXCONVERT)) {
+        return FALSE;
+    }
+#ifndef DEEPX_V3
     if (!gst_element_register(plugin, "dxmsgconv", GST_RANK_NONE,
                               GST_TYPE_DXMSGCONV)) {
         return FALSE;
@@ -71,10 +84,6 @@ static gboolean plugin_init(GstPlugin *plugin) {
     }
     return TRUE;
 }
-
-#ifndef PACKAGE
-#define PACKAGE "gst-dxstream"
-#endif
 
 GST_PLUGIN_DEFINE(GST_VERSION_MAJOR, GST_VERSION_MINOR, dxstream,
                   "DX Stream plugin", plugin_init, PACKAGE_VERSION, GST_LICENSE,

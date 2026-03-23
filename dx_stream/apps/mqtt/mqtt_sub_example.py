@@ -78,16 +78,15 @@ def on_message(client, userdata, msg):
         ###print("Received message: ", message)
 
         sub_ts = int(round(time.time() * 1000))
-        seqId = message['seqId'] if 'seqId' in message else None
+        seq_id = message['seqId'] if 'seqId' in message else None
 
-        if seqId is None:
+        if seq_id is None:
             return
 
-        if seqId==1:
+        if seq_id==1:
             userdata['sub_ts_old']=sub_ts
 
-        ## print payload
-        print(f"|dSub: {(sub_ts - userdata['sub_ts_old']):3d}| payload => seqId: {seqId:3d}, ...")
+        print(f"|dSub: {(sub_ts - userdata['sub_ts_old']):3d}| payload => seqId: {seq_id:3d}, ...")
 
         userdata['sub_ts_old']=sub_ts
 
@@ -114,5 +113,3 @@ if __name__ == "__main__":
     client.connect(args.hostname, args.port, 60)
     
     client.loop_forever()
-   
-    cv2.destroyAllWindows()

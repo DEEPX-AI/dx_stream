@@ -1,5 +1,5 @@
-#include <dx_stream/gst-dxframemeta.hpp>
-#include <dx_stream/gst-dxobjectmeta.hpp>
+#include <gstdxstream/gst-dxframemeta.hpp>
+#include <gstdxstream/gst-dxobjectmeta.hpp>
 #include <gst/check/gstcheck.h>
 #include <gst/gst.h>
 
@@ -147,12 +147,10 @@ static GstPadProbeReturn probe_single(GstPad *pad, GstPadProbeInfo *info,
 
     DXFrameMeta *frame_meta = dx_get_frame_meta(buffer);
     if (frame_meta) {
-        int objects_size = g_list_length(frame_meta->_object_meta_list);
+        int objects_size = frame_meta->_object_meta_list.size();
         if (single_frame_cnt == 4) {
             DetectionMap pred;
-            for (int o = 0; o < objects_size; o++) {
-                DXObjectMeta *object_meta = (DXObjectMeta *)g_list_nth_data(
-                    frame_meta->_object_meta_list, o);
+            for (auto object_meta : frame_meta->_object_meta_list) {
                 pred[object_meta->_label].push_back(
                     {object_meta->_box[0], object_meta->_box[1],
                      object_meta->_box[2], object_meta->_box[3]});
@@ -255,12 +253,10 @@ static GstPadProbeReturn probe_multi(GstPad *pad, GstPadProbeInfo *info,
     DXFrameMeta *frame_meta = dx_get_frame_meta(buffer);
     if (frame_meta) {
         multi_frame_cnt[frame_meta->_stream_id] += 1;
-        int objects_size = g_list_length(frame_meta->_object_meta_list);
+        int objects_size = frame_meta->_object_meta_list.size();
         if (multi_frame_cnt[frame_meta->_stream_id] == 4) {
             DetectionMap pred;
-            for (int o = 0; o < objects_size; o++) {
-                DXObjectMeta *object_meta = (DXObjectMeta *)g_list_nth_data(
-                    frame_meta->_object_meta_list, o);
+            for (auto object_meta : frame_meta->_object_meta_list) {
                 pred[object_meta->_label].push_back(
                     {object_meta->_box[0], object_meta->_box[1],
                      object_meta->_box[2], object_meta->_box[3]});

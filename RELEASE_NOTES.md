@@ -1,5 +1,43 @@
 # RELEASE_NOTES
 
+## DX-Stream v3.0.0 / 2026-03-03
+
+### 1. Changed
+- Removed automatic `/etc/profile.d/gstdxstream.sh` creation and `~/.bashrc` modifications (no sudo required)
+- Simplified environment setup: standard PREFIX works out-of-the-box, custom PREFIX shows clear setup guide
+- Updated 8 test scripts to self-configure using `INSTALL_PREFIX` variable
+- **Inference Architecture**: Refactored inference process to use native dxrt::TensorPtrs instead of user output buffers for improved performance and memory management
+- **Metadata Structures**: Updated DXFrameMeta and DXObjectMeta structures to align with new inference architecture and dxrt types
+- **Custom PostProcess Interface**: Modified custom postprocess library interface to use dxrt::TensorPtrs for tensor handling
+- **C++ Standard**: Updated project to C++14 standard with modern C++ features (using declarations, enum classes)
+- **Debug Logging**: Enhanced GST_DEBUG-based logging system with more detailed element and metadata debugging information
+- **Dependency Management**: Updated build dependencies to include gstreamer1.0-dev
+- Installation paths to absolute directories
+- Build scripts to support clean mode for removing build directories
+- install prefix added (default /usr/local)
+
+### 2. Fixed
+- **DMA-Buffer Support**: Added zero-copy processing support for DMA-Buffer in RGA preprocessor and DXOSD with proper stride calculation
+- **Orange Pi 5 Plus Compatibility**: Added automatic I420 format conversion for Orange Pi 5 Plus (RK3588) running Debian 12 to fix display corruption issues
+- **Build Process**: Simplified meson setup by removing redundant checks and enhanced cache handling for existing build directories
+- **Buffer Handling**: Streamlined buffer management by removing redundant writable checks and using dx_create_frame_meta API
+- RGA preprocessing build errors on Rockchip SoC
+- SW rendering buffer management: added stream-specific caching for multi-stream scenarios
+- **Code Quality**: Comprehensive code smell improvements across all modules (plugins, elements, metadata, apps, pydxs, broker, preprocessor, tracker)
+- **Memory Management**: Enhanced memory management with smart pointers and improved tensor handling
+- **Container Usage**: Replaced C-style containers with modern C++ containers for object metadata handling
+
+### 3. Added
+- Auto-detection and cleanup of old installation files from previous major versions
+- Context-aware post-build guidance based on installation PREFIX
+- **Documentation**: Added comprehensive debugging guide for troubleshooting
+- **Performance**: Queue size optimization based on device count for better resource utilization
+- **User Guide**: Updated user documentation reflecting new inference process architecture
+- Implemented V3 DSP preprocessor and integrated with video conversion and scaling
+- Enabled DSP for DEEPX V3 SoC, including OSD v3 (RGB buffer drawing) and DSP enablement
+- Added build configuration for v3 architecture
+- Code coverage testing scripts with gcov/lcov
+
 ## DX-Stream 2.2.1 / 2025-02-28
 
 ### 1. Changed

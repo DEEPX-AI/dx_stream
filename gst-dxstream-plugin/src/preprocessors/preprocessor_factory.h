@@ -6,5 +6,5 @@
 
 class PreprocessorFactory {
 public:
-    static Preprocessor* create_preprocessor(GstDxPreprocess *element);
+    static std::shared_ptr<Preprocessor> create_preprocessor(GstDxPreprocess *element);
 };

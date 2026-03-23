@@ -1,4 +1,5 @@
 ﻿#include "../include/OCSort.hpp"
+#include "../include/lapjv.hpp"
 #include "../../common/include/TrackerFactory.hpp"
 #include "iomanip"
 #include <numeric>
@@ -17,7 +18,7 @@ std::ostream &operator<<(std::ostream &os, const std::vector<Matrix> &v) {
     return os;
 }
 
-void OCSort::init(const std::map<std::string, std::string> &params) {
+void OCSort::init(const std::map<std::string, std::string, std::less<>> &params) {
 
     // Helper lambda function to retrieve value or use default
     auto get_param = [&](const std::string &key,
@@ -34,15 +35,8 @@ void OCSort::init(const std::map<std::string, std::string> &params) {
     det_thresh = std::stof(get_param("det_thresh", "0.5"));
     delta_t = std::stoi(get_param("delta_t", "3"));
 
-    std::unordered_map<std::string,
-                       std::function<Eigen::MatrixXf(const Eigen::MatrixXf &,
-                                                     const Eigen::MatrixXf &)>>
-        ASSO_FUNCS{{"iou", iou_batch}, {"giou", giou_batch}};
-
     std::string asso_func_key = get_param("asso_func", "iou");
-    std::function<Eigen::MatrixXf(const Eigen::MatrixXf &,
-                                  const Eigen::MatrixXf &)>
-        asso_func = ASSO_FUNCS[asso_func_key];
+    asso_func = (asso_func_key == "giou") ? giou_batch : iou_batch;
 
     inertia = std::stof(get_param("inertia", "0.2"));
     use_byte = (get_param("use_byte", "false") == "true");
@@ -56,11 +50,14 @@ std::ostream &precision(std::ostream &os) {
 std::vector<Eigen::RowVectorXf> OCSort::update(Eigen::MatrixXf dets) {
     this->frame_count += 1;
 
-    Eigen::MatrixXf high_conf_dets, low_conf_dets;
+    Eigen::MatrixXf high_conf_dets;
+    Eigen::MatrixXf low_conf_dets;
     SplitDetections(dets, high_conf_dets, low_conf_dets);
 
-    Eigen::MatrixXf predicted_bboxes, velocities, last_observation_bboxes,
-        k_obs_data;
+    Eigen::MatrixXf predicted_bboxes;
+    Eigen::MatrixXf velocities;
+    Eigen::MatrixXf last_observation_bboxes;
+    Eigen::MatrixXf k_obs_data;
     if (!this->trackers.empty()) {
         PrepareTrackDataForAssociation(predicted_bboxes, velocities,
                                        last_observation_bboxes, k_obs_data);
@@ -105,34 +102,35 @@ std::vector<Eigen::RowVectorXf> OCSort::update(Eigen::MatrixXf dets) {
     }
 
     ManageUnmatchedAndCreateNewTrackers(
-        dets, high_conf_dets, unmatched_dets_pass1, unmatched_trks_pass1);
+        high_conf_dets, unmatched_dets_pass1, unmatched_trks_pass1);
 
     return GenerateOutputAndCleanup();
 }
 
 void OCSort::SplitDetections(const Eigen::MatrixXf &input_dets_raw,
                              Eigen::MatrixXf &high_conf_dets,
-                             Eigen::MatrixXf &low_conf_dets) {
+                             Eigen::MatrixXf &low_conf_dets) const {
     Eigen::VectorXf confs = input_dets_raw.col(4);
-    long num_dets = input_dets_raw.rows();
-    std::vector<int> high_conf_indices, low_conf_indices;
+    auto num_dets = static_cast<size_t>(input_dets_raw.rows());
+    std::vector<size_t> high_conf_indices;
+    std::vector<size_t> low_conf_indices;
 
-    for (long i = 0; i < num_dets; ++i) {
-        if (confs(i) > this->det_thresh) {
+    for (size_t i = 0; i < num_dets; ++i) {
+        if (confs(static_cast<Eigen::Index>(i)) > this->det_thresh) {
             high_conf_indices.push_back(i);
-        } else if (confs(i) > 0.1 && confs(i) < this->det_thresh) {
+        } else if (confs(static_cast<Eigen::Index>(i)) > 0.1 && confs(static_cast<Eigen::Index>(i)) < this->det_thresh) {
             low_conf_indices.push_back(i);
         }
     }
 
     high_conf_dets.resize(high_conf_indices.size(), input_dets_raw.cols());
     for (size_t i = 0; i < high_conf_indices.size(); ++i) {
-        high_conf_dets.row(i) = input_dets_raw.row(high_conf_indices[i]);
+        high_conf_dets.row(static_cast<Eigen::Index>(i)) = input_dets_raw.row(static_cast<Eigen::Index>(high_conf_indices[i]));
     }
 
     low_conf_dets.resize(low_conf_indices.size(), input_dets_raw.cols());
     for (size_t i = 0; i < low_conf_indices.size(); ++i) {
-        low_conf_dets.row(i) = input_dets_raw.row(low_conf_indices[i]);
+        low_conf_dets.row(static_cast<Eigen::Index>(i)) = input_dets_raw.row(static_cast<Eigen::Index>(low_conf_indices[i]));
     }
 }
 
@@ -147,13 +145,13 @@ void OCSort::PrepareTrackDataForAssociation(
     out_k_previous_observations_matrix.resize(num_trackers, 5);
 
     for (size_t i = 0; i < num_trackers; ++i) {
-        Eigen::RowVectorXf pos = this->trackers[i].predict();
+        Eigen::RowVectorXf pos = this->trackers[i]->predict();
         out_predicted_bbox_states.row(i) << pos(0), pos(1), pos(2), pos(3), 0;
-        out_velocities.row(i) = this->trackers[i].velocity;
-        out_last_observed_bboxes.row(i) = this->trackers[i].last_observation;
+        out_velocities.row(i) = this->trackers[i]->get_velocity();
+        out_last_observed_bboxes.row(i) = this->trackers[i]->get_last_observation();
         out_k_previous_observations_matrix.row(i) =
-            k_previous_obs(this->trackers[i].observations,
-                           this->trackers[i].age, this->delta_t);
+            k_previous_obs(this->trackers[i]->get_observations(),
+                           this->trackers[i]->get_age(), this->delta_t);
     }
 }
 
@@ -164,7 +162,7 @@ void OCSort::PerformFirstPassAssociation(
     const Eigen::MatrixXf &k_observations_data,
     std::vector<Eigen::Matrix<int, 1, 2>> &out_matched_pairs,
     std::vector<int> &out_unmatched_det_indices,
-    std::vector<int> &out_unmatched_trk_indices) {
+    std::vector<int> &out_unmatched_trk_indices) const {
     auto association_result =
         associate(high_conf_dets, predicted_track_bboxes, this->iou_threshold,
                   velocities, k_observations_data, this->inertia);
@@ -188,27 +186,17 @@ void OCSort::UpdateTrackersFromMatches(
         Eigen::VectorXf bbox_for_update =
             source_dets_matrix.block<1, 5>(original_det_idx, 0).transpose();
 
-        float cls = source_dets_matrix(original_det_idx, 5);
-        float det_specific_idx = source_dets_matrix(original_det_idx, 6);
+        auto cls = static_cast<int>(source_dets_matrix(original_det_idx, 5));
+        auto det_specific_idx = static_cast<int>(source_dets_matrix(original_det_idx, 6));
 
-        this->trackers[trk_idx_global].update(&bbox_for_update, cls,
+        this->trackers[trk_idx_global]->update(&bbox_for_update, cls,
                                               det_specific_idx);
     }
 }
 
-int execLapjv(const std::vector<std::vector<float>> &cost,
-              std::vector<int> &rowsol, std::vector<int> &colsol,
-              bool extend_cost, float cost_limit, bool use_cost_limit) {
-    if (!cost.empty() && !cost[0].empty()) {
-        rowsol.assign(cost.size(), -1);
-        colsol.assign(cost[0].size(), -1);
-    }
-    return 0;
-}
-
 std::vector<Eigen::Matrix<int, 1, 2>>
 OCSort::SolveHungarianAssignment(const Eigen::MatrixXf &iou_matrix,
-                                 float lapjv_cost_threshold) {
+                                 float lapjv_cost_threshold) const {
     std::vector<std::vector<float>> cost_matrix_for_lapjv(
         iou_matrix.rows(), std::vector<float>(iou_matrix.cols()));
     for (int i = 0; i < iou_matrix.rows(); ++i) {
@@ -221,7 +209,8 @@ OCSort::SolveHungarianAssignment(const Eigen::MatrixXf &iou_matrix,
         return {};
     }
 
-    std::vector<int> rowsol_lapjv, colsol_lapjv;
+    std::vector<int> rowsol_lapjv;
+    std::vector<int> colsol_lapjv;
     execLapjv(cost_matrix_for_lapjv, rowsol_lapjv, colsol_lapjv, true,
               lapjv_cost_threshold, true);
 
@@ -242,7 +231,7 @@ OCSort::SolveHungarianAssignment(const Eigen::MatrixXf &iou_matrix,
 }
 
 Eigen::MatrixXf OCSort::BuildSubMatrix(const Eigen::MatrixXf &source_matrix,
-                                       const std::vector<int> &row_indices) {
+                                       const std::vector<int> &row_indices) const {
     if (row_indices.empty()) {
         return Eigen::MatrixXf(0, source_matrix.cols());
     }
@@ -281,9 +270,9 @@ void OCSort::PerformByteAssociation(
         int global_trk_idx = unmatched_trk_indices[trk_idx_local];
         Eigen::VectorXf bbox_for_update =
             low_conf_dets.block<1, 5>(det_idx_local, 0).transpose();
-        float cls = low_conf_dets(det_idx_local, 5);
-        float det_specific_idx = low_conf_dets(det_idx_local, 6);
-        this->trackers[global_trk_idx].update(&bbox_for_update, cls,
+        auto cls = static_cast<int>(low_conf_dets(det_idx_local, 5));
+        auto det_specific_idx = static_cast<int>(low_conf_dets(det_idx_local, 6));
+        this->trackers[global_trk_idx]->update(&bbox_for_update, cls,
                                               det_specific_idx);
 
         tracks_matched_in_this_step_local_indices.push_back(trk_idx_local);
@@ -340,9 +329,9 @@ void OCSort::PerformIOUReAssociation(
         Eigen::VectorXf bbox_for_update =
             high_conf_dets.block<1, 5>(original_high_conf_det_idx, 0)
                 .transpose();
-        float cls = high_conf_dets(original_high_conf_det_idx, 5);
-        float det_specific_idx = high_conf_dets(original_high_conf_det_idx, 6);
-        this->trackers[global_trk_idx].update(&bbox_for_update, cls,
+        auto cls = static_cast<int>(high_conf_dets(original_high_conf_det_idx, 5));
+        auto det_specific_idx = static_cast<int>(high_conf_dets(original_high_conf_det_idx, 6));
+        this->trackers[global_trk_idx]->update(&bbox_for_update, cls,
                                               det_specific_idx);
 
         dets_rematched_local_indices.push_back(det_idx_local_subset);
@@ -365,65 +354,63 @@ void OCSort::PerformIOUReAssociation(
 }
 
 void OCSort::ManageUnmatchedAndCreateNewTrackers(
-    const Eigen::MatrixXf &original_input_detections,
     const Eigen::MatrixXf &high_conf_dets,
     const std::vector<int> &final_unmatched_det_indices,
     const std::vector<int> &final_unmatched_trk_indices) {
     for (int trk_idx : final_unmatched_trk_indices) {
-        this->trackers[trk_idx].update(nullptr, 0, -1);
+        this->trackers[trk_idx]->update(nullptr, 0, -1);
     }
 
     for (int det_idx_in_high_conf : final_unmatched_det_indices) {
         this->id_count++;
         Eigen::RowVectorXf new_trk_bbox_data =
             high_conf_dets.block<1, 5>(det_idx_in_high_conf, 0);
-        int cls_ = static_cast<int>(high_conf_dets(det_idx_in_high_conf, 5));
-        int original_frame_idx_ =
+        auto cls_ = static_cast<int>(high_conf_dets(det_idx_in_high_conf, 5));
+        auto original_frame_idx_ =
             static_cast<int>(high_conf_dets(det_idx_in_high_conf, 6));
 
-        KalmanBoxTracker new_trk =
-            KalmanBoxTracker(new_trk_bbox_data, cls_, original_frame_idx_,
-                             this->id_count, this->delta_t);
-        this->trackers.push_back(new_trk);
+        this->trackers.emplace_back(std::make_unique<KalmanBoxTracker>(
+            new_trk_bbox_data, cls_, original_frame_idx_,
+            this->id_count, this->delta_t));
     }
 }
 
 std::vector<Eigen::RowVectorXf> OCSort::GenerateOutputAndCleanup() {
     std::vector<Eigen::RowVectorXf> ret_results;
-    std::vector<KalmanBoxTracker> next_trackers_list;
+    std::vector<std::unique_ptr<KalmanBoxTracker>> next_trackers_list;
 
-    for (size_t i = 0; i < this->trackers.size(); ++i) {
-        if (this->trackers[i].time_since_update > this->max_age) {
+    for (auto& tracker : this->trackers) {
+        if (tracker->get_time_since_update() > this->max_age) {
             continue;
         }
 
-        if (this->trackers[i].time_since_update < 1 &&
-            ((this->trackers[i].hit_streak >= this->min_hits) ||
+        if (tracker->get_time_since_update() < 1 &&
+            ((tracker->get_hit_streak() >= this->min_hits) ||
              (this->frame_count <= this->min_hits))) {
 
             Eigen::Matrix<float, 1, 4> d_bbox_coords;
             bool has_valid_last_obs =
-                (this->trackers[i].last_observation.size() >= 4 &&
-                 this->trackers[i].last_observation(0) >= 0.0f);
+                (tracker->get_last_observation().size() >= 4 &&
+                 tracker->get_last_observation()(0) >= 0.0f);
 
             if (!has_valid_last_obs) {
-                d_bbox_coords = this->trackers[i].get_state();
+                d_bbox_coords = tracker->get_state();
             } else {
-                d_bbox_coords = this->trackers[i].last_observation.head<4>();
+                d_bbox_coords = tracker->get_last_observation().head<4>();
             }
 
             Eigen::RowVectorXf tracking_res(8);
             tracking_res << d_bbox_coords(0), d_bbox_coords(1),
                 d_bbox_coords(2), d_bbox_coords(3),
-                static_cast<float>(this->trackers[i].id + 1),
-                static_cast<float>(this->trackers[i].cls),
-                this->trackers[i].conf,
-                static_cast<float>(this->trackers[i].idx);
+                static_cast<float>(tracker->get_id() + 1),
+                static_cast<float>(tracker->get_cls()),
+                tracker->get_conf(),
+                static_cast<float>(tracker->get_idx());
             ret_results.push_back(tracking_res);
         }
-        next_trackers_list.push_back(this->trackers[i]);
+        next_trackers_list.push_back(std::move(tracker));
     }
-    this->trackers = next_trackers_list;
+    this->trackers = std::move(next_trackers_list);
     return ret_results;
 }
 } // namespace ocsort

@@ -6,7 +6,7 @@ The inference results are then drawn using `dxosd`, and the final output is disp
 ![](./../../resources/05_01_single_stream.png)
 
 The pipeline in the figure is defined in 
-`dx_stream/dx_stream/pipelines/single_network/object_detection/run_YOLOV5S.sh` and can be used as a reference for execution.
+`dx_stream/pipelines/single_network/object_detection/run_YOLOV5S.sh` and can be used as a reference for execution.
 
 When performing object detection on a single stream input, multi-object tracking can be enabled by adding dxtracker.
 As shown below, by inserting the tracker after the YOLO object detection, detected objects can be tracked over time.
@@ -14,7 +14,7 @@ As shown below, by inserting the tracker after the YOLO object detection, detect
 ![](./../../resources/05_01_single_stream_tracker.png)
 
 The pipeline in the figure is defined in 
-`dx_stream/dx_stream/pipelines/tracking/run_YOLOV5S_tracker.sh` and can be used as a reference for execution.
+`dx_stream/pipelines/tracking/run_YOLOV5S_tracker.sh` and can be used as a reference for execution.
 
 ### **Explanation**
 

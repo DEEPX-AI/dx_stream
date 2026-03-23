@@ -6,13 +6,44 @@ DX_STREAM_PATH=$(realpath -s "${SCRIPT_DIR}")
 source "${DX_STREAM_PATH}/scripts/color_env.sh"
 source "${DX_STREAM_PATH}/scripts/common_util.sh"
 
+INTERNAL_RTSP_ARG=""
+
+for arg in "$@"; do
+    case "$arg" in
+        --internal-rtsp)
+            INTERNAL_RTSP_ARG="--internal-rtsp"
+            ;;
+    esac
+done
+
 pushd $DX_STREAM_PATH
 
 print_colored "DX_STREAM_PATH: $DX_STREAM_PATH" "INFO"
 
-if ! test -e "/usr/local/lib/libgstdxstream.so"; then
-    print_colored "dx_stream is not built. Building dx_stream first before running the demo." "INFO"
-    ./build.sh
+if ! gst-inspect-1.0 dxstream >/dev/null 2>&1; then
+    print_colored "dxstream plugin not found. Trying to reload environment variables..." "WARNING"
+    
+    # Try sourcing bashrc to load environment variables
+    if [ -f "$HOME/.bashrc" ]; then
+        source "$HOME/.bashrc" 2>/dev/null
+        
+        # Check again after sourcing
+        if gst-inspect-1.0 dxstream >/dev/null 2>&1; then
+            print_colored "dxstream plugin found after reloading environment." "SUCCESS"
+        else
+            print_colored "dxstream plugin still not found." "ERROR"
+            print_colored "Please build DX-STREAM first:" "ERROR"
+            print_colored "  $ ./build.sh" "INFO"
+            print_colored "Or if already built, try:" "INFO"
+            print_colored "  $ source ~/.bashrc" "INFO"
+            print_colored "  $ ./run_demo.sh" "INFO"
+            exit 1
+        fi
+    else
+        print_colored "~/.bashrc not found. Please build DX-STREAM first:" "ERROR"
+        print_colored "  $ ./build.sh" "INFO"
+        exit 1
+    fi
 fi
 
 check_valid_dir_or_symlink() {
@@ -58,7 +89,7 @@ case $select in
     6)$WRC/dx_stream/pipelines/tracking/run_YOLOV5S_tracker.sh;;
     7)$WRC/dx_stream/pipelines/single_network/semantic_segmentation/run_DeepLabV3PlusMobileNetV2.sh;;
     8)$WRC/dx_stream/pipelines/multi_stream/run_multi_stream_YOLOV5S.sh;;
-    9)$WRC/dx_stream/pipelines/rtsp/run_RTSP.sh;;
+    9)$WRC/dx_stream/pipelines/rtsp/run_RTSP.sh $INTERNAL_RTSP_ARG;;
     -)$WRC/dx_stream/pipelines/secondary_mode/run_secondary_mode.sh;;
     *)$WRC/dx_stream/pipelines/single_network/object_detection/run_YOLOV5S.sh;;
 esac

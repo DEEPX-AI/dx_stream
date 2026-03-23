@@ -15,24 +15,26 @@ G_DECLARE_FINAL_TYPE(GstDxMsgBroker, gst_dxmsgbroker, GST, DXMSGBROKER,
  */
 
 /* BAL Error */
-typedef enum {
+enum class DxMsg_Bal_Error {
     DXMSG_BAL_OK,
     DXMSG_BAL_ERR_INVALID,
     DXMSG_BAL_ERR_BROKER,
     DXMSG_BAL_ERR_UNKNOWN
-} DxMsg_Bal_Error_t;
+};
+using DxMsg_Bal_Error_t = DxMsg_Bal_Error;
 
 /* BAL Handle */
-typedef void *DxMsg_Bal_Handle_t;
+struct DxMsg_Bal_Handle;
+using DxMsg_Bal_Handle_t = DxMsg_Bal_Handle*;
 
 /* BAL method */
-typedef DxMsg_Bal_Handle_t (*DxMsg_Bal_ConnectFptr_t)(char *conn_info,
-                                                      char *cfg_path);
-typedef DxMsg_Bal_Error_t (*DxMsg_Bal_SendFptr_t)(DxMsg_Bal_Handle_t handle,
-                                                  char *topic,
-                                                  const void *payload,
-                                                  int payload_len);
-typedef DxMsg_Bal_Error_t (*DxMsg_Bal_DisconnectFptr_t)(
+using DxMsg_Bal_ConnectFptr_t = DxMsg_Bal_Handle_t (*)(char *conn_info,
+                                                        char *cfg_path);
+using DxMsg_Bal_SendFptr_t = DxMsg_Bal_Error_t (*)(DxMsg_Bal_Handle_t handle,
+                                                    const char *topic,
+                                                    const void *payload,
+                                                    int payload_len);
+using DxMsg_Bal_DisconnectFptr_t = DxMsg_Bal_Error_t (*)(
     DxMsg_Bal_Handle_t handle);
 
 struct _GstDxMsgBroker {

@@ -67,7 +67,7 @@ gst-launch-1.0 \
 pip install paho-mqtt
 
 # Run the MQTT client to receive messages from server
-python3 /usr/share/dx-stream/bin/mqtt_sub_example.py -n <server_ip> -p 1883 -t test
+python3 /usr/local/share/gstdxstream/bin/mqtt_sub_example.py -n <server_ip> -p 1883 -t test
 
 # Or for C++ version
 mqtt_sub_example -h <server_ip> -t test -p 1883
@@ -110,7 +110,7 @@ gst-launch-1.0 \
 pip install kafka-python
 
 # Run the Kafka client to receive messages from server
-python3 /usr/share/dx-stream/bin/kafka_consume_example.py -n <server_ip> -p 9092 -t test
+python3 /usr/local/share/gstdxstream/bin/kafka_consume_example.py -n <server_ip> -p 9092 -t test
 
 # Or for C++ version
 kafka_consume_example -n <server_ip> -p 9092 -t test

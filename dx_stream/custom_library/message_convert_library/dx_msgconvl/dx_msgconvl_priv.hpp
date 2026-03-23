@@ -1,16 +1,17 @@
 #ifndef __DX_MSGCONVL_PRIV_H__
 #define __DX_MSGCONVL_PRIV_H__
 
-#include "dx_stream/gst-dxmsgmeta.hpp"
+#include "gstdxstream/gst-dxmsgmeta.hpp"
 #include <vector>
 #include <string>
 
 // private property from config file
-typedef struct _DxMsgContextPriv {
+struct _DxMsgContextPriv {
     guint _customId;
     std::vector<std::string> _object_include_list;
 
-} DxMsgContextPriv;
+};
+using DxMsgContextPriv = _DxMsgContextPriv;
 
 DxMsgContextPriv *dxcontext_create_contextPriv(void);
 void dxcontext_delete_contextPriv(DxMsgContextPriv *contextPriv);

@@ -1,5 +1,5 @@
-#include <dx_stream/gst-dxframemeta.hpp>
-#include <dx_stream/gst-dxobjectmeta.hpp>
+#include <gstdxstream/gst-dxframemeta.hpp>
+#include <gstdxstream/gst-dxobjectmeta.hpp>
 #include <gst/check/gstcheck.h>
 #include <gst/gst.h>
 
@@ -131,8 +131,7 @@ static GstPadProbeReturn probe_primary(GstPad *pad, GstPadProbeInfo *info,
     
     DXFrameMeta *frame_meta = dx_get_frame_meta(buffer);
     if (frame_meta) {
-        for (GList *l = frame_meta->_object_meta_list; l != NULL; l = l->next) {
-            DXObjectMeta *object_meta = (DXObjectMeta *)l->data;
+        for (auto object_meta : frame_meta->_object_meta_list) {
             pred[object_meta->_label].push_back(
                 {object_meta->_box[0], object_meta->_box[1],
                  object_meta->_box[2], object_meta->_box[3]});
@@ -234,8 +233,7 @@ static GstPadProbeReturn probe_secondary(GstPad *pad, GstPadProbeInfo *info,
 
     DXFrameMeta *frame_meta = dx_get_frame_meta(buffer);
     if (frame_meta) {
-        for (GList *l = frame_meta->_object_meta_list; l != NULL; l = l->next) {
-            DXObjectMeta *object_meta = (DXObjectMeta *)l->data;
+        for (auto object_meta : frame_meta->_object_meta_list) {
             // g_print("PTS: %" GST_TIME_FORMAT
             //         " Label : %d  Conf : %f Track : %d BOX : [%f %f %f %f] "
             //         "FACE BOX : [%f %f %f %f]\n",
@@ -246,9 +244,9 @@ static GstPadProbeReturn probe_secondary(GstPad *pad, GstPadProbeInfo *info,
             //         object_meta->_face_box[0], object_meta->_face_box[1],
             //         object_meta->_face_box[2], object_meta->_face_box[3]);
             if (object_meta->_face_box[0] != 0 &&
-                object_meta->_face_box[0] != 0 &&
-                object_meta->_face_box[0] != 0 &&
-                object_meta->_face_box[0] != 0) {
+                object_meta->_face_box[1] != 0 &&
+                object_meta->_face_box[2] != 0 &&
+                object_meta->_face_box[3] != 0) {
                 pred_face.push_back(object_meta->_face_box[0]);
                 pred_face.push_back(object_meta->_face_box[1]);
                 pred_face.push_back(object_meta->_face_box[2]);

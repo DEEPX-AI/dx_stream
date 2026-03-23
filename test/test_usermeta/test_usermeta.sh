@@ -84,8 +84,19 @@ run_test() {
     echo "========================================"
     
     # Set up environment for the test
-    export LD_LIBRARY_PATH="$PROJECT_ROOT/install/lib/gstreamer-1.0:$PROJECT_ROOT/install/lib:$LD_LIBRARY_PATH"
-    export GST_PLUGIN_PATH="$PROJECT_ROOT/install/lib/gstreamer-1.0:$GST_PLUGIN_PATH"
+    INSTALL_PREFIX="${INSTALL_PREFIX:-/usr/local}"
+    
+    # Find the actual libdir
+    if pkg-config --exists gstdxstream 2>/dev/null; then
+        ACTUAL_LIBDIR=$(pkg-config --variable=libdir gstdxstream)
+    else
+        ACTUAL_LIBDIR=$(find "${INSTALL_PREFIX}/lib" -type d -name "gstreamer-1.0" 2>/dev/null | head -n 1 | xargs dirname)
+        [ -z "$ACTUAL_LIBDIR" ] && ACTUAL_LIBDIR="${INSTALL_PREFIX}/lib"
+    fi
+    
+    export PKG_CONFIG_PATH="${INSTALL_PREFIX}/lib/pkgconfig:${PKG_CONFIG_PATH}"
+    export GST_PLUGIN_PATH="${ACTUAL_LIBDIR}/gstreamer-1.0:${GST_PLUGIN_PATH}"
+    export LD_LIBRARY_PATH="${ACTUAL_LIBDIR}/gstreamer-1.0:${INSTALL_PREFIX}/share/gstdxstream/lib:${LD_LIBRARY_PATH}"
     
     # Run the test executable
     "$SCRIPT_DIR/install/bin/test_usermeta"
@@ -125,14 +136,6 @@ cleanup() {
 
 # Main execution
 main() {
-    # Check if DX-Stream is installed
-    if [ ! -f "$PROJECT_ROOT/install/lib/gstreamer-1.0/libgstdxstream.so" ]; then
-        echo "❌ Error: DX-Stream plugin not found!"
-        echo "Please build and install DX-Stream first:"
-        echo "  cd $PROJECT_ROOT && ./build.sh"
-        exit 1
-    fi
-
     # Build the test
     build_and_install
     if [ $? -ne 0 ]; then

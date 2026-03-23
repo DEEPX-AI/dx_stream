@@ -2,34 +2,40 @@
 #include <utility>
 namespace ocsort {
 KalmanBoxTracker::KalmanBoxTracker(Eigen::VectorXf bbox_, int cls_, int idx_,
-                                   uint64_t id_count_, int delta_t_) {
-    bbox = std::move(bbox_);
-    delta_t = delta_t_;
-    kf = new KalmanFilterNew(7, 4);
-    kf->F << 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0,
+                                   uint64_t id_count_, int delta_t_) 
+    : bbox(std::move(bbox_)),
+      id(static_cast<int>(id_count_)),
+      conf(bbox(4)),
+      cls(cls_),
+      idx(idx_),
+      delta_t(delta_t_) {
+    Eigen::Matrix<float, 7, 7> F_temp;
+    F_temp << 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0,
         0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0,
         0, 0, 1;
-    kf->H << 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0,
+    kf->set_F(F_temp);
+
+    Eigen::Matrix<float, 4, 7> H_temp;
+    H_temp << 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0,
         0, 0, 1, 0, 0, 0;
-    kf->R.block(2, 2, 2, 2) *= 10.0;
-    kf->P.block(4, 4, 3, 3) *= 1000.0;
-    kf->P *= 10.0;
-    kf->Q.bottomRightCorner(1, 1)(0, 0) *= 0.01;
-    kf->Q.block(4, 4, 3, 3) *= 0.01;
-    kf->x.head<4>() = convert_bbox_to_z(bbox);
-    time_since_update = 0;
-    id = id_count_;
-    history.clear();
-    hits = 0;
-    hit_streak = 0;
-    age = 0;
-    conf = bbox(4);
-    cls = cls_;
-    idx = idx_;
-    last_observation.fill(-1);
-    observations.clear();
-    history_observations.clear();
-    velocity.fill(0);
+    kf->set_H(H_temp);
+    Eigen::Matrix<float, 4, 4> R_temp = kf->get_R();
+    R_temp.block(2, 2, 2, 2) *= 10.0;
+    kf->set_R(R_temp);
+
+    Eigen::MatrixXf P_temp = kf->get_P();
+    P_temp.block(4, 4, 3, 3) *= 1000.0;
+    P_temp *= 10.0;
+    kf->set_P(P_temp);
+
+    Eigen::MatrixXf Q_temp = kf->get_Q();
+    Q_temp.bottomRightCorner(1, 1)(0, 0) *= 0.01f;
+    Q_temp.block(4, 4, 3, 3) *= 0.01f;
+    kf->set_Q(Q_temp);
+
+    Eigen::VectorXf x_temp = kf->get_x();
+    x_temp.head<4>() = convert_bbox_to_z(bbox);
+    kf->set_x(x_temp);
 }
 
 void KalmanBoxTracker::update(Eigen::VectorXf *bbox_, int cls_, int idx_) {
@@ -74,17 +80,19 @@ void KalmanBoxTracker::update(Eigen::VectorXf *bbox_, int cls_, int idx_) {
 }
 
 Eigen::RowVectorXf KalmanBoxTracker::predict() {
-    if (kf->x[6] + kf->x[2] <= 0)
-        kf->x[6] *= 0.0;
+    Eigen::VectorXf x_temp = kf->get_x();
+    if (x_temp(6) + x_temp(2) <= 0)
+        x_temp(6) *= 0.0f;
+    kf->set_x(x_temp);
     kf->predict();
     age += 1;
     if (time_since_update > 0)
         hit_streak = 0;
     time_since_update += 1;
-    history.push_back(convert_x_to_bbox(kf->x));
-    return convert_x_to_bbox(kf->x);
+    history.push_back(convert_x_to_bbox(kf->get_x()));
+    return convert_x_to_bbox(kf->get_x());
 }
-Eigen::VectorXf KalmanBoxTracker::get_state() {
-    return convert_x_to_bbox(kf->x);
+Eigen::VectorXf KalmanBoxTracker::get_state() const {
+    return convert_x_to_bbox(kf->get_x());
 }
 } // namespace ocsort

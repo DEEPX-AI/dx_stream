@@ -1,21 +1,27 @@
-#include "dx_stream/gst-dxframemeta.hpp"
-#include "dx_stream/gst-dxobjectmeta.hpp"
+#include "gstdxstream/gst-dxframemeta.hpp"
+#include "gstdxstream/gst-dxobjectmeta.hpp"
+#include <dxrt/dxrt_api.h>
 #include <cmath>
 #include <iostream>
 #include <vector>
+#include <tuple>
+#include <glib.h>
+#include <gst/gst.h>
 
-extern "C" void PostProcess(GstBuffer *buf,
-                            std::vector<dxs::DXTensor> network_output,
-                            DXFrameMeta *frame_meta,
-                            DXObjectMeta *object_meta) {
+extern "C" void PostProcess(GstBuffer* buf,
+                            const dxrt::TensorPtrs& network_output,
+                            DXFrameMeta* frame_meta,
+                            DXObjectMeta* object_meta) {
+    std::ignore = buf;
+    std::ignore = frame_meta;
 
     object_meta->_body_feature.clear();
 
     float norm = 0.0f;
-    int feature_length = network_output[0]._shape.size() - 1;
-    float *vec = (float *)network_output[0]._data;
-    for (int i = 0; i < network_output[0]._shape[feature_length]; i++) {
-        float v = *(vec + i);
+    const int feature_length = static_cast<int>(network_output[0]->shape().size()) - 1;
+    const auto* vec = static_cast<float*>(network_output[0]->data());
+    for (int i = 0; i < network_output[0]->shape()[feature_length]; ++i) {
+        const float v = vec[i];
         norm += v * v;
     }
     norm = std::sqrt(norm);
@@ -29,8 +35,7 @@ extern "C" void PostProcess(GstBuffer *buf,
     }
 
     // Normalize the vector
-    for (int i = 0; i < network_output[0]._shape[feature_length]; i++) {
-        float v = *(vec + i);
-        object_meta->_body_feature.push_back(v / norm);
+    for (int i = 0; i < network_output[0]->shape()[feature_length]; ++i) {
+        object_meta->_body_feature.push_back(vec[i] / norm);
     }
 }

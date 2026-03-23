@@ -1,5 +1,5 @@
 {
     "inference_id": 1,
-    "library_file_path": "/usr/share/dx-stream/lib/libpostprocess_ppu.so",
+    "library_file_path": "/usr/local/share/gstdxstream/lib/libpostprocess_ppu.so",
     "function_name": "YOLOV5Pose_PPU"
 }

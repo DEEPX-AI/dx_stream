@@ -16,7 +16,7 @@ GST_START_TEST(test_element_state_change) {
     fail_unless(element != NULL, "Failed to create GstDxMsgConv element");
 
     g_object_set(element, "library-file-path",
-                 "/usr/share/dx-stream/lib/libdx_msgconvl.so", NULL);
+                 "/usr/local/share/gstdxstream/lib/libdx_msgconvl.so", NULL);
 
     ret = gst_element_set_state(element, GST_STATE_READY);
     fail_unless(ret != GST_STATE_CHANGE_FAILURE,
@@ -55,11 +55,11 @@ GST_START_TEST(test_element_properties) {
     fail_unless(element != NULL, "Failed to create GstDxMsgConv element");
 
     g_object_set(element, "library-file-path",
-                 "/usr/share/dx-stream/lib/libdx_msgconvl.so", NULL);
+                 "/usr/local/share/gstdxstream/lib/libdx_msgconvl.so", NULL);
     gchar *library_file_path;
     g_object_get(element, "library-file-path", &library_file_path, NULL);
     fail_unless(g_strcmp0(library_file_path,
-                          "/usr/share/dx-stream/lib/libdx_msgconvl.so") == 0,
+                          "/usr/local/share/gstdxstream/lib/libdx_msgconvl.so") == 0,
                 "'library-file-path' properties not set correctly");
     g_free(library_file_path);
 

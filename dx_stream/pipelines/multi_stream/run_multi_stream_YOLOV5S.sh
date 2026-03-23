@@ -20,6 +20,19 @@ else
     VIDEO_SINK_ARGS=""
 fi
 
+# Default videoconvert pipeline
+VIDEOCONVERT_PIPELINE="videoconvert"
+
+# NOTE: If you experience rendering issues (corrupted/distorted video output) on Orange Pi 5 Plus
+# with Debian 12, uncomment the lines below to force I420 format conversion.
+# See troubleshooting documentation for more details.
+# if grep -q "rk3588" /proc/device-tree/compatible 2>/dev/null; then
+#     if [ "$(lsb_release -rs)" = "12" ]; then
+#         echo "Detected Orange Pi 5 Plus with Debian 12 - using I420 format"
+#         VIDEOCONVERT_PIPELINE="videoconvert ! video/x-raw,format=I420"
+#     fi
+# fi
+
 # check 'vaapidecodebin'
 if gst-inspect-1.0 vaapidecodebin &>/dev/null; then
     DECODE_PIPELINE="qtdemux ! vaapidecodebin"
@@ -78,13 +91,13 @@ for i in $(seq 0 $((num_pipelines - 1))); do
         dxpreprocess config-file-path=${PREPROCESS_CONFIG} ! queue max-size-buffers=10 ! \
         dxinfer config-file-path=${INFER_CONFIG} ! queue max-size-buffers=10 ! \
         dxpostprocess config-file-path=${POSTPROCESS_CONFIG} ! queue max-size-buffers=10 ! \
-        dxosd width=${STREAM_WIDTH} height=${STREAM_HEIGHT} "
+        dxosd "
 
-    pipeline_str+="${src_pipe} ! queue max-size-buffers=10 ! comp.sink_${i}"
-    compositor_props+=" sink_${i}::xpos=${xpos} sink_${i}::ypos=${ypos} sink_${i}::width=${STREAM_WIDTH} sink_${i}::height=${STREAM_HEIGHT}"
+    pipeline_str+="${src_pipe} ! queue max-size-buffers=10 ! dxscale width=${STREAM_WIDTH} height=${STREAM_HEIGHT} ! queue max-size-buffers=10 ! comp.sink_${i}"
+    compositor_props+=" sink_${i}::xpos=${xpos} sink_${i}::ypos=${ypos}"
 done
 
-launch_cmd="gst-launch-1.0 -e ${pipeline_str} compositor name=comp ${compositor_props} ! videoconvert ! fpsdisplaysink sync=false $VIDEO_SINK_ARGS"
+launch_cmd="gst-launch-1.0 -e ${pipeline_str} compositor name=comp ${compositor_props} ! $VIDEOCONVERT_PIPELINE ! fpsdisplaysink sync=false $VIDEO_SINK_ARGS"
 echo "--------------------------------------------------"
 echo "Generated gst-launch-1.0 command:"
 echo "${launch_cmd}"

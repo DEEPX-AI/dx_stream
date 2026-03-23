@@ -1068,6 +1068,11 @@ check_gstreamer_plugins() {
 install_gstreamer_smart() {
     print_message "info" "🎬 Smart GStreamer installation - checking individual modules..." >&2
     
+    # install common dependencies
+    sudo apt update
+    sudo apt install -y \
+        libunwind-dev
+
     # Check and install Rockchip dependencies if needed
     detect_and_install_rockchip_deps
 
