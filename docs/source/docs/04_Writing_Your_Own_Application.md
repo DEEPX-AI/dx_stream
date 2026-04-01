@@ -43,64 +43,87 @@ DX-STREAM uses a hierarchical metadata structure that follows this organization:
 **DXFrameMeta Structure:**
 ```cpp
 struct _DXFrameMeta {
-    GstMeta _meta;                          // GStreamer metadata base
+    GstMeta _meta;
     
-    gint _stream_id;                        // Stream identifier
-    gint _width, _height;                   // Frame dimensions
-    const gchar *_format, *_name;           // Format and stream name
-    gfloat _frame_rate;                     // Frame rate
-    int _roi[4];                           // Region of interest
-    
-    GList *_object_meta_list;              // List of DXObjectMeta
-    GList *_frame_user_meta_list;          // Frame-level user metadata
-    guint _num_frame_user_meta;            // Count of frame user metadata
-    
-    std::map<int, dxs::DXTensors> _input_tensors;   // Input tensors
-    std::map<int, dxs::DXTensors> _output_tensors;  // Output tensors
+    int _stream_id;
+    int _width;
+    int _height;
+    std::string _format;
+    std::string _name;
+    float _frame_rate;
+
+    int _roi[4];
+
+    // segmentation
+    std::vector<unsigned char> seg_data;
+    int seg_width = 0;
+    int seg_height = 0;
+
+    // classification result (primary mode)
+    int _label;
+    std::string _label_name;
+    float _label_confidence;
+
+    std::vector<DXObjectMeta*> _object_meta_list;
+
+    std::vector<DXUserMeta*> _frame_user_meta_list;
+
+    // RAII-managed tensors (shallow copy through shared_ptr)
+    std::map<int, dxs::InputBuffers> _input_tensors;   // preproc_id -> input buffers
+    std::map<int, dxrt::TensorPtrs> _output_tensors;   // infer_id -> output tensors
 };
 ```
 
 **DXObjectMeta Structure:**
 ```cpp
-typedef struct _DXObjectMeta {
-    gint _meta_id;                         // Unique object identifier
-    
-    // Detection results
-    gint _track_id;                        // Tracking ID
-    gint _label;                           // Class label ID
-    GString *_label_name;                  // Class name
-    gfloat _confidence;                    // Detection confidence
-    float _box[4];                         // Bounding box [x1, y1, x2, y2]
-    
-    // Body analysis
-    std::vector<float> _keypoints;         // Pose keypoints
-    std::vector<float> _body_feature;      // Body feature vector
-    
-    // Face analysis
-    float _face_box[4];                    // Face bounding box
-    gfloat _face_confidence;               // Face detection confidence
-    std::vector<dxs::Point_f> _face_landmarks;  // Face landmarks
-    std::vector<float> _face_feature;      // Face feature vector
-    
-    // Segmentation
-    dxs::SegClsMap _seg_cls_map;          // Segmentation mask
-    
-    // User metadata
-    GList *_obj_user_meta_list;           // Object-level user metadata
-    guint _num_obj_user_meta;             // Count of object user metadata
-    
-    // Tensors
-    std::map<int, dxs::DXTensors> _input_tensors;   // Object input tensors
-    std::map<int, dxs::DXTensors> _output_tensors;  // Object output tensors
-} DXObjectMeta;
+struct _DXObjectMeta {
+    int _meta_id;
+
+    // body
+    int _track_id;
+    int _label;
+    std::string _label_name;
+    float _confidence;
+    std::array<float, 4> _box;
+    std::vector<float> _keypoints;
+    std::vector<float> _body_feature;
+
+    // oriented bounding box [cx, cy, w, h, angle]
+    std::vector<float> _obb;
+
+    // face
+    std::array<float, 4> _face_box;
+    float _face_confidence;
+    std::vector<float> _face_landmarks;
+    std::vector<float> _face_feature;
+
+    // segmentation
+    std::vector<unsigned char> seg_data;
+    int seg_width = 0;
+    int seg_height = 0;
+
+    // user meta
+    std::vector<DXUserMeta*> _obj_user_meta_list;
+
+    // RAII-managed tensors (shallow copy through shared_ptr)
+    std::map<int, dxs::InputBuffers> _input_tensors;   // preproc_id -> input buffers
+    std::map<int, dxrt::TensorPtrs> _output_tensors;   // infer_id -> output tensors
+
+};
 ```
+
+**Segmentation Note:**
+
+- `DXFrameMeta.seg_data`, `seg_width`, and `seg_height` store a frame-level semantic class map.
+- `DXObjectMeta.seg_data`, `seg_width`, and `seg_height` store an ROI-local binary mask aligned to `_box`.
+- Legacy `SegClsMap` is no longer used for object metadata.
 
 ### **Metadata API Functions**
 
 **Frame Metadata Operations:**
 ```cpp
 // Create and access frame metadata
-DXFrameMeta *dx_create_frame_meta(GstBuffer *buffer);
+GstBuffer *dx_create_frame_meta(GstBuffer *buffer);
 DXFrameMeta *dx_get_frame_meta(GstBuffer *buffer);
 
 // Object management in frame
@@ -126,7 +149,7 @@ void dx_release_user_meta(DXUserMeta *user_meta);
 gboolean dx_user_meta_set_data(DXUserMeta *user_meta, 
                               gpointer data, 
                               gsize size, 
-                              guint meta_type, 
+                              DXUserMetaType meta_type, 
                               GDestroyNotify release_func,    // Required: cleanup function
                               GBoxedCopyFunc copy_func);      // Required: copy function
 
@@ -134,9 +157,9 @@ gboolean dx_user_meta_set_data(DXUserMeta *user_meta,
 gboolean dx_add_user_meta_to_frame(DXFrameMeta *frame_meta, DXUserMeta *user_meta);
 gboolean dx_add_user_meta_to_obj(DXObjectMeta *obj_meta, DXUserMeta *user_meta);
 
-// Retrieval (returns all user metadata)
-GList* dx_get_frame_user_metas(DXFrameMeta *frame_meta);
-GList* dx_get_object_user_metas(DXObjectMeta *obj_meta);
+// Retrieval (returns std::vector pointer)
+std::vector<DXUserMeta*>* dx_get_frame_user_metas(DXFrameMeta *frame_meta);
+std::vector<DXUserMeta*>* dx_get_object_user_metas(DXObjectMeta *obj_meta);
 ```
 
 ## Custom Library for Model Inference  
@@ -177,10 +200,10 @@ The DX-STREAM framework provides a simplified user metadata system for storing c
 
 **User Meta Types:**
 ```cpp
-typedef enum {
+enum class DXUserMetaType {
     DX_USER_META_FRAME = 0x1000,   // Frame-level user metadata
     DX_USER_META_OBJECT = 0x2000,  // Object-level user metadata
-} DXUserMetaType;
+};
 ```
 
 **DXUserMeta Structure:**
@@ -188,7 +211,7 @@ typedef enum {
 struct _DXUserMeta {
     gpointer user_meta_data;        // Pointer to user data
     gsize user_meta_size;           // Size of user data
-    guint user_meta_type;           // Type (FRAME or OBJECT)
+    DXUserMetaType user_meta_type;  // Type (FRAME or OBJECT)
     
     GDestroyNotify release_func;    // Required: data cleanup function
     GBoxedCopyFunc copy_func;       // Required: data copy function
@@ -233,7 +256,7 @@ custom_data->custom_score = 0.95f;
 dx_user_meta_set_data(user_meta, 
                      custom_data, 
                      sizeof(MyFrameData),
-                     DX_USER_META_FRAME,
+                     DXUserMetaType::DX_USER_META_FRAME,
                      my_frame_data_free,          // Required cleanup function
                      my_frame_data_copy);         // Required copy function
 
@@ -282,7 +305,7 @@ feature_data->feature_name = g_strdup("resnet_features");
 dx_user_meta_set_data(obj_user_meta,
                      feature_data,
                      sizeof(MyObjectFeature), 
-                     DX_USER_META_OBJECT,
+                     DXUserMetaType::DX_USER_META_OBJECT,
                      my_object_feature_free,      // Required cleanup function
                      my_object_feature_copy);     // Required copy function
 
@@ -293,12 +316,10 @@ dx_add_user_meta_to_obj(obj_meta, obj_user_meta);
 **Retrieving User Metadata:**
 ```cpp
 // Get all frame user metadata
-GList *frame_metas = dx_get_frame_user_metas(frame_meta);
-for (GList *l = frame_metas; l != nullptr; l = l->next) {
-    DXUserMeta *user_meta = (DXUserMeta *)l->data;
-    
+auto frame_metas = dx_get_frame_user_metas(frame_meta);
+for (auto user_meta : *frame_metas) {
     // Check if this is frame-type metadata
-    if (user_meta->user_meta_type == DX_USER_META_FRAME) {
+    if (user_meta->user_meta_type == DXUserMetaType::DX_USER_META_FRAME) {
         MyFrameData *data = (MyFrameData *)user_meta->user_meta_data;
         g_print("Frame data: ID=%d, Name=%s, Score=%.2f\n", 
                 data->custom_id, data->custom_name, data->custom_score);
@@ -306,12 +327,10 @@ for (GList *l = frame_metas; l != nullptr; l = l->next) {
 }
 
 // Get all object user metadata  
-GList *obj_metas = dx_get_object_user_metas(obj_meta);
-for (GList *l = obj_metas; l != nullptr; l = l->next) {
-    DXUserMeta *user_meta = (DXUserMeta *)l->data;
-    
+auto obj_metas = dx_get_object_user_metas(obj_meta);
+for (auto user_meta : *obj_metas) {
     // Check if this is object-type metadata
-    if (user_meta->user_meta_type == DX_USER_META_OBJECT) {
+    if (user_meta->user_meta_type == DXUserMetaType::DX_USER_META_OBJECT) {
         MyObjectFeature *feature = (MyObjectFeature *)user_meta->user_meta_data;
         g_print("Object feature: %s with %d dimensions\n", 
                 feature->feature_name, feature->feature_count);
@@ -367,13 +386,7 @@ To build the custom object library, use a `meson.build` file and compile as foll
 gst_dep = dependency('gstreamer-1.0', version : '>=1.16.3',
     required : true, fallback : ['gstreamer', 'gst_dep'])
 
-gstreamer_plugin_dir = gst_dep.get_pkgconfig_variable('pluginsdir')
-
-dx_stream_dep = declare_dependency(
-    include_directories : include_directories('/usr/local/include/dx_stream'),
-    link_args : ['-L' + gstreamer_plugin_dir, '-lgstdxstream'],
-)
-
+dx_stream_dep = dependency('gstdxstream')
 
 libcustompreproc = shared_library('custompreproc', 
     'preprocess.cpp',
@@ -413,11 +426,21 @@ The example shows three blobs with NHWC dimensions. Use this information to impl
 #### **Implementation Example**  
 
 ```cpp
+#include <dxrt/dxrt_api.h>
+
 extern "C" void YOLOV7(GstBuffer *buf,
-                       std::vector<dxs::DXTensor> network_output,
+                       const dxrt::TensorPtrs &network_output,
                        DXFrameMeta *frame_meta,
                        DXObjectMeta *object_meta)
 {
+    // Access tensor data using methods
+    float *output_data = (float *)network_output[0]->data();
+    auto shape = network_output[0]->shape();
+    int batch = shape[0];
+    int height = shape[1];
+    int width = shape[2];
+    int channels = shape[3];
+    
     // Convert output tensor to bounding box information
     
     // Example of creating new object metadata:
@@ -432,33 +455,37 @@ extern "C" void YOLOV7(GstBuffer *buf,
 **Function Parameters:**
 
 - **GstBuffer \*buf**: Direct access to the GStreamer buffer containing frame data
-- **std::vector<dxs::DXTensor> network_output**: Output tensors from the inference engine
+- **const dxrt::TensorPtrs &network_output**: Output tensors from the inference engine (std::vector<std::shared_ptr<dxrt::Tensor>>)
 - **DXFrameMeta \*frame_meta**: Frame-level metadata (dimensions, format, etc.)
 - **DXObjectMeta \*object_meta**: Object-level metadata (in Secondary Mode) or nullptr (in Primary Mode)
+
+**Tensor Access Methods:**
+- `network_output[i]->data()`: Get pointer to tensor data
+- `network_output[i]->shape()`: Get tensor shape as std::vector<int>
+- `network_output[i]->type()`: Get tensor data type (dxrt::DataType)
+- `network_output[i]->elem_size()`: Get size of each element
+- `network_output[i]->name()`: Get tensor name
 
 #### **Library Integration**  
 Build the custom library using a `meson.build` script.
 
 ```
-project('postprocess_yolov5s', 'cpp', version : '1.0.0', license : 'LGPL', default_options: ['cpp_std=c++11'])
+project('postprocess_yolov5s', 'cpp', version : '1.0.0', license : 'LGPL', default_options: ['cpp_std=c++14'])
 
 gst_dep = dependency('gstreamer-1.0', version : '>=1.16.3',
     required : true, fallback : ['gstreamer', 'gst_dep'])
 
-gstreamer_plugin_dir = gst_dep.get_pkgconfig_variable('pluginsdir')
-
-dx_stream_dep = declare_dependency(
-    include_directories : include_directories('/usr/local/include/dx_stream'),
-    link_args : ['-L' + gstreamer_plugin_dir, '-lgstdxstream'],
-)
-
+dx_stream_dep = dependency('gstdxstream')
 opencv_dep = dependency('opencv4', required: true)
+
+# DX Runtime dependency (required for tensor access)
+dxrt_dep = declare_dependency(link_args: ['-ldxrt'])
 
 yolo_postprocess_lib = shared_library('postprocess_yolo', 
     'postprocess.cpp',
     dependencies: [opencv_dep, gst_dep, dx_stream_dep, dxrt_dep],
     install: true,
-    install_dir: '/usr/share/dx-stream/lib'
+    install_dir: get_option('datadir') / 'gstdxstream' / 'lib'
 )
 ```
 
@@ -575,8 +602,7 @@ json_object_set_int_member(jobj_root, "width", frame_meta->_width);
 json_object_set_int_member(jobj_root, "height", frame_meta->_height);
 
 // Process each object in the frame
-for (size_t i = 0; i < object_length; i++) {
-    DXObjectMeta *obj_meta = (DXObjectMeta *)g_list_nth_data(frame_meta->_object_meta_list, i);
+for (auto obj_meta : frame_meta->_object_meta_list) {
     add_object_meta_to_json(jarray_objects, obj_meta);
 }
 ```
@@ -604,8 +630,17 @@ for (size_t i = 0; i < object_length; i++) {
         },
         "body_feature": [0.321, 0.654, 0.987],
         "segment": {
-          "height": 1080,
-          "width": 1920,
+                    "height": 200,
+                    "width": 200,
+                    "format": "roi-binary-mask",
+                    "background_value": 0,
+                    "foreground_value": 255,
+                    "box": {
+                        "startX": 300.0,
+                        "startY": 400.0,
+                        "endX": 500.0,
+                        "endY": 600.0
+                    },
           "data": 140712345678912
         },
         "pose": {
@@ -639,9 +674,9 @@ for (size_t i = 0; i < object_length; i++) {
 - **Frame-level metadata**: `streamId`, `seqId`, `width`, `height` are extracted from `DXFrameMeta`
 - **Object-level metadata**: Each `DXObjectMeta` from the frame's object list is processed to create:
 
-  - **Object Detection**: `label_id` (_label), `track_id` (_track_id), `confidence` (_confidence), `name` (_label_name->str), `box` (_box[4])
+  - **Object Detection**: `label_id` (_label), `track_id` (_track_id), `confidence` (_confidence), `name` (_label_name), `box` (_box[4])
   - **Body Features**: `body_feature` array from _body_feature vector (if available)
-  - **Segmentation**: `segment` object with height, width, and data pointer from _seg_cls_map (if available)
+  - **Segmentation**: `segment` object with ROI-local binary mask dimensions, mask value semantics, ROI box, and data pointer from `seg_data` (if available)
   - **Pose Estimation**: `pose` object with 17 keypoints from _keypoints vector, each with kx, ky, ks values (if available)
   - **Face Detection**: `face` object with landmarks from _face_landmarks, face bounding box from _face_box, confidence from _face_confidence, and face features from _face_feature (if available)
 
@@ -651,6 +686,7 @@ for (size_t i = 0; i < object_length; i++) {
 - Feature vectors are converted to JSON arrays of double values
 - Integer values (dimensions, IDs) remain as integers
 - Memory addresses (like segmentation data pointer) are cast to integer representation
+- Object-level `segment` payloads are ROI-local binary masks aligned to `object.box`, not full-frame class maps
 
 ```
 
@@ -662,13 +698,7 @@ Build the custom message convert library with proper dependencies:
 gst_dep = dependency('gstreamer-1.0', version : '>=1.16.3',
     required : true, fallback : ['gstreamer', 'gst_dep'])
 
-gstreamer_plugin_dir = gst_dep.get_pkgconfig_variable('pluginsdir')
-
-dx_stream_dep = declare_dependency(
-    include_directories : include_directories('/usr/local/include/dx_stream'),
-    link_args : ['-L' + gstreamer_plugin_dir, '-lgstdxstream'],
-)
-
+dx_stream_dep = dependency('gstdxstream')
 json_glib_dep = dependency('json-glib-1.0', required: true)
 
 custom_msgconv_lib = shared_library('dx_msgconvl', 

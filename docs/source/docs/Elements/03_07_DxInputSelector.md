@@ -29,7 +29,7 @@ GObject
 | **Name**    | **Description**           | **Type**  | **Default Value** |
 |-------------|---------------------------|-----------|--------------------|
 | `name`     | Sets the unique name of the DxInputSelector element.  | String   | `"dxinputselector0"`   |
-
+| `max-queue-size` | Maximum number of buffers to queue per input stream.  | Unsigned Integer | `2` |
 !!! note "NOTE" 
 
 - If an incoming buffer does **not** contain `DXFrameMeta`, the element creates a new `DXFrameMeta` using `dx_create_frame_meta()` and assigns the sink pad index as the `stream_id`.  

@@ -10,11 +10,29 @@
 namespace ocsort {
 
 class OCSort : public Tracker {
-  private:
+  public:
+    void init(const std::map<std::string, std::string, std::less<>> &params) override;
+    std::vector<Eigen::RowVectorXf> update(const Eigen::MatrixXf dets) override;
+    ~OCSort() override = default;
+
     uint64_t id_count;
+    float det_thresh;
+    int max_age;
+    int min_hits;
+    float iou_threshold;
+    int delta_t;
+    std::function<Eigen::MatrixXf(const Eigen::MatrixXf &,
+                                  const Eigen::MatrixXf &)>
+        asso_func;
+    float inertia;
+    bool use_byte;
+    std::vector<std::unique_ptr<KalmanBoxTracker>> trackers;
+    int frame_count;
+
+  private:
     void SplitDetections(const Eigen::MatrixXf &input_dets_raw,
                          Eigen::MatrixXf &high_conf_dets,
-                         Eigen::MatrixXf &low_conf_dets);
+                         Eigen::MatrixXf &low_conf_dets) const;
 
     void PrepareTrackDataForAssociation(
         Eigen::MatrixXf &out_predicted_bbox_states,
@@ -29,7 +47,7 @@ class OCSort : public Tracker {
         const Eigen::MatrixXf &k_observations_data,
         std::vector<Eigen::Matrix<int, 1, 2>> &out_matched_pairs,
         std::vector<int> &out_unmatched_det_indices,
-        std::vector<int> &out_unmatched_trk_indices);
+        std::vector<int> &out_unmatched_trk_indices) const;
 
     void UpdateTrackersFromMatches(
         const std::vector<Eigen::Matrix<int, 1, 2>> &matched_pairs,
@@ -38,10 +56,10 @@ class OCSort : public Tracker {
 
     std::vector<Eigen::Matrix<int, 1, 2>>
     SolveHungarianAssignment(const Eigen::MatrixXf &iou_matrix,
-                             float cost_threshold_for_lapjv);
+                             float cost_threshold_for_lapjv) const;
 
     Eigen::MatrixXf BuildSubMatrix(const Eigen::MatrixXf &source_matrix,
-                                   const std::vector<int> &row_indices);
+                                   const std::vector<int> &row_indices) const;
 
     void
     PerformByteAssociation(const Eigen::MatrixXf &low_conf_dets,
@@ -55,31 +73,12 @@ class OCSort : public Tracker {
                             std::vector<int> &unmatched_trk_indices);
 
     void ManageUnmatchedAndCreateNewTrackers(
-        const Eigen::MatrixXf &original_input_detections,
         const Eigen::MatrixXf &high_conf_dets,
         const std::vector<int> &final_unmatched_det_indices,
         const std::vector<int> &final_unmatched_trk_indices);
 
     std::vector<Eigen::RowVectorXf> GenerateOutputAndCleanup();
-
-  public:
-    void init(const std::map<std::string, std::string> &params) override;
-    std::vector<Eigen::RowVectorXf> update(const Eigen::MatrixXf dets) override;
-    ~OCSort() override {}
-
-    float det_thresh;
-    int max_age;
-    int min_hits;
-    float iou_threshold;
-    int delta_t;
-    std::function<Eigen::MatrixXf(const Eigen::MatrixXf &,
-                                  const Eigen::MatrixXf &)>
-        asso_func;
-    float inertia;
-    bool use_byte;
-    std::vector<KalmanBoxTracker> trackers;
-    int frame_count;
 };
 
 } // namespace ocsort
-#endif // OC_SORT_CPP_OCSORT_H
+#endif // OC_SORT_CPP_OCSORT_HPP

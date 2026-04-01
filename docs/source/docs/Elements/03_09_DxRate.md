@@ -28,7 +28,7 @@ GObject
        +----GstObject
              +----GstElement
                    +----GstBaseTransform
-                         +----DxRate
+                         +----GstDxRate
 ```
 
 ### **Properties**
@@ -36,7 +36,7 @@ GObject
 | **Name**       | **Description**                                                          | **Type**  | **Default Value** |
 |-----------------|--------------------------------------------------------------------------|-----------|--------------------|
 | `name`         | Sets the unique name of the DxRate element.                              | String    | `"dxrate0"`        |
-| `framerate`    | Sets the target framerate (FPS). This property must be configured.       | Integer   | `0`                |
+| `framerate`    | Sets the target framerate (FPS). This property must be configured.       | Unsigned Integer | `0`                |
 | `throttle`     | Determines whether to send Throttle QoS Events upstream on frame drops.  | Boolean   | `false`            |
 
 !!! note "NOTE" 

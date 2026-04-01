@@ -64,6 +64,46 @@ uninstall_pydxs() {
     fi
 }
 
+cleanup_bashrc_entries() {
+    print_colored_v2 "INFO" "Cleaning up DX-Stream environment variables from ~/.bashrc..."
+    
+    local BASHRC="$HOME/.bashrc"
+    local START_MARKER="# DeepX Stream GStreamer Plugin"
+    local END_MARKER="# DeepX Stream GStreamer Plugin - END"
+    
+    # Check if bashrc exists
+    if [ ! -f "$BASHRC" ]; then
+        print_colored_v2 "INFO" "~/.bashrc not found (skipping)"
+        return 0
+    fi
+    
+    # Check write permission
+    if [ ! -w "$BASHRC" ]; then
+        print_colored_v2 "ERROR" "No write permission for $BASHRC"
+        print_colored_v2 "ERROR" "Please remove DX-Stream configuration manually or fix permissions"
+        return 1
+    fi
+    
+    # Check if marker exists
+    if ! grep -q "^$START_MARKER" "$BASHRC" 2>/dev/null; then
+        print_colored_v2 "INFO" "No DX-Stream configuration found in ~/.bashrc (skipping)"
+        return 0
+    fi
+    
+    # Remove the configuration block
+    print_colored_v2 "INFO" "Removing DX-Stream configuration block..."
+    sed -i "/^$START_MARKER/,/^$END_MARKER/d" "$BASHRC"
+    
+    if [ $? -eq 0 ]; then
+        print_colored_v2 "SUCCESS" "DX-Stream configuration removed from ~/.bashrc"
+        print_colored_v2 "INFO" "Please run 'source ~/.bashrc' or restart your terminal to apply changes"
+        return 0
+    else
+        print_colored_v2 "ERROR" "Failed to remove DX-Stream configuration from ~/.bashrc"
+        return 1
+    fi
+}
+
 uninstall_project_specific_files() {
     print_colored_v2 "INFO" "Uninstalling ${PROJECT_NAME} specific files..."
     ./build.sh --uninstall || {
@@ -73,6 +113,9 @@ uninstall_project_specific_files() {
     }
     
     delete_symlinks "dx_stream/samples/"
+    
+    # Cleanup bashrc environment variables
+    cleanup_bashrc_entries
     
     # Uninstall pydxs from current Python environment
     uninstall_pydxs

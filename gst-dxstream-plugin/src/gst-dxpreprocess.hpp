@@ -1,10 +1,6 @@
 #ifndef GST_DXPREPROCESS_H
 #define GST_DXPREPROCESS_H
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
 #include "dxcommon.hpp"
 #include "gst-dxframemeta.hpp"
 #include "gst-dxobjectmeta.hpp"
@@ -13,13 +9,7 @@
 #include <gst/video/video.h>
 #include <opencv2/opencv.hpp>
 #include <map>
-
-#ifdef HAVE_LIBRGA
-#include "rga/RgaUtils.h"
-#include "rga/im2d.hpp"
-#else
-#include "libyuv_transform/libyuv_transform.hpp"
-#endif
+#include <vector>
 
 // Forward declaration for preprocessor
 class Preprocessor;
@@ -33,51 +23,70 @@ G_DECLARE_FINAL_TYPE(GstDxPreprocess, gst_dxpreprocess, GST, DXPREPROCESS,
 struct _GstDxPreprocess {
     GstBaseTransform _parent_instance;
 
-    gchar *_config_file_path;
-    gchar *_library_file_path;
-    gchar *_function_name;
+    // Configuration
+    struct {
+        gchar *file_path;
+        gchar *library_path;
+        gchar *function_name;
+    } _config;
 
-    std::map<int, GstVideoInfo> _input_info;
-    int _last_stream_id;
+    // Stream information
+    struct {
+        std::map<int, GstVideoInfo> info;
+        int last_id;
+    } _stream;
 
-    guint _preprocess_id;
-    gchar *_color_format;
-    guint _resize_width;
-    guint _resize_height;
-    guint _input_channel;
-    gboolean _keep_ratio;
-    guint _pad_value;
-    gboolean _transpose;
+    // Preprocessing parameters
+    struct {
+        guint id;
+        gchar *color_format;
+        guint width;
+        guint height;
+        guint channel;
+        gboolean keep_ratio;
+        guint pad_value;
+        gboolean transpose;
+        std::vector<uint8_t> transpose_data;
+    } _preprocess;
 
-    void* _transpose_data;
+    // Object filtering
+    struct {
+        gboolean secondary_mode;
+        gint target_class_id;
+        guint min_width;
+        guint min_height;
+        int roi[4];
+    } _object_filter;
 
-    gboolean _secondary_mode;
-    gint _target_class_id;
-    guint _min_object_width;
-    guint _min_object_height;
+    // Frame processing control
+    struct {
+        guint interval;
+        std::map<int, guint> cnt;
+        guint frame_count;
+        double acc_fps;
+        std::map<int, std::map<int, int>> track_cnt;
+    } _frame_ctrl;
 
-    int _roi[4];
+    // QoS
+    struct {
+        GstClockTime timestamp;
+        GstClockTimeDiff timediff;
+        GstClockTimeDiff throttling_delay;
+    } _qos;
 
-    guint _interval;
-    std::map<int, guint> _cnt;
-    guint _frame_count_for_fps;
-    double _acc_fps;
+    // Plugin function pointers
+    struct {
+        void *library_handle;
+        bool (*process_function)(GstBuffer *buf, DXFrameMeta *, DXObjectMeta *, void *);
+        std::shared_ptr<Preprocessor> preprocessor;
+    } _plugin;
 
-    GstClockTime _qos_timestamp;
-    GstClockTimeDiff _qos_timediff;
-    GstClockTimeDiff _throttling_delay;
-
-    std::map<int, std::map<int, int>> _track_cnt;
-
-    void *_library_handle;
-    bool (*_process_function)(GstBuffer *buf, DXFrameMeta *, DXObjectMeta *, void *);
-
-    // Preprocessor instance for object-oriented implementation
-    Preprocessor *_preprocessor;
-
-    std::map<int, uint8_t *> _crop_frame;
-    std::map<int, uint8_t *> _convert_frame;
-    std::map<int, uint8_t *> _resized_frame;
+    // Buffer caches (RAII pattern)
+    struct {
+        std::map<int, std::vector<uint8_t>> crop;
+        std::map<int, std::vector<uint8_t>> convert;
+        std::map<int, std::vector<uint8_t>> resized;
+    } _buffers;
 };
 
 G_END_DECLS

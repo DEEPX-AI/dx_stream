@@ -4,11 +4,17 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <tuple>
+
 #include <json-glib/json-glib.h>
 
-static volatile sig_atomic_t run = 1;
+// NOSONAR: cpp:S5421 - This variable must be mutable as it's modified by signal handler
+static volatile sig_atomic_t run = 1;  // NOSONAR
 
-static void sigterm(int sig) { run = 0; }
+static void sigterm(int sig) { 
+    std::ignore = sig;
+    run = 0; 
+}
 
 static void print_json_all(JsonNode *root, size_t len) {
     char *formatted = json_to_string(root, true);
@@ -24,12 +30,13 @@ static void print_seq_id(JsonObject *object, size_t len) {
     if (!JSON_NODE_HOLDS_VALUE(seqId_node))
         return;
 
-    int seqId = json_node_get_int(seqId_node);
-    printf("Received payload %zd bytes, seqId: %d\n", len, seqId);
+    gint64 seqId = json_node_get_int(seqId_node);
+    printf("Received payload %zd bytes, seqId: %ld\n", len, seqId);
 }
 
-static void parse_message(rd_kafka_message_t *msg, int bPrintAll) {
-    char *payload = (char *)msg->payload;
+static void parse_message(const rd_kafka_message_t *msg, int bPrintAll) {
+    std::ignore = bPrintAll;
+    const auto *payload = (const char *)msg->payload;
     JsonParser *parser = json_parser_new();
     GError *error = nullptr;
 
@@ -101,7 +108,8 @@ int main(int argc, char **argv) {
     rd_kafka_conf_t *conf;
     rd_kafka_topic_partition_list_t *topic_list;
     char errstr[512];
-    char *hostname, *topic;
+    char *hostname;
+    char *topic;
     int port;
     char broker[256];
 
@@ -154,8 +162,6 @@ int main(int argc, char **argv) {
         msg = rd_kafka_consumer_poll(rk, 1000);
         if (msg) {
             if (msg->err == RD_KAFKA_RESP_ERR_NO_ERROR) {
-                // printf("Received message (%zd bytes): %.*s\n", msg->len,
-                // (int)msg->len, (char *)msg->payload);
                 parse_message(msg, 0);
             } else {
                 fprintf(stderr, "Failed to consume message: %s\n",

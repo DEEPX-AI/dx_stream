@@ -32,8 +32,17 @@ import time
  *         },
  *         "body_feature": [0.321, 0.654, 0.987],
  *         "segment": {
- *           "height": 1080,
- *           "width": 1920,
+ *           "height": 200,
+ *           "width": 200,
+ *           "format": "roi-binary-mask",
+ *           "background_value": 0,
+ *           "foreground_value": 255,
+ *           "box": {
+ *             "startX": 300.0,
+ *             "startY": 400.0,
+ *             "endX": 500.0,
+ *             "endY": 600.0
+ *           },
  *           "data": 140712345678912
  *         },
  *         "pose": {
@@ -78,16 +87,15 @@ def on_message(client, userdata, msg):
         ###print("Received message: ", message)
 
         sub_ts = int(round(time.time() * 1000))
-        seqId = message['seqId'] if 'seqId' in message else None
+        seq_id = message['seqId'] if 'seqId' in message else None
 
-        if seqId is None:
+        if seq_id is None:
             return
 
-        if seqId==1:
+        if seq_id==1:
             userdata['sub_ts_old']=sub_ts
 
-        ## print payload
-        print(f"|dSub: {(sub_ts - userdata['sub_ts_old']):3d}| payload => seqId: {seqId:3d}, ...")
+        print(f"|dSub: {(sub_ts - userdata['sub_ts_old']):3d}| payload => seqId: {seq_id:3d}, ...")
 
         userdata['sub_ts_old']=sub_ts
 
@@ -114,5 +122,3 @@ if __name__ == "__main__":
     client.connect(args.hostname, args.port, 60)
     
     client.loop_forever()
-   
-    cv2.destroyAllWindows()

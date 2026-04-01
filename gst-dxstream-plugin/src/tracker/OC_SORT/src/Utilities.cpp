@@ -8,7 +8,7 @@ Eigen::VectorXf convert_bbox_to_z(Eigen::VectorXf bbox) {
     double s = w * h;
     double r = w / (h + 1e-6);
     Eigen::VectorXf z(4, 1);
-    z << x, y, s, r;
+    z << static_cast<float>(x), static_cast<float>(y), static_cast<float>(s), static_cast<float>(r);
     return z;
 }
 Eigen::VectorXf speed_direction(Eigen::VectorXf bbox1, Eigen::VectorXf bbox2) {
@@ -17,9 +17,9 @@ Eigen::VectorXf speed_direction(Eigen::VectorXf bbox1, Eigen::VectorXf bbox2) {
     double cx2 = (bbox2[0] + bbox2[2]) / 2.0;
     double cy2 = (bbox2[1] + bbox2[3]) / 2.0;
     Eigen::VectorXf speed(2, 1);
-    speed << cy2 - cy1, cx2 - cx1;
+    speed << static_cast<float>(cy2 - cy1), static_cast<float>(cx2 - cx1);
     double norm = sqrt(pow(cy2 - cy1, 2) + pow(cx2 - cx1, 2)) + 1e-6;
-    return speed / norm;
+    return speed / static_cast<float>(norm);
 }
 Eigen::VectorXf convert_x_to_bbox(Eigen::VectorXf x) {
     float w = std::sqrt(x(2) * x(3));
@@ -31,7 +31,7 @@ Eigen::VectorXf convert_x_to_bbox(Eigen::VectorXf x) {
 Eigen::VectorXf
 k_previous_obs(std::unordered_map<int, Eigen::VectorXf> observations_,
                int cur_age, int k) {
-    if (observations_.size() == 0)
+    if (observations_.empty())
         return Eigen::VectorXf::Constant(5, -1.0);
     for (int i = 0; i < k; i++) {
         int dt = k - i;
