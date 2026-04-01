@@ -30,7 +30,7 @@ The processing interval is controlled by the `interval` property. It skips a spe
 **Object Filtering in Secondary Mode**  
 Objects can be filtered based on the following criteria.  
 
-- **Class ID**: Use the `class-id` property to process only objects that match the specified class. Non-matching objects are ignored.  
+- **Class ID**: Use the `target-class-id` property to process only objects that match the specified class. Non-matching objects are ignored.  
 - **Size** : Use the `min-object-width` and `min-object-height` properties to exclude objects smaller than the defined size.
 
 **Resizing**  
@@ -79,18 +79,19 @@ This table provides a complete reference to the properties of the **DxPreprocess
 |--------------|---------------------|---------------|----------------------|
 | `name`       | Sets the unique name of the DxPreprocess element.   | String   | `"dxpreprocess0"`  |
 | `config-file-path`  | Path to the JSON config file containing the element's properties.   | String    | `null`   |
-| `preprocess-id`     | Assigns an ID to the preprocessed input tensor.    | Integer  | `0`    |
-| `resize-width`       | Specifies the width for resizing.                                                                   | Integer              | `0`                    |
-| `resize-height`      | Specifies the height for resizing.                                                                  | Integer              | `0`                    |
-| `keep-ratio`         | Maintains the original aspect ratio during resizing.                                                | Boolean              | `false`                |
-| `pad-value`          | Padding color value for R, G, B pixels during                                             | Integer              | `0`                    |
-| `color-format`       | Specifies the color format for preprocessing.                                                       | Enum (`rgb`, `bgr`)  | `0` (`rgb`)            |
+| `preprocess-id`     | Assigns an ID to the preprocessed input tensor.    | Unsigned Integer  | `0`    |
+| `resize-width`       | Specifies the width for resizing.                                                                   | Unsigned Integer     | `0`                    |
+| `resize-height`      | Specifies the height for resizing.                                                                  | Unsigned Integer     | `0`                    |
+| `keep-ratio`         | Maintains the original aspect ratio during resizing.                                                | Boolean              | `true`                 |
+| `pad-value`          | Padding color value for R, G, B pixels during                                             | Unsigned Integer     | `0`                    |
+| `color-format`       | Specifies the color format for preprocessing. (`0`: RGB, `1`: BGR)                                  | Unsigned Integer     | `0` (RGB)              |
 | `secondary-mode`     | Enables Secondary Mode for processing object regions.                                               | Boolean              | `false`                |
 | `target-class-id`    | Filters objects in Secondary Mode by class ID. (`-1` processes all objects).                        | Integer              | `-1`                   |
-| `min-object-width`   | Minimum object width for preprocessing in Secondary Mode.                                           | Integer              | `0`                    |
-| `min-object-height`  | Minimum object height for preprocessing in Secondary Mode.                                          | Integer              | `0`                    |
-| `roi`                | Defines the ROI (Region of Interest) for preprocessing.                                             | Array of Integers    | `[-1, -1, -1, -1]`     |
-| `interval`           | Specifies the interval for preprocessing frames or objects.                                         | Integer              | `0`                    |
+| `min-object-width`   | Minimum object width for preprocessing in Secondary Mode.                                           | Unsigned Integer     | `0`                    |
+| `min-object-height`  | Minimum object height for preprocessing in Secondary Mode.                                          | Unsigned Integer     | `0`                    |
+| `roi`                | Defines the ROI (Region of Interest) for preprocessing as a comma-separated string `"x1,y1,x2,y2"`. | String               | `"-1,-1,-1,-1"`        |
+| `interval`           | Specifies the interval for preprocessing frames or objects.                                         | Unsigned Integer     | `0`                    |
+| `transpose`          | Enables transposing of the output tensor axes.                                                      | Boolean              | `false`                |
 | `library-file-path`  | Path to the custom preprocess library, if used.                                                     | String               | `null`                 |
 | `function-name`      | Name of the custom preprocessing function to use.                                                   | String               | `null`                 |
 

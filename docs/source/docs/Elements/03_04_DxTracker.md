@@ -49,7 +49,7 @@ GObject
        +----GstObject
              +----GstElement
                    +----GstBaseTransform
-                         +----DxTracker
+                         +----GstDxTracker
 ```
 
 ### **Properties**

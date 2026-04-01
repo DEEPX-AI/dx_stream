@@ -12,7 +12,7 @@ def sigterm_handler(signum, frame):
     global run
     run = False
 
-def parse_message(msg, bPrintAll):
+def parse_message(msg, b_print_all):
     payload = msg.value().decode('utf-8')
 
     try:
@@ -21,12 +21,12 @@ def parse_message(msg, bPrintAll):
         print(f"Unable to parse JSON: {e}")
         return
 
-    if bPrintAll:
+    if b_print_all:
         print(f"Received payload {len(payload)} bytes, (All): {json.dumps(data, indent=2)}")
     else:
         if 'seqId' in data:
-            seqId = data['seqId']
-            print(f"Received payload {len(payload)} bytes, seqId: {seqId}")
+            seq_id = data['seqId']
+            print(f"Received payload {len(payload)} bytes, seqId: {seq_id}")
         else:
             print("Received payload is not a JSON object or does not contain 'seqId'.")
 
@@ -59,7 +59,7 @@ def main(broker, topic):
                     print(f"Failed to consume message: {msg.error()}")
                     continue
 
-            parse_message(msg, bPrintAll=False)
+            parse_message(msg, b_print_all=False)
     except KeyboardInterrupt:
         pass
     finally:

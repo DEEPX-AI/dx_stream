@@ -1,5 +1,5 @@
-#include <dx_stream/gst-dxframemeta.hpp>
-#include <dx_stream/gst-dxobjectmeta.hpp>
+#include <gstdxstream/gst-dxframemeta.hpp>
+#include <gstdxstream/gst-dxobjectmeta.hpp>
 #include <gst/check/gstcheck.h>
 #include <gst/gst.h>
 

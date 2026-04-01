@@ -1,16 +1,23 @@
-#include "dx_stream/gst-dxframemeta.hpp"
-#include "dx_stream/gst-dxobjectmeta.hpp"
+#include "gstdxstream/gst-dxframemeta.hpp"
+#include "gstdxstream/gst-dxobjectmeta.hpp"
+#include <dxrt/dxrt_api.h>
 #include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <stdio.h>
 #include <string.h>
 #include <vector>
+#include <tuple>
+#include <glib.h>
+#include <gst/gst.h>
 
 #define sigmoid(x) (1 / (1 + std::exp(-x)))
 
 struct BoundingBox {
-    float x1, y1, x2, y2;
+    float x1;
+    float y1;
+    float x2;
+    float y2;
     float confidence;
     int class_id;
     std::string class_name;
@@ -59,103 +66,6 @@ struct YoloConfig {
     };
 };
 
-// extern "C" void SCRFDPostProcess(std::vector<dxs::DXTensor> outputs,
-//                                  DXFrameMeta *frame_meta,
-//                                  DXObjectMeta *object_meta,
-//                                  SCRFDParams params) {
-//     std::vector<std::vector<std::pair<float, int>>> ScoreIndices;
-//     for (int i = 0; i < params.numClasses; i++) {
-//         std::vector<std::pair<float, int>> v;
-//         ScoreIndices.emplace_back(v);
-//     }
-
-//     std::vector<BBox> rawBoxes;
-//     rawBoxes.clear();
-
-//     int boxIdx = 0;
-//     for (int b_idx = 0; b_idx < outputs[0]._shape[1]; b_idx++) {
-//         uint8_t *raw_data = (uint8_t *)outputs[0]._data + (b_idx * 64);
-//         dxs::DeviceFace_t *data =
-//             static_cast<dxs::DeviceFace_t *>((void *)raw_data);
-//         int stride = params.layerStride[data->layer_idx];
-
-//         if (data->score >= params.scoreThreshold) {
-
-//             ScoreIndices[0].emplace_back(data->score, boxIdx);
-
-//             BBox bbox = {(data->grid_x - data->x) * stride,
-//                          (data->grid_y - data->y) * stride,
-//                          (data->grid_x + data->w) * stride,
-//                          (data->grid_y + data->h) * stride,
-//                          2 * data->x * stride,
-//                          2 * data->x * stride,
-//                          {dxs::Point_f(-1, -1, -1)}};
-
-//             bbox._width = bbox._xmax - bbox._xmin;
-//             bbox._height = bbox._ymax - bbox._ymin;
-
-//             bbox._kpts.clear();
-//             for (int k_idx = 0; k_idx < params.numKeypoints; k_idx++) {
-//                 bbox._kpts.emplace_back(dxs::Point_f(
-//                     (data->grid_x + data->kpts[k_idx][0]) * stride,
-//                     (data->grid_y + data->kpts[k_idx][1]) * stride, 0.5f));
-//             }
-
-//             rawBoxes.emplace_back(bbox);
-//             boxIdx += 1;
-//         }
-//     }
-
-//     for (auto &indices : ScoreIndices) {
-//         sort(indices.begin(), indices.end(), scoreComapre);
-//     }
-
-//     std::vector<BoundingBox> result;
-//     nms(rawBoxes, ScoreIndices, params.iouThreshold, params.classNames,
-//         params.numKeypoints, result);
-
-//     if (result.size() > 0) {
-//         BoundingBox ret = result[0];
-//         int origin_w = object_meta->_box[2] - object_meta->_box[0];
-//         int origin_h = object_meta->_box[3] - object_meta->_box[1];
-
-//         float r, w_pad, h_pad, x1, y1, x2, y2, kx, ky, ks;
-
-//         r = std::min(params.input_width / (float)origin_w,
-//                      params.input_height / (float)origin_h);
-
-//         w_pad = (params.input_width - origin_w * r) / 2.;
-//         h_pad = (params.input_height - origin_h * r) / 2.;
-
-//         x1 = (ret.box[0] - w_pad) / r;
-//         y1 = (ret.box[1] - h_pad) / r;
-//         x2 = (ret.box[2] - w_pad) / r;
-//         y2 = (ret.box[3] - h_pad) / r;
-
-//         x1 = std::min((float)origin_w, std::max((float)0.0, x1));
-//         x2 = std::min((float)origin_w, std::max((float)0.0, x2));
-//         y1 = std::min((float)origin_h, std::max((float)0.0, y1));
-//         y2 = std::min((float)origin_h, std::max((float)0.0, y2));
-
-//         object_meta->_face_landmarks.clear();
-//         for (int k = 0; k < params.numKeypoints; k++) {
-
-//             kx = (ret.kpt[k * 3 + 0] - w_pad) / r;
-//             ky = (ret.kpt[k * 3 + 1] - h_pad) / r;
-//             ks = ret.kpt[k * 3 + 2];
-
-//             object_meta->_face_landmarks.push_back(dxs::Point_f(
-//                 kx + object_meta->_box[0], ky + object_meta->_box[1], ks));
-//         }
-
-//         object_meta->_face_confidence = ret.score;
-//         object_meta->_face_box[0] = x1 + object_meta->_box[0];
-//         object_meta->_face_box[1] = y1 + object_meta->_box[1];
-//         object_meta->_face_box[2] = x2 + object_meta->_box[0];
-//         object_meta->_face_box[3] = y2 + object_meta->_box[1];
-//     }
-// }
-
 float calculate_iou(const BoundingBox& box1, const BoundingBox& box2) {
     float x1 = std::max(box1.x1, box2.x1);
     float y1 = std::max(box1.y1, box2.y1);
@@ -171,29 +81,30 @@ float calculate_iou(const BoundingBox& box1, const BoundingBox& box2) {
     return intersection / (area1 + area2 - intersection);
 }
 
-std::vector<BoundingBox> nms(std::vector<BoundingBox>& boxes, float threshold) {
-    if (boxes.empty()) return {};
+// Helper function: Perform NMS on boxes of a single class
+std::vector<BoundingBox> nms_single_class(std::vector<BoundingBox>& boxes_per_class, float threshold) {
+    if (boxes_per_class.empty()) return {};
     
-    std::sort(boxes.begin(), boxes.end(), 
+    // Sort boxes by confidence (highest first)
+    std::sort(boxes_per_class.begin(), boxes_per_class.end(), 
               [](const BoundingBox& a, const BoundingBox& b) {
                   return a.confidence > b.confidence;
               });
     
-    std::vector<bool> suppressed(boxes.size(), false);
+    std::vector<bool> suppressed(boxes_per_class.size(), false);
     std::vector<BoundingBox> result;
     
-    for (size_t i = 0; i < boxes.size(); ++i) {
+    for (size_t i = 0; i < boxes_per_class.size(); ++i) {
         if (suppressed[i]) continue;
         
-        result.push_back(boxes[i]);
+        result.push_back(boxes_per_class[i]);
         
-        for (size_t j = i + 1; j < boxes.size(); ++j) {
+        // Check overlap with remaining boxes
+        for (size_t j = i + 1; j < boxes_per_class.size(); ++j) {
             if (suppressed[j]) continue;
             
-            if (boxes[i].class_id == boxes[j].class_id) {
-                if (calculate_iou(boxes[i], boxes[j]) > threshold) {
-                    suppressed[j] = true;
-                }
+            if (calculate_iou(boxes_per_class[i], boxes_per_class[j]) > threshold) {
+                suppressed[j] = true;
             }
         }
     }
@@ -201,31 +112,59 @@ std::vector<BoundingBox> nms(std::vector<BoundingBox>& boxes, float threshold) {
     return result;
 }
 
+std::vector<BoundingBox> nms(const std::vector<BoundingBox>& boxes, float threshold, int num_classes) {
+    if (boxes.empty()) return {};
+    
+    // Group boxes by class
+    std::vector<std::vector<BoundingBox>> class_boxes(num_classes);
+    for (const auto& box : boxes) {
+        if (box.class_id >= 0 && box.class_id < num_classes) {
+            class_boxes[box.class_id].push_back(box);
+        }
+    }
+    
+    std::vector<BoundingBox> final_boxes;
+    
+    // Perform NMS for each class separately
+    for (auto& boxes_per_class : class_boxes) {
+        if (boxes_per_class.empty()) continue;
+        
+        auto class_result = nms_single_class(boxes_per_class, threshold);
+        final_boxes.insert(final_boxes.end(), class_result.begin(), class_result.end());
+    }
+    
+    // Sort final results by confidence
+    std::sort(final_boxes.begin(), final_boxes.end(), 
+              [](const BoundingBox& a, const BoundingBox& b) {
+                  return a.confidence > b.confidence;
+              });
+    
+    return final_boxes;
+}
+
 // Decode bounding boxes for object detection (BBOX type)
-std::vector<BoundingBox> decode_bbox(dxs::DXTensor &output, const YoloConfig& config) {
+std::vector<BoundingBox> decode_bbox(const std::shared_ptr<dxrt::Tensor>& output, const YoloConfig& config) {
     std::vector<BoundingBox> boxes;
-    int num_detections = output._shape[1];
-    auto *dataSrc = static_cast<dxs::DeviceBoundingBox_t*>(output._data);
+    const auto num_detections = static_cast<int>(output->shape()[1]);
+    const auto* dataSrc = static_cast<dxrt::DeviceBoundingBox_t*>(output->data());
     
     for (int i = 0; i < num_detections; i++) {
-        auto *data = dataSrc + i;
+        const auto *data = dataSrc + i;
 
         if (data->score < config.conf_threshold) continue;
 
         int gX = data->grid_x;
         int gY = data->grid_y;
 
-        auto& anchors_for_layer = config.anchors[data->layer_idx];
-        std::pair<float, float> anchor = anchors_for_layer[data->box_idx];
+        const auto& anchors_for_layer = config.anchors[data->layer_idx];
+        const std::pair<float, float> anchor = anchors_for_layer[data->box_idx];
 
-        float x, y, w, h;
+        float x = (data->x * 2.0f - 0.5f + static_cast<float>(gX)) * static_cast<float>(config.strides[data->layer_idx]);
+        float y = (data->y * 2.0f - 0.5f + static_cast<float>(gY)) * static_cast<float>(config.strides[data->layer_idx]);
+        float w = (data->w * data->w * 4.0f) * anchor.first;
+        float h = (data->h * data->h * 4.0f) * anchor.second;
 
-        x = (data->x * 2. - 0.5 + gX) * config.strides[data->layer_idx];
-        y = (data->y * 2. - 0.5 + gY) * config.strides[data->layer_idx];
-        w = (data->w * data->w * 4.) * anchor.first;
-        h = (data->h * data->h * 4.) * anchor.second;
-
-        BoundingBox box(x - w / 2., y - h / 2., x + w / 2., y + h / 2., 
+        BoundingBox box(x - w / 2.0f, y - h / 2.0f, x + w / 2.0f, y + h / 2.0f, 
                        data->score, data->label, config.class_names[data->label]);
         boxes.push_back(box);
     }
@@ -234,33 +173,30 @@ std::vector<BoundingBox> decode_bbox(dxs::DXTensor &output, const YoloConfig& co
 }
 
 // Decode poses with keypoints (POSE type)
-std::vector<BoundingBox> decode_pose(dxs::DXTensor &output, const YoloConfig& config) {
+std::vector<BoundingBox> decode_pose(const std::shared_ptr<dxrt::Tensor>& output, const YoloConfig& config) {
     std::vector<BoundingBox> boxes;
-    int num_detections = output._shape[1];
-    auto *dataSrc = static_cast<dxs::DevicePose_t*>(output._data);
+    const auto num_detections = static_cast<int>(output->shape()[1]);
+    const auto* dataSrc = static_cast<dxrt::DevicePose_t*>(output->data());
     
-    for (int i = 0; i < num_detections; i++) {
-        auto *data = dataSrc + i;
+    for (int i = 0; i < num_detections; ++i) {
+        const auto* data = dataSrc + i;
 
         if (data->score < config.conf_threshold) continue;
 
-        int gX = data->grid_x;
-        int gY = data->grid_y;
+        const int gX = data->grid_x;
+        const int gY = data->grid_y;
 
-        auto& anchors_for_layer = config.anchors[data->layer_idx];
-        std::pair<float, float> anchor = anchors_for_layer[data->box_idx];
+        const auto& anchors_for_layer = config.anchors[data->layer_idx];
+        const std::pair<float, float> anchor = anchors_for_layer[data->box_idx];
 
-        float x, y, w, h;
-
-        x = (data->x * 2. - 0.5 + gX) * config.strides[data->layer_idx];
-        y = (data->y * 2. - 0.5 + gY) * config.strides[data->layer_idx];
-        w = (data->w * data->w * 4.) * anchor.first;
-        h = (data->h * data->h * 4.) * anchor.second;
-
+        float x = (data->x * 2.0f - 0.5f + static_cast<float>(gX)) * static_cast<float>(config.strides[data->layer_idx]);
+        float y = (data->y * 2.0f - 0.5f + static_cast<float>(gY)) * static_cast<float>(config.strides[data->layer_idx]);
+        float w = (data->w * data->w * 4.0f) * anchor.first;
+        float h = (data->h * data->h * 4.0f) * anchor.second;
         // Extract keypoints
         std::vector<float> keypoints;
         if (config.num_keypoints > 0) {
-            for (int k = 0; k < config.num_keypoints; k++) {
+            for (int k = 0; k < config.num_keypoints; ++k) {
                 keypoints.emplace_back((data->kpts[k][0] * 2. - 0.5 + gX) *
                                        config.strides[data->layer_idx]);
                 keypoints.emplace_back((data->kpts[k][1] * 2. - 0.5 + gY) *
@@ -269,7 +205,7 @@ std::vector<BoundingBox> decode_pose(dxs::DXTensor &output, const YoloConfig& co
             }
         }
 
-        BoundingBox box(x - w / 2., y - h / 2., x + w / 2., y + h / 2., 
+        BoundingBox box(x - w / 2.0f, y - h / 2.0f, x + w / 2.0f, y + h / 2.0f, 
                        data->score, 0, config.class_names[0], keypoints);
         boxes.push_back(box);
     }
@@ -278,30 +214,30 @@ std::vector<BoundingBox> decode_pose(dxs::DXTensor &output, const YoloConfig& co
 }
 
 // Decode faces with keypoints (FACE type) - SCRFD style
-std::vector<BoundingBox> decode_face(dxs::DXTensor &output, const YoloConfig& config) {
+std::vector<BoundingBox> decode_face(const std::shared_ptr<dxrt::Tensor>& output, const YoloConfig& config) {
     std::vector<BoundingBox> boxes;
-    int num_detections = output._shape[1];
-    auto *dataSrc = static_cast<dxs::DeviceFace_t*>(output._data);
+    const auto num_detections = static_cast<int>(output->shape()[1]);
+    const auto* dataSrc = static_cast<dxrt::DeviceFace_t*>(output->data());
 
-    for (int i = 0; i < num_detections; i++) {
-        auto *data = dataSrc + i;
+    for (int i = 0; i < num_detections; ++i) {
+        const auto* data = dataSrc + i;
 
         if (data->score < config.conf_threshold) continue;
 
-        int stride = config.strides[data->layer_idx];
+        const int stride = config.strides[data->layer_idx];
 
         // SCRFD bbox decoding - matches original implementation
-        float x1 = (data->grid_x - data->x) * stride;
-        float y1 = (data->grid_y - data->y) * stride;
-        float x2 = (data->grid_x + data->w) * stride;
-        float y2 = (data->grid_y + data->h) * stride;
+        float x1 = (data->grid_x - data->x) * static_cast<float>(stride);
+        float y1 = (data->grid_y - data->y) * static_cast<float>(stride);
+        float x2 = (data->grid_x + data->w) * static_cast<float>(stride);
+        float y2 = (data->grid_y + data->h) * static_cast<float>(stride);
 
         // Extract keypoints (SCRFD style - no offset adjustment)
         std::vector<float> keypoints;
         if (config.num_keypoints > 0) {
-            for (int k = 0; k < config.num_keypoints; k++) {
-                keypoints.emplace_back((data->grid_x + data->kpts[k][0]) * stride);
-                keypoints.emplace_back((data->grid_y + data->kpts[k][1]) * stride);
+            for (int k = 0; k < config.num_keypoints; ++k) {
+                keypoints.emplace_back((data->grid_x + data->kpts[k][0]) * static_cast<float>(stride));
+                keypoints.emplace_back((data->grid_y + data->kpts[k][1]) * static_cast<float>(stride));
                 keypoints.emplace_back(0.5f);  // Fixed confidence for SCRFD landmarks
             }
         }
@@ -314,14 +250,16 @@ std::vector<BoundingBox> decode_face(dxs::DXTensor &output, const YoloConfig& co
     return boxes;
 }
 
-extern "C" void YOLOV5S_PPU(GstBuffer *buf,
-                            std::vector<dxs::DXTensor> network_output,
-                            DXFrameMeta *frame_meta,
-                            DXObjectMeta *object_meta) {
+extern "C" void YOLOV5S_PPU(GstBuffer* buf,
+                            const dxrt::TensorPtrs& network_output,
+                            DXFrameMeta* frame_meta,
+                            DXObjectMeta* object_meta) {
+    std::ignore = buf;
+    std::ignore = object_meta;
 
     YoloConfig config;
 
-    config.input_size = 512;
+    config.input_size = 640;
 
     std::vector<BoundingBox> all_boxes;
 
@@ -330,16 +268,11 @@ extern "C" void YOLOV5S_PPU(GstBuffer *buf,
         return;
     }
 
-    if (network_output[0]._type != dxs::DataType::BBOX) {
-        GST_ERROR("Data type is not BBOX");
-        return;
-    }
-
     all_boxes = decode_bbox(network_output[0], config);
 
-    auto results = nms(all_boxes, config.nms_threshold);
+    auto results = nms(all_boxes, config.nms_threshold, config.num_classes);
 
-    for (auto &ret : results) {
+    for (const auto &ret : results) {
         int origin_w = frame_meta->_width;
         int origin_h = frame_meta->_height;
         if (frame_meta->_roi[0] != -1 && frame_meta->_roi[1] != -1 &&
@@ -348,38 +281,40 @@ extern "C" void YOLOV5S_PPU(GstBuffer *buf,
             origin_h = frame_meta->_roi[3] - frame_meta->_roi[1];
         }
 
-        float r = std::min(config.input_size / (float)origin_w,
-                           config.input_size / (float)origin_h);
-        float w_pad = (config.input_size - origin_w * r) / 2.;
-        float h_pad = (config.input_size - origin_h * r) / 2.;
+        float r = std::min(static_cast<float>(config.input_size) / static_cast<float>(origin_w),
+                           static_cast<float>(config.input_size) / static_cast<float>(origin_h));
+        float w_pad = (static_cast<float>(config.input_size) - static_cast<float>(origin_w) * r) / 2.0f;
+        float h_pad = (static_cast<float>(config.input_size) - static_cast<float>(origin_h) * r) / 2.0f;
 
         float x1 = (ret.x1 - w_pad) / r;
         float x2 = (ret.x2 - w_pad) / r;
         float y1 = (ret.y1 - h_pad) / r;
         float y2 = (ret.y2 - h_pad) / r;
 
-        x1 = std::min((float)origin_w, std::max((float)0.0, x1));
-        x2 = std::min((float)origin_w, std::max((float)0.0, x2));
-        y1 = std::min((float)origin_h, std::max((float)0.0, y1));
-        y2 = std::min((float)origin_h, std::max((float)0.0, y2));
+        x1 = std::min(static_cast<float>(origin_w), std::max(0.0f, x1));
+        x2 = std::min(static_cast<float>(origin_w), std::max(0.0f, x2));
+        y1 = std::min(static_cast<float>(origin_h), std::max(0.0f, y1));
+        y2 = std::min(static_cast<float>(origin_h), std::max(0.0f, y2));
 
-        DXObjectMeta *object_meta = dx_acquire_obj_meta_from_pool();
-        object_meta->_confidence = ret.confidence;
-        object_meta->_label = ret.class_id;
-        object_meta->_label_name = g_string_new(ret.class_name.c_str());
-        object_meta->_box[0] = x1;
-        object_meta->_box[1] = y1;
-        object_meta->_box[2] = x2;
-        object_meta->_box[3] = y2;
-        dx_add_obj_meta_to_frame(frame_meta, object_meta);
+        DXObjectMeta *obj_meta = dx_acquire_obj_meta_from_pool();
+        obj_meta->_confidence = ret.confidence;
+        obj_meta->_label = ret.class_id;
+        obj_meta->_label_name = ret.class_name;
+        obj_meta->_box[0] = x1;
+        obj_meta->_box[1] = y1;
+        obj_meta->_box[2] = x2;
+        obj_meta->_box[3] = y2;
+        dx_add_obj_meta_to_frame(frame_meta, obj_meta);
     }
 }
 
 
-extern "C" void YOLOV5Pose_PPU(GstBuffer *buf,
-                               std::vector<dxs::DXTensor> network_output,
-                               DXFrameMeta *frame_meta,
-                               DXObjectMeta *object_meta) {
+extern "C" void YOLOV5Pose_PPU(GstBuffer* buf,
+                               const dxrt::TensorPtrs& network_output,
+                               DXFrameMeta* frame_meta,
+                               DXObjectMeta* object_meta) {
+    std::ignore = buf;
+    std::ignore = object_meta;
     YoloConfig config;
 
     config.input_size = 640;
@@ -401,14 +336,14 @@ extern "C" void YOLOV5Pose_PPU(GstBuffer *buf,
         return;
     }
 
-    if (network_output[0]._type != dxs::DataType::POSE) {
+    if (network_output[0]->type() != dxrt::DataType::POSE) {
         GST_ERROR("Data type is not POSE");
         return;
     }
 
     all_boxes = decode_pose(network_output[0], config);
 
-    auto results = nms(all_boxes, config.nms_threshold);
+    auto results = nms(all_boxes, config.nms_threshold, config.num_classes);
 
     for (auto &ret : results) {
         int origin_w = frame_meta->_width;
@@ -419,54 +354,56 @@ extern "C" void YOLOV5Pose_PPU(GstBuffer *buf,
             origin_h = frame_meta->_roi[3] - frame_meta->_roi[1];
         }
 
-        float r = std::min(config.input_size / (float)origin_w,
-                           config.input_size / (float)origin_h);
-        float w_pad = (config.input_size - origin_w * r) / 2.;
-        float h_pad = (config.input_size - origin_h * r) / 2.;
+        float r = std::min(static_cast<float>(config.input_size) / static_cast<float>(origin_w),
+                           static_cast<float>(config.input_size) / static_cast<float>(origin_h));
+        float w_pad = (static_cast<float>(config.input_size) - static_cast<float>(origin_w) * r) / 2.0f;
+        float h_pad = (static_cast<float>(config.input_size) - static_cast<float>(origin_h) * r) / 2.0f;
 
         float x1 = (ret.x1 - w_pad) / r;
         float x2 = (ret.x2 - w_pad) / r;
         float y1 = (ret.y1 - h_pad) / r;
         float y2 = (ret.y2 - h_pad) / r;
 
-        x1 = std::min((float)origin_w, std::max((float)0.0, x1));
-        x2 = std::min((float)origin_w, std::max((float)0.0, x2));
-        y1 = std::min((float)origin_h, std::max((float)0.0, y1));
-        y2 = std::min((float)origin_h, std::max((float)0.0, y2));
+        x1 = std::min(static_cast<float>(origin_w), std::max(0.0f, x1));
+        x2 = std::min(static_cast<float>(origin_w), std::max(0.0f, x2));
+        y1 = std::min(static_cast<float>(origin_h), std::max(0.0f, y1));
+        y2 = std::min(static_cast<float>(origin_h), std::max(0.0f, y2));
 
-        DXObjectMeta *object_meta = dx_acquire_obj_meta_from_pool();
-        object_meta->_confidence = ret.confidence;
-        object_meta->_label = ret.class_id;
-        object_meta->_label_name = g_string_new(ret.class_name.c_str());
-        object_meta->_box[0] = x1;
-        object_meta->_box[1] = y1;
-        object_meta->_box[2] = x2;
-        object_meta->_box[3] = y2;
+        DXObjectMeta *obj_meta = dx_acquire_obj_meta_from_pool();
+        obj_meta->_confidence = ret.confidence;
+        obj_meta->_label = ret.class_id;
+        obj_meta->_label_name = ret.class_name;
+        obj_meta->_box[0] = x1;
+        obj_meta->_box[1] = y1;
+        obj_meta->_box[2] = x2;
+        obj_meta->_box[3] = y2;
 
-        for (int k = 0; k < config.num_keypoints; k++) {
+        for (int k = 0; k < config.num_keypoints; ++k) {
             float kx = (ret.keypoints[k * 3 + 0] - w_pad) / r;
             float ky = (ret.keypoints[k * 3 + 1] - h_pad) / r;
             float ks = ret.keypoints[k * 3 + 2];
             if (frame_meta->_roi[0] != -1 && frame_meta->_roi[1] != -1 &&
                 frame_meta->_roi[2] != -1 && frame_meta->_roi[3] != -1) {
-                object_meta->_keypoints.push_back(kx + frame_meta->_roi[0]);
-                object_meta->_keypoints.push_back(ky + frame_meta->_roi[1]);
+                obj_meta->_keypoints.push_back(kx + static_cast<float>(frame_meta->_roi[0]));
+                obj_meta->_keypoints.push_back(ky + static_cast<float>(frame_meta->_roi[1]));
             } else {
-                object_meta->_keypoints.push_back(kx);
-                object_meta->_keypoints.push_back(ky);
+                obj_meta->_keypoints.push_back(kx);
+                obj_meta->_keypoints.push_back(ky);
             }
 
-            object_meta->_keypoints.push_back(ks);
+            obj_meta->_keypoints.push_back(ks);
         }
 
-        dx_add_obj_meta_to_frame(frame_meta, object_meta);
+        dx_add_obj_meta_to_frame(frame_meta, obj_meta);
     }
 }
 
-extern "C" void SCRFD500M_PPU(GstBuffer *buf,
-                              std::vector<dxs::DXTensor> network_output,
-                              DXFrameMeta *frame_meta,
-                              DXObjectMeta *object_meta) {
+extern "C" void SCRFD500M_PPU(GstBuffer* buf,
+                              const dxrt::TensorPtrs& network_output,
+                              DXFrameMeta* frame_meta,
+                              DXObjectMeta* object_meta) {
+    std::ignore = buf;
+    std::ignore = object_meta;
 
     YoloConfig config;
 
@@ -486,14 +423,14 @@ extern "C" void SCRFD500M_PPU(GstBuffer *buf,
         return;
     }
 
-    if (network_output[0]._type != dxs::DataType::FACE) {
+    if (network_output[0]->type() != dxrt::DataType::FACE) {
         GST_ERROR("Data type is not FACE");
         return;
     }
 
     all_boxes = decode_face(network_output[0], config);
 
-    auto results = nms(all_boxes, config.nms_threshold);
+    auto results = nms(all_boxes, config.nms_threshold, config.num_classes);
 
     for (auto &ret : results) {
         int origin_w = frame_meta->_width;
@@ -504,10 +441,10 @@ extern "C" void SCRFD500M_PPU(GstBuffer *buf,
             origin_h = frame_meta->_roi[3] - frame_meta->_roi[1];
         }
 
-        float r = std::min(config.input_size / (float)origin_w,
-                           config.input_size / (float)origin_h);
-        float w_pad = (config.input_size - origin_w * r) / 2.;
-        float h_pad = (config.input_size - origin_h * r) / 2.;
+        float r = std::min(static_cast<float>(config.input_size) / static_cast<float>(origin_w),
+                           static_cast<float>(config.input_size) / static_cast<float>(origin_h));
+        float w_pad = (static_cast<float>(config.input_size) - static_cast<float>(origin_w) * r) / 2.0f;
+        float h_pad = (static_cast<float>(config.input_size) - static_cast<float>(origin_h) * r) / 2.0f;
 
         float x1 = (ret.x1 - w_pad) / r;
         float x2 = (ret.x2 - w_pad) / r;
@@ -519,37 +456,42 @@ extern "C" void SCRFD500M_PPU(GstBuffer *buf,
         y1 = std::min((float)origin_h, std::max((float)0.0, y1));
         y2 = std::min((float)origin_h, std::max((float)0.0, y2));
 
-        DXObjectMeta *object_meta = dx_acquire_obj_meta_from_pool();
-        object_meta->_face_confidence = ret.confidence;
-        object_meta->_label = ret.class_id;
-        object_meta->_label_name = g_string_new(ret.class_name.c_str());
-        object_meta->_face_box[0] = x1;
-        object_meta->_face_box[1] = y1;
-        object_meta->_face_box[2] = x2;
-        object_meta->_face_box[3] = y2;
+        DXObjectMeta *obj_meta = dx_acquire_obj_meta_from_pool();
+        obj_meta->_face_confidence = ret.confidence;
+        obj_meta->_label = ret.class_id;
+        obj_meta->_label_name = ret.class_name;
+        obj_meta->_face_box[0] = x1;
+        obj_meta->_face_box[1] = y1;
+        obj_meta->_face_box[2] = x2;
+        obj_meta->_face_box[3] = y2;
 
-        object_meta->_face_landmarks.clear();
-        for (int k = 0; k < config.num_keypoints; k++) {
+        obj_meta->_face_landmarks.clear();
+        for (int k = 0; k < config.num_keypoints; ++k) {
             float kx = (ret.keypoints[k * 3 + 0] - w_pad) / r;
             float ky = (ret.keypoints[k * 3 + 1] - h_pad) / r;
             float ks = ret.keypoints[k * 3 + 2];
             if (frame_meta->_roi[0] != -1 && frame_meta->_roi[1] != -1 &&
                 frame_meta->_roi[2] != -1 && frame_meta->_roi[3] != -1) {
-                object_meta->_face_landmarks.push_back(dxs::Point_f(
-                    kx + frame_meta->_roi[0], ky + frame_meta->_roi[1], ks));
+                obj_meta->_face_landmarks.push_back(kx + static_cast<float>(frame_meta->_roi[0]));
+                obj_meta->_face_landmarks.push_back(ky + static_cast<float>(frame_meta->_roi[1]));
+                obj_meta->_face_landmarks.push_back(ks);
             } else {
-                object_meta->_face_landmarks.push_back(dxs::Point_f(kx, ky, ks));   
+                obj_meta->_face_landmarks.push_back(kx);
+                obj_meta->_face_landmarks.push_back(ky);
+                obj_meta->_face_landmarks.push_back(ks);
             }
         }
 
-        dx_add_obj_meta_to_frame(frame_meta, object_meta);
+        dx_add_obj_meta_to_frame(frame_meta, obj_meta);
     }
 }
 
-extern "C" void SCRFD500M_PPU_SECOND(GstBuffer *buf,
-                                     std::vector<dxs::DXTensor> network_output,
-                                     DXFrameMeta *frame_meta,
-                                     DXObjectMeta *object_meta) {
+extern "C" void SCRFD500M_PPU_SECOND(GstBuffer* buf,
+                                     const dxrt::TensorPtrs& network_output,
+                                     DXFrameMeta* frame_meta,
+                                     DXObjectMeta* object_meta) {
+    std::ignore = buf;
+    std::ignore = frame_meta;
 
     YoloConfig config;
 
@@ -569,54 +511,54 @@ extern "C" void SCRFD500M_PPU_SECOND(GstBuffer *buf,
         return;
     }
 
-    if (network_output[0]._type != dxs::DataType::FACE) {
+    if (network_output[0]->type() != dxrt::DataType::FACE) {
         GST_ERROR("Data type is not FACE");
         return;
     }
 
     all_boxes = decode_face(network_output[0], config);
 
-    auto results = nms(all_boxes, config.nms_threshold);
+    auto results = nms(all_boxes, config.nms_threshold, config.num_classes);
 
-    if (results.size() == 0) {
+    if (results.empty()) {
         return;
     }
 
-    auto ret = results[0];
+    const auto& ret = results[0];
     
-    int origin_w = object_meta->_box[2] - object_meta->_box[0];
-    int origin_h = object_meta->_box[3] - object_meta->_box[1];
+    auto origin_w = static_cast<int>(object_meta->_box[2] - object_meta->_box[0]);
+    auto origin_h = static_cast<int>(object_meta->_box[3] - object_meta->_box[1]);
     if (frame_meta->_roi[0] != -1 && frame_meta->_roi[1] != -1 &&
         frame_meta->_roi[2] != -1 && frame_meta->_roi[3] != -1) {
         origin_w = frame_meta->_roi[2] - frame_meta->_roi[0];
         origin_h = frame_meta->_roi[3] - frame_meta->_roi[1];
     }
 
-    float r = std::min(config.input_size / (float)origin_w,
-                        config.input_size / (float)origin_h);
-    float w_pad = (config.input_size - origin_w * r) / 2.;
-    float h_pad = (config.input_size - origin_h * r) / 2.;
+    float r = std::min(static_cast<float>(config.input_size) / static_cast<float>(origin_w),
+                           static_cast<float>(config.input_size) / static_cast<float>(origin_h));
+    float w_pad = (static_cast<float>(config.input_size) - static_cast<float>(origin_w) * r) / 2.0f;
+    float h_pad = (static_cast<float>(config.input_size) - static_cast<float>(origin_h) * r) / 2.0f;
 
     float x1 = (ret.x1 - w_pad) / r;
     float x2 = (ret.x2 - w_pad) / r;
     float y1 = (ret.y1 - h_pad) / r;
     float y2 = (ret.y2 - h_pad) / r;
 
-    x1 = std::min((float)origin_w, std::max((float)0.0, x1));
-    x2 = std::min((float)origin_w, std::max((float)0.0, x2));
-    y1 = std::min((float)origin_h, std::max((float)0.0, y1));
-    y2 = std::min((float)origin_h, std::max((float)0.0, y2));
+    x1 = std::min(static_cast<float>(origin_w), std::max(0.0f, x1));
+    x2 = std::min(static_cast<float>(origin_w), std::max(0.0f, x2));
+    y1 = std::min(static_cast<float>(origin_h), std::max(0.0f, y1));
+    y2 = std::min(static_cast<float>(origin_h), std::max(0.0f, y2));
 
     object_meta->_face_confidence = ret.confidence;
     object_meta->_label = ret.class_id;
-    object_meta->_label_name = g_string_new(ret.class_name.c_str());
+    object_meta->_label_name = ret.class_name;
     object_meta->_face_box[0] = x1 + object_meta->_box[0];
     object_meta->_face_box[1] = y1 + object_meta->_box[1];
     object_meta->_face_box[2] = x2 + object_meta->_box[0];
     object_meta->_face_box[3] = y2 + object_meta->_box[1];
 
     object_meta->_face_landmarks.clear();
-    for (int k = 0; k < config.num_keypoints; k++) {
+    for (int k = 0; k < config.num_keypoints; ++k) {
         float kx = (ret.keypoints[k * 3 + 0] - w_pad) / r;
         float ky = (ret.keypoints[k * 3 + 1] - h_pad) / r;
         float ks = ret.keypoints[k * 3 + 2];
@@ -624,7 +566,9 @@ extern "C" void SCRFD500M_PPU_SECOND(GstBuffer *buf,
         kx = std::max(0.0f, std::min(static_cast<float>(origin_w), kx));
         ky = std::max(0.0f, std::min(static_cast<float>(origin_h), ky));
 
-        object_meta->_face_landmarks.push_back(dxs::Point_f(kx + object_meta->_box[0], ky + object_meta->_box[1], ks));
+        object_meta->_face_landmarks.push_back(kx + object_meta->_box[0]);
+        object_meta->_face_landmarks.push_back(ky + object_meta->_box[1]);
+        object_meta->_face_landmarks.push_back(ks);
     }
 
 }

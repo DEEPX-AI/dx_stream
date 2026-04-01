@@ -48,6 +48,8 @@ Elements
 - DxRate – Controls the output frame rate of the stream.
 - DxMsgConv – Converts inference results into structured messages.
 - DxMsgBroker – Sends messages to external systems or networks.
+- DxScale – Scales video frames to a specified resolution.
+- DxConvert – Converts video frame color formats.
 
 **Inference Workflow**
 

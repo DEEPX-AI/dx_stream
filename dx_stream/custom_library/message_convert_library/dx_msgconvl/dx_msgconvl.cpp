@@ -6,7 +6,7 @@
 #define MAX_EXPECTED_JSON_SIZE ((size_t)(10 * 1024 * 1024))
 
 extern "C" DxMsgContext *dxmsg_create_context() {
-    DxMsgContext *context = g_new0(DxMsgContext, 1);
+    auto *context = g_new0(DxMsgContext, 1);
 
     context->_priv_data = (void *)dxcontext_create_contextPriv();
 
@@ -22,7 +22,7 @@ extern "C" void dxmsg_delete_context(DxMsgContext *context) {
 
 extern "C" DxMsgPayload *dxmsg_convert_payload(DxMsgContext *context,
                                                GstDxMsgMetaInfo *meta_info) {
-    DxMsgPayload *payload = g_new0(DxMsgPayload, 1);
+    auto *payload = g_new0(DxMsgPayload, 1);
     if (!payload) {
         g_warning("Failed to allocate DxMsgPayload");
         return nullptr;
@@ -46,7 +46,14 @@ extern "C" DxMsgPayload *dxmsg_convert_payload(DxMsgContext *context,
         return nullptr;
     }
 
-    payload->_size = json_len;
+    if (json_len > G_MAXUINT) {
+        g_warning("JSON data size (%zu bytes) exceeds maximum guint value", json_len);
+        g_free(json_data);
+        g_free(payload);
+        return nullptr;
+    }
+
+    payload->_size = (guint)json_len;
     payload->_data = json_data;
 
     return payload;

@@ -7,7 +7,7 @@ Finally, the results are rendered for visualization.
 ![](./../../resources/05_03_secondary_pipeline.png)
 
 The pipeline in the figure is defined in 
-`dx_stream/dx_stream/pipelines/secondary_mode/run_secondary_mode.sh` and can be used as a reference for execution.
+`dx_stream/pipelines/secondary_mode/run_secondary_mode.sh` and can be used as a reference for execution.
 
 ### **Explanation**  
 

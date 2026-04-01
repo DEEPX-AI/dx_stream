@@ -1,4 +1,6 @@
 #include "gst-dxrate.hpp"
+#include <array>
+#include <tuple>
 
 #ifndef ABSDIFF
 #define ABSDIFF(a, b) (((a) > (b)) ? (a) - (b) : (b) - (a))
@@ -9,7 +11,7 @@
 
 #define DEFAULT_THROTTLE FALSE
 
-enum { PROP_0, PROP_THROTTLE, PROP_FRAMERATE, N_PROPERTIES };
+enum class PropertyID { PROP_0, PROP_THROTTLE, PROP_FRAMERATE, N_PROPERTIES };
 
 GST_DEBUG_CATEGORY_STATIC(gst_dxrate_debug_category);
 #define GST_CAT_DEFAULT gst_dxrate_debug_category
@@ -24,17 +26,20 @@ static void gst_dxrate_swap_prev(GstDxRate *self, GstBuffer *buffer,
                                  gint64 time);
 static GstFlowReturn gst_dxrate_flush_prev(GstDxRate *self, gboolean duplicate,
                                            GstClockTime next_intime);
+static gboolean gst_dxrate_validate_and_get_timestamp(GstDxRate *self, GstBuffer *buf,
+                                                       GstClockTime *out_intime);
+static void gst_dxrate_handle_first_buffer(GstDxRate *self, GstBuffer *buf,
+                                           GstClockTime intime, GstClockTime in_ts);
+static GstFlowReturn gst_dxrate_process_buffer(GstDxRate *self, GstBuffer *buf,
+                                                GstClockTime intime);
 
 static gboolean gst_dxrate_start(GstBaseTransform *trans);
 static gboolean gst_dxrate_stop(GstBaseTransform *trans);
 static gboolean gst_dxrate_sink_event(GstBaseTransform *trans, GstEvent *event);
 
-G_DEFINE_TYPE_WITH_CODE(
-    GstDxRate, gst_dxrate, GST_TYPE_BASE_TRANSFORM,
-    GST_DEBUG_CATEGORY_INIT(gst_dxrate_debug_category, "gst-dxrate", 0,
-                            "debug category for gst-dxrate element"))
+G_DEFINE_TYPE(GstDxRate, gst_dxrate, GST_TYPE_BASE_TRANSFORM);
 
-static GstElementClass *parent_class = nullptr;
+static GstElementClass *parent_class = nullptr;  // NOSONAR - GStreamer standard pattern with G_DEFINE_TYPE macro
 
 static void dxrate_set_property(GObject *object, guint property_id,
                                 const GValue *value, GParamSpec *pspec) {
@@ -43,10 +48,10 @@ static void dxrate_set_property(GObject *object, guint property_id,
     GST_OBJECT_LOCK(self);
 
     switch (property_id) {
-    case PROP_THROTTLE:
+    case static_cast<guint>(PropertyID::PROP_THROTTLE):
         self->_throttle = g_value_get_boolean(value);
         break;
-    case PROP_FRAMERATE:
+    case static_cast<guint>(PropertyID::PROP_FRAMERATE):
         self->_framerate = g_value_get_uint(value);
         break;
     default:
@@ -64,10 +69,10 @@ static void dxrate_get_property(GObject *object, guint property_id,
     GST_OBJECT_LOCK(self);
 
     switch (property_id) {
-    case PROP_THROTTLE:
+    case static_cast<guint>(PropertyID::PROP_THROTTLE):
         g_value_set_boolean(value, self->_throttle);
         break;
-    case PROP_FRAMERATE:
+    case static_cast<guint>(PropertyID::PROP_FRAMERATE):
         g_value_set_uint(value, self->_framerate);
         break;
     default:
@@ -95,10 +100,11 @@ static void gst_dxrate_send_qos_throttle(GstDxRate *self,
 static GstStateChangeReturn dxrate_change_state(GstElement *element,
                                                 GstStateChange transition) {
     GstDxRate *self = GST_DXRATE(element);
-    GST_INFO_OBJECT(self, "Attempting to change state");
+    const gchar *transition_name = gst_state_change_get_name(transition);
+    GST_INFO_OBJECT(self, "State transition: %s", transition_name);
     GstStateChangeReturn result =
         GST_ELEMENT_CLASS(parent_class)->change_state(element, transition);
-    GST_INFO_OBJECT(self, "State change return: %d", result);
+    GST_DEBUG_OBJECT(self, "State change completed: %d", result);
     return result;
 }
 
@@ -110,33 +116,33 @@ static void gst_dxrate_class_init(GstDxRateClass *klass) {
     GST_DEBUG_CATEGORY_INIT(gst_dxrate_debug_category, "dxrate", 0,
                             "DXRate plugin");
 
-    GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
+    auto *gobject_class = G_OBJECT_CLASS(klass);
     gobject_class->set_property = dxrate_set_property;
     gobject_class->get_property = dxrate_get_property;
     gobject_class->dispose = dxrate_dispose;
 
-    static GParamSpec *obj_properties[N_PROPERTIES] = {
+    static std::array<GParamSpec*, static_cast<int>(PropertyID::N_PROPERTIES)> obj_properties = {
         nullptr,
     };
 
-    obj_properties[PROP_THROTTLE] =
+    obj_properties[static_cast<guint>(PropertyID::PROP_THROTTLE)] =
         g_param_spec_boolean("throttle", "Throttle",
                              "Send Throttle type QoS events to upstream "
                              "Determines whether to send Throttle QoS Events "
                              "upstream on frame drops. ",
                              DEFAULT_THROTTLE, G_PARAM_READWRITE);
 
-    obj_properties[PROP_FRAMERATE] = g_param_spec_uint(
+    obj_properties[static_cast<guint>(PropertyID::PROP_FRAMERATE)] = g_param_spec_uint(
         "framerate", "Framerate",
         "Sets the target framerate (FPS). This property must be configured. ",
         0, 10000, 0, G_PARAM_READWRITE);
 
-    g_object_class_install_properties(gobject_class, N_PROPERTIES,
-                                      obj_properties);
+    g_object_class_install_properties(gobject_class, static_cast<guint>(PropertyID::N_PROPERTIES),
+                                      obj_properties.data());
 
     parent_class = GST_ELEMENT_CLASS(g_type_class_peek_parent(klass));
 
-    GstElementClass *element_class = GST_ELEMENT_CLASS(klass);
+    auto *element_class = GST_ELEMENT_CLASS(klass);
 
     gst_element_class_set_static_metadata(
         element_class, "DXRate", "Generic",
@@ -153,7 +159,7 @@ static void gst_dxrate_class_init(GstDxRateClass *klass) {
 
     element_class->change_state = dxrate_change_state;
 
-    GstBaseTransformClass *base_transform_class =
+    auto *base_transform_class =
         GST_BASE_TRANSFORM_CLASS(klass);
     base_transform_class->transform_ip =
         GST_DEBUG_FUNCPTR(gst_dxrate_transform_ip);
@@ -165,6 +171,7 @@ static void gst_dxrate_class_init(GstDxRateClass *klass) {
 static GstFlowReturn gst_dxrate_push_buffer(GstDxRate *self, GstBuffer *outbuf,
                                             gboolean duplicate,
                                             GstClockTime next_intime) {
+    std::ignore = next_intime;
     GstFlowReturn res;
     GstClockTime push_ts;
 
@@ -339,30 +346,16 @@ static gboolean gst_dxrate_stop(GstBaseTransform *trans) {
     return TRUE;
 }
 
-static GstFlowReturn gst_dxrate_transform_ip(GstBaseTransform *trans,
-                                             GstBuffer *buf) {
-    GstDxRate *self = GST_DXRATE(trans);
-
-    if (self->_framerate == 0) {
-        g_error("[dxrate] framerate must be set");
-    }
-
-    GstFlowReturn res = GST_BASE_TRANSFORM_FLOW_DROPPED;
-    GstClockTime intime, in_ts, in_dur;
-
-    if (G_UNLIKELY(self->_segment.rate < 0.0)) {
-        GST_ERROR_OBJECT(self, "Unsupported reverse playback \n");
-        return GST_FLOW_ERROR;
-    }
-
-    in_ts = GST_BUFFER_TIMESTAMP(buf);
-    in_dur = GST_BUFFER_DURATION(buf);
+static gboolean gst_dxrate_validate_and_get_timestamp(GstDxRate *self, GstBuffer *buf,
+                                                       GstClockTime *out_intime) {
+    GstClockTime in_ts = GST_BUFFER_TIMESTAMP(buf);
+    GstClockTime in_dur = GST_BUFFER_DURATION(buf);
 
     if (G_UNLIKELY(!GST_CLOCK_TIME_IS_VALID(in_ts))) {
         in_ts = self->_last_ts;
         if (G_UNLIKELY(!GST_CLOCK_TIME_IS_VALID(in_ts))) {
             GST_WARNING_OBJECT(self, "Discard an invalid buffer \n");
-            return GST_BASE_TRANSFORM_FLOW_DROPPED;
+            return FALSE;
         }
     }
 
@@ -370,52 +363,89 @@ static GstFlowReturn gst_dxrate_transform_ip(GstBaseTransform *trans,
     if (GST_CLOCK_TIME_IS_VALID(in_dur))
         self->_last_ts += in_dur;
 
-    intime = in_ts + self->_segment.base;
+    *out_intime = in_ts + self->_segment.base;
+    return TRUE;
+}
 
-    if (self->_prevbuf == NULL) {
-        gst_dxrate_swap_prev(self, buf, intime);
-        if (!GST_CLOCK_TIME_IS_VALID(self->_next_ts)) {
-            self->_next_ts = intime;
-            self->_base_ts = in_ts - self->_segment.start;
-            self->_out_frame_count = 0;
-        }
-    } else {
-        GstClockTime prevtime;
-        gint64 diff1 = 0, diff2 = 0;
-        guint count = 0;
+static void gst_dxrate_handle_first_buffer(GstDxRate *self, GstBuffer *buf,
+                                           GstClockTime intime, GstClockTime in_ts) {
+    gst_dxrate_swap_prev(self, buf, intime);
+    if (!GST_CLOCK_TIME_IS_VALID(self->_next_ts)) {
+        self->_next_ts = intime;
+        self->_base_ts = in_ts - self->_segment.start;
+        self->_out_frame_count = 0;
+    }
+}
 
-        prevtime = self->_prev_ts;
+static GstFlowReturn gst_dxrate_process_buffer(GstDxRate *self, GstBuffer *buf,
+                                                GstClockTime intime) {
+    GstClockTime prevtime = self->_prev_ts;
+    gint64 diff1 = 0;
+    gint64 diff2 = 0;
+    guint count = 0;
 
-        if (intime < prevtime)
-            return GST_BASE_TRANSFORM_FLOW_DROPPED;
-        do {
-            GstClockTime next_ts;
-            if (!GST_BUFFER_DURATION_IS_VALID(self->_prevbuf))
-                GST_BUFFER_DURATION(self->_prevbuf) =
-                    intime > prevtime ? intime - prevtime : 0;
+    if (intime < prevtime)
+        return GST_BASE_TRANSFORM_FLOW_DROPPED;
 
-            next_ts = self->_base_ts + (self->_next_ts - self->_base_ts);
+    do {
+        GstClockTime next_ts;
+        if (!GST_BUFFER_DURATION_IS_VALID(self->_prevbuf))
+            GST_BUFFER_DURATION(self->_prevbuf) =
+                intime > prevtime ? intime - prevtime : 0;
 
-            diff1 = ABSDIFF(prevtime, next_ts);
-            diff2 = ABSDIFF(intime, next_ts);
+        next_ts = self->_base_ts + (self->_next_ts - self->_base_ts);
 
-            if (diff1 <= diff2) {
-                GstFlowReturn r;
-                count++;
+        diff1 = ABSDIFF(prevtime, next_ts);
+        diff2 = ABSDIFF(intime, next_ts);
 
-                if ((r = gst_dxrate_flush_prev(self, count > 1, intime)) !=
-                    GST_FLOW_OK) {
-                    return r;
-                }
+        if (diff1 <= diff2) {
+            GstFlowReturn r;
+            count++;
+
+            if ((r = gst_dxrate_flush_prev(self, count > 1, intime)) !=
+                GST_FLOW_OK) {
+                return r;
             }
-        } while (diff1 < diff2);
-
-        if (count == 0 && self->_throttle) {
-            gst_dxrate_send_qos_throttle(self, intime);
         }
+    } while (diff1 < diff2);
 
-        gst_dxrate_swap_prev(self, buf, intime);
+    if (count == 0 && self->_throttle) {
+        gst_dxrate_send_qos_throttle(self, intime);
     }
 
-    return res;
+    gst_dxrate_swap_prev(self, buf, intime);
+    return GST_BASE_TRANSFORM_FLOW_DROPPED;
+}
+
+static GstFlowReturn gst_dxrate_transform_ip(GstBaseTransform *trans,
+                                             GstBuffer *buf) {
+    GstDxRate *self = GST_DXRATE(trans);
+
+    GST_DEBUG_OBJECT(self, "Processing buffer: pts=%" GST_TIME_FORMAT,
+                     GST_TIME_ARGS(GST_BUFFER_PTS(buf)));
+
+    if (self->_framerate == 0) {
+        g_error("[dxrate] framerate must be set");
+    }
+
+    if (G_UNLIKELY(self->_segment.rate < 0.0)) {
+        GST_ERROR_OBJECT(self, "Unsupported reverse playback \n");
+        return GST_FLOW_ERROR;
+    }
+
+    GstClockTime intime;
+    if (!gst_dxrate_validate_and_get_timestamp(self, buf, &intime)) {
+        GST_DEBUG_OBJECT(self, "Dropping buffer: invalid timestamp");
+        return GST_BASE_TRANSFORM_FLOW_DROPPED;
+    }
+
+    GstClockTime in_ts = GST_BUFFER_TIMESTAMP(buf);
+
+    if (self->_prevbuf == nullptr) {
+        GST_DEBUG_OBJECT(self, "First buffer received");
+        gst_dxrate_handle_first_buffer(self, buf, intime, in_ts);
+        return GST_BASE_TRANSFORM_FLOW_DROPPED;
+    }
+
+    return gst_dxrate_process_buffer(self, buf, intime);
 }

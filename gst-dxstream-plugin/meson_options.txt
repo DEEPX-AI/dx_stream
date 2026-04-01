@@ -1,1 +1,1 @@
-option('v3_mode', type: 'boolean', value: false, description: 'Enable V3 mode')
+option('v3_flag', type: 'boolean', value: false, description: 'Enable V3 mode')
