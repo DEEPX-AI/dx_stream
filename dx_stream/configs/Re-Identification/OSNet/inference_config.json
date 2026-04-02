@@ -1,6 +1,0 @@
-{
-    "preprocess_id": 3,
-    "inference_id": 3,
-    "secondary_mode": true,
-    "model_path" : "./dx_stream/samples/models/osnet_x0_5_market_256x128.dxnn"
-}

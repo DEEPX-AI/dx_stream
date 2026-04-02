@@ -1,5 +1,5 @@
-#include <dx_stream/gst-dxframemeta.hpp>
-#include <dx_stream/gst-dxobjectmeta.hpp>
+#include <gstdxstream/gst-dxframemeta.hpp>
+#include <gstdxstream/gst-dxobjectmeta.hpp>
 #include <gst/check/gstcheck.h>
 #include <gst/gst.h>
 
@@ -121,8 +121,7 @@ static GstPadProbeReturn probe_primary(GstPad *pad, GstPadProbeInfo *info,
     
     DXFrameMeta *frame_meta = dx_get_frame_meta(buffer);
     if (frame_meta) {
-        for (GList *l = frame_meta->_object_meta_list; l != NULL; l = l->next) {
-            DXObjectMeta *object_meta = (DXObjectMeta *)l->data;
+        for (auto object_meta : frame_meta->_object_meta_list) {
             pred[object_meta->_label].push_back(
                 {object_meta->_box[0], object_meta->_box[1],
                  object_meta->_box[2], object_meta->_box[3]});
@@ -224,14 +223,14 @@ GST_START_TEST(test_multi_pipeline) {
     GstElement *preprocess = gst_element_factory_make("dxpreprocess", NULL);
     fail_unless(preprocess != NULL, "Failed to create GstDxPreprocess element");
     g_object_set(preprocess, "config-file-path",
-                 "./../../../dx_stream/configs/Object_Detection/YOLOV5S_3/"
+                 "./../../../dx_stream/configs/YoloV5S_PPU/"
                  "preprocess_config.json",
                  NULL);
 
     GstElement *infer = gst_element_factory_make("dxinfer", NULL);
     fail_unless(infer != NULL, "Failed to create GstDxInfer element");
     g_object_set(infer, "model-path",
-                 "./../../../dx_stream/samples/models/YOLOV5S_3.dxnn", NULL);
+                 "./../../../dx_stream/samples/models/YoloV5S_PPU.dxnn", NULL);
     g_object_set(infer, "preprocess-id", 1, NULL);
     g_object_set(infer, "inference-id", 1, NULL);
 
@@ -239,7 +238,7 @@ GST_START_TEST(test_multi_pipeline) {
     fail_unless(postprocess != NULL,
                 "Failed to create GstDxPostprocess element");
     g_object_set(postprocess, "config-file-path",
-                 "./../../../dx_stream/configs/Object_Detection/YOLOV5S_3/"
+                 "./../../../dx_stream/configs/YoloV5S_PPU/"
                  "postprocess_config.json",
                  NULL);
 

@@ -18,7 +18,7 @@ This makes **DXGather** ideal for scenarios where duplicated streams need to be 
 **Source Stream Assumption**  
 
 - Only supports streams split from the same source (e.g., using GstTee).  
-- **Not** suitable for merging streams from different sources. Use **DxMuxer** in that case.  
+- **Not** suitable for merging streams from different sources.  
 
 ### **Hierarchy**
 

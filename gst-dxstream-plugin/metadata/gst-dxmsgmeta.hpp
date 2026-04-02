@@ -6,40 +6,44 @@
 
 G_BEGIN_DECLS
 
-typedef struct _DxMsgPayload {
+#define GST_DXMSG_META_API_TYPE (gst_dxmsg_meta_api_get_type())
+#define GST_DXMSG_META_INFO (gst_dxmsg_meta_get_info())
+
+struct _DxMsgPayload {
     gpointer _data;
     guint _size;
-} DxMsgPayload;
+};
 
-typedef struct _DxMsgContext {
+struct _DxMsgContext {
     gpointer _priv_data;
-} DxMsgContext;
+};
 
-typedef struct _GstDxMsgMetaInfo {
+struct _GstDxMsgMetaInfo {
     gpointer _frame_meta;
     gpointer _input_info;
     gboolean _include_frame;
 
     guint64 _seq_id;
-} GstDxMsgMetaInfo;
+};
 
-typedef struct _GstDxMsgMeta {
+struct _GstDxMsgMeta {
     GstMeta meta;
 
     gpointer _payload;
-} GstDxMsgMeta;
+};
+
+using DxMsgPayload = struct _DxMsgPayload;
+using DxMsgContext = struct _DxMsgContext;
+using GstDxMsgMetaInfo = struct _GstDxMsgMetaInfo;
+using GstDxMsgMeta = struct _GstDxMsgMeta;
 
 GType gst_dxmsg_meta_api_get_type(void);
 
 const GstMetaInfo *gst_dxmsg_meta_get_info(void);
 
-#define GST_DXMSG_META_API_TYPE (gst_dxmsg_meta_api_get_type())
-#define GST_DXMSG_META_INFO (gst_dxmsg_meta_get_info())
-
-
-GstDxMsgMeta *dx_create_msg_meta(GstBuffer *buffer);
+GstBuffer*dx_create_msg_meta(GstBuffer *buffer);
 GstDxMsgMeta *dx_get_msg_meta(GstBuffer *buffer);
-void dx_add_payload_to_buffer(GstBuffer *buffer, DxMsgPayload *payload);
+void dx_add_payload_to_buffer(GstBuffer *buffer, const DxMsgPayload *payload);
 
 G_END_DECLS
 

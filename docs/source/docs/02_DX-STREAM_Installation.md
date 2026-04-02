@@ -75,30 +75,202 @@ $ ./install.sh --help
 
 **3.** Build **DX-STREAM**  
 
-    Compile **DX-STREAM**.  
-    ```
-    $ ./build.sh
+Compile **DX-STREAM** with the default installation prefix (`/usr/local`).  
+
+```bash
+$ ./build.sh
+```
+
+**Build Options**  
+
+The build script supports various options for customization:
+
+```bash
+# Install to custom location
+$ ./build.sh --prefix=/opt/dx-stream
+
+# Install to relative path (automatically converted to absolute)
+$ ./build.sh --prefix=./install
+
+# Build with debug symbols
+$ ./build.sh --type=debug
+
+# Clean previous build files before building
+$ ./build.sh --clean
+
+# Build for DEEPX V3 Standalone Device
+$ ./build.sh --v3
+
+# Uninstall DX-STREAM
+$ ./build.sh --uninstall
+
+# Uninstall from custom location
+$ ./build.sh --uninstall --prefix=/opt/dx-stream
+
+# Show all available options
+$ ./build.sh --help
+```
+
+**Installation Prefix**  
+
+By default, DX-STREAM is installed to `/usr/local` with the following structure:
+
+- Plugin: `/usr/local/lib/<arch>/gstreamer-1.0/libgstdxstream.so`
+- Headers: `/usr/local/include/gstdxstream/`
+- Custom libraries: `/usr/local/share/gstdxstream/lib/`
+- Applications: `/usr/local/share/gstdxstream/bin/`
+- pkg-config: `/usr/local/lib/pkgconfig/gstdxstream.pc`
+
+You can change the installation location using `--prefix` option. When using a custom prefix, all paths will be adjusted accordingly.
+
+**Environment Setup**
+
+Environment setup depends on your installation prefix:
+
+**Automatic Environment Setup**
+
+The build script **automatically adds** required environment variables to your `~/.bashrc` during installation. After installation completes:
+
+1. **Open a new terminal** to apply changes, or
+2. **Reload your current shell**:
+   ```bash
+   $ source ~/.bashrc
+   ```
+
+3. **Verify the installation**:
+   ```bash
+   $ gst-inspect-1.0 dxstream
+   ```
+
+!!! success "Standard Installation (`/usr/local` or `/usr`)"
+
+    Environment variables are added to `~/.bashrc`, but the system can often find the plugin automatically:
+    
+    - pkg-config searches `/usr/local/lib/pkgconfig` by default
+    - GStreamer searches standard plugin directories automatically
+    
+    If the plugin is not found, clear GStreamer cache:
+    ```bash
+    $ rm -rf ~/.cache/gstreamer-1.0/
+    $ gst-inspect-1.0 dxstream
     ```
 
-    (Optional) Build with debug symbols.  
+!!! info "Custom Prefix Installation"
+
+    **Using custom prefix (e.g., `./install`, `/opt/dx-stream`):**
+    
+    The build script automatically configures all required environment variables in your `~/.bashrc`:
+    
+    - `PKG_CONFIG_PATH` - For building projects that depend on gstdxstream
+    - `GST_PLUGIN_PATH` - For GStreamer plugin discovery
+    - `LD_LIBRARY_PATH` - For runtime library loading
+    - `PATH` - For DX-Stream executables
+    
+    **For immediate use** in the current terminal (before opening a new one):
+    ```bash
+    $ source ~/.bashrc
     ```
-    $ ./build.sh --debug
+    
+    Or set them manually for the current session:
+    ```bash
+    $ export PKG_CONFIG_PATH="/path/to/install/lib/pkgconfig:${PKG_CONFIG_PATH}"
+    $ export GST_PLUGIN_PATH="/path/to/install/lib/x86_64-linux-gnu/gstreamer-1.0:${GST_PLUGIN_PATH}"
+    $ export LD_LIBRARY_PATH="/path/to/install/lib/x86_64-linux-gnu/gstreamer-1.0:/path/to/install/share/gstdxstream/lib:${LD_LIBRARY_PATH}"
+    $ export PATH="/path/to/install/share/gstdxstream/bin:${PATH}"
     ```
+
+**Understanding Environment Variables**
+
+Each variable serves a different purpose:
+
+| Variable | Purpose | When Needed |
+|----------|---------|-------------|
+| `PKG_CONFIG_PATH` | Lets pkg-config find `.pc` files | **Build-time** (when compiling against gstdxstream) |
+| `GST_PLUGIN_PATH` | Tells GStreamer where plugins are | **Runtime** (when running pipelines) |
+| `LD_LIBRARY_PATH` | Dynamic linker finds `.so` files | **Runtime** (when loading shared libraries) |
+| `PATH` | Executable lookup | **Runtime** (when running DX-Stream apps) |
+
+!!! tip "Best Practice"
+    
+    - For **production deployments**: Use standard prefix (`/usr/local`)
+    - For **development**: Use custom prefix (e.g., `./install`) to avoid requiring sudo
+    - For **CI/CD**: Set environment variables explicitly in your scripts
 
 **4.** Verify the installation  
 
-Check that the plugin is correctly installed.  
+Check that the plugin is correctly installed:
 
-```
+```bash
 $ gst-inspect-1.0 dxstream
 ```
 
-!!! note "NOTE" 
+You should see the plugin details including available elements (dxpreprocess, dxinfer, dxpostprocess, dxscale, dxconvert, etc.).
 
-    If you want to remove **DX-STREAM**, use the following command.  
-    ```
-    $ ./build.sh --uninstall
-    ```
+!!! warning "Troubleshooting"
+
+    **If `gst-inspect-1.0 dxstream` fails with "No such element or plugin":**
+
+    1. **Clear GStreamer cache** (most common fix):
+       ```bash
+       $ rm -rf ~/.cache/gstreamer-1.0/
+       $ gst-inspect-1.0 dxstream
+       ```
+
+    2. **Verify plugin file exists:**
+       ```bash
+       # For standard installation
+       $ ls -la /usr/local/lib/x86_64-linux-gnu/gstreamer-1.0/libgstdxstream.so
+       
+       # For custom installation
+       $ ls -la /path/to/install/lib/x86_64-linux-gnu/gstreamer-1.0/libgstdxstream.so
+       ```
+
+    3. **For custom prefix installations**, check environment variables:
+       ```bash
+       $ echo $GST_PLUGIN_PATH
+       # Should include: /path/to/install/lib/.../gstreamer-1.0
+       ```
+
+    4. **Set GST_PLUGIN_PATH manually** (temporary):
+       ```bash
+       $ export GST_PLUGIN_PATH="/usr/local/lib/x86_64-linux-gnu/gstreamer-1.0:${GST_PLUGIN_PATH}"
+       $ gst-inspect-1.0 dxstream
+       ```
+
+**Uninstalling DX-STREAM**
+
+To remove DX-STREAM from your system:
+
+```bash
+# Uninstall from default location (/usr/local)
+$ ./uninstall.sh
+
+# Or use build.sh
+$ ./build.sh --uninstall
+
+# Uninstall from custom location
+$ ./build.sh --uninstall --prefix=/opt/dx-stream
+```
+
+The uninstall process automatically removes:
+
+- GStreamer plugin (`libgstdxstream.so`)
+- Header files (`include/gstdxstream/`)
+- Custom libraries and applications (`share/gstdxstream/`)
+- pkg-config file (`gstdxstream.pc`)
+- **Environment variables from `~/.bashrc`** (automatic cleanup)
+
+!!! success "Automatic Cleanup"
+
+    The uninstall script **automatically removes** DX-STREAM environment variables from your `~/.bashrc`. After uninstalling:
+    
+    1. Open a new terminal, or
+    2. Reload your shell:
+       ```bash
+       $ source ~/.bashrc
+       ```
+    
+    No manual editing of configuration files is required!
 
 ## Run DX-STREAM
 

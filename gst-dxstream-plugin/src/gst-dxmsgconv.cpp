@@ -5,7 +5,7 @@
 #include <dlfcn.h>
 #include <json-glib/json-glib.h>
 
-enum {
+enum class PropertyID {
     PROP_0,
     PROP_CONFIG_FILE_PATH,
     PROP_LIBRARY_FILE_PATH,
@@ -20,12 +20,9 @@ static GstFlowReturn gst_dxmsgconv_transform_ip(GstBaseTransform *trans,
 static gboolean gst_dxmsgconv_start(GstBaseTransform *trans);
 static gboolean gst_dxmsgconv_stop(GstBaseTransform *trans);
 
-G_DEFINE_TYPE_WITH_CODE(
-    GstDxMsgConv, gst_dxmsgconv, GST_TYPE_BASE_TRANSFORM,
-    GST_DEBUG_CATEGORY_INIT(gst_dxmsgconv_debug_category, "dxmsgconv", 0,
-                            "debug category for dxmsgconv element"))
+G_DEFINE_TYPE(GstDxMsgConv, gst_dxmsgconv, GST_TYPE_BASE_TRANSFORM);
 
-static GstElementClass *parent_class = nullptr;
+static GstElementClass *parent_class = nullptr;  // NOSONAR - GStreamer standard pattern with G_DEFINE_TYPE macro
 
 static GstStateChangeReturn dxmsgconv_change_state(GstElement *element,
                                                    GstStateChange transition) {
@@ -68,8 +65,8 @@ static void parse_config(GstDxMsgConv *self) {
     }
 
     if (json_object_has_member(object, "message_interval")) {
-        gint interval = json_object_get_int_member(object, "message_interval");
-        g_object_set(self, "message-interval", interval, nullptr);
+        gint64 interval = json_object_get_int_member(object, "message_interval");
+        g_object_set(self, "message-interval", (gint)interval, nullptr);
     }
 
     g_object_unref(parser);
@@ -77,19 +74,19 @@ static void parse_config(GstDxMsgConv *self) {
 
 static void gst_dxmsgconv_set_property(GObject *object, guint prop_id,
                                        const GValue *value, GParamSpec *pspec) {
-    GstDxMsgConv *self = GST_DXMSGCONV(object);
+    auto *self = GST_DXMSGCONV(object);
 
-    switch (prop_id) {
-    case PROP_CONFIG_FILE_PATH:
+    switch (static_cast<PropertyID>(prop_id)) {
+    case PropertyID::PROP_CONFIG_FILE_PATH:
         g_free(self->_config_file_path);
         self->_config_file_path = g_value_dup_string(value);
         parse_config(self);
         break;
-    case PROP_LIBRARY_FILE_PATH:
+    case PropertyID::PROP_LIBRARY_FILE_PATH:
         g_free(self->_library_file_path);
         self->_library_file_path = g_value_dup_string(value);
         break;
-    case PROP_MESSAGE_INTERVAL:
+    case PropertyID::PROP_MESSAGE_INTERVAL:
         self->_message_interval = g_value_get_int(value);
         break;
     default:
@@ -100,16 +97,17 @@ static void gst_dxmsgconv_set_property(GObject *object, guint prop_id,
 
 static void gst_dxmsgconv_get_property(GObject *object, guint prop_id,
                                        GValue *value, GParamSpec *pspec) {
-    GstDxMsgConv *self = GST_DXMSGCONV(object);
+    
+    const auto *self = GST_DXMSGCONV(object);
 
-    switch (prop_id) {
-    case PROP_CONFIG_FILE_PATH:
+    switch (static_cast<PropertyID>(prop_id)) {
+    case PropertyID::PROP_CONFIG_FILE_PATH:
         g_value_set_string(value, self->_config_file_path);
         break;
-    case PROP_LIBRARY_FILE_PATH:
+    case PropertyID::PROP_LIBRARY_FILE_PATH:
         g_value_set_string(value, self->_library_file_path);
         break;
-    case PROP_MESSAGE_INTERVAL:
+    case PropertyID::PROP_MESSAGE_INTERVAL:
         g_value_set_int(value, self->_message_interval);
         break;
     default:
@@ -119,29 +117,32 @@ static void gst_dxmsgconv_get_property(GObject *object, guint prop_id,
 }
 
 static void gst_dxmsgconv_class_init(GstDxMsgConvClass *klass) {
-    GObjectClass *gobject_class = (GObjectClass *)klass;
-    GstElementClass *element_class = (GstElementClass *)klass;
+    GST_DEBUG_CATEGORY_INIT(gst_dxmsgconv_debug_category, "dxmsgconv", 0,
+                            "debug category for dxmsgconv element");
+
+    auto *gobject_class = (GObjectClass *)klass;
+    auto *element_class = (GstElementClass *)klass;
 
     gobject_class->dispose = dxmsgconv_dispose;
     gobject_class->set_property = gst_dxmsgconv_set_property;
     gobject_class->get_property = gst_dxmsgconv_get_property;
 
     g_object_class_install_property(
-        gobject_class, PROP_CONFIG_FILE_PATH,
+        gobject_class, static_cast<guint>(PropertyID::PROP_CONFIG_FILE_PATH),
         g_param_spec_string("config-file-path", "Config File Path",
                             "Path to the configuration file containing private "
                             "properties for message formats. (optional).",
                             nullptr, G_PARAM_READWRITE));
 
     g_object_class_install_property(
-        gobject_class, PROP_LIBRARY_FILE_PATH,
+        gobject_class, static_cast<guint>(PropertyID::PROP_LIBRARY_FILE_PATH),
         g_param_spec_string(
             "library-file-path", "Library File Path",
             "Path to the custom message converter library. Required.", nullptr,
             G_PARAM_READWRITE));
 
     g_object_class_install_property(
-        gobject_class, PROP_MESSAGE_INTERVAL,
+        gobject_class, static_cast<guint>(PropertyID::PROP_MESSAGE_INTERVAL),
         g_param_spec_int(
             "message-interval", "Message Interval",
             "Frame interval at which message is converted (optional).", 1,
@@ -155,7 +156,7 @@ static void gst_dxmsgconv_class_init(GstDxMsgConvClass *klass) {
         gst_pad_template_new("sink", GST_PAD_SINK, GST_PAD_ALWAYS,
                              GST_CAPS_ANY));
 
-    GstBaseTransformClass *base_transform_class =
+    auto *base_transform_class =
         GST_BASE_TRANSFORM_CLASS(klass);
     base_transform_class->start = GST_DEBUG_FUNCPTR(gst_dxmsgconv_start);
     base_transform_class->stop = GST_DEBUG_FUNCPTR(gst_dxmsgconv_stop);
@@ -241,7 +242,7 @@ void convert(GstDxMsgConv *self, DXFrameMeta *frame_meta, GstBuffer *buf) {
         meta_info._seq_id = self->_seq_id;
         meta_info._input_info = &self->_input_info;
 
-        DxMsgPayload *payload =
+        const auto *payload =
             self->_convert_payload_function(self->_context, &meta_info);
 
         dx_add_payload_to_buffer(buf, payload);
@@ -256,12 +257,14 @@ static GstFlowReturn gst_dxmsgconv_transform_ip(GstBaseTransform *trans,
                                                 GstBuffer *buf) {
     GstDxMsgConv *self = GST_DXMSGCONV(trans);
 
+    GST_DEBUG_OBJECT(self, "Processing buffer: pts=%" GST_TIME_FORMAT " seq=%" G_GUINT64_FORMAT,
+                     GST_TIME_ARGS(GST_BUFFER_PTS(buf)), self->_seq_id + 1);
+
     gst_video_info_from_caps(&self->_input_info, gst_pad_get_current_caps(GST_BASE_TRANSFORM_SINK_PAD(trans)));
 
     self->_seq_id++;
 
-    DXFrameMeta *frame_meta =
-        (DXFrameMeta *)gst_buffer_get_meta(buf, DX_FRAME_META_API_TYPE);
+    DXFrameMeta *frame_meta = dx_get_frame_meta(buf);
     if (!frame_meta) {
         GST_WARNING_OBJECT(self, "No DXFrameMeta in GstBuffer \n");
         return GST_FLOW_OK;

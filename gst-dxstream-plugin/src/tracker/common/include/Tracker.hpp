@@ -6,7 +6,7 @@
 
 class Tracker {
   public:
-    virtual void init(const std::map<std::string, std::string> &params) = 0;
+    virtual void init(const std::map<std::string, std::string, std::less<>> &params) = 0;
     virtual std::vector<Eigen::RowVectorXf>
     update(const Eigen::MatrixXf dets) = 0;
     virtual ~Tracker() = default;

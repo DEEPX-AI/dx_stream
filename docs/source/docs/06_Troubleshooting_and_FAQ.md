@@ -1,5 +1,72 @@
 # Troubleshooting and FAQ
 
+## Debug Logging
+
+#### **Overview**
+
+DX-STREAM provides comprehensive debug logging through GStreamer's `GST_DEBUG` system. This allows you to monitor element behavior, trace buffer flow, analyze performance, and diagnose issues at various levels of detail.
+
+#### **Basic Usage**
+
+**Enable debug logging for all DX-STREAM elements:**
+
+```bash
+$ GST_DEBUG=dx*:4 ./your_application
+```
+
+**Enable debug logging for specific elements:**
+
+```bash
+$ GST_DEBUG=dxinfer:4,dxtracker:4 ./your_application
+```
+
+#### **Debug Levels**
+
+| **Level** | **Name**    | **When to Use**                                                   |
+|-----------|-------------|-------------------------------------------------------------------|
+| 1         | ERROR       | Critical failures preventing operation                            |
+| 2         | WARNING     | Non-fatal issues that may affect behavior                         |
+| 3         | INFO        | State changes and configuration confirmation                      |
+| 4         | DEBUG       | Detailed operational information for troubleshooting              |
+
+#### **Common Scenarios**
+
+**Monitor inference performance:**
+
+```bash
+$ GST_DEBUG=dxinfer:4 ./your_app 2>&1 | grep "completed in"
+```
+
+**Debug configuration loading:**
+
+```bash
+$ GST_DEBUG=dx*:3 ./your_app 2>&1 | grep "Loaded"
+```
+
+**Track buffer flow:**
+
+```bash
+$ GST_DEBUG=dx*:4 ./your_app 2>&1 | grep "Processing buffer"
+```
+
+**Identify dropped frames:**
+
+```bash
+$ GST_DEBUG=dxpreprocess:4,dxinfer:4 ./your_app 2>&1 | grep "Dropping"
+```
+
+**Save logs to file:**
+
+```bash
+$ GST_DEBUG=dx*:4 GST_DEBUG_FILE=/tmp/debug.log ./your_app
+```
+
+!!! tip "Detailed Guide"
+
+    For comprehensive debugging strategies and element-specific logging information, see **Chapter 07 - Debugging Guide**.
+
+---
+
 ## Rendering Issues  
 
 #### **Problem: Abnormal Behavior**
@@ -66,6 +133,86 @@ The solution involves overriding the automatic, failing selection by manually sp
 **Action**: Modify the pipeline code to **replace the fpsdisplaysink element with ximagesink**.
 
 **Result**: **ximagesink uses CPU-based rendering** within an X11 environment, circumventing the resource and permission issues associated with kmssink to ensure proper display output.
+
+
+---
+
+## Display Sink Issues on Orange Pi 5 Plus with Debian 12
+
+#### **Problem: Corrupted or Distorted Video Rendering**
+
+When running DX-STREAM pipeline scripts on **Orange Pi 5 Plus with Debian 12**, you may experience corrupted, distorted, or improperly rendered video output. The video display may appear garbled, with incorrect colors, flickering, or visual artifacts that make the output unusable.
+
+**Affected Environment**:
+- **Hardware**: Orange Pi 5 Plus (RK3588 chipset)
+- **Operating System**: Debian 12 (official image from [Orange Pi download page](http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/service-and-support/Orange-Pi-5-plus.html))
+- **Affected Component**: Video rendering pipeline (specifically the fpsdisplaysink element)
+
+#### **Cause: GStreamer Format Negotiation Bug**
+
+This is a **GStreamer bug specific to the Orange Pi 5 Plus + Debian 12 environment**. The issue occurs during format negotiation between the `videoconvert` element and the `fpsdisplaysink` element:
+
+1. **Format Mismatch**: The default video format negotiated by `videoconvert` is incompatible with the sink element selected by `fpsdisplaysink` in this environment.
+
+2. **Environment-Specific**: This bug was observed with the official Debian 12 image for Orange Pi 5 Plus. It may or may not occur depending on:
+   - The specific Debian 12 ISO image version used
+   - System library versions (GStreamer, graphics drivers, etc.)
+   - Display server configuration (X11/Wayland)
+
+3. **Not Universal**: While primarily seen on Orange Pi 5 Plus + Debian 12, **similar rendering issues could potentially occur on other ARM-based SBCs or platforms** with comparable GStreamer + display stack configurations.
+
+#### **Solution: Force I420 Format Conversion**
+
+The workaround is to explicitly force the video format to **I420** before passing it to `fpsdisplaysink`, which bypasses the faulty format negotiation.
+
+**Action**: In the affected pipeline script, uncomment the Orange Pi 5 Plus workaround code block.
+
+**Before (default - may cause rendering issues)**:
+```bash
+# Default videoconvert pipeline
+VIDEOCONVERT_PIPELINE="videoconvert"
+
+# NOTE: If you experience rendering issues (corrupted/distorted video output) on Orange Pi 5 Plus
+# with Debian 12, uncomment the lines below to force I420 format conversion.
+# See troubleshooting documentation for more details.
+# if grep -q "rk3588" /proc/device-tree/compatible 2>/dev/null; then
+#     if [ "$(lsb_release -rs)" = "12" ]; then
+#         echo "Detected Orange Pi 5 Plus with Debian 12 - using I420 format"
+#         VIDEOCONVERT_PIPELINE="videoconvert ! video/x-raw,format=I420"
+#     fi
+# fi
+```
+
+**After (uncommented - fixes rendering issues)**:
+```bash
+# Default videoconvert pipeline
+VIDEOCONVERT_PIPELINE="videoconvert"
+
+# NOTE: If you experience rendering issues (corrupted/distorted video output) on Orange Pi 5 Plus
+# with Debian 12, uncomment the lines below to force I420 format conversion.
+# See troubleshooting documentation for more details.
+if grep -q "rk3588" /proc/device-tree/compatible 2>/dev/null; then
+    if [ "$(lsb_release -rs)" = "12" ]; then
+        echo "Detected Orange Pi 5 Plus with Debian 12 - using I420 format"
+        VIDEOCONVERT_PIPELINE="videoconvert ! video/x-raw,format=I420"
+    fi
+fi
+```
+
+**Location**: This code block appears in all DX-STREAM pipeline scripts that use video display, including:
+- `dx_stream/pipelines/single_network/*/run_*.sh`
+- `dx_stream/pipelines/multi_stream/run_*.sh`
+- `dx_stream/pipelines/rtsp/run_*.sh`
+- `dx_stream/pipelines/tracking/run_*.sh`
+- `dx_stream/pipelines/secondary_mode/run_*.sh`
+
+**Result**: Forcing the `I420` format ensures proper format negotiation and eliminates the rendering corruption, allowing normal video display.
+
+!!! note "When to Apply This Workaround"
+    - **Always apply** if you're using Orange Pi 5 Plus with official Debian 12 image and experiencing rendering issues
+    - **Try first without workaround** on other Debian versions or custom images - it may work fine
+    - **Consider applying** if you experience similar rendering issues on other ARM SBCs with similar software stacks
+    - **No harm in enabling** - forcing I420 format is a safe operation that only affects format negotiation
 
 
 ---

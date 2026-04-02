@@ -1,0 +1,5 @@
+{
+    "inference_id": 1,
+    "library_file_path": "/usr/local/share/gstdxstream/lib/libpostprocess_ppu.so",
+    "function_name": "YOLOV5S_PPU"
+}

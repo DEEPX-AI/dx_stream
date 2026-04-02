@@ -89,7 +89,7 @@ GST_START_TEST(test_element_properties) {
 
     g_object_get(element, "library-file-path", &library_file_path, NULL);
     fail_unless(g_strcmp0(library_file_path,
-                          "/usr/share/dx-stream/lib/libpostprocess_yolo.so") ==
+                          "/usr/local/share/gstdxstream/lib/libpostprocess_yolo.so") ==
                     0,
                 "'library-file-path' properties not set correctly");
 

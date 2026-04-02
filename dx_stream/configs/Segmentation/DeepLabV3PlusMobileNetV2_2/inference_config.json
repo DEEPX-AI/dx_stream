@@ -1,5 +1,0 @@
-{
-    "preprocess_id": 2,
-    "inference_id": 2,
-    "model_path" : "./dx_stream/samples/models/DeepLabV3PlusMobileNetV2_2.dxnn"
-}

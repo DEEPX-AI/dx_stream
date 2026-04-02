@@ -4,6 +4,7 @@
 #include "KalmanFilter.hpp"
 #include "Utilities.hpp"
 #include "iostream"
+#include <memory>
 /*
 This class represents the internal state of individual
 tracked objects observed as bbox.
@@ -13,22 +14,35 @@ namespace ocsort {
 class KalmanBoxTracker {
   public:
     /*method*/
-    KalmanBoxTracker() {};
+    KalmanBoxTracker() = default;
     KalmanBoxTracker(Eigen::VectorXf bbox_, int cls_, int idx_,
                      uint64_t id_count_, int delta_t_ = 3);
     void update(Eigen::VectorXf *bbox_, int cls_, int idx_);
     Eigen::RowVectorXf predict();
-    Eigen::VectorXf get_state();
+    Eigen::VectorXf get_state() const;
+    ~KalmanBoxTracker() = default;
 
-  public:
+    // Getters
+    Eigen::RowVectorXf get_velocity() const { return velocity; }
+    Eigen::RowVectorXf get_last_observation() const { return last_observation; }
+    const std::unordered_map<int, Eigen::VectorXf>& get_observations() const { return observations; }
+    int get_age() const { return age; }
+    int get_time_since_update() const { return time_since_update; }
+    int get_hit_streak() const { return hit_streak; }
+    int get_id() const { return id; }
+    int get_cls() const { return cls; }
+    float get_conf() const { return conf; }
+    int get_idx() const { return idx; }
+
+  private:
     /*variable*/
     Eigen::VectorXf bbox; // [5,1]
-    KalmanFilterNew *kf;
-    int time_since_update;
+    std::unique_ptr<KalmanFilterNew> kf = std::make_unique<KalmanFilterNew>(7, 4);
+    int time_since_update = 0;
     int id;
     std::vector<Eigen::VectorXf> history;
-    int hits;
-    int hit_streak;
+    int hits = 0;
+    int hit_streak = 0;
     int age = 0;
     float conf;
     int cls;
