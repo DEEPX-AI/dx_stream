@@ -55,9 +55,9 @@ struct _DXFrameMeta {
     int _roi[4];
 
     // segmentation
-    std::vector<unsigned char> seg_data;
-    int seg_width = 0;
-    int seg_height = 0;
+    std::vector<unsigned char> _seg_data;
+    int _seg_width = 0;
+    int _seg_height = 0;
 
     // classification result (primary mode)
     int _label;
@@ -69,8 +69,8 @@ struct _DXFrameMeta {
     std::vector<DXUserMeta*> _frame_user_meta_list;
 
     // RAII-managed tensors (shallow copy through shared_ptr)
-    std::map<int, dxs::InputBuffers> _input_tensors;   // preproc_id -> input buffers
-    std::map<int, dxrt::TensorPtrs> _output_tensors;   // infer_id -> output tensors
+    std::map<int, dxs::DXTensors> _input_tensors;   // preproc_id -> input tensors
+    std::map<int, dxs::DXTensors> _output_tensors;   // infer_id -> output tensors
 };
 ```
 
@@ -98,24 +98,24 @@ struct _DXObjectMeta {
     std::vector<float> _face_feature;
 
     // segmentation
-    std::vector<unsigned char> seg_data;
-    int seg_width = 0;
-    int seg_height = 0;
+    std::vector<unsigned char> _seg_data;
+    int _seg_width = 0;
+    int _seg_height = 0;
 
     // user meta
     std::vector<DXUserMeta*> _obj_user_meta_list;
 
     // RAII-managed tensors (shallow copy through shared_ptr)
-    std::map<int, dxs::InputBuffers> _input_tensors;   // preproc_id -> input buffers
-    std::map<int, dxrt::TensorPtrs> _output_tensors;   // infer_id -> output tensors
+    std::map<int, dxs::DXTensors> _input_tensors;   // preproc_id -> input tensors
+    std::map<int, dxs::DXTensors> _output_tensors;   // infer_id -> output tensors
 
 };
 ```
 
 **Segmentation Note:**
 
-- `DXFrameMeta.seg_data`, `seg_width`, and `seg_height` store a frame-level semantic class map.
-- `DXObjectMeta.seg_data`, `seg_width`, and `seg_height` store an ROI-local binary mask aligned to `_box`.
+- `DXFrameMeta._seg_data`, `_seg_width`, and `_seg_height` store a frame-level semantic class map.
+- `DXObjectMeta._seg_data`, `_seg_width`, and `_seg_height` store an ROI-local binary mask aligned to `_box`.
 - Legacy `SegClsMap` is no longer used for object metadata.
 
 ### **Metadata API Functions**
@@ -426,16 +426,14 @@ The example shows three blobs with NHWC dimensions. Use this information to impl
 #### **Implementation Example**  
 
 ```cpp
-#include <dxrt/dxrt_api.h>
-
 extern "C" void YOLOV7(GstBuffer *buf,
-                       const dxrt::TensorPtrs &network_output,
+                       std::vector<dxs::DXTensor> network_output,
                        DXFrameMeta *frame_meta,
                        DXObjectMeta *object_meta)
 {
-    // Access tensor data using methods
-    float *output_data = (float *)network_output[0]->data();
-    auto shape = network_output[0]->shape();
+    // Access tensor data using struct members
+    float *output_data = (float *)network_output[0]._data;
+    auto shape = network_output[0]._shape;
     int batch = shape[0];
     int height = shape[1];
     int width = shape[2];
@@ -455,16 +453,16 @@ extern "C" void YOLOV7(GstBuffer *buf,
 **Function Parameters:**
 
 - **GstBuffer \*buf**: Direct access to the GStreamer buffer containing frame data
-- **const dxrt::TensorPtrs &network_output**: Output tensors from the inference engine (std::vector<std::shared_ptr<dxrt::Tensor>>)
+- **std::vector\<dxs::DXTensor\> network_output**: Output tensors from the inference engine (defined in `dxcommon.hpp`)
 - **DXFrameMeta \*frame_meta**: Frame-level metadata (dimensions, format, etc.)
 - **DXObjectMeta \*object_meta**: Object-level metadata (in Secondary Mode) or nullptr (in Primary Mode)
 
-**Tensor Access Methods:**
-- `network_output[i]->data()`: Get pointer to tensor data
-- `network_output[i]->shape()`: Get tensor shape as std::vector<int>
-- `network_output[i]->type()`: Get tensor data type (dxrt::DataType)
-- `network_output[i]->elem_size()`: Get size of each element
-- `network_output[i]->name()`: Get tensor name
+**Tensor Access Members:**
+- `network_output[i]._data`: Get pointer to tensor data (void*)
+- `network_output[i]._shape`: Get tensor shape as std::vector<int64_t>
+- `network_output[i]._type`: Get tensor data type (dxs::DataType)
+- `network_output[i]._elemSize`: Get size of each element
+- `network_output[i]._name`: Get tensor name
 
 #### **Library Integration**  
 Build the custom library using a `meson.build` script.
@@ -478,12 +476,9 @@ gst_dep = dependency('gstreamer-1.0', version : '>=1.16.3',
 dx_stream_dep = dependency('gstdxstream')
 opencv_dep = dependency('opencv4', required: true)
 
-# DX Runtime dependency (required for tensor access)
-dxrt_dep = declare_dependency(link_args: ['-ldxrt'])
-
-yolo_postprocess_lib = shared_library('postprocess_yolo', 
+yolo_postprocess_lib = shared_library('postprocess_yolo',
     'postprocess.cpp',
-    dependencies: [opencv_dep, gst_dep, dx_stream_dep, dxrt_dep],
+    dependencies: [opencv_dep, gst_dep, dx_stream_dep],
     install: true,
     install_dir: get_option('datadir') / 'gstdxstream' / 'lib'
 )

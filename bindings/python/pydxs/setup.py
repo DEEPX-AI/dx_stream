@@ -70,7 +70,7 @@ ext_modules = [
             os.path.join(project_root, 'gst-dxstream-plugin', 'general'),
         ] + pybind11_includes + gstdxstream_includes + gst_includes,
         library_dirs=gstdxstream_lib_dirs + gst_lib_dirs,
-        libraries=['gstdxstream', 'dxrt'] + gst_libs,
+        libraries=['gstdxstream'] + gst_libs,
         extra_compile_args=['-std=c++14'],
         extra_link_args=rpath_flags,  # Add rpath for runtime library loading
         language='c++'

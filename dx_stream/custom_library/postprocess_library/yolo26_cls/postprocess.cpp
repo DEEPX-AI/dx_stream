@@ -1,8 +1,10 @@
 #include "gstdxstream/gst-dxframemeta.hpp"
 #include "gstdxstream/gst-dxobjectmeta.hpp"
-#include <dxrt/dxrt_api.h>
 #include <glib.h>
 #include <gst/gst.h>
+#include <string>
+#include <vector>
+#include <tuple>
 
 struct classificationParams {
     bool needArgmax;
@@ -20,17 +22,17 @@ template <typename T> int getArgmax(T* input, int size) {
     return max_idx;
 }
 
-void Classification(const dxrt::TensorPtrs& outputs, DXFrameMeta* frame_meta,
+void Classification(const std::vector<dxs::DXTensor>& outputs, DXFrameMeta* frame_meta,
                     const classificationParams& params) {
     int label;
     float confidence;
 
     if (params.needArgmax) {
-        const float* scores = static_cast<float*>(outputs[0]->data());
+        const float* scores = static_cast<float*>(outputs[0]._data);
         label = getArgmax(scores, params.numClasses);
         confidence = scores[label];
     } else {
-        label = *static_cast<uint16_t*>(outputs[0]->data());
+        label = *static_cast<uint16_t*>(outputs[0]._data);
         confidence = 1.0f;
     }
 
@@ -42,7 +44,7 @@ void Classification(const dxrt::TensorPtrs& outputs, DXFrameMeta* frame_meta,
 }
 
 extern "C" void PostProcess(GstBuffer* buf,
-                            const dxrt::TensorPtrs& network_output,
+                            std::vector<dxs::DXTensor> network_output,
                             DXFrameMeta* frame_meta,
                             DXObjectMeta* object_meta) {
     std::ignore = buf;

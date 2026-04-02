@@ -1,12 +1,12 @@
 #include "gstdxstream/gst-dxframemeta.hpp"
 #include "gstdxstream/gst-dxobjectmeta.hpp"
-#include <dxrt/dxrt_api.h>
 #include <algorithm>
 #include <cmath>
 #include <vector>
 #include <tuple>
 #include <glib.h>
 #include <gst/gst.h>
+#include <string>
 
 // ============================================================================
 // YOLOV8 Pose Detection Post-Processing Library for DX Stream
@@ -69,9 +69,9 @@ struct PoseConfig {
  * @param tensor_name Name of the tensor to search for
  * @return Index of the tensor if found, -1 otherwise
  */
- inline int get_index_by_tensor_name(const dxrt::TensorPtrs& network_output, const std::string& tensor_name) {
+ inline int get_index_by_tensor_name(std::vector<dxs::DXTensor> network_output, const std::string& tensor_name) {
     for (size_t i = 0; i < network_output.size(); i++) {
-        if (network_output[i]->name() == tensor_name) {
+        if (network_output[i]._name == tensor_name) {
             return static_cast<int>(i);
         }
     }
@@ -164,14 +164,14 @@ std::vector<PoseDetection> nms(std::vector<PoseDetection>& poses, float threshol
  * @param config Configuration parameters
  * @return Vector of detected poses
  */
-std::vector<PoseDetection> parse_pose_output(const std::shared_ptr<dxrt::Tensor>& output, 
+std::vector<PoseDetection> parse_pose_output(const dxs::DXTensor& output,
                                             const PoseConfig& config) {
     std::vector<PoseDetection> poses;
-    const auto* data = static_cast<const float*>(output->data());
-    
+    const auto* data = static_cast<const float*>(output._data);
+
     // Original shape: [1, 56, 8400]
-    auto channels = static_cast<int>(output->shape()[1]);  // 56
-    auto num_detections = static_cast<int>(output->shape()[2]);  // 8400
+    auto channels = static_cast<int>(output._shape[1]);  // 56
+    auto num_detections = static_cast<int>(output._shape[2]);  // 8400
     
     // Transpose to [1, 8400, 56] (simulate Python's transpose)
     std::vector<float> transposed_data(num_detections * channels);
@@ -273,7 +273,7 @@ PoseDetection scale_pose(const PoseDetection& pose, int orig_width, int orig_hei
  * @param object_meta Object metadata (output parameter)
  */
 extern "C" void PostProcess(GstBuffer* buf,
-                            const dxrt::TensorPtrs& network_output,
+                            std::vector<dxs::DXTensor> network_output,
                             DXFrameMeta* frame_meta,
                             DXObjectMeta* object_meta) {
     std::ignore = buf;

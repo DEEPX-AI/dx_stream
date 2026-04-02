@@ -3,7 +3,6 @@
 
 #include "dxcommon.hpp"
 #include <array>
-#include <dxrt/dxrt_api.h>
 #include <glib.h>
 #include <map>
 #include <string>
@@ -44,8 +43,8 @@ struct _DXObjectMeta {
     std::vector<DXUserMeta*> _obj_user_meta_list;
 
     // RAII-managed tensors (shallow copy through shared_ptr)
-    std::map<int, dxs::InputBuffers> _input_tensors;   // preproc_id -> input buffers
-    std::map<int, dxrt::TensorPtrs> _output_tensors;   // infer_id -> output tensors
+    std::map<int, dxs::DXTensors> _input_tensors;   // preproc_id -> input tensors
+    std::map<int, dxs::DXTensors> _output_tensors;   // infer_id -> output tensors
 
 };
 

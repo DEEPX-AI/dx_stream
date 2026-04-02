@@ -1,6 +1,5 @@
 #include "gstdxstream/gst-dxframemeta.hpp"
 #include "gstdxstream/gst-dxobjectmeta.hpp"
-#include <dxrt/dxrt_api.h>
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -8,6 +7,7 @@
 #include <tuple>
 #include <glib.h>
 #include <gst/gst.h>
+#include <string>
 
 // ============================================================================
 // YOLO Post-Processing Library for DX Stream
@@ -93,9 +93,9 @@ struct YoloConfig {
  * @param tensor_name Name of the tensor to search for
  * @return Index of the tensor if found, -1 otherwise
  */
- inline int get_index_by_tensor_name(const dxrt::TensorPtrs& network_output, const std::string& tensor_name) {
+ inline int get_index_by_tensor_name(std::vector<dxs::DXTensor> network_output, const std::string& tensor_name) {
     for (size_t i = 0; i < network_output.size(); i++) {
-        if (network_output[i]->name() == tensor_name) {
+        if (network_output[i]._name == tensor_name) {
             return static_cast<int>(i);
         }
     }
@@ -211,14 +211,14 @@ std::vector<BoundingBox> nms(const std::vector<BoundingBox>& boxes, float thresh
  * @param config YOLO configuration
  * @return Vector of detected bounding boxes
  */
-std::vector<BoundingBox> parse_single_output(const std::shared_ptr<dxrt::Tensor>& output, 
+std::vector<BoundingBox> parse_single_output(const dxs::DXTensor& output,
                                              const YoloConfig& config) {
     std::vector<BoundingBox> boxes;
-    const auto* data = static_cast<const float*>(output->data());
-    
+    const auto* data = static_cast<const float*>(output._data);
+
     // Tensor shape: [batch, num_detections, 5 + num_classes]
-    auto num_detections = static_cast<int>(output->shape()[1]);
-    auto features_per_detection = static_cast<int>(output->shape()[2]);  // 5 + num_classes
+    auto num_detections = static_cast<int>(output._shape[1]);
+    auto features_per_detection = static_cast<int>(output._shape[2]);  // 5 + num_classes
     
     for (int i = 0; i < num_detections; i++) {
         // Get data for current detection
@@ -270,7 +270,7 @@ std::vector<BoundingBox> parse_single_output(const std::shared_ptr<dxrt::Tensor>
  * @param config YOLO configuration
  * @return Vector of detected bounding boxes
  */
-std::vector<BoundingBox> parse_multi_output(const dxrt::TensorPtrs& outputs,
+std::vector<BoundingBox> parse_multi_output(const std::vector<dxs::DXTensor>& outputs,
                                             const YoloConfig& config) {
     std::vector<BoundingBox> boxes;
 
@@ -299,15 +299,15 @@ std::vector<BoundingBox> parse_multi_output(const dxrt::TensorPtrs& outputs,
     // Process each output layer
     for (size_t layer_idx = 0; layer_idx < tensor_names.size(); ++layer_idx) {
         const auto& output = outputs[get_index_by_tensor_name(outputs, tensor_names[layer_idx])];
-        const auto* data = static_cast<const float*>(output->data());
+        const auto* data = static_cast<const float*>(output._data);
 
         // ============================================================================
         // TENSOR DIMENSIONS (NCHW format)
         // ============================================================================
-        // output->shape() = [batch, channels, height, width]
-        auto channels = static_cast<int>(output->shape()[1]);      // Total channels (3 * (5 + num_classes))
-        auto height = static_cast<int>(output->shape()[2]);        // Grid height (64, 32, or 16)
-        auto width = static_cast<int>(output->shape()[3]);         // Grid width (64, 32, or 16)
+        // output._shape = [batch, channels, height, width]
+        auto channels = static_cast<int>(output._shape[1]);      // Total channels (3 * (5 + num_classes))
+        auto height = static_cast<int>(output._shape[2]);        // Grid height (64, 32, or 16)
+        auto width = static_cast<int>(output._shape[3]);         // Grid width (64, 32, or 16)
 
         // Calculate stride for coordinate scaling
         int stride_x = config.input_width / width;
@@ -460,7 +460,7 @@ BoundingBox scale_box(const BoundingBox& box, int orig_width, int orig_height,
  * @param object_meta Object metadata (output parameter)
  */
 extern "C" void PostProcess(GstBuffer* buf,
-                            const dxrt::TensorPtrs& network_output,
+                            std::vector<dxs::DXTensor> network_output,
                             DXFrameMeta* frame_meta,
                             DXObjectMeta* object_meta) {
     std::ignore = buf;

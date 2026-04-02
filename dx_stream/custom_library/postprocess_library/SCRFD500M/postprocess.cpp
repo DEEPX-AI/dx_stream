@@ -1,12 +1,12 @@
 #include "gstdxstream/gst-dxframemeta.hpp"
 #include "gstdxstream/gst-dxobjectmeta.hpp"
-#include <dxrt/dxrt_api.h>
 #include <algorithm>
 #include <cmath>
 #include <vector>
 #include <tuple>
 #include <glib.h>
 #include <gst/gst.h>
+#include <string>
 
 // ============================================================================
 // SCRFD Face Detection Post-Processing Library for DX Stream
@@ -73,9 +73,9 @@ struct SCRFDConfig {
  * @param tensor_name Name of the tensor to search for
  * @return Index of the tensor if found, -1 otherwise
  */
- inline int get_index_by_tensor_name(const dxrt::TensorPtrs& network_output, const std::string& tensor_name) {
+ inline int get_index_by_tensor_name(std::vector<dxs::DXTensor> network_output, const std::string& tensor_name) {
     for (size_t i = 0; i < network_output.size(); i++) {
-        if (network_output[i]->name() == tensor_name) {
+        if (network_output[i]._name == tensor_name) {
             return static_cast<int>(i);
         }
     }
@@ -161,7 +161,7 @@ std::vector<FaceDetection> nms(std::vector<FaceDetection>& faces, float threshol
  * @param config Configuration parameters
  * @return Vector of detected faces
  */
-std::vector<FaceDetection> parse_scrfd_outputs(const dxrt::TensorPtrs& network_output,
+std::vector<FaceDetection> parse_scrfd_outputs(std::vector<dxs::DXTensor> network_output,
                                               const SCRFDConfig& config) {
     std::vector<FaceDetection> faces;
     
@@ -183,13 +183,13 @@ std::vector<FaceDetection> parse_scrfd_outputs(const dxrt::TensorPtrs& network_o
         const auto& score_tensor = network_output[score_idx];
         const auto& bbox_tensor = network_output[bbox_idx];
         const auto& kps_tensor = network_output[kps_idx];
-        
-        const auto* score_data = static_cast<const float*>(score_tensor->data());
-        const auto* bbox_data = static_cast<const float*>(bbox_tensor->data());
-        const auto* kps_data = static_cast<const float*>(kps_tensor->data());
-        
+
+        const auto* score_data = static_cast<const float*>(score_tensor._data);
+        const auto* bbox_data = static_cast<const float*>(bbox_tensor._data);
+        const auto* kps_data = static_cast<const float*>(kps_tensor._data);
+
         // Tensor shape: [B, N, features]
-        auto num_detections = static_cast<int>(score_tensor->shape()[1]);
+        auto num_detections = static_cast<int>(score_tensor._shape[1]);
 
         // Feature map size inferred from stride (H, W)
         const int feature_map_width = config.input_width / stride;
@@ -287,7 +287,7 @@ FaceDetection scale_face(const FaceDetection& face, int orig_width, int orig_hei
  * @param object_meta Object metadata (output parameter)
  */
 extern "C" void PostProcess(GstBuffer* buf,
-                            const dxrt::TensorPtrs& network_output,
+                            std::vector<dxs::DXTensor> network_output,
                             DXFrameMeta* frame_meta,
                             DXObjectMeta* object_meta) {
     std::ignore = buf;

@@ -1,7 +1,6 @@
 #include "gst-dxframemeta.hpp"
 #include "gst-dxobjectmeta.hpp"
 #include "gst-dxusermeta.hpp"
-#include <dxrt/dxrt_api.h>
 #include <algorithm>  // for std::find
 
 GST_DEBUG_CATEGORY_EXTERN(dxframemeta_cat);
@@ -89,8 +88,8 @@ static gboolean dx_frame_meta_init(GstMeta *meta, gpointer params,
     new (&dx_meta->_name) std::string();
     new (&dx_meta->_object_meta_list) std::vector<DXObjectMeta*>();
     new (&dx_meta->_frame_user_meta_list) std::vector<DXUserMeta*>();
-    new (&dx_meta->_input_tensors) std::map<int, dxs::InputBuffers>();
-    new (&dx_meta->_output_tensors) std::map<int, dxrt::TensorPtrs>();
+    new (&dx_meta->_input_tensors) std::map<int, dxs::DXTensors>();
+    new (&dx_meta->_output_tensors) std::map<int, dxs::DXTensors>();
     new (&dx_meta->_seg_data) std::vector<unsigned char>();
     new (&dx_meta->_label_name) std::string();
 
@@ -134,10 +133,9 @@ static void dx_frame_meta_free(GstMeta *meta, GstBuffer *buffer) {
 
 void copy_tensor(DXFrameMeta *src_meta, DXFrameMeta *dst_meta) {
     GST_CAT_DEBUG_SAFE(dxframemeta_cat, "Shallow copying DXFrameMeta tensors (shared ownership)");
-    
-    // Shallow copy: shared_ptr reference counts are increased
-    // - InputBuffers contain shared_ptr<uint8_t>, so data is shared
-    // - TensorPtrs contain vector<shared_ptr<Tensor>>, so tensors are shared
+
+    // Shallow copy: shared_ptr<void> reference counts are increased
+    // - DXTensors._data is shared_ptr<void>, so data is shared
     // Memory is automatically freed when last reference is released
     dst_meta->_input_tensors = src_meta->_input_tensors;
     dst_meta->_output_tensors = src_meta->_output_tensors;

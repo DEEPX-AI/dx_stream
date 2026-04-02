@@ -348,9 +348,15 @@ bool Preprocessor::process_object(GstBuffer *buf, DXFrameMeta *frame_meta, DXObj
         static_cast<int64_t>(element->_preprocess.width),
         static_cast<int64_t>(element->_preprocess.channel)
     };
-    dxs::InputBuffer input_buffer = dxs::InputBuffer::allocate(mem_size, shape, "input");
-    dxs::InputBuffers input_buffers;
-    input_buffers.push_back(input_buffer);
+    dxs::DXTensors input_tensors;
+    input_tensors.allocate(mem_size);
+    dxs::DXTensor t;
+    t._name = "input";
+    t._shape = shape;
+    t._data = input_tensors.data_ptr();
+    t._elemSize = 1;
+    t._type = dxs::UINT8;
+    input_tensors._tensors.push_back(t);
 
     cv::Rect roi(
         cv::Point(std::max(int(object_meta->_box[0]), 0),
@@ -363,13 +369,13 @@ bool Preprocessor::process_object(GstBuffer *buf, DXFrameMeta *frame_meta, DXObj
     cleanup_temp_buffers(frame_meta->_stream_id);
 
     if (element->_plugin.process_function) {
-        ret = element->_plugin.process_function(buf, frame_meta, object_meta, input_buffer.data.get());
+        ret = element->_plugin.process_function(buf, frame_meta, object_meta, static_cast<uint8_t*>(input_tensors.data_ptr()));
     } else {
-        ret = preprocess(buf, frame_meta, input_buffer.data.get(), &roi);
+        ret = preprocess(buf, frame_meta, static_cast<uint8_t*>(input_tensors.data_ptr()), &roi);
     }
 
     if (ret) {
-        object_meta->_input_tensors[preprocess_id] = input_buffers;
+        object_meta->_input_tensors[preprocess_id] = std::move(input_tensors);
     }
     return ret;
 }
@@ -441,14 +447,20 @@ bool Preprocessor::primary_process(GstBuffer *buf) {
         static_cast<int64_t>(element->_preprocess.width),
         static_cast<int64_t>(element->_preprocess.channel)
     };
-    dxs::InputBuffer input_buffer = dxs::InputBuffer::allocate(mem_size, shape, "input");
-    dxs::InputBuffers input_buffers;
-    input_buffers.push_back(input_buffer);
+    dxs::DXTensors input_tensors;
+    input_tensors.allocate(mem_size);
+    dxs::DXTensor t;
+    t._name = "input";
+    t._shape = shape;
+    t._data = input_tensors.data_ptr();
+    t._elemSize = 1;
+    t._type = dxs::UINT8;
+    input_tensors._tensors.push_back(t);
 
     cv::Rect roi(cv::Point(frame_meta->_roi[0], frame_meta->_roi[1]),
                  cv::Point(frame_meta->_roi[2], frame_meta->_roi[3]));
 
-    uint8_t* input_tensor = input_buffer.data.get();
+    uint8_t* input_tensor = static_cast<uint8_t*>(input_tensors.data_ptr());
     if (element->_preprocess.transpose) {
         input_tensor = element->_preprocess.transpose_data.data();
     }
@@ -464,12 +476,12 @@ bool Preprocessor::primary_process(GstBuffer *buf) {
     }
 
     if (element->_preprocess.transpose) {
-        transpose_hwc_to_chw(input_buffer.data.get(), element->_preprocess.transpose_data.data(),
+        transpose_hwc_to_chw(static_cast<uint8_t*>(input_tensors.data_ptr()), element->_preprocess.transpose_data.data(),
                            element->_preprocess.channel, element->_preprocess.height, element->_preprocess.width);
     }
 
     if (ret) {
-        frame_meta->_input_tensors[element->_preprocess.id] = input_buffers;
+        frame_meta->_input_tensors[element->_preprocess.id] = std::move(input_tensors);
     }
     return ret;
 }
