@@ -1,5 +1,0 @@
-{
-    "inference_id": 1,
-    "library_file_path": "/usr/share/dx-stream/lib/libpostprocess_yoloxs_1.so",
-    "function_name": "PostProcess"
-}

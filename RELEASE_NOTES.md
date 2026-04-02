@@ -1,6 +1,36 @@
 # RELEASE_NOTES
 
-## DX-Stream 2.2.1 / 2025-02-28
+## DX-Stream v3.0.0 / 2026-04-01
+
+### 1. Changed
+- **Inference Architecture**: Refactored to use native `dxrt::TensorPtrs` instead of user output buffers
+- **Metadata Structures**: Updated `DXFrameMeta` and `DXObjectMeta` to align with new inference architecture **(Breaking)**
+- **Custom PostProcess Interface**: Changed to use `dxrt::TensorPtrs` — existing custom postprocess libraries must be updated **(Breaking)**
+- **Model Download**: Replaced tar.gz bundle download with per-model download via `model_list.json` + `setup_sample_models.sh` (`jq` required) **(Breaking)**
+- **Preprocessing Architecture**: Introduced `IVideoTransformKernel` abstraction (RGA / libyuv / V3 DSP) with `VideoTransformFactory` for auto backend selection
+- **DXOSD**: Removed unnecessary color conversion, resize, and intermediate memory allocation; added YUV in-place overlay rendering
+- **Installation**: Removed `/etc/profile.d/gstdxstream.sh` (no longer requires sudo); env vars now written directly to `~/.bashrc` **(Breaking)** (old profile.d-based setup no longer used)
+- **C++ Standard**: Updated to C++14 (using declarations, enum classes)
+- **Dependency**: Added `gstreamer1.0-dev` build dependency; install prefix default `/usr/local`
+
+### 2. Fixed
+- NV12 CPU input stride/offset now uses GstVideoInfo instead of RGA heuristic (dxconvert/dxscale)
+- DMA-Buffer zero-copy support in RGA preprocessor and DXOSD with proper stride calculation
+- Orange Pi 5 Plus (RK3588 / Debian 12) display corruption via automatic I420 conversion
+- RGA preprocessing build errors on Rockchip SoC
+- SW rendering buffer management: stream-specific caching for multi-stream scenarios
+- Memory management with smart pointers and improved tensor handling
+
+### 3. Added
+- **DxScale**: New GstBaseTransform element for HW-accelerated scaling (NV12/I420/RGB/BGR)
+- **DxConvert**: New GstBaseTransform element for color format conversion (full 4×4 format matrix)
+- RGA HW-accelerated format conversion/scaling (NV12↔RGB↔BGR) with automatic SW fallback
+- V3 DSP preprocessor with OSD v3 RGB buffer drawing for DEEPX V3 SoC
+- YOLOv26 examples
+- Auto-detection and cleanup of old installation files from previous major versions
+- Debugging guide documentation
+
+## DX-Stream v2.2.1 / 2026-02-28
 
 ### 1. Changed
 - Update sample models version from dx_com v2.2.0 to v2.2.1

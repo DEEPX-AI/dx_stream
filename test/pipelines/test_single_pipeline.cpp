@@ -1,5 +1,5 @@
-#include <dx_stream/gst-dxframemeta.hpp>
-#include <dx_stream/gst-dxobjectmeta.hpp>
+#include <gstdxstream/gst-dxframemeta.hpp>
+#include <gstdxstream/gst-dxobjectmeta.hpp>
 #include <gst/check/gstcheck.h>
 #include <gst/gst.h>
 
@@ -80,14 +80,14 @@ static gboolean bus_call(GstBus *bus, GstMessage *msg, gpointer data) {
     GMainLoop *loop = (GMainLoop *)data;
 
     switch (GST_MESSAGE_TYPE(msg)) {
-    case GST_MESSAGE_EOS:
+    case GST_MESSAGE_EOS: {
         g_print("End-of-Stream received\n");
         g_main_loop_quit(loop);
-        break;
-    case GST_MESSAGE_ERROR:
+    } break;
+    case GST_MESSAGE_ERROR: {
         g_print("Error received in pipeline\n");
         g_main_loop_quit(loop);
-        break;
+    } break;
     default:
         break;
     }
@@ -106,8 +106,7 @@ static GstPadProbeReturn probe_primary(GstPad *pad, GstPadProbeInfo *info,
     
     DXFrameMeta *frame_meta = dx_get_frame_meta(buffer);
     if (frame_meta) {
-        for (GList *l = frame_meta->_object_meta_list; l != NULL; l = l->next) {
-            DXObjectMeta *object_meta = (DXObjectMeta *)l->data;
+        for (auto object_meta : frame_meta->_object_meta_list) {
             pred[object_meta->_label].push_back(
                 {object_meta->_box[0], object_meta->_box[1],
                  object_meta->_box[2], object_meta->_box[3]});
@@ -118,7 +117,8 @@ static GstPadProbeReturn probe_primary(GstPad *pad, GstPadProbeInfo *info,
     return GST_PAD_PROBE_OK;
 }
 
-void yolo_pipeline(std::string models) {
+void yolo_pipeline(std::string models, int input_size, std::string postprocess_lib, std::string function_name) {
+    g_print("Running for model: %s\n", models.c_str());
     GMainLoop *loop = g_main_loop_new(NULL, FALSE);
     GstElement *pipeline = gst_pipeline_new("test-pipeline");
     GstBus *bus = gst_element_get_bus(pipeline);
@@ -133,7 +133,7 @@ void yolo_pipeline(std::string models) {
     gst_value_set_fraction(&framerate, 30, 1);
     g_object_set_property(G_OBJECT(videosrc), "framerate", &framerate);
     g_value_unset(&framerate);
-    g_object_set(videosrc, "num-buffers", 3, NULL);
+    g_object_set(videosrc, "num-buffers", 10, NULL);
 
     GstElement *jpegparse = gst_element_factory_make("jpegparse", NULL);
     fail_unless(jpegparse != NULL, "Failed to create jpegparse element");
@@ -143,11 +143,11 @@ void yolo_pipeline(std::string models) {
 
     GstElement *preprocess = gst_element_factory_make("dxpreprocess", NULL);
     fail_unless(preprocess != NULL, "Failed to create GstDxPreprocess element");
-    std::string preprocess_config_path =
-        "./../../../dx_stream/configs/Object_Detection/" + models +
-        "/preprocess_config.json";
-    g_object_set(preprocess, "config-file-path", preprocess_config_path.c_str(),
-                 NULL);
+    g_object_set(preprocess, "preprocess-id", 1, NULL);
+    g_object_set(preprocess, "resize-width", input_size, NULL);
+    g_object_set(preprocess, "resize-height", input_size, NULL);
+    g_object_set(preprocess, "keep-ratio", true, NULL);
+    g_object_set(preprocess, "pad-value", 114, NULL);
 
     GstElement *infer = gst_element_factory_make("dxinfer", NULL);
     fail_unless(infer != NULL, "Failed to create GstDxInfer element");
@@ -159,11 +159,9 @@ void yolo_pipeline(std::string models) {
 
     GstElement *postprocess = gst_element_factory_make("dxpostprocess", NULL);
     fail_unless(postprocess != NULL, "Failed to create GstDxInfer element");
-    std::string postprocess_config_path =
-        "./../../../dx_stream/configs/Object_Detection/" + models +
-        "/postprocess_config.json";
-    g_object_set(postprocess, "config-file-path",
-                 postprocess_config_path.c_str(), NULL);
+    g_object_set(postprocess, "inference-id", 1, NULL);
+    g_object_set(postprocess, "library-file-path", postprocess_lib.c_str(), NULL);
+    g_object_set(postprocess, "function-name", function_name.c_str(), NULL);
 
     GstElement *fakesink = gst_element_factory_make("fakesink", NULL);
     fail_unless(fakesink != NULL, "Failed to create fakesink element");
@@ -196,7 +194,8 @@ void yolo_pipeline(std::string models) {
     g_main_loop_unref(loop);
 }
 
-void yolo_pose_pipeline(std::string models) {
+void yolo_pose_pipeline(std::string models, int input_size, std::string postprocess_lib, std::string function_name) {
+    g_print("Running for model: %s\n", models.c_str());
     GMainLoop *loop = g_main_loop_new(NULL, FALSE);
     GstElement *pipeline = gst_pipeline_new("test-pipeline");
     GstBus *bus = gst_element_get_bus(pipeline);
@@ -221,11 +220,11 @@ void yolo_pose_pipeline(std::string models) {
 
     GstElement *preprocess = gst_element_factory_make("dxpreprocess", NULL);
     fail_unless(preprocess != NULL, "Failed to create GstDxPreprocess element");
-    std::string preprocess_config_path =
-        "./../../../dx_stream/configs/Pose_Estimation/" + models +
-        "/preprocess_config.json";
-    g_object_set(preprocess, "config-file-path", preprocess_config_path.c_str(),
-                 NULL);
+    g_object_set(preprocess, "preprocess-id", 1, NULL);
+    g_object_set(preprocess, "resize-width", input_size, NULL);
+    g_object_set(preprocess, "resize-height", input_size, NULL);
+    g_object_set(preprocess, "keep-ratio", true, NULL);
+    g_object_set(preprocess, "pad-value", 0, NULL);
 
     GstElement *infer = gst_element_factory_make("dxinfer", NULL);
     fail_unless(infer != NULL, "Failed to create GstDxInfer element");
@@ -237,11 +236,9 @@ void yolo_pose_pipeline(std::string models) {
 
     GstElement *postprocess = gst_element_factory_make("dxpostprocess", NULL);
     fail_unless(postprocess != NULL, "Failed to create GstDxInfer element");
-    std::string postprocess_config_path =
-        "./../../../dx_stream/configs/Pose_Estimation/" + models +
-        "/postprocess_config.json";
-    g_object_set(postprocess, "config-file-path",
-                 postprocess_config_path.c_str(), NULL);
+    g_object_set(postprocess, "inference-id", 1, NULL);
+    g_object_set(postprocess, "library-file-path", postprocess_lib.c_str(), NULL);
+    g_object_set(postprocess, "function-name", function_name.c_str(), NULL);
 
     GstElement *fakesink = gst_element_factory_make("fakesink", NULL);
     fail_unless(fakesink != NULL, "Failed to create fakesink element");
@@ -275,20 +272,17 @@ void yolo_pose_pipeline(std::string models) {
 }
 
 GST_START_TEST(test_single_pipeline) {
-    yolo_pipeline("YOLOV3_1");
-    yolo_pipeline("YOLOV4_3");
-    yolo_pipeline("YOLOV5S_3");
-    yolo_pipeline("YOLOV5S_4");
-    yolo_pipeline("YOLOV5S_6");
-    yolo_pipeline("YOLOV5X_2");
-    yolo_pipeline("YOLOv7_512");
-    yolo_pipeline("YoloV7");
-    yolo_pipeline("YoloV8N");
-    yolo_pipeline("YOLOV9S");
-    yolo_pipeline("YOLOX-S_1");
-    yolo_pose_pipeline("YOLOV5Pose640_1");
-    yolo_pipeline("YOLOV5S_PPU");
-    yolo_pose_pipeline("YOLOV5Pose_PPU");
+    yolo_pipeline("YoloV5S_PPU", 640, "libpostprocess_ppu.so", "YOLOV5S_PPU");
+    yolo_pipeline("yolo26n", 640, "libpostprocess_yolo26od.so", "PostProcess");
+
+    yolo_pose_pipeline("YoloV5S", 640, "libpostprocess_yolov5s_6.so", "PostProcess");
+    yolo_pose_pipeline("YoloV7", 640, "libpostprocess_yolov7.so", "PostProcess");
+    yolo_pose_pipeline("YoloV8N", 640, "libpostprocess_yolov8n.so", "PostProcess");
+    yolo_pose_pipeline("YoloV9S", 640, "libpostprocess_yolov9s.so", "PostProcess");
+    yolo_pose_pipeline("YOLOV11N", 640, "libpostprocess_yolov11.so", "PostProcess");
+
+    yolo_pose_pipeline("yolo26n-pose", 640, "libpostprocess_yolo26pose.so", "PostProcess");
+    yolo_pose_pipeline("yolov8m_pose", 640, "libpostprocess_yolov8m_pose.so", "PostProcess");
 }
 GST_END_TEST
 

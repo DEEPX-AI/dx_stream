@@ -1,5 +1,5 @@
 {
-    "library_file_path": "/usr/share/dx-stream/lib/libdx_msgconvl.so",
+    "library_file_path": "/usr/local/share/gstdxstream/lib/libdx_msgconvl.so",
     "message_interval": 1  
 }
 

@@ -16,10 +16,23 @@ class KalmanFilterNew {
     void unfreeze();
     KalmanFilterNew &operator=(const KalmanFilterNew &) = default;
 
-  public:
-    int dim_z = 4;
-    int dim_x = 7;
-    int dim_u = 0;
+    // Getters
+    const Eigen::VectorXf& get_x() const { return x; }
+    const Eigen::MatrixXf& get_P() const { return P; }
+    const Eigen::MatrixXf& get_Q() const { return Q; }
+    const Eigen::Matrix<float, 7, 7>& get_F() const { return F; }
+    const Eigen::Matrix<float, 4, 7>& get_H() const { return H; }
+    const Eigen::Matrix<float, 4, 4>& get_R() const { return R; }
+
+    // Setters
+    void set_F(const Eigen::Matrix<float, 7, 7>& F_) { F = F_; }
+    void set_H(const Eigen::Matrix<float, 4, 7>& H_) { H = H_; }
+    void set_R(const Eigen::Matrix<float, 4, 4>& R_) { R = R_; }
+    void set_P(const Eigen::MatrixXf& P_) { P = P_; }
+    void set_Q(const Eigen::MatrixXf& Q_) { Q = Q_; }
+    void set_x(const Eigen::VectorXf& x_) { x = x_; }
+
+  private:
     /// state: This is the Kalman state variable [7,1].
     Eigen::VectorXf x;
     // P: Covariance matrix. Initially declared as an identity matrix. Data type
@@ -55,7 +68,7 @@ class KalmanFilterNew {
     Eigen::MatrixXf SI;
     // Identity matrix of size [dim_x,dim_x], used for convenient calculations.
     // This cannot be changed.
-    const Eigen::MatrixXf I = Eigen::MatrixXf::Identity(dim_x, dim_x);
+    const Eigen::MatrixXf I;
     // There will always be a copy of x, P after predict() is called.
     // If there is a need to assign values between two Eigen matrices, the
     // precondition is that they should be initialized properly, as this ensures
@@ -74,12 +87,6 @@ class KalmanFilterNew {
     std::vector<Eigen::VectorXf>
         new_history; // Used to create a virtual trajectory.
 
-    /* todo: Let's change the way we store variables, as C++ does not have
-    Python's self.dict. Using map<string,any> incurs high memory overhead, and
-    there are errors when assigning values to Eigen data. Someone in the group
-    suggested using metadata to achieve this, but I don't know how to do it.
-    Therefore, here we will use a structure to save variables.
-    */
     struct Data {
         Eigen::VectorXf x;
         Eigen::MatrixXf P;

@@ -18,7 +18,7 @@ static gboolean gst_dxoutputselector_sink_event(GstPad *pad, GstObject *parent,
                                                 GstEvent *event);
 
 G_DEFINE_TYPE(GstDxOutputSelector, gst_dxoutputselector, GST_TYPE_ELEMENT);
-static GstElementClass *parent_class = nullptr;
+static GstElementClass *parent_class = nullptr;  // NOSONAR - GStreamer standard pattern with G_DEFINE_TYPE macro
 
 static void dxoutputselector_dispose(GObject *object) {
     GstDxOutputSelector *self = GST_DXOUTPUTSELECTOR(object);
@@ -59,15 +59,15 @@ dxoutputselector_change_state(GstElement *element, GstStateChange transition) {
 
     GstStateChangeReturn result =
         GST_ELEMENT_CLASS(parent_class)->change_state(element, transition);
-    GST_INFO_OBJECT(self, "State change return: %d", result);
+    GST_DEBUG_OBJECT(self, "State change completed: %d", result);
     return result;
 }
 
 static void gst_dxoutputselector_class_init(GstDxOutputSelectorClass *klass) {
     GST_DEBUG_CATEGORY_INIT(gst_dxoutputselector_debug_category,
                             "dxoutputselector", 0, "DXOutputSelector plugin");
-    GstElementClass *element_class = GST_ELEMENT_CLASS(klass);
-    GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
+    auto *element_class = GST_ELEMENT_CLASS(klass);
+    auto *gobject_class = G_OBJECT_CLASS(klass);
     gobject_class->dispose = dxoutputselector_dispose;
 
     gst_element_class_set_static_metadata(
@@ -119,14 +119,15 @@ static GstPad *find_target_srcpad(GstDxOutputSelector *self, int stream_id) {
 
 static gboolean gst_dxoutputselector_sink_event(GstPad *pad, GstObject *parent,
                                                 GstEvent *event) {
+    
+    std::ignore = pad;
     GstDxOutputSelector *self = GST_DXOUTPUTSELECTOR(parent);
     // g_print("OUTPUT_SELECTOR_RECEIVED_EVENT: %s \t %d \n", GST_EVENT_TYPE_NAME(event), self->_last_stream_id);
     gboolean res = TRUE;
 
     const GstEventType event_type = GST_EVENT_TYPE(event);
 
-    switch (event_type) {
-    case GST_EVENT_CUSTOM_DOWNSTREAM: {
+    if (event_type == GST_EVENT_CUSTOM_DOWNSTREAM) {
         const GstStructure *structure = gst_event_get_structure(event);
         if (gst_structure_has_name(structure, "application/x-dx-wrapped-event")) {
             int stream_id = -1;
@@ -159,13 +160,10 @@ static gboolean gst_dxoutputselector_sink_event(GstPad *pad, GstObject *parent,
             gst_event_unref(event);
             res = FALSE;
         }
-        break;
-    }
-    default: {
+    } else {
         GST_INFO_OBJECT(self, "Received Global EOS event from stream");
         gst_event_unref(event);
         return TRUE;
-    }
     }
 
     return res;
@@ -175,6 +173,9 @@ static GstPad *gst_dxoutputselector_request_pad(GstElement *element,
                                                 GstPadTemplate *templ,
                                                 const gchar *name,
                                                 const GstCaps *caps) {
+    
+    std::ignore = caps;
+
     GstDxOutputSelector *self = GST_DXOUTPUTSELECTOR(element);
 
     gchar *pad_name = name ? g_strdup(name)
@@ -199,10 +200,15 @@ static void gst_dxoutputselector_release_pad(GstElement *element, GstPad *pad) {
 static GstFlowReturn gst_dxoutputselector_chain_function(GstPad *pad,
                                                          GstObject *parent,
                                                          GstBuffer *buffer) {
+    
+    std::ignore = pad;
+    
     GstDxOutputSelector *self = GST_DXOUTPUTSELECTOR(parent);
 
-    DXFrameMeta *frame_meta =
-        (DXFrameMeta *)gst_buffer_get_meta(buffer, DX_FRAME_META_API_TYPE);
+    GST_DEBUG_OBJECT(self, "Processing buffer: pts=%" GST_TIME_FORMAT,
+                     GST_TIME_ARGS(GST_BUFFER_PTS(buffer)));
+
+    const auto *frame_meta = dx_get_frame_meta(buffer);
     if (!frame_meta) {
         GST_WARNING_OBJECT(self, "No DXFrameMeta in GstBuffer \n");
         return GST_FLOW_OK;
@@ -216,6 +222,7 @@ static GstFlowReturn gst_dxoutputselector_chain_function(GstPad *pad,
         return GST_FLOW_ERROR;
     }
 
+    GST_DEBUG_OBJECT(self, "Pushing buffer to stream %d", frame_meta->_stream_id);
     GstFlowReturn res = gst_pad_push(self->_srcpads[frame_meta->_stream_id], buffer);
     if (res != GST_FLOW_OK) {
         GST_ERROR_OBJECT(self, "Failed to push buffer to stream [%d], res: %d", frame_meta->_stream_id, res);

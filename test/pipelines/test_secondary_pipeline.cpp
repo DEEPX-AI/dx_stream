@@ -1,5 +1,5 @@
-#include <dx_stream/gst-dxframemeta.hpp>
-#include <dx_stream/gst-dxobjectmeta.hpp>
+#include <gstdxstream/gst-dxframemeta.hpp>
+#include <gstdxstream/gst-dxobjectmeta.hpp>
 #include <gst/check/gstcheck.h>
 #include <gst/gst.h>
 
@@ -75,8 +75,7 @@ static GstPadProbeReturn probe_primary(GstPad *pad, GstPadProbeInfo *info,
         //         frame_meta->_format, frame_meta->_width,
         //         frame_meta->_height);
         
-        for (GList *l = frame_meta->_object_meta_list; l != NULL; l = l->next) {
-            DXObjectMeta *object_meta = (DXObjectMeta *)l->data;
+        for (auto object_meta : frame_meta->_object_meta_list) {
             // g_print("PTS: %" GST_TIME_FORMAT
             //         " Label : %d  Conf : %f Track : %d BOX : [%f %f %f %f] "
             //         "FACE BOX : [%f %f %f %f]\n",
@@ -140,25 +139,25 @@ GST_START_TEST(test_face_recognition_pipeline) {
 
     GstElement *preprocess = gst_element_factory_make("dxpreprocess", NULL);
     fail_unless(preprocess != NULL, "Failed to create GstDxPreprocess element");
-    g_object_set(preprocess, "config-file-path",
-                 "./../../../dx_stream/configs/Object_Detection/YoloV7/"
-                 "preprocess_config.json",
-                 NULL);
+    g_object_set(preprocess, "preprocess-id", 1, NULL);
+    g_object_set(preprocess, "resize-width", 640, NULL);
+    g_object_set(preprocess, "resize-height", 640, NULL);
+    g_object_set(preprocess, "keep-ratio", true, NULL);
+    g_object_set(preprocess, "pad-value", 0, NULL);
 
     GstElement *infer = gst_element_factory_make("dxinfer", NULL);
     fail_unless(infer != NULL, "Failed to create GstDxInfer element");
     g_object_set(infer, "model-path",
-                 "./../../../dx_stream/samples/models/YoloV7.dxnn", NULL);
+                 "./../../../dx_stream/samples/models/YoloV5S_PPU.dxnn", NULL);
     g_object_set(infer, "preprocess-id", 1, NULL);
     g_object_set(infer, "inference-id", 1, NULL);
 
     GstElement *postprocess = gst_element_factory_make("dxpostprocess", NULL);
     fail_unless(postprocess != NULL,
                 "Failed to create GstDxPostprocess element");
-    g_object_set(postprocess, "config-file-path",
-                 "./../../../dx_stream/configs/Object_Detection/YoloV7/"
-                 "postprocess_config.json",
-                 NULL);
+    g_object_set(postprocess, "inference-id", 1, NULL);
+    g_object_set(postprocess, "library-file-path", "/usr/local/share/gstdxstream/lib/libpostprocess_ppu.so", NULL);
+    g_object_set(postprocess, "function-name", "YOLOV5S_PPU", NULL);
 
     GstElement *tee = gst_element_factory_make("tee", NULL);
     fail_unless(tee != NULL, "Failed to create tee element");
@@ -171,67 +170,71 @@ GST_START_TEST(test_face_recognition_pipeline) {
     GstElement *fakesink = gst_element_factory_make("fakesink", NULL);
     fail_unless(fakesink != NULL, "Failed to create fakesink element");
 
+    GstElement *preprocess_cls =
+        gst_element_factory_make("dxpreprocess", NULL);
+    fail_unless(preprocess_cls != NULL,
+                "Failed to create GstDxPreprocess element");
+    g_object_set(preprocess_cls, "preprocess-id", 2, NULL);
+    g_object_set(preprocess_cls, "resize-width", 224, NULL);
+    g_object_set(preprocess_cls, "resize-height", 224, NULL);
+    g_object_set(preprocess_cls, "keep-ratio", false, NULL);
+    g_object_set(preprocess_cls, "secondary-mode", TRUE, NULL);
+    g_object_set(preprocess_cls, "interval", 0, NULL);
+
+    GstElement *infer_cls = gst_element_factory_make("dxinfer", NULL);
+    fail_unless(infer_cls != NULL, "Failed to create GstDxInfer element");
+    g_object_set(infer_cls, "model-path",
+                 "./../../../dx_stream/samples/models/EfficientNet_Lite0.dxnn", NULL);
+    g_object_set(infer_cls, "preprocess-id", 2, NULL);
+    g_object_set(infer_cls, "inference-id", 2, NULL);
+    g_object_set(infer_cls, "secondary-mode", TRUE, NULL);
+
+    GstElement *postprocess_cls =
+        gst_element_factory_make("dxpostprocess", NULL);
+    fail_unless(postprocess_cls != NULL,
+                "Failed to create GstDxPostprocess element");
+    g_object_set(postprocess_cls, "inference-id", 2, NULL);
+    g_object_set(postprocess_cls, "secondary-mode", TRUE, NULL);
+    g_object_set(postprocess_cls, "library-file-path", "/usr/local/share/gstdxstream/lib/libpostprocess_object_class.so", NULL);
+    g_object_set(postprocess_cls, "function-name", "PostProcess", NULL);
+
     GstElement *preprocess_face =
         gst_element_factory_make("dxpreprocess", NULL);
     fail_unless(preprocess_face != NULL,
                 "Failed to create GstDxPreprocess element");
-    g_object_set(preprocess_face, "config-file-path",
-                 "./../../../dx_stream/configs/Face_Detection/SCRFD/"
-                 "preprocess_config.json",
-                 NULL);
+    g_object_set(preprocess_face, "preprocess-id", 3, NULL);
+    g_object_set(preprocess_face, "resize-width", 640, NULL);
+    g_object_set(preprocess_face, "resize-height", 640, NULL);
+    g_object_set(preprocess_face, "keep-ratio", true, NULL);
+    g_object_set(preprocess_face, "pad-value", 114, NULL);
+    g_object_set(preprocess_face, "secondary-mode", TRUE, NULL);
+    g_object_set(preprocess_face, "target-class-id", 0, NULL);
     g_object_set(preprocess_face, "interval", 0, NULL);
 
     GstElement *infer_face = gst_element_factory_make("dxinfer", NULL);
     fail_unless(infer_face != NULL, "Failed to create GstDxInfer element");
-    g_object_set(infer_face, "model-path",
-                 "./../../../dx_stream/samples/models/SCRFD500M_1.dxnn", NULL);
-    g_object_set(infer_face, "preprocess-id", 4, NULL);
-    g_object_set(infer_face, "inference-id", 4, NULL);
+    g_object_set(
+        infer_face, "model-path",
+        "./../../../dx_stream/samples/models/SCRFD500M.dxnn",
+        NULL);
+    g_object_set(infer_face, "preprocess-id", 3, NULL);
+    g_object_set(infer_face, "inference-id", 3, NULL);
     g_object_set(infer_face, "secondary-mode", TRUE, NULL);
 
     GstElement *postprocess_face =
         gst_element_factory_make("dxpostprocess", NULL);
     fail_unless(postprocess_face != NULL,
                 "Failed to create GstDxPostprocess element");
-    g_object_set(postprocess_face, "config-file-path",
-                 "./../../../dx_stream/configs/Face_Detection/SCRFD/"
-                 "postprocess_config.json",
-                 NULL);
-
-    GstElement *preprocess_reid =
-        gst_element_factory_make("dxpreprocess", NULL);
-    fail_unless(preprocess_reid != NULL,
-                "Failed to create GstDxPreprocess element");
-    g_object_set(preprocess_reid, "config-file-path",
-                 "./../../../dx_stream/configs/Re-Identification/OSNet/"
-                 "preprocess_config.json",
-                 NULL);
-    g_object_set(preprocess_reid, "interval", 0, NULL);
-
-    GstElement *infer_reid = gst_element_factory_make("dxinfer", NULL);
-    fail_unless(infer_reid != NULL, "Failed to create GstDxInfer element");
-    g_object_set(
-        infer_reid, "model-path",
-        "./../../../dx_stream/samples/models/osnet_x0_5_market_256x128.dxnn",
-        NULL);
-    g_object_set(infer_reid, "preprocess-id", 3, NULL);
-    g_object_set(infer_reid, "inference-id", 3, NULL);
-    g_object_set(infer_reid, "secondary-mode", TRUE, NULL);
-
-    GstElement *postprocess_reid =
-        gst_element_factory_make("dxpostprocess", NULL);
-    fail_unless(postprocess_reid != NULL,
-                "Failed to create GstDxPostprocess element");
-    g_object_set(postprocess_reid, "config-file-path",
-                 "./../../../dx_stream/configs/Re-Identification/OSNet/"
-                 "postprocess_config.json",
-                 NULL);
+    g_object_set(postprocess_face, "inference-id", 3, NULL);
+    g_object_set(postprocess_face, "secondary-mode", TRUE, NULL);
+    g_object_set(postprocess_face, "library-file-path", "/usr/local/share/gstdxstream/lib/libpostprocess_scrfd500m.so", NULL);
+    g_object_set(postprocess_face, "function-name", "PostProcess", NULL);
 
     // ADD Elements
     gst_bin_add_many(GST_BIN(pipeline), videosrc, jpegparse, jpegdec,
                      preprocess, infer, postprocess, tee, q1, q2, gather,
-                     preprocess_face, infer_face, postprocess_face,
-                     preprocess_reid, infer_reid, postprocess_reid, fakesink,
+                     preprocess_cls, infer_cls, postprocess_cls,
+                     preprocess_face, infer_face, postprocess_face, fakesink,
                      NULL);
 
     // Link Elements
@@ -253,17 +256,17 @@ GST_START_TEST(test_face_recognition_pipeline) {
                 "Failed to link tee to q2");
 
     // Face Detection
-    fail_unless(gst_element_link_many(q1, preprocess_face, infer_face,
-                                      postprocess_face, NULL),
+    fail_unless(gst_element_link_many(q1, preprocess_cls, infer_cls,
+                                      postprocess_cls, NULL),
                 "Failed to link");
 
     // ReID
-    fail_unless(gst_element_link_many(q2, preprocess_reid, infer_reid,
-                                      postprocess_reid, NULL),
+    fail_unless(gst_element_link_many(q2, preprocess_face, infer_face,
+                                      postprocess_face, NULL),
                 "Failed to link");
 
+    link_static_src_to_dynamic_sink(postprocess_cls, gather);
     link_static_src_to_dynamic_sink(postprocess_face, gather);
-    link_static_src_to_dynamic_sink(postprocess_reid, gather);
 
     fail_unless(gst_element_link(gather, fakesink), "Failed to link");
 

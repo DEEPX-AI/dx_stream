@@ -13,10 +13,10 @@ G_BEGIN_DECLS
 G_DECLARE_FINAL_TYPE(GstDxMsgConv, gst_dxmsgconv, GST, DXMSGCONV,
                      GstBaseTransform)
 
-typedef DxMsgContext *(*DXMsg_CreateContextFptr)();
-typedef void (*DXMsg_DeleteContextFptr)(DxMsgContext *context);
-typedef DxMsgPayload *(*DXMsg_ConvertPayloadFptr)(DxMsgContext *context,
-                                                  GstDxMsgMetaInfo *meta_info);
+using DXMsg_CreateContextFptr = DxMsgContext *(*)();
+using DXMsg_DeleteContextFptr = void (*)(DxMsgContext *context);
+using DXMsg_ConvertPayloadFptr = DxMsgPayload *(*)(DxMsgContext *context,
+                                                   GstDxMsgMetaInfo *meta_info);
 struct _GstDxMsgConv {
     GstBaseTransform _parent_instance;
 

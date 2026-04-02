@@ -1,6 +1,0 @@
-{
-    "inference_id": 2,
-    "preprocess_id": 2,
-    "secondary_mode": true,
-    "model_path" : "./dx_stream/samples/models/EfficientNetB0_8.dxnn"
-}

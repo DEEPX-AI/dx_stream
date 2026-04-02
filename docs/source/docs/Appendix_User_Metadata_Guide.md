@@ -16,10 +16,10 @@ The DX-STREAM User Metadata system allows developers to attach custom data to fr
 ## User Metadata Types
 
 ```cpp
-typedef enum {
+enum class DXUserMetaType {
     DX_USER_META_FRAME = 0x1000,   // Frame-level user metadata
     DX_USER_META_OBJECT = 0x2000,  // Object-level user metadata
-} DXUserMetaType;
+};
 ```
 
 **When to use Frame-level metadata:**
@@ -127,7 +127,7 @@ void add_scene_analytics_to_frame(DXFrameMeta *frame_meta,
     gboolean success = dx_user_meta_set_data(user_meta,
                                             analytics,
                                             sizeof(SceneAnalytics),
-                                            DX_USER_META_FRAME,
+                                            DXUserMetaType::DX_USER_META_FRAME,
                                             scene_analytics_free,    // Required cleanup
                                             scene_analytics_copy);   // Required copy
     
@@ -162,7 +162,7 @@ void add_custom_feature_to_object(DXObjectMeta *obj_meta,
     gboolean success = dx_user_meta_set_data(user_meta,
                                             feature_data,
                                             sizeof(CustomObjectFeature),
-                                            DX_USER_META_OBJECT,
+                                            DXUserMetaType::DX_USER_META_OBJECT,
                                             custom_feature_free,     // Required cleanup
                                             custom_feature_copy);    // Required copy
     
@@ -181,13 +181,11 @@ void add_custom_feature_to_object(DXObjectMeta *obj_meta,
 **Reading Frame Metadata:**
 ```cpp
 void process_frame_metadata(DXFrameMeta *frame_meta) {
-    GList *user_metas = dx_get_frame_user_metas(frame_meta);
+    auto user_metas = dx_get_frame_user_metas(frame_meta);
     
-    for (GList *l = user_metas; l != nullptr; l = l->next) {
-        DXUserMeta *user_meta = (DXUserMeta *)l->data;
-        
+    for (auto user_meta : *user_metas) {
         // Check if this is frame-type metadata
-        if (user_meta->user_meta_type == DX_USER_META_FRAME) {
+        if (user_meta->user_meta_type == DXUserMetaType::DX_USER_META_FRAME) {
             SceneAnalytics *analytics = (SceneAnalytics *)user_meta->user_meta_data;
             
             g_print("Scene Analysis Results:\n");
@@ -203,13 +201,11 @@ void process_frame_metadata(DXFrameMeta *frame_meta) {
 **Reading Object Metadata:**
 ```cpp
 void process_object_metadata(DXObjectMeta *obj_meta) {
-    GList *user_metas = dx_get_object_user_metas(obj_meta);
+    auto user_metas = dx_get_object_user_metas(obj_meta);
     
-    for (GList *l = user_metas; l != nullptr; l = l->next) {
-        DXUserMeta *user_meta = (DXUserMeta *)l->data;
-        
+    for (auto user_meta : *user_metas) {
         // Check if this is object-type metadata
-        if (user_meta->user_meta_type == DX_USER_META_OBJECT) {
+        if (user_meta->user_meta_type == DXUserMetaType::DX_USER_META_OBJECT) {
             CustomObjectFeature *feature = (CustomObjectFeature *)user_meta->user_meta_data;
             
             g_print("Custom Feature for Object %d:\n", obj_meta->_meta_id);
@@ -233,19 +229,17 @@ Here's a complete example of a custom element that adds analytics metadata:
 ```cpp
 // In your custom postprocess function
 extern "C" void custom_analytics_postprocess(GstBuffer *buf,
-                                            std::vector<dxs::DXTensor> network_output,
+                                            const dxrt::TensorPtrs &network_output,
                                             DXFrameMeta *frame_meta,
                                             DXObjectMeta *object_meta)
 {
     // Add frame-level analytics
     add_scene_analytics_to_frame(frame_meta, 
-                                g_list_length(frame_meta->_object_meta_list),
+                                frame_meta->_object_meta_list.size(),
                                 "indoor_scene");
     
     // Add custom features to each object
-    GList *obj_list = frame_meta->_object_meta_list;
-    for (GList *l = obj_list; l != nullptr; l = l->next) {
-        DXObjectMeta *obj = (DXObjectMeta *)l->data;
+    for (auto obj : frame_meta->_object_meta_list) {
         
         // Generate dummy features for demonstration
         gfloat features[128];
