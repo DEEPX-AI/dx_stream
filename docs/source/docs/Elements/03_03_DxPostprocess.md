@@ -19,7 +19,7 @@ You can use a custom post-processing function by specifying:
 The custom function signature has been updated to include GstBuffer access:
 ```cpp
 extern "C" void PostProcess(GstBuffer *buf,
-                           std::vector<dxs::DXTensor> network_output,
+                           const dxrt::TensorPtrs &network_output,
                            DXFrameMeta *frame_meta,
                            DXObjectMeta *object_meta);
 ```

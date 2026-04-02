@@ -174,7 +174,7 @@ dxpostprocess_change_state(GstElement *element, GstStateChange transition) {
                 self->_library_handle = nullptr;
             }
             self->_postproc_function =
-                (void (*)(GstBuffer *, std::vector<dxs::DXTensor>, DXFrameMeta *,
+                (void (*)(GstBuffer *, const dxrt::TensorPtrs&, DXFrameMeta *,
                           DXObjectMeta *))func_ptr;
         }
         break;
@@ -328,10 +328,10 @@ static void process_secondary_mode(GstBuffer *buf,
         if (iter == object_meta->_output_tensors.end())
             return;
 
-        if (iter->second._tensors.empty())
+        if (iter->second.empty())
             return;
 
-        self->_postproc_function(buf, iter->second._tensors, frame_meta, object_meta);
+        self->_postproc_function(buf, iter->second, frame_meta, object_meta);
     }
 }
 
@@ -353,7 +353,7 @@ static GstFlowReturn gst_dxpostprocess_transform_ip(GstBaseTransform *trans,
         GST_INFO_OBJECT(self, "Processing in primary mode");
         auto iter = frame_meta->_output_tensors.find(self->_infer_id);
         if (iter != frame_meta->_output_tensors.end()) {
-            self->_postproc_function(buf, iter->second._tensors, frame_meta, nullptr);
+            self->_postproc_function(buf, iter->second, frame_meta, nullptr);
         }
     }
 
