@@ -79,8 +79,8 @@ DXObjectMeta* dx_acquire_obj_meta_from_pool(void) {
     new (&obj_meta->_obj_user_meta_list) std::vector<DXUserMeta*>();
 
     // tensors
-    new (&obj_meta->_input_tensors) std::map<int, dxs::InputBuffers>();
-    new (&obj_meta->_output_tensors) std::map<int, dxrt::TensorPtrs>();
+    new (&obj_meta->_input_tensors) std::map<int, dxs::DXTensors>();
+    new (&obj_meta->_output_tensors) std::map<int, dxs::DXTensors>();
 
     return obj_meta;
 }

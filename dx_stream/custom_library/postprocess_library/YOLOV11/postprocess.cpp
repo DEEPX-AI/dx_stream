@@ -1,14 +1,15 @@
 #include "gstdxstream/gst-dxframemeta.hpp"
 #include "gstdxstream/gst-dxobjectmeta.hpp"
-#include <dxrt/dxrt_api.h>
 #include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <vector>
 #include <map>
 #include <tuple>
+#include <limits>
 #include <glib.h>
 #include <gst/gst.h>
+#include <string>
 
 // YOLOv11 Post-Processing Library for DX Stream
 // This implementation is specifically designed for YOLOv11 models with DFL decoding.
@@ -76,21 +77,21 @@ struct YoloConfig {
  * @param tensor_name Name of the tensor to search for
  * @return Index of the tensor if found, -1 otherwise
  */
- inline int get_index_by_tensor_name(const dxrt::TensorPtrs& network_output, const std::string& tensor_name) {
+ inline int get_index_by_tensor_name(std::vector<dxs::DXTensor> network_output, const std::string& tensor_name) {
     for (size_t i = 0; i < network_output.size(); i++) {
-        if (network_output[i]->name() == tensor_name) {
+        if (network_output[i]._name == tensor_name) {
             return static_cast<int>(i);
         }
     }
     return -1;
 }
 
-int find_tensor_index_by_shape(const dxrt::TensorPtrs& outputs,
+int find_tensor_index_by_shape(const std::vector<dxs::DXTensor>& outputs,
                                int channel, int spatial) {
     for (size_t i = 0; i < outputs.size(); i++) {
-        if (static_cast<int>(outputs[i]->shape()[1]) == channel &&
-            static_cast<int>(outputs[i]->shape()[2]) == spatial &&
-            static_cast<int>(outputs[i]->shape()[3]) == spatial) {
+        if (static_cast<int>(outputs[i]._shape[1]) == channel &&
+            static_cast<int>(outputs[i]._shape[2]) == spatial &&
+            static_cast<int>(outputs[i]._shape[3]) == spatial) {
             return static_cast<int>(i);
         }
     }
@@ -174,14 +175,14 @@ std::vector<BoundingBox> nms(std::vector<BoundingBox>& boxes, float threshold) {
  * YOLOv8N outputs a single tensor with format: [1, 84, 8400]
  * where 84 = 4 (bbox) + 80 (classes)
  */
-std::vector<BoundingBox> parse_single_output(const std::shared_ptr<dxrt::Tensor>& output, 
+std::vector<BoundingBox> parse_single_output(const dxs::DXTensor& output,
                                              const YoloConfig& config) {
     std::vector<BoundingBox> boxes;
-    const auto* data = static_cast<const float*>(output->data());
-    
+    const auto* data = static_cast<const float*>(output._data);
+
     // YOLOv8 output shape: [1, 84, 8400] where 84 = 4 (bbox) + 80 (classes)
-    auto dimensions = static_cast<int>(output->shape()[1]);  // 84
-    auto rows = static_cast<int>(output->shape()[2]);        // 8400
+    auto dimensions = static_cast<int>(output._shape[1]);  // 84
+    auto rows = static_cast<int>(output._shape[2]);        // 8400
     
     // Transpose data (84, 8400) -> (8400, 84)
     std::vector<float> data_transposed(static_cast<size_t>(rows) * dimensions);
@@ -230,7 +231,7 @@ std::vector<BoundingBox> parse_single_output(const std::shared_ptr<dxrt::Tensor>
 }
 
 std::vector<BoundingBox> parse_multi_output(
-    const dxrt::TensorPtrs& outputs,
+    const std::vector<dxs::DXTensor>& outputs,
     const YoloConfig& config) {
     
     std::vector<BoundingBox> detections;
@@ -251,12 +252,12 @@ std::vector<BoundingBox> parse_multi_output(
             continue;
         }
         
-        const float* reg_data = static_cast<const float*>(outputs[reg_idx]->data());
-        const float* cls_data = static_cast<const float*>(outputs[cls_idx]->data());
-        
+        const float* reg_data = static_cast<const float*>(outputs[reg_idx]._data);
+        const float* cls_data = static_cast<const float*>(outputs[cls_idx]._data);
+
         // Tensor shapes: reg=[1, 64, H, W], cls=[1, num_classes, H, W]
-        int H = static_cast<int>(outputs[cls_idx]->shape()[2]);
-        int W = static_cast<int>(outputs[cls_idx]->shape()[3]);
+        int H = static_cast<int>(outputs[cls_idx]._shape[2]);
+        int W = static_cast<int>(outputs[cls_idx]._shape[3]);
         int stride = config.input_width / W;
         int num_grid = H * W;
         
@@ -325,12 +326,12 @@ std::vector<BoundingBox> parse_multi_output(
     return detections;
 }
 
-std::vector<BoundingBox> parse_ppu_output(const std::shared_ptr<dxrt::Tensor>& output, 
+std::vector<BoundingBox> parse_ppu_output(const dxs::DXTensor& output,
                                              const YoloConfig& config) {
     std::vector<BoundingBox> detections;
 
-    auto num_detections = static_cast<int>(output->shape()[1]);
-    const auto* dataSrc = static_cast<dxrt::DeviceBoundingBox_t*>(output->data());
+    auto num_detections = static_cast<int>(output._shape[1]);
+    const auto* dataSrc = static_cast<dxs::DeviceBoundingBox_t*>(output._data);
     
     for (int i = 0; i < num_detections; i++) {
         auto *data = dataSrc + i;
@@ -353,7 +354,7 @@ std::vector<BoundingBox> parse_ppu_output(const std::shared_ptr<dxrt::Tensor>& o
  * @brief Main post-processing function for YOLOv8N object detection
  */
 extern "C" void PostProcess(GstBuffer* buf,
-                            const dxrt::TensorPtrs& network_output,
+                            std::vector<dxs::DXTensor> network_output,
                             DXFrameMeta* frame_meta,
                             DXObjectMeta* object_meta) {
     std::ignore = buf;
@@ -366,7 +367,7 @@ extern "C" void PostProcess(GstBuffer* buf,
     if (network_output.size() == 6) {
         all_boxes = parse_multi_output(network_output, config);
     } else if (network_output.size() == 1) {
-        if (network_output[0]->type() == dxrt::DataType::BBOX) {
+        if (network_output[0]._type == dxs::DataType::BBOX) {
             all_boxes = parse_ppu_output(network_output[0], config);
         } else {
             all_boxes = parse_single_output(network_output[0], config);

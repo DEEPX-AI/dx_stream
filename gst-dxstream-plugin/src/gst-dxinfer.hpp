@@ -59,6 +59,7 @@ struct _GstDxInfer {
     std::shared_ptr<dxrt::InferenceEngine> _ie;
     std::shared_ptr<dxrt::InferenceOption> _infer_option;
     size_t _num_devices;
+    size_t _output_tensor_size;
     int _last_req_id;
 
     GstDxInferPushContext _push_ctx;

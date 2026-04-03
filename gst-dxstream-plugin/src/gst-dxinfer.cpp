@@ -77,6 +77,20 @@ bool version_meets_minimum(const std::string& current_version, const std::string
     return !version_less_than(current_version, minimum_version);
 }
 
+// Convert dxrt tensor metadata into dxs::DXTensors (data already in user buffer)
+static void convert_tensor(const dxrt::TensorPtrs &src, dxs::DXTensors &output) {
+    for (size_t i = 0; i < src.size(); i++) {
+        dxs::DXTensor t;
+        t._name = src[i]->name();
+        t._shape = src[i]->shape();
+        t._type = static_cast<dxs::DataType>(src[i]->type());
+        t._data = src[i]->data();
+        t._phyAddr = src[i]->phy_addr();
+        t._elemSize = src[i]->elem_size();
+        output._tensors.push_back(t);
+    }
+}
+
 static void parse_config(GstDxInfer *self) {
     if (!g_file_test(self->_config_path, G_FILE_TEST_EXISTS)) {
         g_error("[dxinfer] Config file does not exist: %s\n",
@@ -255,6 +269,8 @@ static void handle_null_to_ready(GstDxInfer *self) {
                           (nullptr));
         return;
     }
+
+    self->_output_tensor_size = self->_ie->GetOutputSize();
 
     std::string version = dxrt::Configuration::GetInstance().GetVersion();
     if (!version_meets_minimum(version, "3.0.0")) {
@@ -547,6 +563,7 @@ static void gst_dxinfer_init(GstDxInfer *self) {
     self->_use_ort = TRUE;
     self->_ie = nullptr;
     self->_num_devices = 1;
+    self->_output_tensor_size = 0;
 
     // Push context initialization
     self->_push_ctx.push_queue = std::queue<std::pair<int, GstBuffer *>>();
@@ -645,7 +662,8 @@ static gpointer push_thread_func(GstDxInfer *self) {
         auto *frame_meta = dx_get_frame_meta(push_buf);
 
         if (req_id != -1) {
-            frame_meta->_output_tensors[self->_infer_id] = self->_ie->Wait(req_id);
+            auto outputs = self->_ie->Wait(req_id);
+            convert_tensor(outputs, frame_meta->_output_tensors[self->_infer_id]);
         }
         GstFlowReturn ret = gst_pad_push(self->_srcpad, push_buf);
         if (ret != GST_FLOW_OK) {
@@ -749,8 +767,13 @@ GstFlowReturn secondary_mode_infer(GstDxInfer *self, GstBuffer *buf, const DXFra
 
         auto iter = object_meta->_input_tensors.find(self->_preproc_id);
         if (iter != object_meta->_input_tensors.end()) {
-            object_meta->_output_tensors[self->_infer_id] = 
-                    self->_ie->Run(iter->second[0].data.get());
+            object_meta->_output_tensors[self->_infer_id] = dxs::DXTensors();
+            object_meta->_output_tensors[self->_infer_id].allocate(self->_output_tensor_size);
+
+            auto outputs = self->_ie->Run(
+                iter->second.data_ptr(), nullptr,
+                object_meta->_output_tensors[self->_infer_id].data_ptr());
+            convert_tensor(outputs, object_meta->_output_tensors[self->_infer_id]);
         }
     }
 
@@ -778,11 +801,16 @@ GstFlowReturn secondary_mode_infer(GstDxInfer *self, GstBuffer *buf, const DXFra
     return ret;
 }
 
-GstFlowReturn primary_mode_infer(GstDxInfer *self, GstBuffer *buf, const DXFrameMeta *frame_meta) {
+GstFlowReturn primary_mode_infer(GstDxInfer *self, GstBuffer *buf, DXFrameMeta *frame_meta) {
     int req_id = -1;
     auto iter = frame_meta->_input_tensors.find(self->_preproc_id);
     if (iter != frame_meta->_input_tensors.end()) {
-        req_id = self->_ie->RunAsync(iter->second[0].data.get());
+        frame_meta->_output_tensors[self->_infer_id] = dxs::DXTensors();
+        frame_meta->_output_tensors[self->_infer_id].allocate(self->_output_tensor_size);
+
+        req_id = self->_ie->RunAsync(
+            iter->second.data_ptr(), nullptr,
+            frame_meta->_output_tensors[self->_infer_id].data_ptr());
         GST_DEBUG_OBJECT(self, "Submitting async inference request %d", req_id);
         self->_last_req_id = req_id;
     }
@@ -838,7 +866,7 @@ static GstFlowReturn gst_dxinfer_chain(GstPad *pad, GstObject *parent,
     GST_DEBUG_OBJECT(self, "Inference latency: %" G_GINT64_FORMAT "ms, avg: %" G_GINT64_FORMAT "ms",
                      latency, self->_timing_ctx.avg_latency);
 
-    const auto *frame_meta = dx_get_frame_meta(buf);
+    auto *frame_meta = dx_get_frame_meta(buf);
 
     if (!frame_meta) {
         GST_ERROR_OBJECT(self, "No DXFrameMeta in GstBuffer \n");

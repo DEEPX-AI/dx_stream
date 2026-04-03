@@ -1,11 +1,12 @@
 #include "gstdxstream/gst-dxframemeta.hpp"
 #include "gstdxstream/gst-dxobjectmeta.hpp"
-#include <dxrt/dxrt_api.h>
 #include <algorithm>
 #include <cmath>
 #include <vector>
 #include <glib.h>
 #include <gst/gst.h>
+#include <string>
+#include <tuple>
 
 struct BoundingBox {
     float x1, y1, x2, y2;
@@ -37,7 +38,7 @@ struct YoloConfig {
 // USE_ORT=OFF: Parse 6 raw tensors
 // cv2 (bbox): [1,4,80,80], [1,4,40,40], [1,4,20,20]
 // cv3 (class): [1,80,80,80], [1,80,40,40], [1,80,20,20]
-static std::vector<BoundingBox> parse_multi_output(const dxrt::TensorPtrs& outputs,
+static std::vector<BoundingBox> parse_multi_output(const std::vector<dxs::DXTensor>& outputs,
                                             const YoloConfig& config) {
     std::vector<BoundingBox> detections;
 
@@ -45,10 +46,10 @@ static std::vector<BoundingBox> parse_multi_output(const dxrt::TensorPtrs& outpu
         GST_ERROR("parse_multi_output: Expected 6 tensors, got %zu", outputs.size());
         return detections;
     }
-    
-    std::vector<std::shared_ptr<dxrt::Tensor>> bbox_tensors, class_tensors;
+
+    std::vector<dxs::DXTensor> bbox_tensors, class_tensors;
     for (const auto& tensor : outputs) {
-        const auto& shape = tensor->shape();
+        const auto& shape = tensor._shape;
         if (shape.size() == 4 && shape[1] == 4)
             bbox_tensors.push_back(tensor);
         else if (shape.size() == 4 && static_cast<int>(shape[1]) == config.num_classes)
@@ -62,21 +63,21 @@ static std::vector<BoundingBox> parse_multi_output(const dxrt::TensorPtrs& outpu
     }
     
     // Sort by spatial size descending (80x80, 40x40, 20x20)
-    auto size_comparator = [](const std::shared_ptr<dxrt::Tensor>& a, const std::shared_ptr<dxrt::Tensor>& b) {
-        return (a->shape()[2] * a->shape()[3]) > (b->shape()[2] * b->shape()[3]);
+    auto size_comparator = [](const dxs::DXTensor& a, const dxs::DXTensor& b) {
+        return (a._shape[2] * a._shape[3]) > (b._shape[2] * b._shape[3]);
     };
     std::sort(bbox_tensors.begin(), bbox_tensors.end(), size_comparator);
     std::sort(class_tensors.begin(), class_tensors.end(), size_comparator);
 
     std::vector<int> strides = {8, 16, 32};
     for (size_t scale_idx = 0; scale_idx < 3; ++scale_idx) {
-        int height = static_cast<int>(bbox_tensors[scale_idx]->shape()[2]);
-        int width = static_cast<int>(bbox_tensors[scale_idx]->shape()[3]);
+        int height = static_cast<int>(bbox_tensors[scale_idx]._shape[2]);
+        int width = static_cast<int>(bbox_tensors[scale_idx]._shape[3]);
         float stride = static_cast<float>(strides[scale_idx]);
         int spatial_size = height * width;
 
-        const float* bbox_data = static_cast<const float*>(bbox_tensors[scale_idx]->data());
-        const float* class_data = static_cast<const float*>(class_tensors[scale_idx]->data());
+        const float* bbox_data = static_cast<const float*>(bbox_tensors[scale_idx]._data);
+        const float* class_data = static_cast<const float*>(class_tensors[scale_idx]._data);
         
         for (int y = 0; y < height; ++y) {
             for (int x = 0; x < width; ++x) {
@@ -112,16 +113,16 @@ static std::vector<BoundingBox> parse_multi_output(const dxrt::TensorPtrs& outpu
 }
 
 // USE_ORT=ON: Parse single tensor [1, N, 6]
-static std::vector<BoundingBox> parse_single_output(const dxrt::TensorPtrs& outputs,
+static std::vector<BoundingBox> parse_single_output(const std::vector<dxs::DXTensor>& outputs,
                                                     const YoloConfig& config) {
     std::vector<BoundingBox> detections;
     const float* data = nullptr;
     int num_dets = 0, vec_size = 0;
 
     for (const auto& t : outputs) {
-        const auto& s = t->shape();
+        const auto& s = t._shape;
         if (s.size() == 3 && s[0] == 1 && s[2] == 6) {
-            data = static_cast<const float*>(t->data());
+            data = static_cast<const float*>(t._data);
             num_dets = static_cast<int>(s[1]);
             vec_size = static_cast<int>(s[2]);
             break;
@@ -144,7 +145,7 @@ static std::vector<BoundingBox> parse_single_output(const dxrt::TensorPtrs& outp
 }
 
 extern "C" void PostProcess(GstBuffer* buf,
-                            const dxrt::TensorPtrs& network_output,
+                            std::vector<dxs::DXTensor> network_output,
                             DXFrameMeta* frame_meta,
                             DXObjectMeta* object_meta) {
     std::ignore = buf;
