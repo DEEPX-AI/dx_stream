@@ -231,7 +231,7 @@ Here's a complete example of a custom element that adds analytics metadata:
 ```cpp
 // In your custom postprocess function
 extern "C" void custom_analytics_postprocess(GstBuffer *buf,
-                                            const dxrt::TensorPtrs &network_output,
+                                            std::vector<dxs::DXTensor> network_output,
                                             DXFrameMeta *frame_meta,
                                             DXObjectMeta *object_meta)
 {
