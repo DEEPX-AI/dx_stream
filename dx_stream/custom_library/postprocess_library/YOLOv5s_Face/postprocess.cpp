@@ -1,12 +1,12 @@
 #include "gstdxstream/gst-dxframemeta.hpp"
 #include "gstdxstream/gst-dxobjectmeta.hpp"
-#include <dxrt/dxrt_api.h>
 #include <algorithm>
 #include <cmath>
 #include <vector>
 #include <tuple>
 #include <glib.h>
 #include <gst/gst.h>
+#include <string>
 
 // ============================================================================
 // YOLOV5S Face Detection Post-Processing Library for DX Stream
@@ -68,9 +68,9 @@ struct FaceConfig {
  * @param tensor_name Name of the tensor to search for
  * @return Index of the tensor if found, -1 otherwise
  */
- inline int get_index_by_tensor_name(const dxrt::TensorPtrs& network_output, const std::string& tensor_name) {
+ inline int get_index_by_tensor_name(std::vector<dxs::DXTensor> network_output, const std::string& tensor_name) {
     for (size_t i = 0; i < network_output.size(); i++) {
-        if (network_output[i]->name() == tensor_name) {
+        if (network_output[i]._name == tensor_name) {
             return static_cast<int>(i);
         }
     }
@@ -153,14 +153,14 @@ std::vector<FaceDetection> nms(std::vector<FaceDetection>& faces, float threshol
  * @param config Configuration parameters
  * @return Vector of detected faces
  */
-std::vector<FaceDetection> parse_face_output(const std::shared_ptr<dxrt::Tensor>& output, 
+std::vector<FaceDetection> parse_face_output(const dxs::DXTensor& output,
                                             const FaceConfig& config) {
     std::vector<FaceDetection> faces;
-    const auto* data = static_cast<const float*>(output->data());
-    
+    const auto* data = static_cast<const float*>(output._data);
+
     // Tensor shape: [batch, num_detections, 16]
-    auto num_detections = static_cast<int>(output->shape()[1]);
-    auto features_per_detection = static_cast<int>(output->shape()[2]);  // 16
+    auto num_detections = static_cast<int>(output._shape[1]);
+    auto features_per_detection = static_cast<int>(output._shape[2]);  // 16
     
     for (int i = 0; i < num_detections; i++) {
         // Get data for current detection
@@ -248,7 +248,7 @@ FaceDetection scale_face(const FaceDetection& face, int orig_width, int orig_hei
  * @param object_meta Object metadata (output parameter)
  */
 extern "C" void PostProcess(GstBuffer* buf,
-                            const dxrt::TensorPtrs& network_output,
+                            std::vector<dxs::DXTensor> network_output,
                             DXFrameMeta* frame_meta,
                             DXObjectMeta* object_meta) {
     std::ignore = buf;
@@ -352,7 +352,7 @@ extern "C" void PostProcess(GstBuffer* buf,
  * @param object_meta Object metadata (output parameter)
  */
 extern "C" void PostProcess_Secondary(GstBuffer* buf,
-                                      const dxrt::TensorPtrs& network_output,
+                                      std::vector<dxs::DXTensor> network_output,
                                       DXFrameMeta* frame_meta,
                                       DXObjectMeta* object_meta) {
     std::ignore = buf;

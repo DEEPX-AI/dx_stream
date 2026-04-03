@@ -1,6 +1,5 @@
 #include "gstdxstream/gst-dxframemeta.hpp"
 #include "gstdxstream/gst-dxobjectmeta.hpp"
-#include <dxrt/dxrt_api.h>
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -8,6 +7,7 @@
 #include <tuple>
 #include <glib.h>
 #include <gst/gst.h>
+#include <string>
 
 // YOLOv9S Post-Processing Library for DX Stream
 // This implementation is specifically designed for YOLOv9S models.
@@ -75,9 +75,9 @@ struct YoloConfig {
  * @param tensor_name Name of the tensor to search for
  * @return Index of the tensor if found, -1 otherwise
  */
- inline int get_index_by_tensor_name(const dxrt::TensorPtrs& network_output, const std::string& tensor_name) {
+ inline int get_index_by_tensor_name(std::vector<dxs::DXTensor> network_output, const std::string& tensor_name) {
     for (size_t i = 0; i < network_output.size(); i++) {
-        if (network_output[i]->name() == tensor_name) {
+        if (network_output[i]._name == tensor_name) {
             return static_cast<int>(i);
         }
     }
@@ -179,14 +179,14 @@ std::vector<BoundingBox> nms(const std::vector<BoundingBox>& boxes, float thresh
  * YOLOv9S outputs a single tensor with format: [1, 84, 8400]
  * where 84 = 4 (bbox) + 80 (classes)
  */
-std::vector<BoundingBox> parse_single_output(const std::shared_ptr<dxrt::Tensor>& output, 
+std::vector<BoundingBox> parse_single_output(const dxs::DXTensor& output,
                                              const YoloConfig& config) {
     std::vector<BoundingBox> boxes;
-    const auto* data = static_cast<const float*>(output->data());
-    
+    const auto* data = static_cast<const float*>(output._data);
+
     // YOLOv9S output shape: [1, 84, 8400] where 84 = 4 (bbox) + 80 (classes)
-    auto dimensions = static_cast<int>(output->shape()[1]);  // 84
-    auto rows = static_cast<int>(output->shape()[2]);        // 8400
+    auto dimensions = static_cast<int>(output._shape[1]);  // 84
+    auto rows = static_cast<int>(output._shape[2]);        // 8400
     
     // Transpose data (84, 8400) -> (8400, 84)
     std::vector<float> data_transposed(static_cast<size_t>(rows) * dimensions);
@@ -242,7 +242,7 @@ std::vector<BoundingBox> parse_single_output(const std::shared_ptr<dxrt::Tensor>
  * @brief Main post-processing function for YOLOv9S object detection
  */
 extern "C" void PostProcess(GstBuffer* buf,
-                            const dxrt::TensorPtrs& network_output,
+                            std::vector<dxs::DXTensor> network_output,
                             DXFrameMeta* frame_meta,
                             DXObjectMeta* object_meta) {
     std::ignore = buf;

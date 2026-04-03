@@ -14,6 +14,8 @@
         "YoloV9S.dxnn",
         "YoloXS.dxnn",
         "YOLOV11N.dxnn",
-        "yolov8m_pose.dxnn"
+        "yolov8m_pose.dxnn",
+        "SCRFD500M_PPU.dxnn",
+        "YOLOV5Pose_PPU.dxnn" 
     ]
 }

@@ -1,11 +1,12 @@
 #include "gstdxstream/gst-dxframemeta.hpp"
 #include "gstdxstream/gst-dxobjectmeta.hpp"
-#include <dxrt/dxrt_api.h>
 #include <algorithm>
 #include <cmath>
 #include <vector>
 #include <glib.h>
 #include <gst/gst.h>
+#include <string>
+#include <tuple>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -53,18 +54,18 @@ static void obb_to_aabb(float cx, float cy, float w, float h, float angle,
 // cv2 (bbox): [1,4,128,128], [1,4,64,64], [1,4,32,32]
 // cv4 (angle): [1,1,128,128], [1,1,64,64], [1,1,32,32]
 // cv3 (class): [1,15,128,128], [1,15,64,64], [1,15,32,32]
-static std::vector<ObbBox> parse_multi_output(const dxrt::TensorPtrs& outputs,
+static std::vector<ObbBox> parse_multi_output(const std::vector<dxs::DXTensor>& outputs,
                                               const ObbConfig& config) {
     std::vector<ObbBox> detections;
 
-    std::vector<std::shared_ptr<dxrt::Tensor>> bbox_tensors, angle_tensors, class_tensors;
+    std::vector<const dxs::DXTensor*> bbox_tensors, angle_tensors, class_tensors;
     for (const auto& t : outputs) {
-        const auto& s = t->shape();
+        const auto& s = t._shape;
         if (s.size() != 4) continue;
         int ch = static_cast<int>(s[1]);
-        if (ch == 4) bbox_tensors.push_back(t);
-        else if (ch == 1) angle_tensors.push_back(t);
-        else if (ch == config.num_classes) class_tensors.push_back(t);
+        if (ch == 4) bbox_tensors.push_back(&t);
+        else if (ch == 1) angle_tensors.push_back(&t);
+        else if (ch == config.num_classes) class_tensors.push_back(&t);
     }
     if (bbox_tensors.size() != 3 || angle_tensors.size() != 3 || class_tensors.size() != 3) {
         GST_ERROR("OBB parse_multi_output: unexpected tensor counts (bbox=%zu, angle=%zu, class=%zu)",
@@ -72,8 +73,8 @@ static std::vector<ObbBox> parse_multi_output(const dxrt::TensorPtrs& outputs,
         return detections;
     }
 
-    auto cmp = [](const std::shared_ptr<dxrt::Tensor>& a, const std::shared_ptr<dxrt::Tensor>& b) {
-        return (a->shape()[2] * a->shape()[3]) > (b->shape()[2] * b->shape()[3]);
+    auto cmp = [](const dxs::DXTensor* a, const dxs::DXTensor* b) {
+        return (a->_shape[2] * a->_shape[3]) > (b->_shape[2] * b->_shape[3]);
     };
     std::sort(bbox_tensors.begin(), bbox_tensors.end(), cmp);
     std::sort(angle_tensors.begin(), angle_tensors.end(), cmp);
@@ -81,14 +82,14 @@ static std::vector<ObbBox> parse_multi_output(const dxrt::TensorPtrs& outputs,
 
     std::vector<int> strides = {8, 16, 32};
     for (size_t si = 0; si < 3; ++si) {
-        int h = static_cast<int>(bbox_tensors[si]->shape()[2]);
-        int w = static_cast<int>(bbox_tensors[si]->shape()[3]);
+        int h = static_cast<int>(bbox_tensors[si]->_shape[2]);
+        int w = static_cast<int>(bbox_tensors[si]->_shape[3]);
         float stride = static_cast<float>(strides[si]);
         int spatial = h * w;
 
-        const float* bbox_data = static_cast<const float*>(bbox_tensors[si]->data());
-        const float* angle_data = static_cast<const float*>(angle_tensors[si]->data());
-        const float* class_data = static_cast<const float*>(class_tensors[si]->data());
+        const float* bbox_data = static_cast<const float*>(bbox_tensors[si]->_data);
+        const float* angle_data = static_cast<const float*>(angle_tensors[si]->_data);
+        const float* class_data = static_cast<const float*>(class_tensors[si]->_data);
 
         for (int y = 0; y < h; ++y) {
             for (int x = 0; x < w; ++x) {
@@ -141,7 +142,7 @@ static std::vector<ObbBox> parse_multi_output(const dxrt::TensorPtrs& outputs,
 }
 
 // USE_ORT=ON: Parse single tensor [1, N, 7] = [cx, cy, w, h, score, class_id, angle]
-static std::vector<ObbBox> parse_single_output(const dxrt::TensorPtrs& outputs,
+static std::vector<ObbBox> parse_single_output(const std::vector<dxs::DXTensor>& outputs,
                                                const ObbConfig& config) {
     std::vector<ObbBox> detections;
     if (outputs.empty()) return detections;
@@ -150,9 +151,9 @@ static std::vector<ObbBox> parse_single_output(const dxrt::TensorPtrs& outputs,
     const float* data = nullptr;
     int num_dets = 0, vec_size = 0;
     for (const auto& t : outputs) {
-        const auto& s = t->shape();
+        const auto& s = t._shape;
         if (s.size() == 3 && s[0] == 1 && s[2] == 7) {
-            data = static_cast<const float*>(t->data());
+            data = static_cast<const float*>(t._data);
             num_dets = static_cast<int>(s[1]);
             vec_size = static_cast<int>(s[2]);
             break;
@@ -175,7 +176,7 @@ static std::vector<ObbBox> parse_single_output(const dxrt::TensorPtrs& outputs,
 }
 
 extern "C" void PostProcess(GstBuffer* buf,
-                            const dxrt::TensorPtrs& network_output,
+                            std::vector<dxs::DXTensor> network_output,
                             DXFrameMeta* frame_meta,
                             DXObjectMeta* object_meta) {
     std::ignore = buf;

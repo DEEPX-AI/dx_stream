@@ -1,12 +1,13 @@
 #include "gstdxstream/gst-dxframemeta.hpp"
 #include "gstdxstream/gst-dxobjectmeta.hpp"
-#include <dxrt/dxrt_api.h>
 #include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <vector>
 #include <glib.h>
 #include <gst/gst.h>
+#include <string>
+#include <tuple>
 
 static constexpr int NUM_CLASSES = 80;
 static constexpr int NUM_MASK_COEFS = 32;
@@ -118,32 +119,32 @@ static void generate_instance_mask(const SegBox& det, const float* proto_data,
 // cv4 (mask coef): [1,32,80,80], [1,32,40,40], [1,32,20,20]
 // cv3 (class): [1,80,80,80], [1,80,40,40], [1,80,20,20]
 // output1 (proto): [1,32,160,160]
-static std::vector<SegBox> parse_multi_output(const dxrt::TensorPtrs& outputs,
+static std::vector<SegBox> parse_multi_output(const std::vector<dxs::DXTensor>& outputs,
                                               const SegConfig& config) {
     std::vector<SegBox> detections;
 
-    std::vector<std::shared_ptr<dxrt::Tensor>> bbox_tensors, coef_tensors, class_tensors;
-    std::shared_ptr<dxrt::Tensor> proto_tensor;
+    std::vector<dxs::DXTensor> bbox_tensors, coef_tensors, class_tensors;
+    bool found_proto = false;
 
     for (const auto& t : outputs) {
-        const auto& s = t->shape();
+        const auto& s = t._shape;
         if (s.size() == 4 && s[0] == 1) {
             int ch = static_cast<int>(s[1]);
             int h = static_cast<int>(s[2]), w = static_cast<int>(s[3]);
             if (ch == 4) bbox_tensors.push_back(t);
-            else if (ch == NUM_MASK_COEFS && h == w && h >= 160) proto_tensor = t; // 160x160
+            else if (ch == NUM_MASK_COEFS && h == w && h >= 160) found_proto = true; // 160x160
             else if (ch == NUM_MASK_COEFS) coef_tensors.push_back(t);
             else if (ch == NUM_CLASSES) class_tensors.push_back(t);
         }
     }
 
-    if (bbox_tensors.size() != 3 || coef_tensors.size() != 3 || class_tensors.size() != 3 || !proto_tensor) {
+    if (bbox_tensors.size() != 3 || coef_tensors.size() != 3 || class_tensors.size() != 3 || !found_proto) {
         GST_ERROR("Seg parse_multi_output: unexpected tensor counts");
         return detections;
     }
 
-    auto cmp = [](const std::shared_ptr<dxrt::Tensor>& a, const std::shared_ptr<dxrt::Tensor>& b) {
-        return (a->shape()[2] * a->shape()[3]) > (b->shape()[2] * b->shape()[3]);
+    auto cmp = [](const dxs::DXTensor& a, const dxs::DXTensor& b) {
+        return (a._shape[2] * a._shape[3]) > (b._shape[2] * b._shape[3]);
     };
     std::sort(bbox_tensors.begin(), bbox_tensors.end(), cmp);
     std::sort(coef_tensors.begin(), coef_tensors.end(), cmp);
@@ -151,14 +152,14 @@ static std::vector<SegBox> parse_multi_output(const dxrt::TensorPtrs& outputs,
 
     std::vector<int> strides = {8, 16, 32};
     for (size_t si = 0; si < 3; ++si) {
-        int h = static_cast<int>(bbox_tensors[si]->shape()[2]);
-        int w = static_cast<int>(bbox_tensors[si]->shape()[3]);
+        int h = static_cast<int>(bbox_tensors[si]._shape[2]);
+        int w = static_cast<int>(bbox_tensors[si]._shape[3]);
         float stride = static_cast<float>(strides[si]);
         int spatial = h * w;
 
-        const float* bbox_data = static_cast<const float*>(bbox_tensors[si]->data());
-        const float* coef_data = static_cast<const float*>(coef_tensors[si]->data());
-        const float* cls_data  = static_cast<const float*>(class_tensors[si]->data());
+        const float* bbox_data = static_cast<const float*>(bbox_tensors[si]._data);
+        const float* coef_data = static_cast<const float*>(coef_tensors[si]._data);
+        const float* cls_data  = static_cast<const float*>(class_tensors[si]._data);
 
         for (int y = 0; y < h; ++y) {
             for (int x = 0; x < w; ++x) {
@@ -199,7 +200,7 @@ static std::vector<SegBox> parse_multi_output(const dxrt::TensorPtrs& outputs,
 }
 
 // USE_ORT=ON: Parse output0 [1, 300, 38] + output1 [1, 32, 160, 160]
-static std::vector<SegBox> parse_single_output(const dxrt::TensorPtrs& outputs,
+static std::vector<SegBox> parse_single_output(const std::vector<dxs::DXTensor>& outputs,
                                                const SegConfig& config) {
     std::vector<SegBox> detections;
 
@@ -207,9 +208,9 @@ static std::vector<SegBox> parse_single_output(const dxrt::TensorPtrs& outputs,
     const float* det_data = nullptr;
     int num_dets = 0, vec_size = 0;
     for (const auto& t : outputs) {
-        const auto& s = t->shape();
+        const auto& s = t._shape;
         if (s.size() == 3 && s[0] == 1 && s[2] >= 38) {
-            det_data = static_cast<const float*>(t->data());
+            det_data = static_cast<const float*>(t._data);
             num_dets = static_cast<int>(s[1]);
             vec_size = static_cast<int>(s[2]);
             break;
@@ -237,20 +238,20 @@ static std::vector<SegBox> parse_single_output(const dxrt::TensorPtrs& outputs,
 }
 
 // Find prototype tensor [1, 32, H, W]
-static std::pair<const float*, std::pair<int,int>> find_proto(const dxrt::TensorPtrs& outputs) {
+static std::pair<const float*, std::pair<int,int>> find_proto(const std::vector<dxs::DXTensor>& outputs) {
     for (const auto& t : outputs) {
-        const auto& s = t->shape();
+        const auto& s = t._shape;
         if (s.size() == 4 && s[0] == 1 && s[1] == NUM_MASK_COEFS) {
             int h = static_cast<int>(s[2]), w = static_cast<int>(s[3]);
             if (h >= 128) // prototype is the large spatial tensor
-                return {static_cast<const float*>(t->data()), {h, w}};
+                return {static_cast<const float*>(t._data), {h, w}};
         }
     }
     return {nullptr, {0, 0}};
 }
 
 extern "C" void PostProcess(GstBuffer* buf,
-                            const dxrt::TensorPtrs& network_output,
+                            std::vector<dxs::DXTensor> network_output,
                             DXFrameMeta* frame_meta,
                             DXObjectMeta* object_meta) {
     std::ignore = buf;

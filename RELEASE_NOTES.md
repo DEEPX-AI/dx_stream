@@ -3,14 +3,14 @@
 ## DX-Stream v3.0.0 / 2026-04-01
 
 ### 1. Changed
-- **Inference Architecture**: Refactored to use native `dxrt::TensorPtrs` instead of user output buffers
-- **Metadata Structures**: Updated `DXFrameMeta` and `DXObjectMeta` to align with new inference architecture **(Breaking)**
-- **Custom PostProcess Interface**: Changed to use `dxrt::TensorPtrs` — existing custom postprocess libraries must be updated **(Breaking)**
-- **Model Download**: Replaced tar.gz bundle download with per-model download via `model_list.json` + `setup_sample_models.sh` (`jq` required) **(Breaking)**
+- **Model Download**: Switched to `dx-modelzoo`-managed models with updated demo lineup **(Breaking)**
+    - Per-model download via `model_list.json` + `setup_sample_models.sh` (`jq` required)
+    - Demo model upgrades: YOLOv5s → YOLOv26n, YOLOV5Pose → YOLOv26n_Pose, DeepLabV3+MobileNetV2 → YOLOv26n_Seg (not available in modelzoo; replaced)
+    - Models not in dx-modelzoo (manually uploaded to S3, accuracy not measured): SCRFD500M PPU, YOLOV5Pose PPU
+- **Installation**: Removed `/etc/profile.d/gstdxstream.sh` (no longer requires sudo); env vars now written directly to `~/.bashrc` **(Breaking)** (old profile.d-based setup no longer used)
+- **C++ Standard**: Updated to C++14 (using declarations, enum classes) **(Breaking)**
 - **Preprocessing Architecture**: Introduced `IVideoTransformKernel` abstraction (RGA / libyuv / V3 DSP) with `VideoTransformFactory` for auto backend selection
 - **DXOSD**: Removed unnecessary color conversion, resize, and intermediate memory allocation; added YUV in-place overlay rendering
-- **Installation**: Removed `/etc/profile.d/gstdxstream.sh` (no longer requires sudo); env vars now written directly to `~/.bashrc` **(Breaking)** (old profile.d-based setup no longer used)
-- **C++ Standard**: Updated to C++14 (using declarations, enum classes)
 - **Dependency**: Added `gstreamer1.0-dev` build dependency; install prefix default `/usr/local`
 
 ### 2. Fixed

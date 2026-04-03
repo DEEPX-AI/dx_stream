@@ -4,11 +4,10 @@ gst_dep = dependency('gstreamer-1.0', version : '>=1.16.3',
     required : true, fallback : ['gstreamer', 'gst_dep'])
 
 dx_stream_dep = dependency('gstdxstream')
-dxrt_dep = declare_dependency(link_args: ['-ldxrt'])
 
 shared_library('postprocess_yolov5s_face', 
     'postprocess.cpp',
-    dependencies: [gst_dep, dx_stream_dep, dxrt_dep],
+    dependencies: [gst_dep, dx_stream_dep],
     install: true,
     install_dir: get_option('datadir') / 'gstdxstream' / 'lib'
 )

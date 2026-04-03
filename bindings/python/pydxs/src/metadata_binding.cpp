@@ -8,7 +8,7 @@
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
 #include <gst/gst.h>
-#include <dxrt/dxrt_api.h>
+#include "dxcommon.hpp"
 
 #include "gst-dxframemeta.hpp"
 #include "gst-dxobjectmeta.hpp"
@@ -37,61 +37,65 @@ void *python_object_copy_cb(void *data) {
 }
 
 // Helper function to convert DataType to numpy dtype
-py::dtype get_numpy_dtype(dxrt::DataType type) {
+py::dtype get_numpy_dtype(dxs::DataType type) {
     switch (type) {
-        case dxrt::DataType::FLOAT:
+        case dxs::DataType::FLOAT:
             return py::dtype::of<float>();
-        case dxrt::DataType::UINT8:
+        case dxs::DataType::UINT8:
             return py::dtype::of<uint8_t>();
-        case dxrt::DataType::INT8:
+        case dxs::DataType::INT8:
             return py::dtype::of<int8_t>();
-        case dxrt::DataType::UINT16:
+        case dxs::DataType::UINT16:
             return py::dtype::of<uint16_t>();
-        case dxrt::DataType::INT16:
+        case dxs::DataType::INT16:
             return py::dtype::of<int16_t>();
-        case dxrt::DataType::INT32:
+        case dxs::DataType::INT32:
             return py::dtype::of<int32_t>();
-        case dxrt::DataType::INT64:
+        case dxs::DataType::INT64:
             return py::dtype::of<int64_t>();
-        case dxrt::DataType::UINT32:
+        case dxs::DataType::UINT32:
             return py::dtype::of<uint32_t>();
-        case dxrt::DataType::UINT64:
+        case dxs::DataType::UINT64:
             return py::dtype::of<uint64_t>();
         default:
             throw UnsupportedTensorDataTypeException("Unsupported tensor data type");
     }
 }
 
-// Convert std::map<int, dxrt::TensorPtrs> to Python dict {network_id: [tensor_info, ...]}
-// Note: Direct tensor data access removed - tensors are managed by dxrt
-py::dict convert_tensor_map_to_dict(const std::map<int, dxrt::TensorPtrs> &tensor_map) {
+// Convert a single DXTensor to a numpy array (zero-copy view)
+// The base parameter (shared_ptr capsule) ensures the underlying memory
+// stays alive as long as the numpy array exists, preventing use-after-free.
+py::array get_tensor_as_numpy(const dxs::DXTensor &tensor,
+                              const std::shared_ptr<void> &owner) {
+    if (!tensor._data || tensor._shape.empty()) {
+        return py::array();
+    }
+    py::dtype dtype = get_numpy_dtype(tensor._type);
+    std::vector<py::ssize_t> shape(tensor._shape.begin(), tensor._shape.end());
+    // Create a PyCapsule that prevents the shared_ptr from being freed
+    auto capsule = py::capsule(new std::shared_ptr<void>(owner),
+                               [](void *p) { delete static_cast<std::shared_ptr<void>*>(p); });
+    return py::array(dtype, shape, tensor._data, capsule);
+}
+
+// Convert std::map<int, dxs::DXTensors> to Python dict {network_id: [numpy_array, ...]}
+py::dict convert_tensor_map_to_dict(const std::map<int, dxs::DXTensors> &tensor_map) {
     py::dict result;
     for (const auto &entry : tensor_map) {
         py::list tensor_list;
-        for (const auto &tensor : entry.second) {
+        for (const auto &tensor : entry.second._tensors) {
             py::dict info;
-            info["name"] = tensor->name();
-            // Shape and data access would require dxrt API exposure
+            info["name"] = tensor._name;
+            info["shape"] = tensor._shape;
+            info["type"] = static_cast<int>(tensor._type);
+            try {
+                info["data"] = get_tensor_as_numpy(tensor, entry.second._data);
+            } catch (const UnsupportedTensorDataTypeException &) {
+                info["data"] = py::none();
+            }
             tensor_list.append(info);
         }
         result[py::int_(entry.first)] = tensor_list;
-    }
-    return result;
-}
-
-// Convert std::map<int, dxs::InputBuffers> to Python dict {network_id: [buffer_info, ...]}
-py::dict convert_input_buffer_map_to_dict(const std::map<int, dxs::InputBuffers> &buffer_map) {
-    py::dict result;
-    for (const auto &entry : buffer_map) {
-        py::list buffer_list;
-        for (const auto &buffer : entry.second) {
-            py::dict info;
-            info["name"] = buffer.name;
-            info["size"] = buffer.size;
-            // Shape and data access would need additional implementation
-            buffer_list.append(info);
-        }
-        result[py::int_(entry.first)] = buffer_list;
     }
     return result;
 }
@@ -374,7 +378,7 @@ PYBIND11_MODULE(pydxs, m) {
         .def_property_readonly(
             "input_tensors",
             [](DXObjectMeta &self) -> py::dict {
-                return convert_input_buffer_map_to_dict(self._input_tensors);
+                return convert_tensor_map_to_dict(self._input_tensors);
             },
             "Get input tensors as dict {network_id: [tensor1, tensor2, ...]} (zero-copy)")
         .def_property_readonly(
@@ -513,7 +517,7 @@ PYBIND11_MODULE(pydxs, m) {
         .def_property_readonly(
             "input_tensors",
             [](DXFrameMeta &self) -> py::dict {
-                return convert_input_buffer_map_to_dict(self._input_tensors);
+                return convert_tensor_map_to_dict(self._input_tensors);
             },
             "Get input tensors as dict {network_id: [tensor1, tensor2, ...]} (zero-copy)")
         .def_property_readonly(

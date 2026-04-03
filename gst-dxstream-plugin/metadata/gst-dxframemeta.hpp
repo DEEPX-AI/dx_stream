@@ -2,7 +2,6 @@
 #define DXFRAMEMETA_H
 
 #include "dxcommon.hpp"
-#include <dxrt/dxrt_api.h>
 #include <glib.h>
 #include <gst/gst.h>
 #include <map>
@@ -44,8 +43,8 @@ struct _DXFrameMeta {
     std::vector<DXUserMeta*> _frame_user_meta_list;
 
     // RAII-managed tensors (shallow copy through shared_ptr)
-    std::map<int, dxs::InputBuffers> _input_tensors;   // preproc_id -> input buffers
-    std::map<int, dxrt::TensorPtrs> _output_tensors;   // infer_id -> output tensors
+    std::map<int, dxs::DXTensors> _input_tensors;   // preproc_id -> input tensors
+    std::map<int, dxs::DXTensors> _output_tensors;   // infer_id -> output tensors
 };
 
 GType dx_frame_meta_api_get_type(void);

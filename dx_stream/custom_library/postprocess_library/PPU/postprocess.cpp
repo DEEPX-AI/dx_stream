@@ -1,6 +1,5 @@
 #include "gstdxstream/gst-dxframemeta.hpp"
 #include "gstdxstream/gst-dxobjectmeta.hpp"
-#include <dxrt/dxrt_api.h>
 #include <algorithm>
 #include <cmath>
 #include <iostream>
@@ -10,6 +9,7 @@
 #include <tuple>
 #include <glib.h>
 #include <gst/gst.h>
+#include <string>
 
 #define sigmoid(x) (1 / (1 + std::exp(-x)))
 
@@ -143,10 +143,10 @@ std::vector<BoundingBox> nms(const std::vector<BoundingBox>& boxes, float thresh
 }
 
 // Decode bounding boxes for object detection (BBOX type)
-std::vector<BoundingBox> decode_bbox(const std::shared_ptr<dxrt::Tensor>& output, const YoloConfig& config) {
+std::vector<BoundingBox> decode_bbox(const dxs::DXTensor& output, const YoloConfig& config) {
     std::vector<BoundingBox> boxes;
-    const auto num_detections = static_cast<int>(output->shape()[1]);
-    const auto* dataSrc = static_cast<dxrt::DeviceBoundingBox_t*>(output->data());
+    const auto num_detections = static_cast<int>(output._shape[1]);
+    const auto* dataSrc = static_cast<dxs::DeviceBoundingBox_t*>(output._data);
     
     for (int i = 0; i < num_detections; i++) {
         const auto *data = dataSrc + i;
@@ -173,10 +173,10 @@ std::vector<BoundingBox> decode_bbox(const std::shared_ptr<dxrt::Tensor>& output
 }
 
 // Decode poses with keypoints (POSE type)
-std::vector<BoundingBox> decode_pose(const std::shared_ptr<dxrt::Tensor>& output, const YoloConfig& config) {
+std::vector<BoundingBox> decode_pose(const dxs::DXTensor& output, const YoloConfig& config) {
     std::vector<BoundingBox> boxes;
-    const auto num_detections = static_cast<int>(output->shape()[1]);
-    const auto* dataSrc = static_cast<dxrt::DevicePose_t*>(output->data());
+    const auto num_detections = static_cast<int>(output._shape[1]);
+    const auto* dataSrc = static_cast<dxs::DevicePose_t*>(output._data);
     
     for (int i = 0; i < num_detections; ++i) {
         const auto* data = dataSrc + i;
@@ -214,10 +214,10 @@ std::vector<BoundingBox> decode_pose(const std::shared_ptr<dxrt::Tensor>& output
 }
 
 // Decode faces with keypoints (FACE type) - SCRFD style
-std::vector<BoundingBox> decode_face(const std::shared_ptr<dxrt::Tensor>& output, const YoloConfig& config) {
+std::vector<BoundingBox> decode_face(const dxs::DXTensor& output, const YoloConfig& config) {
     std::vector<BoundingBox> boxes;
-    const auto num_detections = static_cast<int>(output->shape()[1]);
-    const auto* dataSrc = static_cast<dxrt::DeviceFace_t*>(output->data());
+    const auto num_detections = static_cast<int>(output._shape[1]);
+    const auto* dataSrc = static_cast<dxs::DeviceFace_t*>(output._data);
 
     for (int i = 0; i < num_detections; ++i) {
         const auto* data = dataSrc + i;
@@ -251,7 +251,7 @@ std::vector<BoundingBox> decode_face(const std::shared_ptr<dxrt::Tensor>& output
 }
 
 extern "C" void YOLOV5S_PPU(GstBuffer* buf,
-                            const dxrt::TensorPtrs& network_output,
+                            std::vector<dxs::DXTensor> network_output,
                             DXFrameMeta* frame_meta,
                             DXObjectMeta* object_meta) {
     std::ignore = buf;
@@ -310,7 +310,7 @@ extern "C" void YOLOV5S_PPU(GstBuffer* buf,
 
 
 extern "C" void YOLOV5Pose_PPU(GstBuffer* buf,
-                               const dxrt::TensorPtrs& network_output,
+                               std::vector<dxs::DXTensor> network_output,
                                DXFrameMeta* frame_meta,
                                DXObjectMeta* object_meta) {
     std::ignore = buf;
@@ -336,7 +336,7 @@ extern "C" void YOLOV5Pose_PPU(GstBuffer* buf,
         return;
     }
 
-    if (network_output[0]->type() != dxrt::DataType::POSE) {
+    if (network_output[0]._type != dxs::DataType::POSE) {
         GST_ERROR("Data type is not POSE");
         return;
     }
@@ -399,7 +399,7 @@ extern "C" void YOLOV5Pose_PPU(GstBuffer* buf,
 }
 
 extern "C" void SCRFD500M_PPU(GstBuffer* buf,
-                              const dxrt::TensorPtrs& network_output,
+                              std::vector<dxs::DXTensor> network_output,
                               DXFrameMeta* frame_meta,
                               DXObjectMeta* object_meta) {
     std::ignore = buf;
@@ -423,7 +423,7 @@ extern "C" void SCRFD500M_PPU(GstBuffer* buf,
         return;
     }
 
-    if (network_output[0]->type() != dxrt::DataType::FACE) {
+    if (network_output[0]._type != dxs::DataType::FACE) {
         GST_ERROR("Data type is not FACE");
         return;
     }
@@ -487,7 +487,7 @@ extern "C" void SCRFD500M_PPU(GstBuffer* buf,
 }
 
 extern "C" void SCRFD500M_PPU_SECOND(GstBuffer* buf,
-                                     const dxrt::TensorPtrs& network_output,
+                                     std::vector<dxs::DXTensor> network_output,
                                      DXFrameMeta* frame_meta,
                                      DXObjectMeta* object_meta) {
     std::ignore = buf;
@@ -511,7 +511,7 @@ extern "C" void SCRFD500M_PPU_SECOND(GstBuffer* buf,
         return;
     }
 
-    if (network_output[0]->type() != dxrt::DataType::FACE) {
+    if (network_output[0]._type != dxs::DataType::FACE) {
         GST_ERROR("Data type is not FACE");
         return;
     }
