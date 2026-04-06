@@ -73,16 +73,16 @@ inline int compute_nv12_actual_stride(GstBuffer* buf, int height, int fallback_w
 //
 // Build a FrameDesc for a NV12 GstBuffer coming from a video decoder.
 //
-// Two orthogonal concerns are resolved automatically:
-//   1. Memory type — DMA-buf (zero-copy RGA) vs CPU-virtual (SW mapping).
-//   2. Plane layout — stride/offset from the most authoritative source:
-//        GstVideoMeta  >  GstVideoInfo  >  size-based heuristic / tight-packed
+// Two paths based on memory type:
+//   DMA-BUF path: buffer allocation size heuristic for stride/offset.
+//                  RK3588 HW decoders may report unreliable GstVideoMeta
+//                  stride for DMA-buf buffers. Early return after computation.
+//   CPU path:      GstVideoMeta > GstVideoInfo > tight-packed fallback.
 //
 // GstVideoMeta is buffer-specific metadata attached by HW decoders; it
 // preserves the true stride/offset even after gst_buffer_make_writable().
 // GstVideoInfo is derived from caps negotiation and may not reflect padding
-// (e.g. RK3588 16-row alignment).  The size-based heuristic is a last
-// resort when neither metadata source is available.
+// (e.g. RK3588 16-row alignment).
 //
 // vinfo: optional GstVideoInfo pointer used as an intermediate fallback.
 //
@@ -111,6 +111,21 @@ inline FrameDesc make_nv12_frame_desc(GstBuffer* buf, int width, int height,
                 desc.memory_type = MemoryType::DMA_BUF;
                 desc.dma_fd      = fd;
                 desc.dma_size    = gst_memory_get_sizes(mem, nullptr, nullptr);
+
+                // RK3588/RGA fallback: HW decoder buffers may use 16-row-aligned
+                // physical height; derive real stride from buffer allocation size.
+                int actual_stride = compute_nv12_actual_stride(buf, height, width);
+                int hstride_val   = rga_hstride(height);
+                desc.planes[0].stride = actual_stride;
+                desc.planes[0].height = height;
+                desc.planes[0].offset = 0;
+                desc.planes[0].data   = nullptr;
+                desc.planes[1].stride = actual_stride;
+                desc.planes[1].height = height / 2;
+                desc.planes[1].offset = static_cast<size_t>(actual_stride) * hstride_val;
+                desc.planes[1].data   = nullptr;
+                
+                return desc;
             }
         }
     }
@@ -140,21 +155,6 @@ inline FrameDesc make_nv12_frame_desc(GstBuffer* buf, int width, int height,
         desc.planes[1].offset = GST_VIDEO_INFO_PLANE_OFFSET(vinfo, 1);
         desc.planes[1].data   = nullptr;
     } else {
-#ifdef HAVE_LIBRGA
-        // RK3588/RGA fallback: HW decoder buffers may use 16-row-aligned
-        // physical height; derive real stride from buffer allocation size.
-        int actual_stride = compute_nv12_actual_stride(buf, height, width);
-        int hstride_val   = rga_hstride(height);
-        desc.planes[0].stride = actual_stride;
-        desc.planes[0].height = height;
-        desc.planes[0].offset = 0;
-        desc.planes[0].data   = nullptr;
-        desc.planes[1].stride = actual_stride;
-        desc.planes[1].height = height / 2;
-        desc.planes[1].offset = static_cast<size_t>(actual_stride) * hstride_val;
-        desc.planes[1].data   = nullptr;
-#else
-        // Non-RK3588: standard tight-packed NV12 layout.
         desc.planes[0].stride = width;
         desc.planes[0].height = height;
         desc.planes[0].offset = 0;
@@ -163,7 +163,6 @@ inline FrameDesc make_nv12_frame_desc(GstBuffer* buf, int width, int height,
         desc.planes[1].height = height / 2;
         desc.planes[1].offset = static_cast<size_t>(width) * height;
         desc.planes[1].data   = nullptr;
-#endif
     }
 
     return desc;
