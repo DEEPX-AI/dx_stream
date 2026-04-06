@@ -22,12 +22,11 @@ namespace dxt {
 //   ops : crop + scale + letterbox padding — all in ONE improcess() call
 //   DMA-buf: YES — zero-copy when decoder outputs DMA-buf fd
 //
-// First-frame validation strategy:
-//   init()  — accepts any supported format pair. Only dst_template is stored.
-//   frame 1 — imcheck() with actual src+dst parameters.
-//             If HW rejects → transparently falls back to internal libyuv
-//             instance for this and all subsequent frames.
-//   frame 2+ — chosen path executes directly (zero overhead).
+// Per-frame validation strategy:
+//   init()       — accepts any supported format pair. Only dst_template is stored.
+//   every frame  — resolution range + scale ratio check, then imcheck().
+//                  If HW rejects → transparently falls back to internal libyuv
+//                  for that frame only. Next frame retries RGA.
 //
 // No hardcoded alignment tables.
 // RGA3 cores are explicitly pinned (RGA2-Enhance has 32-bit IOMMU,
@@ -67,11 +66,6 @@ private:
 
     // Internal libyuv fallback — created once in init(), used if RGA rejects
     std::unique_ptr<LibyuvTransformKernel> libyuv_fallback_;
-
-    // First-frame gate: true until imcheck validates the actual src+dst pair
-    bool first_frame_   = true;
-    // Set to true when imcheck fails; all subsequent frames go to libyuv
-    bool use_libyuv_    = false;
 };
 
 }  // namespace dxt
