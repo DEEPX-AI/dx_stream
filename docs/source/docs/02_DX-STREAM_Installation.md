@@ -2,16 +2,16 @@ This chapter describes the installation of **DX-STREAM** in both source-based an
 
 ## System Requirements
 
-This section describes the hardware and software requirements for running **DX-STREAM**.
+This section describes the hardware and software requirements for running **DX-STREAM**.  
 
-**Hardware and Software Requirements**  
+### Hardware and Software Requirements
 
-- **CPU:** amd64(x86_64), aarch64(arm64)
-- **RAM:** 8GB RAM (16GB RAM or higher is recommended)
-- **Storage:** 4GB or higher available disk space
-- **OS:** Ubuntu 18.04 / 20.04 / 22.04 / 24.04 (x64)
-          Debian 12 / Debian 13 (x64)
-- **DX-RT must** be installed 3.0.0 or higher available 
+- **CPU:** amd64(x86_64), aarch64(arm64)  
+- **RAM:** 8GB RAM (16GB RAM or higher is recommended)  
+- **Storage:** 4GB or higher available disk space  
+- **OS:** Ubuntu 18.04 / 20.04 / 22.04 / 24.04 (x64)  
+          Debian 12 / Debian 13 (x64)  
+- **DX-RT must** be installed 3.0.0 or higher available  
 - The system **must** support connection to an **M1 M.2** module with the M.2 interface on the host PC. 
 
 <img src="./../resources/02_DX-M1_M.2_LPDDR5x2_PCP.png" alt="DX-M1 M.2 Module" width="700">
@@ -27,20 +27,22 @@ This section describes the hardware and software requirements for running **DX-S
 **DX-STREAM** can be installed in two ways:
 
 - **Standalone source build**: Build DX-STREAM independently from source code
-- **DX-AS integrated build**: Build DX-STREAM as part of the DX-AS (DX All Suite) along with other DEEPX SDKs
+- **DX-AllSuite integrated build**: Build DX-STREAM as part of the DX-AllSuite along with other DEEPX SDKs
 
-**DX-AS** provides comprehensive environment management with version compatibility for all required dependencies (DX-RT, DX-Driver, DX-FW, etc.) and supports both Docker-based and local installation methods. For detailed information about DX-AS installation and integrated build options, please refer to the **DX-AS User Manual**.
+**DX-AllSuite** provides comprehensive environment management with version compatibility for all required dependencies (DX-RT, DX-Driver, DX-FW, etc.) and supports both Docker-based and local installation methods. For detailed information about DX-AllSuite installation and integrated build options, please refer to the **DX-AllSuite User Manual**.
+
+### Standalone Source Build
 
 This section focuses on the **standalone source build** approach for DX-STREAM only.
 
-**1.** Clone the DEEPX-AI GitHub repository  
+#### **Step 1.** Clone the DEEPX-AI GitHub repository  
 
 ```
 $ git clone https://github.com/DEEPX-AI/dx_stream.git
 $ cd dx_stream
 ```
 
-**2.** Install dependencies  
+#### **Step 2.** Install dependencies  
 
 Run the provided script to automatically install all required packages.  
 ```
@@ -67,23 +69,22 @@ $ ./install.sh --help
 
 !!! note "NOTE"
 
-    Use these options only if you have compatible versions already installed:
+    Use these options only if you have compatible versions already installed:  
 
-    - GStreamer 1.16.3 or higher
-    - OpenCV 4.2.0 or higher
+    - GStreamer 1.16.3 or higher  
+    - OpenCV 4.2.0 or higher  
 
+####  **Step 3.** Build & Environment **DX-STREAM**
 
-**3.** Build **DX-STREAM**  
-
-Compile **DX-STREAM** with the default installation prefix (`/usr/local`).  
+Compile **DX-STREAM** with the default installation prefix (`/usr/local`) or customize the build using available options.  
 
 ```bash
 $ ./build.sh
 ```
 
-**Build Options**  
+**Available Build Options**  
 
-The build script supports various options for customization:
+The build script supports various options for customization and maintenance:
 
 ```bash
 # Install to custom location
@@ -111,7 +112,7 @@ $ ./build.sh --uninstall --prefix=/opt/dx-stream
 $ ./build.sh --help
 ```
 
-**Installation Prefix**  
+**Installation Structure**  
 
 By default, DX-STREAM is installed to `/usr/local` with the following structure:
 
@@ -123,33 +124,30 @@ By default, DX-STREAM is installed to `/usr/local` with the following structure:
 
 You can change the installation location using `--prefix` option. When using a custom prefix, all paths will be adjusted accordingly.
 
-**Environment Setup**
+**(2) How to Apply Environment**  
 
-Environment setup depends on your installation prefix:
+The build script **automatically adds** required environment variables to your `~/.bashrc` during installation. After installation completes, choose one of the following to apply the changes :  
 
-**Automatic Environment Setup**
+Step A. **Open a new terminal**: The changes will be applied automatically in any new session.  
 
-The build script **automatically adds** required environment variables to your `~/.bashrc` during installation. After installation completes:
-
-1. **Open a new terminal** to apply changes, or
-2. **Reload your current shell**:
+Step B. **Reload your current shell**: To use the changes in the current terminal, run.  
    ```bash
    $ source ~/.bashrc
    ```
 
-3. **Verify the installation**:
+Step C. **Check recognition**: Check if the plugin is correctly recognized by GStreamer.  
    ```bash
    $ gst-inspect-1.0 dxstream
    ```
 
 !!! success "Standard Installation (`/usr/local` or `/usr`)"
 
-    Environment variables are added to `~/.bashrc`, but the system can often find the plugin automatically:
+    Environment variables are added to `~/.bashrc`, but the system can often find the plugin automatically:  
     
-    - pkg-config searches `/usr/local/lib/pkgconfig` by default
-    - GStreamer searches standard plugin directories automatically
+    - pkg-config searches `/usr/local/lib/pkgconfig` by default  
+    - GStreamer searches standard plugin directories automatically  
     
-    If the plugin is not found, clear GStreamer cache:
+    If the plugin is not found, clear GStreamer cache:  
     ```bash
     $ rm -rf ~/.cache/gstreamer-1.0/
     $ gst-inspect-1.0 dxstream
@@ -157,16 +155,16 @@ The build script **automatically adds** required environment variables to your `
 
 !!! info "Custom Prefix Installation"
 
-    **Using custom prefix (e.g., `./install`, `/opt/dx-stream`):**
+    **Using custom prefix (e.g., `./install`, `/opt/dx-stream`):**  
     
-    The build script automatically configures all required environment variables in your `~/.bashrc`:
+    The build script automatically configures all required environment variables in your `~/.bashrc`:  
     
-    - `PKG_CONFIG_PATH` - For building projects that depend on gstdxstream
-    - `GST_PLUGIN_PATH` - For GStreamer plugin discovery
-    - `LD_LIBRARY_PATH` - For runtime library loading
+    - `PKG_CONFIG_PATH` - For building projects that depend on gstdxstream  
+    - `GST_PLUGIN_PATH` - For GStreamer plugin discovery  
+    - `LD_LIBRARY_PATH` - For runtime library loading  
     - `PATH` - For DX-Stream executables
     
-    **For immediate use** in the current terminal (before opening a new one):
+    **For immediate use** in the current terminal (before opening a new one):  
     ```bash
     $ source ~/.bashrc
     ```
@@ -179,9 +177,9 @@ The build script **automatically adds** required environment variables to your `
     $ export PATH="/path/to/install/share/gstdxstream/bin:${PATH}"
     ```
 
-**Understanding Environment Variables**
+**(3) Environment Variable Reference**  
 
-Each variable serves a different purpose:
+Each variable serves a different purpose during build-time and runtime:  
 
 | Variable | Purpose | When Needed |
 |----------|---------|-------------|
@@ -196,15 +194,15 @@ Each variable serves a different purpose:
     - For **development**: Use custom prefix (e.g., `./install`) to avoid requiring sudo
     - For **CI/CD**: Set environment variables explicitly in your scripts
 
-**4.** Verify the installation  
+#### **Step 4.** Final Verification  
 
-Check that the plugin is correctly installed:
+Check that the plugin is correctly installed:  
 
 ```bash
 $ gst-inspect-1.0 dxstream
 ```
 
-You should see the plugin details including available elements (dxpreprocess, dxinfer, dxpostprocess, dxscale, dxconvert, etc.).
+You should see the plugin details including available elements (dxpreprocess, dxinfer, dxpostprocess, dxscale, dxconvert, etc.).  
 
 !!! warning "Troubleshooting"
 
@@ -237,9 +235,9 @@ You should see the plugin details including available elements (dxpreprocess, dx
        $ gst-inspect-1.0 dxstream
        ```
 
-**Uninstalling DX-STREAM**
+#### **Uninstalling DX-STREAM**  
 
-To remove DX-STREAM from your system:
+To remove DX-STREAM from your system:  
 
 ```bash
 # Uninstall from default location (/usr/local)
@@ -252,7 +250,7 @@ $ ./build.sh --uninstall
 $ ./build.sh --uninstall --prefix=/opt/dx-stream
 ```
 
-The uninstall process automatically removes:
+The uninstall process automatically removes:  
 
 - GStreamer plugin (`libgstdxstream.so`)
 - Header files (`include/gstdxstream/`)
@@ -272,15 +270,18 @@ The uninstall process automatically removes:
     
     No manual editing of configuration files is required!
 
+---
+
 ## Run DX-STREAM
 
 This section provides a step-by-step guide of quickly running **DX-STREAM**'s sample pipelines
 
-**Requirements**  
+### Requirements  
+
 Before you start, ensure the following prerequisites are met.  
 
-- Properly install **DX-RT**, **the NPU Device Driver**, and **DX-STREAM** in the correct order.
-- Download the sample video and model needed to run the demo.
+- Properly install **DX-RT**, **the NPU Device Driver**, and **DX-STREAM** in the correct order.  
+- Download the sample video and model needed to run the demo.  
 
 ```
 $ cd dx_stream
@@ -289,8 +290,7 @@ $ ./setup.sh
 
 By running the above command, you can download the resources needed for the demo.
 
-
-**Run Demo Pipelines**  
+### Run Demo Pipelines  
 
 Execute the demo script.
 ```
