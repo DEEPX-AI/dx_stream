@@ -345,7 +345,7 @@ ERROR: from element /GstPipeline:pipeline0/GstDxMsgBroker:dxmsgbroker0: GStreame
 
 This error usually means the Kafka broker is not running. To resolve this, verify its status and restart it if necessary.
 
-**Solution Stops (If Broker is Net Running)** 
+**Solution Steps (If Broker is Not Running)** 
 
 - Check Running Status  
 
