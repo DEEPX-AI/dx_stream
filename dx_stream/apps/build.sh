@@ -6,6 +6,7 @@ BUILD_TYPE="release"
 SONAR_MODE_ARG=""
 NATIVE_FILE_ARG=""
 CLEAN_MODE=""
+BUILD_DIR="builddir"
 PREFIX="/usr/local"
 
 show_help() {
@@ -86,31 +87,33 @@ build_and_install() {
 
         if [ "$CLEAN_MODE" == "--clean" ]; then
             echo "Cleaning build directory in $subdir"
-            rm -rf builddir
+            rm -rf "${BUILD_DIR}"
         fi
 
         # Setup meson with cache handling
-        if [ -d "builddir" ] && [ "$CLEAN_MODE" != "--clean" ]; then
+        if [ -d "${BUILD_DIR}" ]; then
             echo "Reconfiguring existing build directory..."
-            meson setup builddir --reconfigure --prefix="${PREFIX}" --buildtype="$BUILD_TYPE"
+            meson setup "${BUILD_DIR}" --reconfigure --prefix="${PREFIX}" --buildtype="$BUILD_TYPE"
         else
             echo "Setting up fresh build directory..."
-            meson setup builddir --wipe --prefix="${PREFIX}" --buildtype="$BUILD_TYPE"
+            meson setup "${BUILD_DIR}" --prefix="${PREFIX}" --buildtype="$BUILD_TYPE"
         fi
         if [ $? -ne 0 ]; then
             echo -e "Error: meson setup failed"
             exit 1
         fi
 
-        meson compile -C builddir
+        meson compile -C "${BUILD_DIR}"
         if [ $? -ne 0 ]; then
             echo -e "Error: meson compile failed"
             exit 1
         fi
         
-        yes | meson install -C builddir
+        sudo env PYTHONPATH="$(python3 -c 'import site; print(site.getusersitepackages() + ":" + ":".join(site.getsitepackages()))')" "$(which meson)" install -C "${BUILD_DIR}" --no-rebuild
         if [ $? -ne 0 ]; then
             echo -e "Error: meson install failed"
+            echo -e "Hint: Run 'which -a meson' to check if multiple meson versions are installed."
+            echo -e "      If so, keep only one and remove the rest. (See: docs/source/docs/06_Troubleshooting_and_FAQ.md)"
             exit 1
         fi
 

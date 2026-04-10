@@ -4,7 +4,8 @@ PROJECT_ROOT=$(realpath -s "${SCRIPT_DIR}/../..")
 BUILD_TYPE="release"
 SONAR_MODE_ARG=""
 NATIVE_FILE_ARG=""
-
+BUILD_DIR="builddir"
+INSTALL_DIR="install"
 
 show_help() {
   echo "Usage: $(basename "$0") [--debug] [--help]"
@@ -42,33 +43,35 @@ echo "Using build type: $BUILD_TYPE"
 echo "SONAR_MODE_ARG($SONAR_MODE_ARG) is set"
 
 build_and_install() {
-    if [ -d "$SCRIPT_DIR/install" ]; then
-        rm -rf $SCRIPT_DIR/install
+    if [ -d "$SCRIPT_DIR/$INSTALL_DIR" ]; then
+        rm -rf "$SCRIPT_DIR/$INSTALL_DIR"
     fi
 
-    if [ -d "$SCRIPT_DIR/build" ]; then
-        rm -rf $SCRIPT_DIR/build
+    if [ -d "$SCRIPT_DIR/$BUILD_DIR" ]; then
+        rm -rf "$SCRIPT_DIR/$BUILD_DIR"
     fi
 
-    meson setup build --buildtype=debug --prefix="$SCRIPT_DIR"
+    meson setup "${BUILD_DIR}" --buildtype=debug --prefix="$SCRIPT_DIR"
     if [ $? -ne 0 ]; then
         echo -e "Error: meson setup failed"
         exit 1
     fi
-    meson compile -C build
+    meson compile -C "${BUILD_DIR}"
     if [ $? -ne 0 ]; then
         echo -e "Error: meson compile failed"
         exit 1
     fi
-    yes | meson install -C build
+    meson install -C "${BUILD_DIR}" --no-rebuild
     if [ $? -ne 0 ]; then
         echo -e "Error: meson install failed"
+        echo -e "Hint: Run 'which -a meson' to check if multiple meson versions are installed."
+        echo -e "      If so, keep only one and remove the rest. (See: docs/source/docs/06_Troubleshooting_and_FAQ.md)"
         exit 1
     fi
     if [ ! -n "${SONAR_MODE_ARG}" ]; then
-        rm -rf build
+        rm -rf "${BUILD_DIR}"
     else
-        echo -e "Warn: The '--sonar' option is set. So, Skip to remove 'build' directory"
+        echo -e "Warn: The '--sonar' option is set. So, Skip to remove '${BUILD_DIR}' directory"
     fi
 }
 

@@ -6,6 +6,8 @@
 SCRIPT_DIR=$(realpath "$(dirname "$0")")
 PROJECT_ROOT=$(realpath -s "${SCRIPT_DIR}/../..")
 BUILD_TYPE="debug"
+BUILD_DIR="build"
+INSTALL_DIR="install"
 
 show_help() {
     echo "Usage: $(basename "$0") [--help]"
@@ -44,32 +46,34 @@ build_and_install() {
     echo "🔨 Building user meta test..."
     
     # Clean previous build
-    if [ -d "$SCRIPT_DIR/install" ]; then
-        rm -rf "$SCRIPT_DIR/install"
+    if [ -d "$SCRIPT_DIR/$INSTALL_DIR" ]; then
+        rm -rf "$SCRIPT_DIR/$INSTALL_DIR"
     fi
 
-    if [ -d "$SCRIPT_DIR/build" ]; then
-        rm -rf "$SCRIPT_DIR/build"
+    if [ -d "$SCRIPT_DIR/$BUILD_DIR" ]; then
+        rm -rf "$SCRIPT_DIR/$BUILD_DIR"
     fi
 
     # Setup meson build
-    meson setup build --buildtype="$BUILD_TYPE" --prefix="$SCRIPT_DIR/install"
+    meson setup "${BUILD_DIR}" --buildtype="$BUILD_TYPE" --prefix="$SCRIPT_DIR/$INSTALL_DIR"
     if [ $? -ne 0 ]; then
         echo "❌ Error: meson setup failed"
         return 1
     fi
 
     # Compile
-    meson compile -C build
+    meson compile -C "${BUILD_DIR}"
     if [ $? -ne 0 ]; then
         echo "❌ Error: meson compile failed"
         return 1
     fi
 
     # Install
-    yes | meson install -C build > /dev/null 2>&1
+    meson install -C "${BUILD_DIR}" --no-rebuild > /dev/null 2>&1
     if [ $? -ne 0 ]; then
         echo "❌ Error: meson install failed"
+        echo "Hint: Run 'which -a meson' to check if multiple meson versions are installed."
+        echo "      If so, keep only one and remove the rest. (See: docs/source/docs/06_Troubleshooting_and_FAQ.md)"
         return 1
     fi
 
@@ -128,8 +132,11 @@ run_test() {
 cleanup() {
     echo ""
     echo "🧹 Cleaning up..."
-    if [ -d "$SCRIPT_DIR/build" ]; then
-        rm -rf "$SCRIPT_DIR/build"
+    if [ -d "$SCRIPT_DIR/$BUILD_DIR" ]; then
+        rm -rf "$SCRIPT_DIR/$BUILD_DIR"
+    fi
+    if [ -d "$SCRIPT_DIR/$INSTALL_DIR" ]; then
+        rm -rf "$SCRIPT_DIR/$INSTALL_DIR"
     fi
     echo "✅ Cleanup completed"
 }
