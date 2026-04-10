@@ -384,3 +384,106 @@ This error usually means the Kafka broker is not running. To resolve this, verif
     Keep both terminal sessions running while the DX-STREAM pipeline is active to ensure proper operation.
 
 ---
+
+## Build Issues with Meson Installation
+
+#### **Overview: How `build.sh` Handles `meson install`**
+
+DX-STREAM uses `sudo meson install` to install plugins into system directories (e.g., `/usr/local/`).  
+Since `sudo` runs as root and does not inherit the user's Python environment, `build.sh` explicitly passes the Python package paths via `PYTHONPATH`:
+
+```bash
+sudo env PYTHONPATH="$(python3 -c '...')" "$(which meson)" install -C "${BUILD_DIR}" --no-rebuild
+```
+
+This command resolves two things from the **current shell** before `sudo` execution:
+
+- `$(which meson)` — locates the meson binary
+- `$(python3 -c '...')` — collects all Python site-packages paths
+
+---
+
+#### **Supported Meson Installation Methods**
+
+The following single-meson-installation environments are fully supported:
+
+| Installation Method | Binary Location | Module Location | Supported |
+|---|---|---|:---:|
+| `pip install --user meson` | `~/.local/bin/meson` | `~/.local/lib/python3.x/site-packages/` | ✅ |
+| `pip install meson` (in venv) | `venv/bin/meson` | `venv/lib/python3.x/site-packages/` | ✅ |
+| `sudo pip install meson` | `/usr/local/bin/meson` | `/usr/local/lib/python3.x/dist-packages/` | ✅ |
+| `apt install meson` | `/usr/bin/meson` | `/usr/lib/python3/dist-packages/` | ✅ |
+
+---
+
+#### **Known Limitation: Multiple Meson Installations**
+
+!!! warning "WARNING"
+
+    If meson is installed in **more than one location** simultaneously, a version mismatch may occur between the meson binary and its Python module.
+
+When multiple meson installations coexist, the `meson` binary resolved by `which meson` and the `mesonbuild` Python module loaded at runtime may come from **different installations**:
+
+```bash
+# Example: meson binary from venv (v1.4), but module from ~/.local/ (v0.61)
+$ which meson
+/home/user/venv/bin/meson            # meson 1.4
+
+$ python3 -c "import mesonbuild; print(mesonbuild.__file__)"
+/home/user/.local/.../mesonbuild/    # meson 0.61 (loaded first by import order)
+```
+
+This is a **fundamental limitation** of the `sudo + PYTHONPATH` pattern and cannot be fully resolved by any PYTHONPATH construction strategy.
+
+**Symptoms:**
+
+- `meson install` fails with unexpected errors or tracebacks
+- Build succeeds but installed files are incorrect or incomplete
+- `ModuleNotFoundError: No module named 'mesonbuild'`
+
+---
+
+#### **Solution: Keep a Single Meson Installation**
+
+**Step 1.** Check for multiple installations:
+
+```bash
+# List all meson binaries in PATH
+which -a meson
+
+# Check pip-installed meson
+pip show meson 2>/dev/null && echo "Found: pip (user/venv)"
+pip3 show meson 2>/dev/null && echo "Found: pip3"
+
+# Check system package
+apt list --installed 2>/dev/null | grep meson
+
+# Verify binary and module point to the same installation
+which meson
+python3 -c "import mesonbuild, os; print(os.path.dirname(os.path.dirname(mesonbuild.__file__)))"
+```
+
+**Step 2.** Remove duplicates, keeping only the intended one:
+
+```bash
+# Remove user-level installation
+pip uninstall meson
+
+# Or remove system-level installation
+sudo apt remove meson
+
+# Or remove from venv
+pip uninstall meson  # with venv activated
+```
+
+**Step 3.** Verify single installation:
+
+```bash
+$ which meson
+/home/user/.local/bin/meson
+
+$ python3 -c "import mesonbuild, os; print(os.path.dirname(os.path.dirname(mesonbuild.__file__)))"
+/home/user/.local/lib/python3.8/site-packages
+
+# Both should share the same installation prefix (~/.local/ in this example)
+```

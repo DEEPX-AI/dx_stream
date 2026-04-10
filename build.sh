@@ -261,9 +261,11 @@ build() {
     # Install with sudo (needed for PREFIX-based paths)
     echo "Installing DX-Stream plugin to system directories..."
     echo "  - Headers: ${PREFIX}/include/gstdxstream"
-    yes | meson install -C ${BUILD_DIR}
+    sudo env PYTHONPATH="$(python3 -c 'import site; print(site.getusersitepackages() + ":" + ":".join(site.getsitepackages()))')" "$(which meson)" install -C "${BUILD_DIR}" --no-rebuild
     if [ $? -ne 0 ]; then
         echo -e "Error: meson install failed"
+        echo -e "Hint: Run 'which -a meson' to check if multiple meson versions are installed."
+        echo -e "      If so, keep only one and remove the rest. (See: docs/source/docs/06_Troubleshooting_and_FAQ.md)"
         exit 1
     fi
     
