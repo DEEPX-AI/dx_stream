@@ -59,6 +59,7 @@ nav:
       - MsgBroker Pipeline: docs/Pipeline_Example/05_04_MsgBroker.md
   - Troubleshooting and FAQ: docs/06_Troubleshooting_and_FAQ.md
   - Debugging Guide: docs/07_Debugging_Guide.md
+  - Agentic Development: docs/08_DX-STREAM_Agentic_Development.md
   - Appendix:
       - User Metadata Guide: docs/Appendix_User_Metadata_Guide.md
       - Build on OrangePi5Plus: docs/Appendix_Build_on_OrangePi5Plus.md

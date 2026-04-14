@@ -1,0 +1,127 @@
+# dx_stream Knowledge Base
+# Structured knowledge for pipeline development patterns
+
+bottleneck_patterns:
+  BP-002:
+    domain: DX_STREAM
+    title: Multi-Stream Frame Drop
+    description: >
+      When running multiple streams through independent inference chains,
+      frames are dropped when NPU scheduling contention exceeds queue capacity.
+    symptoms:
+      - Visible frame drops in compositor output
+      - Uneven FPS across streams
+      - Queue overflow warnings in GST_DEBUG output
+    root_cause: >
+      Each independent inference chain competes for NPU time slots.
+      When total frame rate exceeds NPU throughput, queues overflow.
+    resolution:
+      - Use DxInputSelector/DxOutputSelector for time-division multiplexing
+      - Reduce per-stream frame rate with DxRate
+      - Increase queue max-size-buffers to absorb bursts
+      - Use smaller/faster models (yolo26n vs YoloV9S)
+
+  BP-004:
+    domain: DX_STREAM
+    title: NPU Scheduling Contention
+    description: >
+      Multiple DxInfer elements in the same pipeline (e.g., secondary mode)
+      compete for NPU scheduling, causing higher latency than expected.
+    symptoms:
+      - Total pipeline FPS lower than single-model benchmark
+      - Secondary inference adds more latency than model benchmark suggests
+      - NPU utilization shows bursty pattern
+    root_cause: >
+      NPU processes inference requests sequentially. Multiple DxInfer
+      elements interleave requests, increasing per-frame wait time.
+    resolution:
+      - Use interval property on secondary DxPreprocess to reduce load
+      - Use smaller models for secondary inference (EfficientNet_Lite0)
+      - Consider batch-size adjustment on primary model
+      - Monitor with dxrt-cli or GST_TRACERS
+
+  BP-005:
+    domain: DX_STREAM
+    title: Postprocess .so Load Failure
+    description: >
+      DxPostprocess fails to load the custom shared library at pipeline start.
+    symptoms:
+      - "Failed to load library" error message
+      - Pipeline fails to transition to PLAYING state
+      - Element initialization error in GST_DEBUG
+    root_cause: >
+      library-file-path is relative, file does not exist, or .so has
+      unresolved symbol dependencies.
+    resolution:
+      - Use absolute path for library-file-path
+      - Verify file exists with ls -la
+      - Check for missing dependencies with ldd
+      - Rebuild with meson setup builddir && ninja -C builddir
+
+insights:
+  INS-003:
+    domain: DX_STREAM
+    title: Basic Pipeline Pattern
+    description: >
+      The fundamental dx_stream pipeline follows a fixed element order:
+      source -> dxpreprocess -> queue -> dxinfer -> queue -> dxpostprocess -> queue -> dxosd -> sink.
+      Every variation (tracking, secondary, broker) extends this core pattern.
+    applies_to:
+      - All pipeline categories
+    key_points:
+      - Queue elements are mandatory between dx elements
+      - preprocess-id links DxPreprocess to DxInfer
+      - inference-id links DxInfer to DxPostprocess
+      - DxOsd is optional (omit for headless/broker pipelines)
+
+  INS-005:
+    domain: DX_STREAM
+    title: DxTracker Placement
+    description: >
+      DxTracker must be placed after DxPostprocess and before DxOsd.
+      It reads DXObjectMeta (bounding boxes) from DxPostprocess output
+      and assigns persistent track IDs using OC-SORT algorithm.
+    applies_to:
+      - Tracking pipelines
+      - Secondary mode pipelines (tracker on primary chain)
+    key_points:
+      - DxTracker operates on CPU (not NPU)
+      - Overhead scales with number of tracked objects
+      - Config file controls max_age, min_hits, iou_threshold
+      - Track IDs persist across frames until object is lost
+
+  INS-008:
+    domain: DX_STREAM
+    title: Secondary Mode Architecture
+    description: >
+      Secondary mode uses tee to split the pipeline after primary inference.
+      Each secondary branch has its own DxPreprocess (secondary-mode=true),
+      DxInfer, and DxPostprocess with unique preprocess-id/inference-id.
+      DxGather merges all branches before DxOsd.
+    applies_to:
+      - Secondary mode pipelines
+      - Cascade detection-classification workflows
+    key_points:
+      - Primary chain runs detection (e.g., YoloV5S_PPU)
+      - Secondary branches run on cropped object ROIs
+      - Use interval to control secondary inference frequency
+      - min-object-width/height filters small objects
+      - target-class-id restricts secondary to specific classes
+
+  INS-010:
+    domain: UNIVERSAL
+    title: Model Path Resolution
+    description: >
+      All model paths in dx_stream must be absolute or derived from
+      SCRIPT_DIR/SRC_DIR variables. Never hardcode relative paths
+      in committed scripts.
+    applies_to:
+      - All pipeline scripts
+    key_points:
+      - Shell scripts use $SRC_DIR/samples/models/<model>.dxnn
+      - Python scripts accept --model argument
+      - Auto-download logic checks existence before running
+
+recipes:
+  # Extensible section for future recipes
+  # Add new entries as patterns are discovered
