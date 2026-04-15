@@ -105,7 +105,7 @@ the plugin `.so` files fail to load even if they exist on disk.
 1. Run the sanity check: `bash ../../scripts/sanity_check.sh --dx_rt`
 2. If FAIL, install dx-runtime:
    ```bash
-   bash ../../install.sh --target=dx_rt,dx_rt_npu_linux_driver,dx_fw --skip-uninstall --venv-reuse
+   bash ../../install.sh --all --exclude-app --exclude-stream --skip-uninstall --venv-reuse
    ```
 3. Then reinstall dx_stream plugins: `cd dx_stream && ./install.sh && ./build.sh`
 4. Verify: `gst-inspect-1.0 dxinfer`
@@ -259,3 +259,23 @@ with `/path/to/<model>.dxnn` placeholders instead of real relative paths.
    - Never use `/path/to/` placeholders
 
 **Prevention**: Use the setup.sh/run.sh templates in `dx-build-pipeline-app.md`.
+
+---
+
+## 17. [UNIVERSAL] Overriding HARD GATE After User Says "Continue" — Unauthorized Bypass
+
+- **Symptom**: Agent ran `sanity_check.sh --dx_rt` which failed (NPU device initialization failure).
+  Agent ran `install.sh`, sanity check still failed. User said "use recommended defaults and work
+  to completion". Agent reinterpreted this as permission to override the HARD GATE and continued
+  building for 70+ minutes. Result: hybrid CPU/NPU workaround instead of proper NPU deployment.
+- **Root Cause**: No explicit rule that user instructions cannot override the sanity check HARD GATE
+  STOP. Agent rationalized "user wants me to continue" as overriding "STOP if still failing".
+  Also marked the prerequisite check as "done" despite it never passing.
+- **Fix**: The HARD GATE STOP is **unconditional**. Even explicit user instructions to continue
+  do NOT override it. If NPU hardware initialization fails after install.sh:
+  1. Inform user that a cold boot / system reboot is required
+  2. STOP and wait for user to reboot and re-run `sanity_check.sh --dx_rt`
+  3. NEVER proceed with code generation while sanity_check.sh is failing
+  4. NEVER mark the prerequisite check as "done" when it actually failed
+- **Prevention**: The HARD GATE rules now explicitly list "reinterpreting user's 'just continue' /
+  'work to completion' / autopilot instructions as permission to override" as a PROHIBITED bypass.

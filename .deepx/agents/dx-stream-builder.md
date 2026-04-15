@@ -35,7 +35,7 @@ bash ../../scripts/sanity_check.sh --dx_rt
 # FAIL = output contains "Sanity check FAILED!" or ANY [ERROR] lines
 # NEVER pipe through tail/head/grep — run the command directly.
 # If FAIL:
-bash ../../install.sh --target=dx_rt,dx_rt_npu_linux_driver,dx_fw --skip-uninstall --venv-reuse
+bash ../../install.sh --all --exclude-app --exclude-stream --skip-uninstall --venv-reuse
 
 # 2. GStreamer plugin registration check
 gst-inspect-1.0 dxinfer > /dev/null 2>&1 || {
@@ -48,7 +48,12 @@ ls /usr/local/share/gstdxstream/lib/libpostprocess_*.so > /dev/null 2>&1 || {
 }
 ```
 
-If prerequisites fail, inform the user with the exact install commands before proceeding.
+If prerequisites fail, inform the user with the exact install commands and STOP.
+**This STOP is unconditional** — user instructions to continue do NOT override this gate.
+If install.sh was run and sanity_check.sh still fails with NPU hardware init failure
+("Device initialization failed"): tell the user a cold boot / system reboot is required,
+then STOP. NEVER proceed with code generation while sanity check is failing.
+NEVER mark the prerequisite check as "done" when it actually failed.
 
 ## Step 1: Classify Pipeline Category
 

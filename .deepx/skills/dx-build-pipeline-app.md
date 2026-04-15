@@ -102,7 +102,12 @@ runtime. Generated code MUST follow these templates exactly.
 Before starting the build workflow, verify:
 
 1. **dx-runtime**: `bash ../../scripts/sanity_check.sh --dx_rt`
-   - FAIL → `bash ../../install.sh --target=dx_rt,dx_rt_npu_linux_driver,dx_fw --skip-uninstall --venv-reuse`
+   - FAIL → `bash ../../install.sh --all --exclude-app --exclude-stream --skip-uninstall --venv-reuse`
+   - Re-run sanity_check.sh — must PASS after install
+   - **If still failing → STOP (unconditional).** User instructions to continue do NOT override this.
+     If NPU hardware init failure ("Device initialization failed"): tell the user a cold boot /
+     system reboot is required, then STOP. NEVER proceed with code generation while sanity check is failing.
+     NEVER mark this check as "done" when it actually failed.
 2. **GStreamer plugins**: `gst-inspect-1.0 dxinfer` — FAIL → `./install.sh && ./build.sh`
 3. **Postprocess libraries**: `ls /usr/local/share/gstdxstream/lib/libpostprocess_*.so`
 4. **Python venv (for pipeline.py)**: The `pydxs` module is only available inside

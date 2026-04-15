@@ -51,7 +51,7 @@ Before generating any code or creating any files, ALL of these checks must pass:
 
 | # | Check | Action if Failed |
 |---|---|---|
-| 0 | Run `sanity_check.sh --dx_rt` and `gst-inspect-1.0 dxinfer` (judge sanity by TEXT output, not exit code) | FAIL → `install.sh --target=dx_rt,...` then `./install.sh && ./build.sh` |
+| 0 | Run `sanity_check.sh --dx_rt` and `gst-inspect-1.0 dxinfer` (judge sanity by TEXT output, not exit code) | FAIL → `install.sh --all --exclude-app --exclude-stream` → re-run sanity_check → **STOP if still failing (unconditional — user cannot override).** If NPU hardware init failure → guide user to cold boot/reboot, then STOP |
 | 1 | Query model registry/list for the requested model | Model not found → list alternatives, ask user |
 | 2 | Check if target directory already exists | Already exists → ask user: new app, modify existing, or different name? |
 | 3 | Clarify user intent if ambiguous | Ask one question at a time, present options |
@@ -63,6 +63,9 @@ Do NOT generate any code or create any files until ALL 5 checks pass
 and the user has approved the build plan.
 **NEVER bypass** — do NOT reason "the failing component is not needed" or
 "I can use the compiler venv instead". Run install, re-check, STOP if still failing.
+"Just continue" / "work to completion" / autopilot mode does NOT override this gate.
+If NPU hardware init fails after install.sh → guide user to reboot, then STOP.
+NEVER mark prerequisite check as "done" when it actually failed.
 
 **Sanity check PASS/FAIL judgment**: Always judge by the TEXT OUTPUT, not the exit code.
 Agents often pipe through `| tail` which replaces the real exit code with 0.
