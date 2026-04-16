@@ -11,5 +11,5 @@ Read `.deepx/skills/dx-validate.md` for full patterns.
 ```bash
 python .deepx/scripts/validate_framework.py
 python .deepx/scripts/validate_app.py <dir>
-pytest test/ -m "not npu_required"
+pytest test/
 ```

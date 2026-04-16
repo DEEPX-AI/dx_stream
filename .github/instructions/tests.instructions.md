@@ -11,5 +11,4 @@ Working on dx_stream test files.
 - `.deepx/instructions/testing-patterns.md`
 
 ## Rules
-- pytest markers: `@pytest.mark.npu_required`, `@pytest.mark.slow`, `@pytest.mark.smoke`
-- No-NPU tests: `pytest test/ -m "not npu_required"`
+- pytest markers: `@pytest.mark.slow`, `@pytest.mark.smoke`

@@ -323,8 +323,7 @@ def generate_claude(reader: DeepXReader) -> Dict[str, str]:
         "./setup.sh                          # Download sample models and videos",
         "dxrt-cli -s                         # Verify NPU availability",
         "gst-inspect-1.0 dxinfer             # Verify DxInfer plugin is registered",
-        'pytest test/ -m "not npu_required"  # Run unit tests (no NPU)',
-        "pytest test/ -m npu_required        # Run NPU integration tests",
+        'pytest test/                        # Run unit tests',
         "```\n",
         "## Skills\n",
     ]
@@ -473,9 +472,9 @@ def generate_vscode(reader: DeepXReader) -> Dict[str, str]:
                            "${input:scriptPath}",
             },
             {
-                "label": "dx_stream: Run tests (no NPU)",
+                "label": "dx_stream: Run tests",
                 "type": "shell",
-                "command": "pytest test/ -m 'not npu_required' -v",
+                "command": "pytest test/ -v",
                 "group": "test",
             },
         ],

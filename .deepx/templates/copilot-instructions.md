@@ -105,7 +105,7 @@ source ! queue ! DxPreprocess preprocess-id=0 ! queue ! DxInfer preprocess-id=0 
 ./setup.sh                          # Download sample models and videos
 dxrt-cli -s                         # Verify NPU availability
 gst-inspect-1.0 dxinfer             # Verify DxInfer plugin is registered
-pytest test/ -m "not npu_required"  # Run unit tests (no NPU)
+pytest test/                        # Run unit tests
 ```
 
 ## Hardware

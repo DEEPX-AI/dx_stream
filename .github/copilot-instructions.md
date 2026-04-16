@@ -73,6 +73,11 @@ First question: ...?
 
 Only output this reminder ONCE (before the first question), not before every question.
 
+## Shared Knowledge
+
+All skills, instructions, toolsets, and memory live in `.deepx/`.
+Read `.deepx/README.md` for the complete index.
+
 ## Context Routing Table
 
 | If the task mentions... | Read these files |
@@ -82,7 +87,11 @@ Only output this reminder ONCE (before the first question), not before every que
 | **Multi-model, cascaded, tiled** | `.deepx/skills/dx-build-pipeline-app.md`, `.deepx/toolsets/dx-stream-metadata.md` |
 | **Model, download** | `.deepx/skills/dx-model-management.md` |
 | **Validation, testing** | `.deepx/skills/dx-validate.md`, `.deepx/instructions/testing-patterns.md` |
-| **ALWAYS read** | `.deepx/memory/common_pitfalls.md`, `.deepx/instructions/coding-standards.md` |
+| **Validation, feedback, fix** | `.deepx/skills/dx-validate.md`, parent `dx-runtime/.deepx/skills/dx-validate-and-fix.md` |
+| **Brainstorm, plan, design** | `.deepx/skills/dx-brainstorm-and-plan.md` |
+| **TDD, validation, incremental** | `.deepx/skills/dx-tdd.md` |
+| **Completion, verify, evidence** | `.deepx/skills/dx-verify-completion.md` |
+| **ALWAYS read (every task)** | `.deepx/memory/common_pitfalls.md`, `.deepx/instructions/coding-standards.md` |
 
 ## Skills
 
@@ -92,6 +101,7 @@ Only output this reminder ONCE (before the first question), not before every que
 | dx-build-mqtt-kafka-app | Build MQTT/Kafka message broker pipeline |
 | dx-model-management | Download and configure .dxnn models for pipelines |
 | dx-validate | Run pipeline validation checks |
+| dx-validate-and-fix | Full feedback loop: validate, collect, approve, apply, verify |
 | dx-brainstorm-and-plan | Process: collaborative design session before code generation |
 | dx-tdd | Process: test-driven development — validate each file immediately after creation |
 | dx-verify-completion | Process: verify before claiming completion — evidence before assertions |
@@ -134,14 +144,14 @@ Only write to `src/` when explicitly requested by the user.
 
 ## 6 Pipeline Categories
 
-| Category | Pattern |
-|----------|---------|
-| Single-model | `src ! DxPreprocess ! DxInfer ! DxPostprocess ! DxOsd ! sink` |
-| Multi-model | Chain multiple DxInfer stages with distinct preprocess-ids |
-| Cascaded | `DxInfer ! DxRoiExtract ! DxScale ! DxInfer` |
-| Tiled | `DxTile ! DxInfer ! DxDeTile` |
-| Parallel | `DxMux` to combine, shared DxInfer |
-| Broker | `DxInfer ! DxMsgConv ! DxMsgBroker` |
+| Category | Description | Key Pattern |
+|----------|-------------|-------------|
+| **Single-model** | One model, one stream | `src ! DxPreprocess ! DxInfer ! DxPostprocess ! DxOsd ! sink` |
+| **Multi-model** | Multiple models, sequential | Chain multiple DxInfer stages with distinct preprocess-ids |
+| **Cascaded** | Primary detection feeds secondary classification | `DxInfer ! DxRoiExtract ! DxScale ! DxInfer` |
+| **Tiled** | High-res input split into tiles | `DxTile ! DxInfer ! DxDeTile` |
+| **Parallel** | Multiple streams processed in parallel | `DxMux` to combine, shared DxInfer |
+| **Broker** | Publish results to MQTT/Kafka | `DxInfer ! DxMsgConv ! DxMsgBroker` |
 
 ## Critical Conventions
 
@@ -151,13 +161,14 @@ Only write to `src/` when explicitly requested by the user.
 4. **Absolute model-path**: DxInfer `model-path` must be absolute
 5. **DxMsgConv before DxMsgBroker**: Serialize before publish
 6. **Logging**: `logging.getLogger(__name__)` — no `print()`
-7. **Mandatory output artifacts**: Every pipeline build session MUST produce these 4 files in the session directory — no exceptions:
-   - `session.json` — build metadata (timestamp, model, category, status)
-   - `README.md` — how to run, including venv activation (`source ../../venv-dx_stream/bin/activate`), model download, and run commands
-   - `pipeline.py` — Python GStreamer pipeline script
-   - `run_<app>.sh` — shell wrapper using `gst-launch-1.0`
-   Do NOT output the DONE sentinel until all 4 files exist. Run self-verification: `for f in session.json README.md pipeline.py run_*.sh; do [ -f "$f" ] && echo "OK: $f" || echo "MISSING: $f"; done`
-8. **x264enc universal rule**: Every `x264enc` in ANY context (shell, Python, pipeline strings) MUST include `bitrate=4000 speed-preset=ultrafast tune=zerolatency` — bare `x264enc` causes deadlocks (pitfall #14)
+7. **Skill doc is sufficient**: Do NOT read source code unless skill is insufficient
+8. **No hardcoded model paths**: Use variables or config for model path resolution
+9. **Model list**: Query `model_list.json` for model download URLs and expected paths
+10. **PPU model auto-detection**: Auto-detect PPU models by checking model name `_ppu` suffix, `model_list.json` postprocess library, or compiler session context. PPU pipelines omit `DxPostprocess` or use a pass-through library — no separate NMS needed.
+11. **Existing pipeline search**: Before generating a new pipeline, search `pipelines/` and `run_*.sh` scripts for existing examples. If found, ask user: (a) explain existing only, or (b) create new pipeline based on existing. Never silently skip or overwrite.
+12. **PPU pipeline generation is MANDATORY**: If the compiled .dxnn model is PPU, the agent MUST generate a working pipeline example.
+13. **Mandatory output artifacts**: Every pipeline build session MUST produce: `pipeline.py`, `run_<app>.sh`, `session.json`, `README.md`, `setup.sh`, `run.sh`, `session.log`. The `session.log` must contain actual command output (never a hand-written summary). Run self-verification before presenting the final report.
+14. **x264enc universal rule**: Every `x264enc` in ANY context (shell, Python, pipeline strings) MUST include `bitrate=4000 speed-preset=ultrafast tune=zerolatency` — bare `x264enc` causes deadlocks (pitfall #14)
 
 ## Pipeline Template
 
@@ -172,7 +183,7 @@ source ! queue ! DxPreprocess preprocess-id=0 ! queue ! DxInfer preprocess-id=0 
 ./setup.sh                           # Download sample models and videos
 dxrt-cli -s                          # Verify NPU availability
 gst-inspect-1.0 dxinfer              # Verify DxInfer plugin
-pytest test/ -m "not npu_required"   # Run unit tests
+pytest test/                         # Run unit tests
 ```
 
 ## No Placeholder Code (MANDATORY)
@@ -203,6 +214,13 @@ directly to "Ask clarifying questions" (step 3).
 If a feature does not exist, do not pretend it does. Stick to proven, documented
 capabilities only.
 
+**Autopilot / autonomous mode override**: When the user is absent (autopilot mode,
+auto-response "work autonomously", or `--yolo` flag), the brainstorming skill's
+"Ask clarifying questions" step MUST be replaced with "Make default decisions per
+knowledge base rules". Do NOT call `ask_user` — skip straight to producing the
+brainstorming spec using knowledge base defaults. All subsequent gates (spec review,
+plan, TDD, mandatory artifacts, execution verification) still apply without exception.
+
 ## Brainstorming — Spec Before Plan (HARD GATE)
 
 When using the superpowers `brainstorming` skill or `/dx-brainstorm-and-plan`:
@@ -224,6 +242,36 @@ When using the superpowers `brainstorming` skill or `/dx-brainstorm-and-plan`:
 | Architecture | Value |
 |---|---|
 | DX-M1 | `dx_m1` |
+
+## Autopilot Mode Guard (MANDATORY)
+
+When the user is absent — autopilot mode, `--yolo` flag, or system auto-response
+"The user is not available to respond" — the following rules apply:
+
+1. **"Work autonomously" means "follow all rules without asking", NOT "skip rules".**
+   Every mandatory gate still applies: brainstorming spec, plan, TDD, mandatory
+   artifacts, execution verification, and self-verification checks.
+2. **Do NOT call `ask_user`** — Make decisions using knowledge base defaults and
+   documented best practices. Calling `ask_user` in autopilot wastes a turn and
+   the auto-response does not grant permission to bypass any gate.
+3. **User approval gate adaptation** — In autopilot, the spec approval gate is
+   satisfied by writing the spec and self-reviewing it against the knowledge base.
+   Do NOT skip the spec entirely.
+4. **setup.sh FIRST** — Generate infrastructure artifacts (`setup.sh`, `config.json`)
+   before writing any application code. This is especially critical in autopilot
+   because there is no human to catch missing dependencies.
+5. **Execution verification is NOT optional** — Run the generated code and verify it
+   works before declaring completion. In autopilot, there is no user to catch errors.
+
+## Memory
+
+Persistent knowledge in `.deepx/memory/`. Read at task start, update when learning.
+
+## Git Operations — User Handles
+
+Do NOT ask about git branch operations (merge, PR, push, cleanup) at the end of
+work. The user will handle all git operations themselves. Never present options
+like "merge to main", "create PR", or "delete branch" — just finish the task.
 
 ## Git Safety — Superpowers Artifacts
 

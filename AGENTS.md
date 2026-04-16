@@ -1,4 +1,4 @@
-# dx_stream — Claude Code Entry Point
+# dx_stream — AI Coding Agents Entry Point
 
 > Self-contained entry point for dx_stream GStreamer pipeline development.
 
@@ -84,8 +84,7 @@ Read `.deepx/README.md` for the complete index.
 ./setup.sh                          # Download sample models and videos
 dxrt-cli -s                         # Verify NPU availability
 gst-inspect-1.0 dxinfer             # Verify DxInfer plugin is registered
-pytest test/ -m "not npu_required"  # Run unit tests (no NPU)
-pytest test/ -m npu_required        # Run NPU integration tests
+pytest test/                        # Run unit tests
 ```
 
 ## Skills
@@ -97,9 +96,18 @@ pytest test/ -m npu_required        # Run NPU integration tests
 | /dx-model-management | Download and configure .dxnn models for pipelines |
 | /dx-validate | Run pipeline validation checks |
 | /dx-validate-and-fix | Full feedback loop: validate, collect, approve, apply, verify |
-| /dx-brainstorm-and-plan | Brainstorm and plan before any code generation |
-| /dx-tdd | Test-driven development — validate each file immediately after creation |
-| /dx-verify-completion | Verify before claiming completion — evidence before assertions |
+| /dx-brainstorm-and-plan | Process: collaborative design session before code generation |
+| /dx-tdd | Process: test-driven development — validate each file immediately after creation |
+| /dx-verify-completion | Process: verify before claiming completion — evidence before assertions |
+
+## Interactive Workflow (MUST FOLLOW)
+
+**Always walk through key decisions with the user before building.** This is a HARD GATE.
+
+### Before ANY code generation:
+1. **Brainstorm**: Ask 2-3 clarifying questions — variant, task type, model. Present a build plan and get approval.
+2. **Build with TDD**: Validate each file immediately after creation.
+3. **Verify**: Evidence before claims — run validation scripts before declaring success.
 
 ### Output Isolation
 All AI-generated code goes to `dx-agentic-dev/<session_id>/` by default.
@@ -121,10 +129,11 @@ Only write to `src/` when explicitly requested by the user.
 7. **Skill doc is sufficient**: Do NOT read source code unless skill is insufficient
 8. **No hardcoded model paths**: Use variables or config for model path resolution
 9. **Model list**: Query `model_list.json` for model download URLs and expected paths
-10. **PPU model auto-detection**: Auto-detect PPU models by checking model name `_ppu` suffix, `model_list.json` postprocess library, or compiler session context. PPU pipelines omit `DxPostprocess` or use a pass-through library.
-11. **Existing pipeline search**: Before generating a new pipeline, search `pipelines/` and `run_*.sh` for existing examples. If found, ask user: (a) explain-only, or (b) create new based on existing. Never silently skip or overwrite.
+10. **PPU model auto-detection**: Auto-detect PPU models by checking model name `_ppu` suffix, `model_list.json` postprocess library, or compiler session context. PPU pipelines omit `DxPostprocess` or use a pass-through library — no separate NMS needed.
+11. **Existing pipeline search**: Before generating a new pipeline, search `pipelines/` and `run_*.sh` scripts for existing examples. If found, ask user: (a) explain existing only, or (b) create new pipeline based on existing. Never silently skip or overwrite.
 12. **PPU pipeline generation is MANDATORY**: If the compiled .dxnn model is PPU, the agent MUST generate a working pipeline example.
 13. **Mandatory output artifacts**: Every pipeline build session MUST produce: `pipeline.py`, `run_<app>.sh`, `session.json`, `README.md`, `setup.sh`, `run.sh`, `session.log`. The `session.log` must contain actual command output (never a hand-written summary). Run self-verification before presenting the final report.
+14. **x264enc universal rule**: Every `x264enc` in ANY context (shell, Python, pipeline strings) MUST include `bitrate=4000 speed-preset=ultrafast tune=zerolatency` — bare `x264enc` causes deadlocks (pitfall #14)
 
 ## Context Routing Table
 
@@ -135,7 +144,7 @@ Only write to `src/` when explicitly requested by the user.
 | **Multi-model, cascaded, tiled** | `.deepx/skills/dx-build-pipeline-app.md`, `.deepx/toolsets/dx-stream-metadata.md` |
 | **Model, download** | `.deepx/skills/dx-model-management.md` |
 | **Validation, testing** | `.deepx/skills/dx-validate.md`, `.deepx/instructions/testing-patterns.md` |
-| **Validation, feedback, fix** | `.deepx/skills/dx-validate.md` (cross-project: `dx-runtime/.deepx/skills/dx-validate-and-fix.md`) |
+| **Validation, feedback, fix** | `.deepx/skills/dx-validate.md`, parent `dx-runtime/.deepx/skills/dx-validate-and-fix.md` |
 | **Brainstorm, plan, design** | `.deepx/skills/dx-brainstorm-and-plan.md` |
 | **TDD, validation, incremental** | `.deepx/skills/dx-tdd.md` |
 | **Completion, verify, evidence** | `.deepx/skills/dx-verify-completion.md` |

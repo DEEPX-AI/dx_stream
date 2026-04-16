@@ -84,8 +84,7 @@ Read `.deepx/README.md` for the complete index.
 ./setup.sh                          # Download sample models and videos
 dxrt-cli -s                         # Verify NPU availability
 gst-inspect-1.0 dxinfer             # Verify DxInfer plugin is registered
-pytest test/ -m "not npu_required"  # Run unit tests (no NPU)
-pytest test/ -m npu_required        # Run NPU integration tests
+pytest test/                        # Run unit tests
 ```
 
 ## Skills
@@ -134,6 +133,7 @@ Only write to `src/` when explicitly requested by the user.
 11. **Existing pipeline search**: Before generating a new pipeline, search `pipelines/` and `run_*.sh` scripts for existing examples. If found, ask user: (a) explain existing only, or (b) create new pipeline based on existing. Never silently skip or overwrite.
 12. **PPU pipeline generation is MANDATORY**: If the compiled .dxnn model is PPU, the agent MUST generate a working pipeline example.
 13. **Mandatory output artifacts**: Every pipeline build session MUST produce: `pipeline.py`, `run_<app>.sh`, `session.json`, `README.md`, `setup.sh`, `run.sh`, `session.log`. The `session.log` must contain actual command output (never a hand-written summary). Run self-verification before presenting the final report.
+14. **x264enc universal rule**: Every `x264enc` in ANY context (shell, Python, pipeline strings) MUST include `bitrate=4000 speed-preset=ultrafast tune=zerolatency` — bare `x264enc` causes deadlocks (pitfall #14)
 
 ## Context Routing Table
 
@@ -145,8 +145,7 @@ Only write to `src/` when explicitly requested by the user.
 | **Model, download** | `.deepx/skills/dx-model-management.md` |
 | **Validation, testing** | `.deepx/skills/dx-validate.md`, `.deepx/instructions/testing-patterns.md` |
 | **Validation, feedback, fix** | `.deepx/skills/dx-validate.md`, parent `dx-runtime/.deepx/skills/dx-validate-and-fix.md` |
-| **ALWAYS read (every task)** | `.deepx/memory/common_pitfalls.md`, `.deepx/instructions/coding-standards.md` |
-| **Brainstorm, plan, design** | `.deepx/skills/dx-brainstorm-and-plan.md` |
+| **ALWAYS read (every task)** | `.deepx/memory/common_pitfalls.md`, `.deepx/instructions/coding-standards.md` || **Brainstorm, plan, design** | `.deepx/skills/dx-brainstorm-and-plan.md` |
 | **TDD, validation, incremental** | `.deepx/skills/dx-tdd.md` |
 | **Completion, verify, evidence** | `.deepx/skills/dx-verify-completion.md` |
 
