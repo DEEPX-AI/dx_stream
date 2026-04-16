@@ -17,6 +17,12 @@ Master router for dx_stream pipeline tasks.
 Output `[DX-AGENTIC-DEV: START]` as the first line of your response.
 Skip this if you were invoked as a sub-agent via handoff from a higher-level agent.
 
+## Context Loading (MANDATORY)
+
+1. Read `.github/copilot-instructions.md` for this level's global context (MANDATORY)
+2. Read `.deepx/memory/common_pitfalls.md` (always)
+3. Read `.deepx/skills/dx-build-pipeline-app.md` (if building pipeline)
+
 ## Routing
 | Category | Route To |
 |---|---|

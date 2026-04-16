@@ -75,6 +75,54 @@ the knowledge base through its own configuration.
 | `/dx-tdd` | Test-driven development with incremental validation |
 | `/dx-verify-completion` | Verify completion with evidence before assertions |
 
+### Platform File Loading Reference
+
+Each AI coding agent auto-loads different configuration files at the dx_stream level.
+
+#### Auto-Loaded Files
+
+| File | Copilot Chat/CLI | OpenCode | Claude Code | Cursor | Loading |
+|------|:---:|:---:|:---:|:---:|---------|
+| `.github/copilot-instructions.md` | ✅ | — | — | — | Auto |
+| `CLAUDE.md` | — | — | ✅ | — | Auto |
+| `AGENTS.md` + `opencode.json` | — | ✅ | — | — | Auto |
+| `.cursor/rules/dx-stream.mdc` | — | — | — | ✅ | Auto |
+
+#### Agent Files (Manual @mention)
+
+| Agent | Copilot (`@mention`) | OpenCode (`@mention`) |
+|-------|------|---------|
+| `dx-stream-builder` | `.github/agents/dx-stream-builder.agent.md` | `.opencode/agents/dx-stream-builder.md` |
+| `dx-pipeline-builder` | `.github/agents/dx-pipeline-builder.agent.md` | `.opencode/agents/dx-pipeline-builder.md` |
+| `dx-model-manager` | `.github/agents/dx-model-manager.agent.md` | `.opencode/agents/dx-model-manager.md` |
+| `dx-validator` | `.github/agents/dx-validator.agent.md` | `.opencode/agents/dx-validator.md` |
+
+#### Skill Files (OpenCode Only — `/slash-command`)
+
+| Skill | File |
+|-------|------|
+| `/dx-brainstorm-and-plan` | `.opencode/skills/dx-brainstorm-and-plan/SKILL.md` |
+| `/dx-build-pipeline-app` | `.opencode/skills/dx-build-pipeline-app/SKILL.md` |
+| `/dx-build-mqtt-kafka-app` | `.opencode/skills/dx-build-mqtt-kafka-app/SKILL.md` |
+| `/dx-model-management` | `.opencode/skills/dx-model-management/SKILL.md` |
+| `/dx-validate` | `.opencode/skills/dx-validate/SKILL.md` |
+| `/dx-verify-completion` | `.opencode/skills/dx-verify-completion/SKILL.md` |
+| `/dx-tdd` | `.opencode/skills/dx-tdd/SKILL.md` |
+
+#### Shared Knowledge Base (`.deepx/`)
+
+The `.deepx/` directory is a platform-agnostic knowledge base read on demand by all
+agent platforms. It is NOT auto-loaded — agents and skills reference specific files
+as needed during task execution.
+
+| Directory | Files | Description |
+|-----------|-------|-------------|
+| `.deepx/agents/` | 4 files (`dx-stream-builder.md`, `dx-pipeline-builder.md`, `dx-model-manager.md`, `dx-validator.md`) | Authoritative agent definitions |
+| `.deepx/skills/` | 7 files (`dx-build-pipeline-app.md`, `dx-build-mqtt-kafka-app.md`, `dx-model-management.md`, `dx-validate.md`, `dx-brainstorm-and-plan.md`, `dx-tdd.md`, `dx-verify-completion.md`) | Detailed skill workflows |
+| `.deepx/toolsets/` | 4 files | GStreamer elements and API references |
+| `.deepx/instructions/` | 6 files | Coding standards and workflow rules |
+| `.deepx/memory/` | 4 files | Persistent knowledge — pitfalls and session memory |
+
 ---
 
 ## User Scenarios

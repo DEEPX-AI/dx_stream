@@ -109,6 +109,11 @@ Before ANY code generation:
 All AI-generated code goes to `dx-agentic-dev/<session_id>/` by default.
 Only write to `src/` when explicitly requested by the user.
 
+**Session ID format**: `YYYYMMDD-HHMMSS_<model>_<task>` — the timestamp MUST use the
+**system local timezone** (NOT UTC). Use `$(date +%Y%m%d-%H%M%S)` in Bash or
+`datetime.now().strftime('%Y%m%d-%H%M%S')` in Python. Do NOT use `date -u`,
+`datetime.utcnow()`, or `datetime.now(timezone.utc)`.
+
 ## 13 GStreamer Elements
 
 | Element | Purpose |

@@ -78,6 +78,52 @@ dx_stream 에이전틱 개발은 4가지 AI 코딩 도구에서 작동합니다.
 | `/dx-tdd` | 점진적 검증을 포함한 테스트 주도 개발 |
 | `/dx-verify-completion` | 증거 기반 완료 검증 |
 
+### 플랫폼별 파일 참조
+
+각 AI 코딩 에이전트는 dx_stream 레벨에서 서로 다른 설정 파일을 자동 로딩합니다.
+
+#### 자동 로딩 파일
+
+| 파일 | Copilot Chat/CLI | OpenCode | Claude Code | Cursor | 로딩 |
+|------|:---:|:---:|:---:|:---:|---------|
+| `.github/copilot-instructions.md` | ✅ | — | — | — | 자동 |
+| `CLAUDE.md` | — | — | ✅ | — | 자동 |
+| `AGENTS.md` + `opencode.json` | — | ✅ | — | — | 자동 |
+| `.cursor/rules/dx-stream.mdc` | — | — | — | ✅ | 자동 |
+
+#### 에이전트 파일 (수동 @mention)
+
+| 에이전트 | Copilot (`@mention`) | OpenCode (`@mention`) |
+|---------|------|---------|
+| `dx-stream-builder` | `.github/agents/dx-stream-builder.agent.md` | `.opencode/agents/dx-stream-builder.md` |
+| `dx-pipeline-builder` | `.github/agents/dx-pipeline-builder.agent.md` | `.opencode/agents/dx-pipeline-builder.md` |
+| `dx-model-manager` | `.github/agents/dx-model-manager.agent.md` | `.opencode/agents/dx-model-manager.md` |
+| `dx-validator` | `.github/agents/dx-validator.agent.md` | `.opencode/agents/dx-validator.md` |
+
+#### 스킬 파일 (OpenCode 전용 — `/slash-command`)
+
+| 스킬 | 파일 |
+|-------|------|
+| `/dx-brainstorm-and-plan` | `.opencode/skills/dx-brainstorm-and-plan/SKILL.md` |
+| `/dx-build-pipeline-app` | `.opencode/skills/dx-build-pipeline-app/SKILL.md` |
+| `/dx-build-mqtt-kafka-app` | `.opencode/skills/dx-build-mqtt-kafka-app/SKILL.md` |
+| `/dx-model-management` | `.opencode/skills/dx-model-management/SKILL.md` |
+| `/dx-validate` | `.opencode/skills/dx-validate/SKILL.md` |
+| `/dx-verify-completion` | `.opencode/skills/dx-verify-completion/SKILL.md` |
+| `/dx-tdd` | `.opencode/skills/dx-tdd/SKILL.md` |
+
+#### 공유 지식 베이스 (`.deepx/`)
+
+`.deepx/` 디렉토리는 모든 에이전트 플랫폼이 필요 시 참조하는 플랫폼 독립적 지식 베이스입니다. 자동 로딩되지 않으며, 에이전트와 스킬이 작업 실행 중 필요한 파일을 참조합니다.
+
+| 디렉토리 | 파일 | 설명 |
+|-----------|-------|-------------|
+| `.deepx/agents/` | 4개 파일 (`dx-stream-builder.md`, `dx-pipeline-builder.md`, `dx-model-manager.md`, `dx-validator.md`) | 권위 있는 에이전트 정의 |
+| `.deepx/skills/` | 7개 파일 (`dx-build-pipeline-app.md`, `dx-build-mqtt-kafka-app.md`, `dx-model-management.md`, `dx-validate.md`, `dx-brainstorm-and-plan.md`, `dx-tdd.md`, `dx-verify-completion.md`) | 상세 스킬 워크플로우 |
+| `.deepx/toolsets/` | 4개 파일 | GStreamer 요소 및 API 참조 |
+| `.deepx/instructions/` | 6개 파일 | 코딩 표준 및 워크플로우 규칙 |
+| `.deepx/memory/` | 4개 파일 | 지속적 지식 — 함정 및 세션 메모리 |
+
 ---
 
 ## 사용자 시나리오
