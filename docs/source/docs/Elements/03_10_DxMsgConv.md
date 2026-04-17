@@ -54,6 +54,8 @@ The element processes metadata through the custom library to generate message pa
 
     The actual message format depends entirely on the implementation of your custom library. The above is just an example from the provided default library. For detailed implementation guidance and complete JSON structure examples, refer to **Chapter 4. Writing Your Own Application**.
 
+    In the default library, frame-level segmentation remains a full-frame semantic class map, while object-level `segment` payloads are ROI-local binary masks aligned to the corresponding `object.box`.
+
 ### **Hierarchy**
 
 ```

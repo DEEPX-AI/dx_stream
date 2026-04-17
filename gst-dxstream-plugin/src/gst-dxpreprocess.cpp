@@ -7,7 +7,7 @@
 #include <json-glib/json-glib.h>
 #include <libyuv.h>
 
-enum {
+enum class PropertyID {
     PROP_0,
     PROP_CONFIG_FILE_PATH,
     PROP_LIBRARY_FILE_PATH,
@@ -33,8 +33,6 @@ GST_DEBUG_CATEGORY_STATIC(gst_dxpreprocess_debug_category);
 
 static GstFlowReturn gst_dxpreprocess_transform_ip(GstBaseTransform *trans,
                                                    GstBuffer *buf);
-static GstFlowReturn gst_dxpreprocess_prepare_output_buffer(
-    GstBaseTransform *trans, GstBuffer *inbuf, GstBuffer **outbuf);
 static gboolean gst_dxpreprocess_start(GstBaseTransform *trans);
 static gboolean gst_dxpreprocess_stop(GstBaseTransform *trans);
 static gboolean gst_dxpreprocess_src_event(GstBaseTransform *trans,
@@ -42,12 +40,9 @@ static gboolean gst_dxpreprocess_src_event(GstBaseTransform *trans,
 static gboolean gst_dxpreprocess_sink_event(GstBaseTransform *trans,
                                             GstEvent *event);
 
-G_DEFINE_TYPE_WITH_CODE(
-    GstDxPreprocess, gst_dxpreprocess, GST_TYPE_BASE_TRANSFORM,
-    GST_DEBUG_CATEGORY_INIT(gst_dxpreprocess_debug_category, "gst-dxpreprocess",
-                            0, "debug category for gst-dxpreprocess element"))
+G_DEFINE_TYPE(GstDxPreprocess, gst_dxpreprocess, GST_TYPE_BASE_TRANSFORM);
 
-static GstElementClass *parent_class = nullptr;
+static GstElementClass *parent_class = nullptr;  // NOSONAR - GStreamer standard pattern with G_DEFINE_TYPE macro
 
 static gboolean validate_roi(JsonArray *roi_array, gint *out_roi) {
     if (!roi_array || json_array_get_length(roi_array) != 4) {
@@ -61,21 +56,22 @@ static gboolean validate_roi(JsonArray *roi_array, gint *out_roi) {
             g_printerr("Error: ROI array must contain only integer values.\n");
             return FALSE;
         }
-        out_roi[i] = json_node_get_int(node);
+        out_roi[i] = static_cast<gint>(json_node_get_int(node));
     }
     return TRUE;
 }
 
 static void parse_config(GstDxPreprocess *self) {
-    if (!g_file_test(self->_config_file_path, G_FILE_TEST_EXISTS)) {
+    if (!g_file_test(self->_config.file_path, G_FILE_TEST_EXISTS)) {
         g_error("[dxpreprocess] Config file does not exist: %s\n",
-                self->_config_file_path);
+                self->_config.file_path);
         return;
     }
 
+    GST_INFO_OBJECT(self, "Loading preprocess config file: %s", self->_config.file_path);
     JsonParser *parser = json_parser_new();
     GError *error = nullptr;
-    if (!json_parser_load_from_file(parser, self->_config_file_path, &error)) {
+    if (!json_parser_load_from_file(parser, self->_config.file_path, &error)) {
         g_error("[dxpreprocess] Failed to load config file: %s",
                 error->message);
         g_object_unref(parser);
@@ -96,9 +92,9 @@ static void parse_config(GstDxPreprocess *self) {
                         const char *err_name) {
         if (!json_object_has_member(object, json_key))
             return;
-        gint val = json_object_get_int_member(object, json_key);
+        gint64 val = json_object_get_int_member(object, json_key);
         if (val < 0) {
-            g_error("[dxpreprocess] Member %s has a negative value (%d).",
+            g_error("[dxpreprocess] Member %s has a negative value (%ld).",
                     err_name, val);
         }
         target = static_cast<guint>(val);
@@ -113,42 +109,45 @@ static void parse_config(GstDxPreprocess *self) {
     set_string("library_file_path", "library-file-path");
     set_string("function_name", "function-name");
 
-    set_uint("preprocess_id", self->_preprocess_id, "preprocess_id");
-    set_uint("resize_width", self->_resize_width, "resize_width");
-    set_uint("resize_height", self->_resize_height, "resize_height");
-    set_uint("pad_value", self->_pad_value, "pad_value");
-    set_uint("min_object_width", self->_min_object_width, "min_object_width");
-    set_uint("min_object_height", self->_min_object_height,
+    set_uint("preprocess_id", self->_preprocess.id, "preprocess_id");
+    set_uint("resize_width", self->_preprocess.width, "resize_width");
+    set_uint("resize_height", self->_preprocess.height, "resize_height");
+    set_uint("pad_value", self->_preprocess.pad_value, "pad_value");
+    set_uint("min_object_width", self->_object_filter.min_width, "min_object_width");
+    set_uint("min_object_height", self->_object_filter.min_height,
              "min_object_height");
-    set_uint("interval", self->_interval, "interval");
+    set_uint("interval", self->_frame_ctrl.interval, "interval");
 
     if (json_object_has_member(object, "color_format")) {
         const gchar *fmt =
             json_object_get_string_member(object, "color_format");
         if (g_strcmp0(fmt, "RGB") == 0 || g_strcmp0(fmt, "BGR") == 0) {
-            g_free(self->_color_format);
-            self->_color_format = g_strdup(fmt);
+            g_free(self->_preprocess.color_format);
+            self->_preprocess.color_format = g_strdup(fmt);
         } else {
             g_warning("Invalid color mode: %s. Use RGB or BGR", fmt);
         }
     }
 
     if (json_object_has_member(object, "target_class_id")) {
-        self->_target_class_id =
-            json_object_get_int_member(object, "target_class_id");
+        gint64 val = json_object_get_int_member(object, "target_class_id");
+        if (val < G_MININT || val > G_MAXINT) {
+            g_error("[dxpreprocess] target_class_id value out of range");
+        }
+        self->_object_filter.target_class_id = static_cast<gint>(val);
     }
 
     if (json_object_has_member(object, "roi")) {
         JsonArray *roi_array = json_object_get_array_member(object, "roi");
-        gint roi[4];
-        if (validate_roi(roi_array, roi)) {
-            memcpy(self->_roi, roi, sizeof(roi));
+        std::array<gint, 4> roi;
+        if (validate_roi(roi_array, roi.data())) {
+            memcpy(self->_object_filter.roi, roi.data(), sizeof(roi));
         }
     }
 
-    set_boolean("keep_ratio", self->_keep_ratio);
-    set_boolean("secondary_mode", self->_secondary_mode);
-    set_boolean("transpose", self->_transpose);
+    set_boolean("keep_ratio", self->_preprocess.keep_ratio);
+    set_boolean("secondary_mode", self->_object_filter.secondary_mode);
+    set_boolean("transpose", self->_preprocess.transpose);
 
     g_object_unref(parser);
 }
@@ -157,88 +156,88 @@ static void dxpreprocess_set_property(GObject *object, guint property_id,
                                       const GValue *value, GParamSpec *pspec) {
     GstDxPreprocess *self = GST_DXPREPROCESS(object);
 
-    switch (property_id) {
-    case PROP_CONFIG_FILE_PATH:
-        if (nullptr != self->_config_file_path)
-            g_free(self->_config_file_path);
-        self->_config_file_path = g_strdup(g_value_get_string(value));
+    switch (static_cast<PropertyID>(property_id)) {
+    case PropertyID::PROP_CONFIG_FILE_PATH:
+        if (nullptr != self->_config.file_path)
+            g_free(self->_config.file_path);
+        self->_config.file_path = g_strdup(g_value_get_string(value));
         parse_config(self);
         break;
 
-    case PROP_LIBRARY_FILE_PATH:
-        if (self->_library_file_path) {
-            g_free(self->_library_file_path);
+    case PropertyID::PROP_LIBRARY_FILE_PATH:
+        if (self->_config.library_path) {
+            g_free(self->_config.library_path);
         }
-        self->_library_file_path = g_value_dup_string(value);
+        self->_config.library_path = g_value_dup_string(value);
         break;
 
-    case PROP_FUNCTION_NAME:
-        if (self->_function_name) {
-            g_free(self->_function_name);
+    case PropertyID::PROP_FUNCTION_NAME:
+        if (self->_config.function_name) {
+            g_free(self->_config.function_name);
         }
-        self->_function_name = g_value_dup_string(value);
+        self->_config.function_name = g_value_dup_string(value);
         break;
 
-    case PROP_PREPROCESS_ID:
-        self->_preprocess_id = g_value_get_uint(value);
+    case PropertyID::PROP_PREPROCESS_ID:
+        self->_preprocess.id = g_value_get_uint(value);
         break;
 
-    case PROP_COLOR_FORMAT: {
-        g_free(self->_color_format);
+    case PropertyID::PROP_COLOR_FORMAT: {
+        g_free(self->_preprocess.color_format);
         guint color_value = g_value_get_uint(value);
         if (color_value == 0) {
-            self->_color_format = g_strdup("RGB");
+            self->_preprocess.color_format = g_strdup("RGB");
         } else if (color_value == 1) {
-            self->_color_format = g_strdup("BGR");
+            self->_preprocess.color_format = g_strdup("BGR");
         } else {
             g_warning("Invalid color mode: %d. Use RGB or BGR.", color_value);
         }
         break;
     }
-    case PROP_RESIZE_WIDTH:
-        self->_resize_width = g_value_get_uint(value);
+    case PropertyID::PROP_RESIZE_WIDTH:
+        self->_preprocess.width = g_value_get_uint(value);
         break;
 
-    case PROP_RESIZE_HEIGHT:
-        self->_resize_height = g_value_get_uint(value);
+    case PropertyID::PROP_RESIZE_HEIGHT:
+        self->_preprocess.height = g_value_get_uint(value);
         break;
 
-    case PROP_KEEP_RATIO:
-        self->_keep_ratio = g_value_get_boolean(value);
+    case PropertyID::PROP_KEEP_RATIO:
+        self->_preprocess.keep_ratio = g_value_get_boolean(value);
         break;
 
-    case PROP_PAD_VALUE:
-        self->_pad_value = g_value_get_uint(value);
+    case PropertyID::PROP_PAD_VALUE:
+        self->_preprocess.pad_value = g_value_get_uint(value);
         break;
 
-    case PROP_SECONDARY_MODE:
-        self->_secondary_mode = g_value_get_boolean(value);
+    case PropertyID::PROP_SECONDARY_MODE:
+        self->_object_filter.secondary_mode = g_value_get_boolean(value);
         break;
 
-    case PROP_TRANSPOSE:
-        self->_transpose = g_value_get_boolean(value);
+    case PropertyID::PROP_TRANSPOSE:
+        self->_preprocess.transpose = g_value_get_boolean(value);
         break;
 
-    case PROP_TARGET_CLASS_ID:
-        self->_target_class_id = g_value_get_int(value);
+    case PropertyID::PROP_TARGET_CLASS_ID:
+        self->_object_filter.target_class_id = g_value_get_int(value);
         break;
 
-    case PROP_MIN_OBJECT_WIDTH:
-        self->_min_object_width = g_value_get_uint(value);
+    case PropertyID::PROP_MIN_OBJECT_WIDTH:
+        self->_object_filter.min_width = g_value_get_uint(value);
         break;
 
-    case PROP_MIN_OBJECT_HEIGHT:
-        self->_min_object_height = g_value_get_uint(value);
+    case PropertyID::PROP_MIN_OBJECT_HEIGHT:
+        self->_object_filter.min_height = g_value_get_uint(value);
         break;
 
-    case PROP_INTERVAL:
-        self->_interval = g_value_get_uint(value);
+    case PropertyID::PROP_INTERVAL:
+        self->_frame_ctrl.interval = g_value_get_uint(value);
         break;
 
-    case PROP_ROI: {
+    case PropertyID::PROP_ROI: {
         if (G_VALUE_HOLDS_STRING(value)) {
             const gchar *roi_str = g_value_get_string(value);
-            gint roi_values[4];
+            std::array<gint, 4> roi_values;
             int count = sscanf(roi_str, "%d,%d,%d,%d", &roi_values[0],
                                &roi_values[1], &roi_values[2], &roi_values[3]);
 
@@ -249,7 +248,7 @@ static void dxpreprocess_set_property(GObject *object, guint property_id,
             }
 
             for (size_t i = 0; i < 4; i++) {
-                self->_roi[i] = roi_values[i];
+                self->_object_filter.roi[i] = roi_values[i];
             }
         }
         break;
@@ -265,80 +264,81 @@ static void dxpreprocess_get_property(GObject *object, guint property_id,
                                       GValue *value, GParamSpec *pspec) {
     GstDxPreprocess *self = GST_DXPREPROCESS(object);
 
-    switch (property_id) {
-    case PROP_CONFIG_FILE_PATH:
-        g_value_set_string(value, self->_config_file_path);
+    switch (static_cast<PropertyID>(property_id)) {
+    case PropertyID::PROP_CONFIG_FILE_PATH:
+        g_value_set_string(value, self->_config.file_path);
         break;
 
-    case PROP_LIBRARY_FILE_PATH:
-        g_value_set_string(value, self->_library_file_path);
+    case PropertyID::PROP_LIBRARY_FILE_PATH:
+        g_value_set_string(value, self->_config.library_path);
         break;
 
-    case PROP_FUNCTION_NAME:
-        g_value_set_string(value, self->_function_name);
+    case PropertyID::PROP_FUNCTION_NAME:
+        g_value_set_string(value, self->_config.function_name);
         break;
 
-    case PROP_PREPROCESS_ID:
-        g_value_set_uint(value, self->_preprocess_id);
+    case PropertyID::PROP_PREPROCESS_ID:
+        g_value_set_uint(value, self->_preprocess.id);
         break;
 
-    case PROP_COLOR_FORMAT:
-        if (g_strcmp0(self->_color_format, "RGB") == 0) {
+    case PropertyID::PROP_COLOR_FORMAT:
+        if (g_strcmp0(self->_preprocess.color_format, "RGB") == 0) {
             g_value_set_uint(value, 0);
-        } else if (g_strcmp0(self->_color_format, "BGR") == 0) {
+        } else if (g_strcmp0(self->_preprocess.color_format, "BGR") == 0) {
             g_value_set_uint(value, 1);
         } else {
             g_warning("Invalid color mode: %s. Use RGB or BGR.",
-                      self->_color_format);
+                      self->_preprocess.color_format);
         }
         break;
 
-    case PROP_RESIZE_WIDTH:
-        g_value_set_uint(value, self->_resize_width);
+    case PropertyID::PROP_RESIZE_WIDTH:
+        g_value_set_uint(value, self->_preprocess.width);
         break;
 
-    case PROP_RESIZE_HEIGHT:
-        g_value_set_uint(value, self->_resize_height);
+    case PropertyID::PROP_RESIZE_HEIGHT:
+        g_value_set_uint(value, self->_preprocess.height);
         break;
 
-    case PROP_KEEP_RATIO:
-        g_value_set_boolean(value, self->_keep_ratio);
+    case PropertyID::PROP_KEEP_RATIO:
+        g_value_set_boolean(value, self->_preprocess.keep_ratio);
         break;
 
-    case PROP_PAD_VALUE:
-        g_value_set_uint(value, self->_pad_value);
+    case PropertyID::PROP_PAD_VALUE:
+        g_value_set_uint(value, self->_preprocess.pad_value);
         break;
 
-    case PROP_SECONDARY_MODE:
-        g_value_set_boolean(value, self->_secondary_mode);
+    case PropertyID::PROP_SECONDARY_MODE:
+        g_value_set_boolean(value, self->_object_filter.secondary_mode);
         break;
 
-    case PROP_TRANSPOSE:
-        g_value_set_boolean(value, self->_transpose);
+    case PropertyID::PROP_TRANSPOSE:
+        g_value_set_boolean(value, self->_preprocess.transpose);
         break;
 
-    case PROP_TARGET_CLASS_ID:
-        g_value_set_int(value, self->_target_class_id);
+    case PropertyID::PROP_TARGET_CLASS_ID:
+        g_value_set_int(value, self->_object_filter.target_class_id);
         break;
 
-    case PROP_MIN_OBJECT_WIDTH:
-        g_value_set_uint(value, self->_min_object_width);
+    case PropertyID::PROP_MIN_OBJECT_WIDTH:
+        g_value_set_uint(value, self->_object_filter.min_width);
         break;
 
-    case PROP_MIN_OBJECT_HEIGHT:
-        g_value_set_uint(value, self->_min_object_height);
+    case PropertyID::PROP_MIN_OBJECT_HEIGHT:
+        g_value_set_uint(value, self->_object_filter.min_height);
         break;
 
-    case PROP_INTERVAL:
-        g_value_set_uint(value, self->_interval);
+    case PropertyID::PROP_INTERVAL:
+        g_value_set_uint(value, self->_frame_ctrl.interval);
         break;
 
-    case PROP_ROI: {
-        gchar roi_str[50];
-        g_snprintf(roi_str, sizeof(roi_str), "%d,%d,%d,%d", self->_roi[0],
-                   self->_roi[1], self->_roi[2], self->_roi[3]);
+    case PropertyID::PROP_ROI: {
+        std::string roi_str = std::to_string(self->_object_filter.roi[0]) + "," +
+                              std::to_string(self->_object_filter.roi[1]) + "," +
+                              std::to_string(self->_object_filter.roi[2]) + "," +
+                              std::to_string(self->_object_filter.roi[3]);
 
-        g_value_set_string(value, roi_str);
+        g_value_set_string(value, roi_str.c_str());
         break;
     }
 
@@ -352,6 +352,13 @@ static GstStateChangeReturn
 dxpreprocess_change_state(GstElement *element, GstStateChange transition) {
     GstDxPreprocess *self = GST_DXPREPROCESS(element);
     GST_INFO_OBJECT(self, "Attempting to change state");
+    switch (transition) {
+    case GST_STATE_CHANGE_PAUSED_TO_READY:
+        self->_stream.info.clear();
+        break;
+    default:
+        break;
+    }
     GstStateChangeReturn result =
         GST_ELEMENT_CLASS(parent_class)->change_state(element, transition);
     GST_INFO_OBJECT(self, "State change return: %d", result);
@@ -360,59 +367,36 @@ dxpreprocess_change_state(GstElement *element, GstStateChange transition) {
 
 static void dxpreprocess_dispose(GObject *object) {
     GstDxPreprocess *self = GST_DXPREPROCESS(object);
-    if (self->_config_file_path) {
-        g_free(self->_config_file_path);
-        self->_config_file_path = nullptr;
+    if (self->_config.file_path) {
+        g_free(self->_config.file_path);
+        self->_config.file_path = nullptr;
     }
-    if (self->_library_file_path) {
-        g_free(self->_library_file_path);
-        self->_library_file_path = nullptr;
+    if (self->_config.library_path) {
+        g_free(self->_config.library_path);
+        self->_config.library_path = nullptr;
     }
-    if (self->_function_name) {
-        g_free(self->_function_name);
-        self->_function_name = nullptr;
+    if (self->_config.function_name) {
+        g_free(self->_config.function_name);
+        self->_config.function_name = nullptr;
     }
-    if (self->_library_handle) {
-        dlclose(self->_library_handle);
-        self->_library_handle = nullptr;
+    if (self->_plugin.library_handle) {
+        dlclose(self->_plugin.library_handle);
+        self->_plugin.library_handle = nullptr;
     }
-    g_free(self->_color_format);
+    g_free(self->_preprocess.color_format);
 
-    if (self->_preprocessor) {
-        delete self->_preprocessor;
-        self->_preprocessor = nullptr;
-    }
+    // Clean up preprocessor pointer (now automatically managed by unique_ptr)
+    self->_plugin.preprocessor.reset();
 
-    if (self->_transpose_data) {
-        free(self->_transpose_data);
-        self->_transpose_data = nullptr;
-    }
+    // _transpose_data is now std::vector, automatically cleaned up
+    self->_preprocess.transpose_data.clear();
 
-    self->_track_cnt.clear();
+    self->_frame_ctrl.track_cnt.clear();
 
-    for (std::map<int, uint8_t *>::iterator it = self->_crop_frame.begin();
-         it != self->_crop_frame.end(); ++it) {
-        if (it->second != nullptr) {
-            free(it->second);
-        }
-    }
-    self->_crop_frame.clear();
-
-    for (std::map<int, uint8_t *>::iterator it = self->_convert_frame.begin();
-         it != self->_convert_frame.end(); ++it) {
-        if (it->second != nullptr) {
-            free(it->second);
-        }
-    }
-    self->_convert_frame.clear();
-
-    for (std::map<int, uint8_t *>::iterator it = self->_resized_frame.begin();
-         it != self->_resized_frame.end(); ++it) {
-        if (it->second != nullptr) {
-            free(it->second);
-        }
-    }
-    self->_resized_frame.clear();
+    // Frame buffers are now std::vector, automatically cleaned up
+    self->_buffers.crop.clear();
+    self->_buffers.convert.clear();
+    self->_buffers.resized.clear();
 
     G_OBJECT_CLASS(parent_class)->dispose(object);
 }
@@ -425,10 +409,14 @@ static GstCaps *gst_dxpreprocess_transform_caps(GstBaseTransform *trans,
                                                 GstPadDirection direction,
                                                 GstCaps *caps,
                                                 GstCaps *filter) {
-    GstCaps *new_caps = gst_caps_copy(caps);
+    
+    std::ignore = trans;
+    std::ignore = direction;
+
+    auto *new_caps = gst_caps_copy(caps);
 
     if (filter) {
-        GstCaps *filtered_caps = gst_caps_intersect(new_caps, filter);
+        auto *filtered_caps = gst_caps_intersect(new_caps, filter);
         gst_caps_unref(new_caps);
         new_caps = filtered_caps;
     }
@@ -437,6 +425,11 @@ static GstCaps *gst_dxpreprocess_transform_caps(GstBaseTransform *trans,
 
 static gboolean gst_dxpreprocess_set_caps(GstBaseTransform *trans,
                                           GstCaps *incaps, GstCaps *outcaps) {
+    
+    std::ignore = trans;
+    std::ignore = outcaps;
+    std::ignore = incaps;
+    
     const GstStructure *structure = gst_caps_get_structure(incaps, 0);
     const gchar *format = gst_structure_get_string(structure, "format");
 
@@ -450,11 +443,13 @@ static gboolean gst_dxpreprocess_set_caps(GstBaseTransform *trans,
 void set_input_info(GstDxPreprocess *self, GstEvent *event, int stream_id) {
     GstCaps *incaps = nullptr;
     gst_event_parse_caps(event, &incaps);
-    if (incaps) {
-        if (self->_input_info.find(stream_id) == self->_input_info.end()) {
-            gst_video_info_init(&self->_input_info[stream_id]);
-            gst_video_info_from_caps(
-                &self->_input_info[stream_id], incaps);
+    // Only register on first caps event per stream_id.
+    // Dynamic resolution change within a running stream is not supported.
+    if (incaps && self->_stream.info.find(stream_id) == self->_stream.info.end()) {
+        gst_video_info_init(&self->_stream.info[stream_id]);
+        if (!gst_video_info_from_caps(&self->_stream.info[stream_id], incaps)) {
+            GST_WARNING_OBJECT(self, "Failed to parse caps for stream %d", stream_id);
+            self->_stream.info.erase(stream_id);
         }
     }
 }
@@ -476,6 +471,9 @@ static gboolean gst_dxpreprocess_sink_event(GstBaseTransform *trans,
             if (original_event && GST_EVENT_TYPE(original_event) == GST_EVENT_CAPS) {
                 set_input_info(self, original_event, stream_id);
             }
+            if (original_event) {
+                gst_event_unref(original_event);
+            }
         }
     } break;
     case GST_EVENT_CAPS: {
@@ -492,101 +490,101 @@ static void gst_dxpreprocess_class_init(GstDxPreprocessClass *klass) {
     GST_DEBUG_CATEGORY_INIT(gst_dxpreprocess_debug_category, "dxpreprocess", 0,
                             "DXPreprocess plugin");
 
-    GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
+    auto *gobject_class = G_OBJECT_CLASS(klass);
     gobject_class->set_property = dxpreprocess_set_property;
     gobject_class->get_property = dxpreprocess_get_property;
     gobject_class->dispose = dxpreprocess_dispose;
     gobject_class->finalize = dxpreprocess_finalize;
 
-    static GParamSpec *obj_properties[N_PROPERTIES] = {
+    static std::array<GParamSpec*, static_cast<int>(PropertyID::N_PROPERTIES)> obj_properties = {
         nullptr,
     };
 
-    obj_properties[PROP_CONFIG_FILE_PATH] = g_param_spec_string(
+    obj_properties[static_cast<guint>(PropertyID::PROP_CONFIG_FILE_PATH)] = g_param_spec_string(
         "config-file-path", "Config File Path",
         "Path to the JSON config file containing the element's properties.",
         nullptr, G_PARAM_READWRITE);
 
-    obj_properties[PROP_LIBRARY_FILE_PATH] =
+    obj_properties[static_cast<guint>(PropertyID::PROP_LIBRARY_FILE_PATH)] =
         g_param_spec_string("library-file-path", "Library File Path",
                             "Path to the custom preprocess library, if used",
                             nullptr, G_PARAM_READWRITE);
 
-    obj_properties[PROP_FUNCTION_NAME] = g_param_spec_string(
+    obj_properties[static_cast<guint>(PropertyID::PROP_FUNCTION_NAME)] = g_param_spec_string(
         "function-name", "Function Name",
         "Name of the custom preprocessing function to use. ", nullptr,
         G_PARAM_READWRITE);
 
-    obj_properties[PROP_PREPROCESS_ID] =
+    obj_properties[static_cast<guint>(PropertyID::PROP_PREPROCESS_ID)] =
         g_param_spec_uint("preprocess-id", "Preprocess ID",
                           "Assigns an ID to the preprocessed input", 0, 10000,
                           0, G_PARAM_READWRITE);
 
-    obj_properties[PROP_COLOR_FORMAT] =
+    obj_properties[static_cast<guint>(PropertyID::PROP_COLOR_FORMAT)] =
         g_param_spec_uint("color-format", "Color Format",
                           "Specifies the color format for preprocessing. "
                           "[0: RGB, 1: BGR]",
                           0, 1, 0, G_PARAM_READWRITE);
 
-    obj_properties[PROP_RESIZE_WIDTH] = g_param_spec_uint(
+    obj_properties[static_cast<guint>(PropertyID::PROP_RESIZE_WIDTH)] = g_param_spec_uint(
         "resize-width", "Resize Width", "Specifies the width for resizing.", 0,
         10000, 0, G_PARAM_READWRITE);
 
-    obj_properties[PROP_RESIZE_HEIGHT] = g_param_spec_uint(
+    obj_properties[static_cast<guint>(PropertyID::PROP_RESIZE_HEIGHT)] = g_param_spec_uint(
         "resize-height", "Resize Height", "Specifies the width for resizing.",
         0, 10000, 0, G_PARAM_READWRITE);
 
-    obj_properties[PROP_KEEP_RATIO] = g_param_spec_boolean(
+    obj_properties[static_cast<guint>(PropertyID::PROP_KEEP_RATIO)] = g_param_spec_boolean(
         "keep-ratio", "Keep Original Ratio",
         "Maintains the original aspect ratio during resizing", TRUE,
         G_PARAM_READWRITE);
 
-    obj_properties[PROP_PAD_VALUE] = g_param_spec_uint(
+    obj_properties[static_cast<guint>(PropertyID::PROP_PAD_VALUE)] = g_param_spec_uint(
         "pad-value", "PadValue", "Padding color value for R, G, B", 0, 255, 0,
         G_PARAM_READWRITE);
 
-    obj_properties[PROP_SECONDARY_MODE] = g_param_spec_boolean(
+    obj_properties[static_cast<guint>(PropertyID::PROP_SECONDARY_MODE)] = g_param_spec_boolean(
         "secondary-mode", "Is Secondary Mode",
         "Enables Secondary Mode for processing object regions.", FALSE,
         G_PARAM_READWRITE);
 
-    obj_properties[PROP_TRANSPOSE] = g_param_spec_boolean(
+    obj_properties[static_cast<guint>(PropertyID::PROP_TRANSPOSE)] = g_param_spec_boolean(
         "transpose", "Is Transpose",
         "Enables Transpose for processing object regions.", FALSE,
         G_PARAM_READWRITE);
 
-    obj_properties[PROP_TARGET_CLASS_ID] =
+    obj_properties[static_cast<guint>(PropertyID::PROP_TARGET_CLASS_ID)] =
         g_param_spec_int("target-class-id", "Target Class ID",
                          "Filters objects in Secondary Mode by class ID. ( -1 "
                          "processes all objects).",
                          -1, 10000, -1, G_PARAM_READWRITE);
 
-    obj_properties[PROP_MIN_OBJECT_WIDTH] = g_param_spec_uint(
+    obj_properties[static_cast<guint>(PropertyID::PROP_MIN_OBJECT_WIDTH)] = g_param_spec_uint(
         "min-object-width", "Min Object Box Width",
         "Minimum object width for preprocessing in Secondary Mode", 0, 10000, 0,
         G_PARAM_READWRITE);
 
-    obj_properties[PROP_MIN_OBJECT_HEIGHT] = g_param_spec_uint(
+    obj_properties[static_cast<guint>(PropertyID::PROP_MIN_OBJECT_HEIGHT)] = g_param_spec_uint(
         "min-object-height", "Min Object Box Height",
         "Minimum object height for preprocessing in Secondary Mode", 0, 10000,
         0, G_PARAM_READWRITE);
 
-    obj_properties[PROP_INTERVAL] = g_param_spec_uint(
+    obj_properties[static_cast<guint>(PropertyID::PROP_INTERVAL)] = g_param_spec_uint(
         "interval", "Inference Interval",
         "Specifies the interval for preprocessing frames or objects.", 0, 10000,
         0, G_PARAM_READWRITE);
 
-    obj_properties[PROP_ROI] = g_param_spec_string(
+    obj_properties[static_cast<guint>(PropertyID::PROP_ROI)] = g_param_spec_string(
         "roi", "Region of Interest",
         "Defines the ROI as a comma-separated string (x1,y1,x2,y2)",
         "-1,-1,-1,-1", G_PARAM_READWRITE);
 
-    g_object_class_install_properties(gobject_class, N_PROPERTIES,
-                                      obj_properties);
+    g_object_class_install_properties(gobject_class, static_cast<int>(PropertyID::N_PROPERTIES),
+                                      obj_properties.data());
 
-    GstBaseTransformClass *base_transform_class =
+    auto *base_transform_class =
         GST_BASE_TRANSFORM_CLASS(klass);
-    GstElementClass *element_class = GST_ELEMENT_CLASS(klass);
+    auto *element_class = GST_ELEMENT_CLASS(klass);
 
     gst_element_class_add_pad_template(
         GST_ELEMENT_CLASS(klass),
@@ -609,8 +607,6 @@ static void gst_dxpreprocess_class_init(GstDxPreprocessClass *klass) {
     base_transform_class->src_event =
         GST_DEBUG_FUNCPTR(gst_dxpreprocess_src_event);
 
-    base_transform_class->prepare_output_buffer =
-        GST_DEBUG_FUNCPTR(gst_dxpreprocess_prepare_output_buffer);
     base_transform_class->start = GST_DEBUG_FUNCPTR(gst_dxpreprocess_start);
     base_transform_class->stop = GST_DEBUG_FUNCPTR(gst_dxpreprocess_stop);
     base_transform_class->sink_event =
@@ -626,112 +622,116 @@ static void gst_dxpreprocess_class_init(GstDxPreprocessClass *klass) {
 }
 
 static void gst_dxpreprocess_init(GstDxPreprocess *self) {
-    self->_config_file_path = nullptr;
-    self->_preprocess_id = 0;
-    self->_color_format = g_strdup("RGB");
-    self->_resize_width = 0;
-    self->_resize_height = 0;
-    self->_input_channel = 3;
-    self->_keep_ratio = TRUE;
-    self->_pad_value = 0;
-    self->_secondary_mode = FALSE;
-    self->_target_class_id = -1;
-    self->_min_object_width = 0;
-    self->_min_object_height = 0;
-    self->_interval = 0;
-    self->_transpose = FALSE;
-    self->_transpose_data = nullptr;
+    self->_config.file_path = nullptr;
+    self->_preprocess.id = 0;
+    self->_preprocess.color_format = g_strdup("RGB");
+    self->_preprocess.width = 0;
+    self->_preprocess.height = 0;
+    self->_preprocess.channel = 3;
+    self->_preprocess.keep_ratio = TRUE;
+    self->_preprocess.pad_value = 0;
+    self->_object_filter.secondary_mode = FALSE;
+    self->_object_filter.target_class_id = -1;
+    self->_object_filter.min_width = 0;
+    self->_object_filter.min_height = 0;
+    self->_frame_ctrl.interval = 0;
+    self->_preprocess.transpose = FALSE;
+    self->_preprocess.transpose_data.clear();
 
-    self->_cnt.clear();
+    self->_frame_ctrl.cnt.clear();
 
-    self->_acc_fps = 0;
-    self->_frame_count_for_fps = 0;
+    self->_frame_ctrl.acc_fps = 0;
+    self->_frame_ctrl.frame_count = 0;
 
-    self->_roi[0] = -1;
-    self->_roi[1] = -1;
-    self->_roi[2] = -1;
-    self->_roi[3] = -1;
-    self->_track_cnt.clear();
+    self->_object_filter.roi[0] = -1;
+    self->_object_filter.roi[1] = -1;
+    self->_object_filter.roi[2] = -1;
+    self->_object_filter.roi[3] = -1;
+    self->_frame_ctrl.track_cnt.clear();
 
-    self->_last_stream_id = 0;
-    self->_input_info.clear();
+    self->_stream.last_id = 0;
+    self->_stream.info.clear();
 
-    self->_qos_timestamp = 0;
-    self->_qos_timediff = 0;
-    self->_throttling_delay = 0;
+    self->_qos.timestamp = 0;
+    self->_qos.timediff = 0;
+    self->_qos.throttling_delay = 0;
 
-    self->_preprocessor = nullptr;
+    self->_plugin.preprocessor = nullptr;
 
-    self->_crop_frame = std::map<int, uint8_t *>();
-    self->_convert_frame = std::map<int, uint8_t *>();
-    self->_resized_frame = std::map<int, uint8_t *>();
+    self->_buffers.crop.clear();
+    self->_buffers.convert.clear();
+    self->_buffers.resized.clear();
 }
 
 static gboolean gst_dxpreprocess_start(GstBaseTransform *trans) {
     GST_DEBUG_OBJECT(trans, "start");
     GstDxPreprocess *self = GST_DXPREPROCESS(trans);
-    if (!self->_library_handle && self->_library_file_path &&
-        self->_function_name) {
-        self->_library_handle = dlopen(self->_library_file_path, RTLD_LAZY);
-        if (!self->_library_handle) {
+    if (!self->_plugin.library_handle && self->_config.library_path &&
+        self->_config.function_name) {
+        self->_plugin.library_handle = dlopen(self->_config.library_path, RTLD_LAZY);
+        if (!self->_plugin.library_handle) {
             g_print("Error opening library: %s\n", dlerror());
             return FALSE;
         }
-        void *func_ptr = dlsym(self->_library_handle, self->_function_name);
+        void *func_ptr = dlsym(self->_plugin.library_handle, self->_config.function_name);
         if (!func_ptr) {
             g_print("Error finding function: %s\n", dlerror());
-            if (self->_library_handle) {
-                dlclose(self->_library_handle);
-                self->_library_handle = nullptr;
+            if (self->_plugin.library_handle) {
+                dlclose(self->_plugin.library_handle);
+                self->_plugin.library_handle = nullptr;
             }
             return FALSE;
         }
 
-        self->_process_function =
+        self->_plugin.process_function =
             (bool (*)(GstBuffer *, DXFrameMeta *, DXObjectMeta *, void *))func_ptr;
-        if (!self->_process_function) {
+        if (!self->_plugin.process_function) {
             g_print("Error: Process function is nullptr\n");
             return FALSE;
         }
     }
 
-    if (self->_resize_height > 0 && self->_resize_width > 0) {
-        if (self->_transpose) {
-            self->_transpose_data = (uint8_t *)malloc(
-                self->_resize_height * self->_resize_width * self->_input_channel);
-            if (!self->_transpose_data) {
-                g_error("Failed to allocate memory for transpose data");
+    if (self->_preprocess.height > 0 && self->_preprocess.width > 0) {
+        if (self->_preprocess.transpose) {
+            try {
+                size_t size = self->_preprocess.height * self->_preprocess.width * self->_preprocess.channel;
+                self->_preprocess.transpose_data.resize(size);
+            } catch (const std::bad_alloc& e) {
+                g_error("Failed to allocate memory for transpose data: %s", e.what());
                 return FALSE;
             }
         }
     } else {
-        g_error("Invalid input size %d x %d", self->_resize_width,
-                self->_resize_height);
+        g_error("Invalid input size %d x %d", self->_preprocess.width,
+                self->_preprocess.height);
         return FALSE;
     }
 
-    if (!self->_preprocessor) {
-        self->_preprocessor = PreprocessorFactory::create_preprocessor(self);
-        if (!self->_preprocessor) {
+    if (!self->_plugin.preprocessor) {
+        self->_plugin.preprocessor = PreprocessorFactory::create_preprocessor(self);
+        if (!self->_plugin.preprocessor) {
             GST_ERROR_OBJECT(self, "Failed to create preprocessor instance");
             return FALSE;
         }
+        GST_INFO_OBJECT(self, "Preprocessor instance created successfully");
     }
 
+    GST_INFO_OBJECT(self, "Preprocessor ready (size=%dx%d, secondary_mode=%d, interval=%u)",
+                    self->_preprocess.width, self->_preprocess.height,
+                    self->_object_filter.secondary_mode, self->_frame_ctrl.interval);
     return TRUE;
 }
 
 static gboolean gst_dxpreprocess_stop(GstBaseTransform *trans) {
-    GST_DEBUG_OBJECT(trans, "stop");
+    GstDxPreprocess *self = GST_DXPREPROCESS(trans);
+    GST_INFO_OBJECT(self, "Preprocessor stopping");
     return TRUE;
 }
 
 static gboolean gst_dxpreprocess_src_event(GstBaseTransform *trans,
                                            GstEvent *event) {
     GstDxPreprocess *self = GST_DXPREPROCESS(trans);
-    switch (GST_EVENT_TYPE(event)) {
-    case GST_EVENT_QOS: {
-
+    if (GST_EVENT_TYPE(event) == GST_EVENT_QOS) {
         GstQOSType type;
         GstClockTime timestamp;
         GstClockTimeDiff diff;
@@ -739,55 +739,20 @@ static gboolean gst_dxpreprocess_src_event(GstBaseTransform *trans,
 
         if (type == GST_QOS_TYPE_THROTTLE && diff > 0) {
             GST_OBJECT_LOCK(trans);
-            self->_throttling_delay = diff;
+            self->_qos.throttling_delay = diff;
             GST_OBJECT_UNLOCK(trans);
-            // gst_event_unref(event);
-            // return TRUE;
         }
 
         if (type == GST_QOS_TYPE_UNDERFLOW && diff > 0) {
             GST_OBJECT_LOCK(trans);
-            self->_qos_timediff = diff;
-            self->_qos_timestamp = timestamp;
+            self->_qos.timediff = diff;
+            self->_qos.timestamp = timestamp;
             GST_OBJECT_UNLOCK(trans);
-            // gst_event_unref(event);
         }
-    }
-        /* fall-through */
-    default:
-        break;
     }
 
     /** other events are handled in the default event handler */
     return GST_BASE_TRANSFORM_CLASS(parent_class)->src_event(trans, event);
-}
-
-static GstFlowReturn gst_dxpreprocess_prepare_output_buffer(
-    GstBaseTransform *trans, GstBuffer *inbuf, GstBuffer **outbuf) {
-    GstDxPreprocess *self = GST_DXPREPROCESS(trans);
-    
-    gint ref_count = GST_MINI_OBJECT_REFCOUNT(inbuf);
-    
-    if (ref_count > 1) {
-        GST_DEBUG_OBJECT(self, 
-            "🔴 Buffer shared (ref_count=%d), creating deep copy", ref_count);
-        
-        *outbuf = gst_buffer_copy_deep(inbuf);
-        
-        if (*outbuf == NULL) {
-            GST_ERROR_OBJECT(self, "Failed to create deep copy of buffer");
-            return GST_FLOW_ERROR;
-        }
-        
-        gint new_ref = GST_MINI_OBJECT_REFCOUNT(*outbuf);
-        GST_DEBUG_OBJECT(self, 
-            "🟢 Deep copy created! new_ref=%d", new_ref);
-        
-        return GST_FLOW_OK;
-    }
-    
-    *outbuf = inbuf;
-    return GST_FLOW_OK;
 }
 
 bool gst_dxpreprocess_qos_process(GstDxPreprocess *self, GstBuffer *buf) {
@@ -798,9 +763,9 @@ bool gst_dxpreprocess_qos_process(GstDxPreprocess *self, GstBuffer *buf) {
     }
 
     GST_OBJECT_LOCK(self);
-    GstClockTimeDiff qos_timediff = self->_qos_timediff;
-    GstClockTime qos_timestamp = self->_qos_timestamp;
-    GstClockTimeDiff throttling_delay = self->_throttling_delay;
+    GstClockTimeDiff qos_timediff = self->_qos.timediff;
+    GstClockTime qos_timestamp = self->_qos.timestamp;
+    GstClockTimeDiff throttling_delay = self->_qos.throttling_delay;
     GST_OBJECT_UNLOCK(self);
 
     if (qos_timediff > 0) {
@@ -812,6 +777,8 @@ bool gst_dxpreprocess_qos_process(GstDxPreprocess *self, GstBuffer *buf) {
         }
 
         if (static_cast<GstClockTime>(earliest_time) > in_ts) {
+            GST_DEBUG_OBJECT(self, "Dropping buffer due to QoS (ts=%" GST_TIME_FORMAT ")",
+                           GST_TIME_ARGS(in_ts));
             return true;
         }
     }
@@ -822,25 +789,25 @@ static GstFlowReturn gst_dxpreprocess_transform_ip(GstBaseTransform *trans,
                                                    GstBuffer *buf) {
     GstDxPreprocess *self = GST_DXPREPROCESS(trans);
 
+    GST_DEBUG_OBJECT(self, "Processing buffer: pts=%" GST_TIME_FORMAT,
+                     GST_TIME_ARGS(GST_BUFFER_PTS(buf)));
+
     if (gst_dxpreprocess_qos_process(self, buf)) {
         return GST_BASE_TRANSFORM_FLOW_DROPPED;
     }
 
-    gint ref_count = GST_MINI_OBJECT_REFCOUNT(buf);
-    if (ref_count > 1) {
-        GST_WARNING_OBJECT(self, "Buffer still shared (ref_count=%d) after "
-                                 "prepare_output_buffer. This should not happen.",
-                           ref_count);
-    }
+    buf = self->_plugin.preprocessor->check_frame_meta(buf);
 
-    buf = self->_preprocessor->check_frame_meta(buf);
-
-    if (self->_secondary_mode) {
-        if (!self->_preprocessor->secondary_process(buf)) {
+    if (self->_object_filter.secondary_mode) {
+        GST_DEBUG_OBJECT(self, "Processing in secondary mode");
+        if (!self->_plugin.preprocessor->secondary_process(buf)) {
+            GST_ERROR_OBJECT(self, "Secondary preprocessing failed");
             return GST_FLOW_ERROR;
         }
     } else {
-        if (!self->_preprocessor->primary_process(buf)) {
+        GST_DEBUG_OBJECT(self, "Processing in primary mode");
+        if (!self->_plugin.preprocessor->primary_process(buf)) {
+            GST_ERROR_OBJECT(self, "Primary preprocessing failed");
             return GST_FLOW_ERROR;
         }
     }

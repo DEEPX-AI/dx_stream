@@ -8,12 +8,19 @@
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
 #include <gst/gst.h>
+#include "dxcommon.hpp"
 
 #include "gst-dxframemeta.hpp"
 #include "gst-dxobjectmeta.hpp"
 #include "gst-dxusermeta.hpp"
 
 namespace py = pybind11;
+
+// Custom exception for unsupported tensor data types
+class UnsupportedTensorDataTypeException : public std::runtime_error {
+public:
+    using std::runtime_error::runtime_error;
+};
 
 // Python-owned user meta values need manual ref counting hooks.
 void python_object_free_cb(void *data) {
@@ -51,66 +58,59 @@ py::dtype get_numpy_dtype(dxs::DataType type) {
         case dxs::DataType::UINT64:
             return py::dtype::of<uint64_t>();
         default:
-            throw std::runtime_error("Unsupported tensor data type");
+            throw UnsupportedTensorDataTypeException("Unsupported tensor data type");
     }
 }
 
-// Get tensor as numpy array (zero-copy, writable)
-py::array get_tensor_as_numpy(const dxs::DXTensor &tensor) {
-    if (tensor._data == nullptr) {
-        throw std::runtime_error("Tensor data is null");
+// Convert a single DXTensor to a numpy array (zero-copy view)
+// The base parameter (shared_ptr capsule) ensures the underlying memory
+// stays alive as long as the numpy array exists, preventing use-after-free.
+py::array get_tensor_as_numpy(const dxs::DXTensor &tensor,
+                              const std::shared_ptr<void> &owner) {
+    if (!tensor._data || tensor._shape.empty()) {
+        return py::array();
     }
-    
-    if (tensor._shape.empty()) {
-        throw std::runtime_error("Tensor shape is empty");
-    }
-    
-    // Convert shape from int64_t to py::ssize_t
-    std::vector<py::ssize_t> shape(tensor._shape.begin(), tensor._shape.end());
-    
-    // Calculate strides (row-major/C-contiguous)
-    std::vector<py::ssize_t> strides(shape.size());
-    py::ssize_t stride = tensor._elemSize;
-    for (int i = shape.size() - 1; i >= 0; --i) {
-        strides[i] = stride;
-        stride *= shape[i];
-    }
-    
-    // Get numpy dtype
     py::dtype dtype = get_numpy_dtype(tensor._type);
-    
-    // Create numpy array (no copy, reference to original data)
-    // ⚠️ WARNING: Array is WRITABLE - modifying it will affect the pipeline!
-    // Use .copy() if you need to modify without affecting the original data.
-    py::array result(dtype, shape, strides, tensor._data, py::none());
-    
-    // Array is writable by default (no read-only flag set)
-    // Advanced users can modify tensor data in-place if needed
-    
-    return result;
+    std::vector<py::ssize_t> shape(tensor._shape.begin(), tensor._shape.end());
+    // Create a PyCapsule that prevents the shared_ptr from being freed
+    auto capsule = py::capsule(new std::shared_ptr<void>(owner),
+                               [](void *p) { delete static_cast<std::shared_ptr<void>*>(p); });
+    return py::array(dtype, shape, tensor._data, capsule);
 }
 
-// Convert DXTensors to Python list of numpy arrays
-py::list convert_dxtensors_to_list(const dxs::DXTensors &tensors) {
-    py::list result;
-    for (const auto &tensor : tensors._tensors) {
-        result.append(get_tensor_as_numpy(tensor));
-    }
-    return result;
-}
-
-// Convert std::map<int, dxs::DXTensors> to Python dict {network_id: [tensor1, tensor2, ...]}
+// Convert std::map<int, dxs::DXTensors> to Python dict {network_id: [numpy_array, ...]}
 py::dict convert_tensor_map_to_dict(const std::map<int, dxs::DXTensors> &tensor_map) {
     py::dict result;
-    for (const auto &[network_id, tensors] : tensor_map) {
-        result[py::int_(network_id)] = convert_dxtensors_to_list(tensors);
+    for (const auto &entry : tensor_map) {
+        py::list tensor_list;
+        for (const auto &tensor : entry.second._tensors) {
+            py::dict info;
+            info["name"] = tensor._name;
+            info["shape"] = tensor._shape;
+            info["type"] = static_cast<int>(tensor._type);
+            try {
+                info["data"] = get_tensor_as_numpy(tensor, entry.second._data);
+            } catch (const UnsupportedTensorDataTypeException &) {
+                info["data"] = py::none();
+            }
+            tensor_list.append(info);
+        }
+        result[py::int_(entry.first)] = tensor_list;
     }
     return result;
+}
+
+// Helper function for converting Python integer address to C++ pointer.
+// This is required for Python bindings where addresses are passed as integers.
+// NOSONAR: cpp:S3630 - reinterpret_cast is necessary for address-to-pointer conversion in FFI
+template<typename T>
+T* address_to_pointer(size_t address) {
+    return reinterpret_cast<T*>(address);  // NOSONAR
 }
 
 // Fetch DXFrameMeta from a raw GstBuffer address.
 DXFrameMeta *py_dx_get_frame_meta(size_t gst_buffer_address) {
-    GstBuffer *buffer = reinterpret_cast<GstBuffer *>(gst_buffer_address);
+    auto *buffer = address_to_pointer<GstBuffer>(gst_buffer_address);
     if (!buffer) {
         return nullptr;
     }
@@ -120,16 +120,18 @@ DXFrameMeta *py_dx_get_frame_meta(size_t gst_buffer_address) {
         return nullptr;
     }
 
-    return reinterpret_cast<DXFrameMeta *>(gst_buffer_get_meta(buffer, api_type));
+    // NOSONAR: cpp:S3630 - GstMeta to DXFrameMeta requires reinterpret_cast
+    return reinterpret_cast<DXFrameMeta *>(gst_buffer_get_meta(buffer, api_type));  // NOSONAR
 }
 
 // Create new DXFrameMeta and attach to GstBuffer.
 DXFrameMeta *py_dx_create_frame_meta(size_t gst_buffer_address) {
-    GstBuffer *buffer = reinterpret_cast<GstBuffer *>(gst_buffer_address);
+    auto *buffer = address_to_pointer<GstBuffer>(gst_buffer_address);
     if (!buffer) {
         return nullptr;
     }
-    return dx_create_frame_meta(buffer);
+    buffer = dx_create_frame_meta(buffer);
+    return dx_get_frame_meta(buffer);
 }
 
 // Add DXObjectMeta to DXFrameMeta.
@@ -151,25 +153,20 @@ bool py_dx_remove_obj_meta_from_frame(DXFrameMeta *frame_meta, DXObjectMeta *obj
 // Ensure buffer is writable and create/get DXFrameMeta.
 // This solves the Python refcount issue by handling writability in C++.
 DXFrameMeta *py_dx_ensure_writable_and_create_meta(size_t probe_info_address) {
-    GstPadProbeInfo *info = reinterpret_cast<GstPadProbeInfo *>(probe_info_address);
+    auto *info = address_to_pointer<GstPadProbeInfo>(probe_info_address);
     
     if (!info) return nullptr;
 
-    GstBuffer *buffer = GST_PAD_PROBE_INFO_BUFFER(info);
+    auto *buffer = GST_PAD_PROBE_INFO_BUFFER(info);
     if (!buffer) return nullptr;
 
-    // 1. Make buffer writable (may create a copy)
-    // Performed at C++ level, so Python refcount is not an issue
-    buffer = gst_buffer_make_writable(buffer);
-    
-    // 2. Update the buffer pointer in ProbeInfo
-    // This ensures the pipeline uses the new (writable) buffer downstream
     GST_PAD_PROBE_INFO_DATA(info) = buffer;
 
     // 3. Get or create metadata
     DXFrameMeta *meta = dx_get_frame_meta(buffer);
     if (!meta) {
-        meta = dx_create_frame_meta(buffer);
+        buffer = dx_create_frame_meta(buffer);
+        meta = dx_get_frame_meta(buffer);
     }
     
     return meta;
@@ -178,7 +175,7 @@ DXFrameMeta *py_dx_ensure_writable_and_create_meta(size_t probe_info_address) {
 // Context Manager helper struct for "with pydxs.writable_buffer(info) as meta:"
 struct WritableBufferContext {
     size_t probe_info_address;
-    WritableBufferContext(size_t addr) : probe_info_address(addr) {}
+    explicit WritableBufferContext(size_t addr) : probe_info_address(addr) {}
 };
 
 PYBIND11_MODULE(pydxs, m) {
@@ -194,6 +191,7 @@ PYBIND11_MODULE(pydxs, m) {
         - **Metadata Creation**: Create new metadata for frames using `dx_create_frame_meta`.
         - **User Metadata**: Attach arbitrary Python objects to frames or objects as user metadata.
         - **Safe Writability**: Use the `writable_buffer` context manager to safely modify metadata in probes.
+        - **Segmentation Semantics**: object `seg_data` is an ROI-local binary mask aligned to `box`, while frame `seg_data` is a full-frame semantic class map stored on DXFrameMeta.
         - **Pythonic API**: Support for iteration over objects, property access, and context managers.
 
         Classes:
@@ -206,6 +204,14 @@ PYBIND11_MODULE(pydxs, m) {
     if (!gst_is_initialized()) {
         gst_init(nullptr, nullptr);
     }
+
+    // =========================================================================
+    // Enums
+    // =========================================================================
+    py::enum_<DXUserMetaType>(m, "DXUserMetaType", "User metadata type enumeration")
+        .value("FRAME", DXUserMetaType::DX_USER_META_FRAME, "Frame-level user metadata")
+        .value("OBJECT", DXUserMetaType::DX_USER_META_OBJECT, "Object-level user metadata")
+        .export_values();
 
     // =========================================================================
     // Context Manager
@@ -230,30 +236,6 @@ PYBIND11_MODULE(pydxs, m) {
     // =========================================================================
     // Basic value types
     // =========================================================================
-    py::class_<dxs::Point_f>(m, "Point_f", "2D point with confidence score (for keypoints, landmarks)")
-        .def(py::init<float, float, float>(),
-             py::arg("x"), py::arg("y"), py::arg("z") = 0.0f,
-             "Create a point with coordinates and confidence (z = confidence score)")
-        .def(py::init<>(), "Create a point at origin with zero confidence")
-        .def_readwrite("x", &dxs::Point_f::_x, "X coordinate in image")
-        .def_readwrite("y", &dxs::Point_f::_y, "Y coordinate in image")
-        .def_readwrite("z", &dxs::Point_f::_z, "Confidence score (0.0 - 1.0)");
-
-    py::class_<dxs::SegClsMap>(m, "SegClsMap", "Segmentation classification map")
-        .def(py::init<>(), "Create an empty segmentation map")
-        .def_readwrite("width", &dxs::SegClsMap::width, "Map width in pixels")
-        .def_readwrite("height", &dxs::SegClsMap::height, "Map height in pixels")
-        .def_property(
-            "data",
-            [](dxs::SegClsMap &seg) {
-                return py::bytes(reinterpret_cast<const char *>(seg.data.data()), seg.data.size());
-            },
-            [](dxs::SegClsMap &seg, py::bytes payload) {
-                std::string buffer = payload;
-                seg.data.assign(buffer.begin(), buffer.end());
-            },
-            "Raw segmentation bytes (row-major order)");
-
     py::class_<DXUserMeta>(m, "DXUserMeta", "User-defined metadata wrapper")
         .def(py::init<>(), "Create an empty user metadata object")
         .def_readwrite("type", &DXUserMeta::user_meta_type, "User metadata type ID")
@@ -271,7 +253,13 @@ PYBIND11_MODULE(pydxs, m) {
     // =========================================================================
     // Object metadata (DXObjectMeta)
     // =========================================================================
-    py::class_<DXObjectMeta>(m, "DXObjectMeta", "Metadata for detected objects")
+    py::class_<DXObjectMeta>(m, "DXObjectMeta", R"pbdoc(
+        Metadata for detected objects.
+
+        Object-level segmentation is exposed through `seg_data`, `seg_width`, `seg_height`,
+        and `seg_format`. When present, `seg_data` stores an ROI-local binary mask aligned
+        to `box`.
+    )pbdoc")
         // Simple read/write attributes
         .def_readwrite("meta_id", &DXObjectMeta::_meta_id, "Unique metadata ID")
         .def_readwrite("track_id", &DXObjectMeta::_track_id, "Tracking ID")
@@ -279,28 +267,14 @@ PYBIND11_MODULE(pydxs, m) {
         .def_readwrite("confidence", &DXObjectMeta::_confidence, "Detection confidence")
         .def_readwrite("face_confidence", &DXObjectMeta::_face_confidence, "Face detection confidence")
         
-        // Read-only properties (computed)
-        .def_property_readonly(
-            "num_obj_user_meta",
-            [](const DXObjectMeta &meta) { return meta._num_obj_user_meta; },
-            "Number of attached user metadata")
-        
         // Read/write properties (strings)
         .def_property(
             "label_name",
             [](const DXObjectMeta &meta) {
-                return meta._label_name ? std::string(meta._label_name->str) : std::string("");
+                return meta._label_name;
             },
             [](DXObjectMeta &meta, const std::string &name) {
-                // Release existing GString if present
-                if (meta._label_name) {
-                    g_string_free(meta._label_name, TRUE);
-                    meta._label_name = nullptr;
-                }
-                // Create new GString with provided name
-                if (!name.empty()) {
-                    meta._label_name = g_string_new(name.c_str());
-                }
+                meta._label_name = name;
             },
             "Human-readable label name (e.g., 'person', 'car')")
         
@@ -314,7 +288,7 @@ PYBIND11_MODULE(pydxs, m) {
                 if (v.size() < 4) {
                     throw std::runtime_error("Box must contain 4 floats");
                 }
-                std::copy(v.begin(), v.begin() + 4, meta._box);
+                std::copy(v.begin(), v.begin() + 4, meta._box.begin());
             },
             "Bounding box [left, top, right, bottom] (x1, y1, x2, y2)")
         .def_property(
@@ -325,7 +299,7 @@ PYBIND11_MODULE(pydxs, m) {
             },
             [](DXObjectMeta &meta, const std::vector<float> &v) {
                 if (v.size() >= 4) {
-                    std::copy(v.begin(), v.begin() + 4, meta._face_box);
+                    std::copy(v.begin(), v.begin() + 4, meta._face_box.begin());
                 }
             },
             "Face bounding box [left, top, right, bottom] (x1, y1, x2, y2)")
@@ -344,18 +318,31 @@ PYBIND11_MODULE(pydxs, m) {
         .def_property(
             "face_landmarks",
             [](DXObjectMeta &meta) { return meta._face_landmarks; },
-            [](DXObjectMeta &meta, const std::vector<dxs::Point_f> &pts) { meta._face_landmarks = pts; },
-            "Face landmarks")
+            [](DXObjectMeta &meta, const std::vector<float> &pts) { meta._face_landmarks = pts; },
+            "Face landmarks (flat array: x, y, conf, x, y, conf, ...)")
         .def_property(
             "face_feature",
             [](DXObjectMeta &meta) { return meta._face_feature; },
             [](DXObjectMeta &meta, const std::vector<float> &v) { meta._face_feature = v; },
             "Face feature vector")
         .def_property(
-            "segmentation_map",
-            [](DXObjectMeta &meta) { return meta._seg_cls_map; },
-            [](DXObjectMeta &meta, const dxs::SegClsMap &seg) { meta._seg_cls_map = seg; },
-            "Segmentation classification map")
+            "seg_data",
+            [](DXObjectMeta &meta) {
+                return py::bytes(static_cast<const char *>(static_cast<const void *>(meta._seg_data.data())), meta._seg_data.size());
+            },
+            [](DXObjectMeta &meta, py::bytes payload) {
+                std::string buffer = payload;
+                meta._seg_data.assign(buffer.begin(), buffer.end());
+            },
+            "Instance segmentation data stored as an ROI-local binary mask aligned to box (row-major, 0=background, 255=foreground)")
+        .def_readwrite("seg_width", &DXObjectMeta::_seg_width, "ROI-local instance segmentation mask width")
+        .def_readwrite("seg_height", &DXObjectMeta::_seg_height, "ROI-local instance segmentation mask height")
+        .def_property_readonly(
+            "seg_format",
+            [](const DXObjectMeta &meta) {
+                return meta._seg_data.empty() ? std::string("none") : std::string("roi-binary-mask");
+            },
+            "Segmentation storage format for seg_data")
         
         // User metadata methods
         .def(
@@ -368,7 +355,7 @@ PYBIND11_MODULE(pydxs, m) {
 
                 PyObject *py_obj = data.ptr();
                 Py_XINCREF(py_obj);
-                dx_user_meta_set_data(new_meta, (void *)py_obj, sizeof(PyObject *), static_cast<guint>(type_id),
+                dx_user_meta_set_data(new_meta, (void *)py_obj, sizeof(PyObject *), static_cast<DXUserMetaType>(type_id),
                                       python_object_free_cb, python_object_copy_cb);
                 dx_add_user_meta_to_obj(&self, new_meta);
                 return true;
@@ -379,11 +366,10 @@ PYBIND11_MODULE(pydxs, m) {
             "dx_get_object_user_metas",
             [](DXObjectMeta &self) {
                 py::list result;
-                GList *meta_list = dx_get_object_user_metas(&self);
-                for (GList *l = meta_list; l != nullptr; l = l->next) {
-                    result.append(static_cast<DXUserMeta *>(l->data));
+                auto meta_list = dx_get_object_user_metas(&self);
+                for (auto user_meta : *meta_list) {
+                    result.append(user_meta);
                 }
-                g_list_free(meta_list);
                 return result;
             },
             "Get list of attached DXUserMeta objects")
@@ -405,30 +391,56 @@ PYBIND11_MODULE(pydxs, m) {
     // =========================================================================
     // Frame metadata (DXFrameMeta)
     // =========================================================================
-    py::class_<DXFrameMeta>(m, "DXFrameMeta", "Metadata for video frames")
+    py::class_<DXFrameMeta>(m, "DXFrameMeta", R"pbdoc(
+        Metadata for video frames.
+
+        Frame-level segmentation is exposed through `seg_data`, `seg_width`, `seg_height`,
+        and `seg_format`. When present, `seg_data` stores a full-frame semantic class map.
+    )pbdoc")
         // Simple read/write attributes
         .def_readwrite("stream_id", &DXFrameMeta::_stream_id, "Stream identifier")
         .def_readwrite("width", &DXFrameMeta::_width, "Frame width in pixels")
         .def_readwrite("height", &DXFrameMeta::_height, "Frame height in pixels")
         .def_readwrite("frame_rate", &DXFrameMeta::_frame_rate, "Frame rate (fps)")
         
+        // Segmentation data (frame-level, semantic seg)
+        .def_property(
+            "seg_data",
+            [](DXFrameMeta &meta) {
+                return py::bytes(static_cast<const char *>(static_cast<const void *>(meta._seg_data.data())), meta._seg_data.size());
+            },
+            [](DXFrameMeta &meta, py::bytes payload) {
+                std::string buffer = payload;
+                meta._seg_data.assign(buffer.begin(), buffer.end());
+            },
+            "Semantic segmentation data (row-major, frame-level class map)")
+        .def_readwrite("seg_width", &DXFrameMeta::_seg_width, "Segmentation map width")
+        .def_readwrite("seg_height", &DXFrameMeta::_seg_height, "Segmentation map height")
+
+        .def_readwrite("label", &DXFrameMeta::_label, "Primary classification label index (-1 if absent)")
+        .def_readwrite("label_name", &DXFrameMeta::_label_name, "Primary classification label name")
+        .def_readwrite("label_confidence", &DXFrameMeta::_label_confidence, "Primary classification confidence score")
+
+        .def_property_readonly(
+            "seg_format",
+            [](const DXFrameMeta &meta) {
+                return meta._seg_data.empty() ? std::string("none") : std::string("full-frame-class-map");
+            },
+            "Segmentation storage format for seg_data")
+        
         // Read-only properties (string pointers)
         .def_property_readonly(
             "format",
             [](const DXFrameMeta &meta) {
-                return meta._format ? std::string(meta._format) : std::string("");
+                return meta._format;
             },
             "Video format string (e.g., 'NV12', 'RGB')")
         .def_property_readonly(
             "name",
             [](const DXFrameMeta &meta) {
-                return meta._name ? std::string(meta._name) : std::string("");
+                return meta._name;
             },
             "Stream name")
-        .def_property_readonly(
-            "num_frame_user_meta",
-            [](const DXFrameMeta &meta) { return meta._num_frame_user_meta; },
-            "Number of attached user metadata")
         
         // Read/write properties (arrays)
         .def_property(
@@ -449,10 +461,9 @@ PYBIND11_MODULE(pydxs, m) {
             "object_meta_list",
             [](DXFrameMeta &meta) {
                 py::list objects;
-                for (GList *l = meta._object_meta_list; l != nullptr; l = l->next) {
-                    if (l->data) {
-                        objects.append(py::cast(static_cast<DXObjectMeta *>(l->data),
-                                                py::return_value_policy::reference));
+                for (auto obj_meta : meta._object_meta_list) {
+                    if (obj_meta) {
+                        objects.append(py::cast(obj_meta, py::return_value_policy::reference));
                     }
                 }
                 return objects;
@@ -463,10 +474,9 @@ PYBIND11_MODULE(pydxs, m) {
         .def("__iter__",
             [](DXFrameMeta &meta) {
                 py::list objects;
-                for (GList *l = meta._object_meta_list; l != nullptr; l = l->next) {
-                    if (l->data) {
-                        objects.append(py::cast(static_cast<DXObjectMeta *>(l->data),
-                                                py::return_value_policy::reference));
+                for (auto obj_meta : meta._object_meta_list) {
+                    if (obj_meta) {
+                        objects.append(py::cast(obj_meta, py::return_value_policy::reference));
                     }
                 }
                 return py::iter(objects);
@@ -484,7 +494,7 @@ PYBIND11_MODULE(pydxs, m) {
 
                 PyObject *py_obj = data.ptr();
                 Py_XINCREF(py_obj);
-                dx_user_meta_set_data(new_meta, (void *)py_obj, sizeof(PyObject *), static_cast<guint>(type_id),
+                dx_user_meta_set_data(new_meta, (void *)py_obj, sizeof(PyObject *), static_cast<DXUserMetaType>(type_id),
                                       python_object_free_cb, python_object_copy_cb);
                 dx_add_user_meta_to_frame(&self, new_meta);
                 return true;
@@ -495,11 +505,10 @@ PYBIND11_MODULE(pydxs, m) {
             "dx_get_frame_user_metas",
             [](DXFrameMeta &self) {
                 py::list result;
-                GList *meta_list = dx_get_frame_user_metas(&self);
-                for (GList *l = meta_list; l != nullptr; l = l->next) {
-                    result.append(static_cast<DXUserMeta *>(l->data));
+                auto meta_list = dx_get_frame_user_metas(&self);
+                for (auto user_meta : *meta_list) {
+                    result.append(user_meta);
                 }
-                g_list_free(meta_list);
                 return result;
             },
             "Get list of attached DXUserMeta objects")

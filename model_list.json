@@ -1,0 +1,21 @@
+{
+    "version": "2_3_0",
+    "models": [
+        "EfficientNet_Lite0.dxnn",
+        "SCRFD500M.dxnn",
+        "YoloV5S_PPU.dxnn",
+        "YOLOv5s_Face.dxnn",
+        "yolo26n.dxnn",
+        "yolo26n-pose.dxnn",
+        "yolo26n-seg.dxnn",
+        "YoloV5S.dxnn",
+        "YoloV7.dxnn",
+        "YoloV8N.dxnn",
+        "YoloV9S.dxnn",
+        "YoloXS.dxnn",
+        "YOLOV11N.dxnn",
+        "yolov8m_pose.dxnn",
+        "SCRFD500M_PPU.dxnn",
+        "YOLOV5Pose_PPU.dxnn" 
+    ]
+}

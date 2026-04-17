@@ -8,8 +8,24 @@ Python bindings for DX-Stream metadata API.
 - Create and manage frame metadata
 - Create and add object metadata to frames
 - Add custom user metadata to frames and objects
+- Access frame-level semantic segmentation maps and object-level ROI-local masks
 - Read and iterate through metadata in GStreamer pipelines
 
+## Metadata Layout Notes
+
+Current `pydxs` bindings follow the native metadata headers in `gst-dxstream-plugin/metadata`.
+
+- `DXFrameMeta` includes `seg_data`, `seg_width`, `seg_height`, and `seg_format` for frame-level semantic segmentation.
+- `DXObjectMeta` includes `seg_data`, `seg_width`, `seg_height`, and `seg_format` for object-level segmentation.
+- `DXObjectMeta.seg_data` stores an ROI-local binary mask aligned to `obj_meta.box`.
+- `DXFrameMeta.seg_data` stores a full-frame semantic class map.
+- In Python, both frame and object `seg_data` values are exposed as `bytes`.
+
+## Requirements
+
+- **Python:** 3.6 or higher
+- **Build System:** setuptools + pybind11 (automatically installed)
+- **Dependencies:** GStreamer 1.0, DX-Stream plugin
 
 ## Installation
 
@@ -19,17 +35,23 @@ Python bindings for DX-Stream metadata API.
 # 1. Install dependencies
 ./install.sh
 
-# 2. Build DX-Stream (automatically installs pydxs into venv-dx_)
+# 2. Build DX-Stream (automatically installs pydxs into venv-dx_stream)
 ./build.sh
 ```
 
 **What happens:**
 - [`./install.sh`](../../../install.sh): Installs GStreamer, OpenCV, python3-gi, and other dependencies
 - [`./build.sh`](../../../build.sh):
-    - Builds DX-Stream
+    - Builds DX-Stream with setuptools
     - Creates a dedicated virtual environment at `PROJECT_ROOT/venv-dx_stream`
     - Uses `python3 -m venv --system-site-packages` so the venv can access system-installed `python3-gi`
     - Installs `pydxs` into this `venv-dx_stream` environment
+    - **Automatically sets rpath** so `libgstdxstream.so` is found at runtime (no `LD_LIBRARY_PATH` needed)
+
+**Supported Python Versions:**
+- Python 3.6-3.7: Legacy mode with setuptools + pybind11
+- Python 3.8+: Modern mode with setuptools + pybind11
+- Compatible with Ubuntu 18.04 (Python 3.6) and newer
 
 **Why a dedicated virtual environment?**
 - DX-Stream Python apps rely on the GStreamer Python bindings (`gi`, from the `python3-gi` package), which are installed into the **system** Python via your package manager (for example, `apt-get install python3-gi`).
@@ -119,7 +141,7 @@ def probe_callback(pad, info):
 Directly creates new frame metadata and attaches to buffer.
 
 ```python
-frame_meta = pydxs.dx_create_frame_meta(hash(buffer))
+buffer = pydxs.dx_create_frame_meta(hash(buffer))
 ```
 
 **Get frame metadata** - `dx_get_frame_meta(buffer_address)`
@@ -131,6 +153,7 @@ frame_meta = pydxs.dx_get_frame_meta(hash(buffer))
 if frame_meta:
     # Access frame properties
     print(f"Frame: {frame_meta.width}x{frame_meta.height}")
+    print(f"Frame seg format: {frame_meta.seg_format}")
     # Iterate through objects
     for obj_meta in frame_meta:
         print(f"  Object: {obj_meta.label}")
@@ -156,6 +179,9 @@ obj_meta.label_name = "dog"
 obj_meta.confidence = 0.95
 obj_meta.box = [x1, y1, x2, y2]
 obj_meta.track_id = 1001
+obj_meta.seg_data = bytes(mask_bytes)
+obj_meta.seg_width = roi_width
+obj_meta.seg_height = roi_height
 ```
 
 **Add object to frame** - `dx_add_obj_meta_to_frame(frame_meta, obj_meta)`
@@ -184,6 +210,36 @@ for obj_meta in frame_meta:
     print(f"  Box: {obj_meta.box}")
     print(f"  Track ID: {obj_meta.track_id}")
 ```
+
+### Working with Segmentation Metadata
+
+`DXFrameMeta` and `DXObjectMeta` both expose segmentation-related fields, but they store different kinds of data:
+
+- `frame_meta.seg_data`: full-frame semantic class map
+- `frame_meta.seg_width`, `frame_meta.seg_height`: full-frame segmentation dimensions
+- `frame_meta.seg_format`: `"full-frame-class-map"` or `"none"`
+- `obj_meta.seg_data`: ROI-local binary mask stored as bytes
+- `obj_meta.seg_width`, `obj_meta.seg_height`: ROI-local mask dimensions
+- `obj_meta.seg_format`: `"roi-binary-mask"` or `"none"`
+- `obj_meta.box`: placement of the ROI-local mask in frame coordinates
+
+```python
+if frame_meta.seg_format == "full-frame-class-map":
+    print(
+        f"Frame segmentation: {frame_meta.seg_width}x{frame_meta.seg_height}, "
+        f"{len(frame_meta.seg_data)} bytes"
+    )
+
+for obj_meta in frame_meta:
+    if obj_meta.seg_format == "roi-binary-mask":
+        x1, y1, x2, y2 = obj_meta.box
+        print(
+            f"Object mask: {obj_meta.seg_width}x{obj_meta.seg_height}, "
+            f"{len(obj_meta.seg_data)} bytes, box={(x1, y1, x2, y2)}"
+        )
+```
+
+Any object-level segmentation consumer should interpret `obj_meta.seg_data` as an ROI-local mask and use `obj_meta.box` to place it back on the frame.
 
 ### Working with User Metadata
 

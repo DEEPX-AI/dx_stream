@@ -7,7 +7,7 @@ In this case, each sub-pipeline performs inference asynchronously, maximizing th
 ![](./../../resources/05_02_multi_stream_subpipeline.png)
 
 The pipeline in the figure is defined in 
-`dx_stream/dx_stream/pipelines/multi_stream/run_multi_stream_YOLOV5S.sh` and can be used as a reference for execution.  
+`dx_stream/pipelines/multi_stream/run_moulti_stream.sh` and can be used as a reference for execution.  
 
 
 The other approach uses **DxInputSelector** and **DxOutputSelector**.  
@@ -17,19 +17,21 @@ The selected buffer passes through a single inference pipeline for processing, a
 ![](./../../resources/05_02_multi_stream_selector.png)
 
 The pipeline in the figure is defined in 
-`dx_stream/dx_stream/pipelines/multi_stream/run_multi_stream_single_infer_YOLOV5S.sh` and can be used as a reference for execution.  
+`dx_stream/pipelines/multi_stream/run_multi_stream_selector.sh` and can be used as a reference for execution.  
 
 ### **Explanation**  
 
 **Element Descriptions**  
 
-- **`conpositor`**: Draws multiple stream buffers received through sink pads at specified positions. In the example above, it is used for tiled display of inference results from each stream.  
+- **`compositor`**: Draws multiple stream buffers received through sink pads at specified positions. In the example above, it is used for tiled display of inference results from each stream.  
 - **`dxinputselector`**: Selects the buffer with the smallest PTS among multiple input streams received through sink pads and pushes it downstream. 
 - **`dxoutputselector`**: Routes buffers received from upstream back into multiple output streams.  
+- **`dxscale`**: Scales video frames to a specified resolution. Used to resize streams before display.  
 
-### **Usage Notes**  
+### **Usage Notes**
 
-- Depending on the model size, using a multi sub-pipeline structure may put a burden on memory resources 
+- Depending on the model size, using a multi sub-pipeline structure may put a burden on memory resources
 - While sub-pipeline structures can offer advantages in processing speed, the performance gain may be negligible compared to selector-based pipelines depending on the environment.
+- **DxScale** and **DxConvert** must be placed **before** DxInputSelector or **after** DxOutputSelector (i.e., per-stream). These elements require stable caps and cannot handle the interleaved multi-stream output of DxInputSelector where caps change on every buffer.
 
 ---

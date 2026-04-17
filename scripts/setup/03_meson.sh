@@ -344,7 +344,24 @@ setup_meson() {
             print_message "warning" "Meson version $current_version below requirement ($required_version). Attempting upgrade..."
             need_install=true
         else
-            print_message "success" "Meson version $current_version meets requirement (>= $required_version)"
+            # If in a virtual environment, verify that mesonbuild module is importable
+            # by the current Python. System meson may use a different Python version.
+            if [ -n "$VIRTUAL_ENV" ] && ! python3 -c "import mesonbuild" 2>/dev/null; then
+                print_message "warning" "Meson $current_version found but mesonbuild not importable in current venv Python."
+                print_message "info" "Installing meson into virtual environment..."
+                if command -v pip >/dev/null 2>&1; then
+                    pip install "meson>=$required_version"
+                elif command -v pip3 >/dev/null 2>&1; then
+                    pip3 install "meson>=$required_version"
+                fi
+                if python3 -c "import mesonbuild" 2>/dev/null; then
+                    print_message "success" "Meson installed in venv successfully"
+                else
+                    print_message "warning" "Could not install meson in venv, proceeding with system meson"
+                fi
+            else
+                print_message "success" "Meson version $current_version meets requirement (>= $required_version)"
+            fi
             return 0
         fi
     fi

@@ -5,7 +5,7 @@
 #include <glib.h>
 #include <json-glib/json-glib.h>
 
-enum { PROP_0, PROP_CONFIG_FILE_PATH, PROP_TRACKER_NAME, N_PROPERTIES };
+enum class PropertyID { PROP_0, PROP_CONFIG_FILE_PATH, PROP_TRACKER_NAME, N_PROPERTIES };
 
 GST_DEBUG_CATEGORY_STATIC(gst_dxtracker_debug_category);
 #define GST_CAT_DEFAULT gst_dxtracker_debug_category
@@ -15,12 +15,9 @@ static GstFlowReturn gst_dxtracker_transform_ip(GstBaseTransform *trans,
 static gboolean gst_dxtracker_start(GstBaseTransform *trans);
 static gboolean gst_dxtracker_stop(GstBaseTransform *trans);
 
-G_DEFINE_TYPE_WITH_CODE(
-    GstDxTracker, gst_dxtracker, GST_TYPE_BASE_TRANSFORM,
-    GST_DEBUG_CATEGORY_INIT(gst_dxtracker_debug_category, "gst-dxtracker", 0,
-                            "debug category for gst-dxtracker element"))
+G_DEFINE_TYPE(GstDxTracker, gst_dxtracker, GST_TYPE_BASE_TRANSFORM);
 
-static GstElementClass *parent_class = nullptr;
+static GstElementClass *parent_class = nullptr;  // NOSONAR - GStreamer standard pattern with G_DEFINE_TYPE macro
 
 static void process_param(GstDxTracker *self, JsonObject *params,
                           const gchar *key) {
@@ -62,6 +59,7 @@ static void parse_config(GstDxTracker *self) {
         return;
     }
 
+    GST_INFO_OBJECT(self, "Loading tracker config file: %s", self->_config_file_path);
     JsonParser *parser = json_parser_new();
     GError *error = nullptr;
 
@@ -92,10 +90,12 @@ static void parse_config(GstDxTracker *self) {
     GList *keys = json_object_get_members(params_object);
 
     for (GList *iter = keys; iter != nullptr; iter = iter->next) {
-        const gchar *key = static_cast<const gchar *>(iter->data);
+        auto *key = static_cast<const gchar *>(iter->data);
         process_param(self, params_object, key);
     }
     g_list_free(keys);
+    GST_INFO_OBJECT(self, "Tracker config loaded: algorithm=%s, %zu parameters",
+                    self->_tracker_name, self->_params.size());
     g_object_unref(parser);
 }
 
@@ -104,14 +104,14 @@ static void dxtracker_set_property(GObject *object, guint property_id,
     GstDxTracker *self = GST_DXTRACKER(object);
 
     switch (property_id) {
-    case PROP_CONFIG_FILE_PATH:
+    case static_cast<guint>(PropertyID::PROP_CONFIG_FILE_PATH):
         if (nullptr != self->_config_file_path)
             g_free(self->_config_file_path);
         self->_config_file_path = g_strdup(g_value_get_string(value));
         parse_config(self);
         break;
 
-    case PROP_TRACKER_NAME:
+    case static_cast<guint>(PropertyID::PROP_TRACKER_NAME):
         self->_tracker_name = g_value_dup_string(value);
         break;
 
@@ -123,14 +123,14 @@ static void dxtracker_set_property(GObject *object, guint property_id,
 
 static void dxtracker_get_property(GObject *object, guint property_id,
                                    GValue *value, GParamSpec *pspec) {
-    GstDxTracker *self = GST_DXTRACKER(object);
+    const GstDxTracker *self = GST_DXTRACKER(object);
 
     switch (property_id) {
-    case PROP_CONFIG_FILE_PATH:
+    case static_cast<guint>(PropertyID::PROP_CONFIG_FILE_PATH):
         g_value_set_string(value, self->_config_file_path);
         break;
 
-    case PROP_TRACKER_NAME:
+    case static_cast<guint>(PropertyID::PROP_TRACKER_NAME):
         g_value_set_string(value, self->_tracker_name);
         break;
 
@@ -143,10 +143,11 @@ static void dxtracker_get_property(GObject *object, guint property_id,
 static GstStateChangeReturn dxtracker_change_state(GstElement *element,
                                                    GstStateChange transition) {
     GstDxTracker *self = GST_DXTRACKER(element);
-    GST_INFO_OBJECT(self, "Attempting to change state");
+    const gchar *transition_name = gst_state_change_get_name(transition);
+    GST_INFO_OBJECT(self, "State transition: %s", transition_name);
     GstStateChangeReturn result =
         GST_ELEMENT_CLASS(parent_class)->change_state(element, transition);
-    GST_INFO_OBJECT(self, "State change return: %d", result);
+    GST_DEBUG_OBJECT(self, "State change completed: %d", result);
     return result;
 }
 
@@ -156,8 +157,12 @@ static void dxtracker_dispose(GObject *object) {
         g_free(self->_config_file_path);
         self->_config_file_path = nullptr;
     }
-    g_free(self->_tracker_name);
-
+    if (self->_tracker_name) {
+        g_free(self->_tracker_name);
+    }
+    self->_tracker_name = nullptr;
+    self->_params.clear();
+    self->_trackers.clear();
     G_OBJECT_CLASS(parent_class)->dispose(object);
 }
 
@@ -165,32 +170,32 @@ static void gst_dxtracker_class_init(GstDxTrackerClass *klass) {
     GST_DEBUG_CATEGORY_INIT(gst_dxtracker_debug_category, "dxtracker", 0,
                             "DXTracker plugin");
 
-    GObjectClass *gobject_class = G_OBJECT_CLASS(klass);
+    auto *gobject_class = G_OBJECT_CLASS(klass);
     gobject_class->set_property = dxtracker_set_property;
     gobject_class->get_property = dxtracker_get_property;
     gobject_class->dispose = dxtracker_dispose;
 
-    static GParamSpec *obj_properties[N_PROPERTIES] = {
+    static std::array<GParamSpec*, static_cast<int>(PropertyID::N_PROPERTIES)> obj_properties = {
         nullptr,
     };
 
-    obj_properties[PROP_CONFIG_FILE_PATH] =
+    obj_properties[static_cast<guint>(PropertyID::PROP_CONFIG_FILE_PATH)] =
         g_param_spec_string("config-file-path", "Config File Path",
                             "Path to the JSON config file containing the "
                             "tracking algorithm and parameters.",
                             nullptr, G_PARAM_READWRITE);
 
-    obj_properties[PROP_TRACKER_NAME] = g_param_spec_string(
+    obj_properties[static_cast<guint>(PropertyID::PROP_TRACKER_NAME)] = g_param_spec_string(
         "tracker-name", "Tracker Name",
         "Specifies the name of the tracking algorithm to use.", nullptr,
         G_PARAM_READWRITE);
 
-    g_object_class_install_properties(gobject_class, N_PROPERTIES,
-                                      obj_properties);
+    g_object_class_install_properties(gobject_class, static_cast<guint>(PropertyID::N_PROPERTIES),
+                                      obj_properties.data());
 
-    GstBaseTransformClass *base_transform_class =
+    auto *base_transform_class =
         GST_BASE_TRANSFORM_CLASS(klass);
-    GstElementClass *element_class = GST_ELEMENT_CLASS(klass);
+    auto *element_class = GST_ELEMENT_CLASS(klass);
 
     gst_element_class_add_pad_template(
         GST_ELEMENT_CLASS(klass),
@@ -221,12 +226,14 @@ static void gst_dxtracker_init(GstDxTracker *self) {
 }
 
 static gboolean gst_dxtracker_start(GstBaseTransform *trans) {
-    GST_DEBUG_OBJECT(trans, "start");
+    GstDxTracker *self = GST_DXTRACKER(trans);
+    GST_INFO_OBJECT(self, "Tracker starting with algorithm: %s", self->_tracker_name);
     return TRUE;
 }
 
 static gboolean gst_dxtracker_stop(GstBaseTransform *trans) {
-    GST_DEBUG_OBJECT(trans, "stop");
+    GstDxTracker *self = GST_DXTRACKER(trans);
+    GST_INFO_OBJECT(self, "Tracker stopping (%zu active trackers)", self->_trackers.size());
     return TRUE;
 }
 
@@ -237,8 +244,8 @@ Vector2Matrix(std::vector<std::vector<float>> data) {
     Eigen::Matrix<float, Eigen::Dynamic, 7> matrix(data.size(), data[0].size());
 
     // Iterate over the rows and columns of the data vector
-    for (size_t i = 0; i < (size_t)data.size(); ++i) {
-        for (size_t j = 0; j < (size_t)data[0].size(); ++j) {
+    for (size_t i = 0; i < data.size(); ++i) {
+        for (size_t j = 0; j < data[0].size(); ++j) {
             // Assign the value at position (i, j) of the matrix to the
             // corresponding value from the data vector
             matrix(i, j) = data[i][j];
@@ -249,28 +256,31 @@ Vector2Matrix(std::vector<std::vector<float>> data) {
     return matrix;
 }
 
-void track(GstDxTracker *self, DXFrameMeta *frame_meta, GstBuffer *buf) {
+void track(GstDxTracker *self, DXFrameMeta *frame_meta) {
     if (self->_trackers.find(frame_meta->_stream_id) == self->_trackers.end()) {
+        GST_INFO_OBJECT(self, "Initializing tracker for stream %d with algorithm: %s",
+                        frame_meta->_stream_id, self->_tracker_name);
         auto tracker = TrackerFactory::createTracker(self->_tracker_name);
         tracker->init(self->_params);
         self->_trackers[frame_meta->_stream_id] = std::move(tracker);
     }
 
-    int objects_size = g_list_length(frame_meta->_object_meta_list);
+    size_t objects_size = frame_meta->_object_meta_list.size();
     if (objects_size > 0) {
+        GST_DEBUG_OBJECT(self, "Tracking %zu objects in stream %d",
+                         objects_size, frame_meta->_stream_id);
         std::vector<std::vector<float>> data;
         data.clear();
-        for (int o = 0; o < objects_size; o++) {
-            DXObjectMeta *object_meta = (DXObjectMeta *)g_list_nth_data(
-                frame_meta->_object_meta_list, o);
+        for (size_t o = 0; o < objects_size; o++) {
+            const auto *object_meta = frame_meta->_object_meta_list[o];
 
             std::vector<float> row;
             row.clear();
-            row.push_back(static_cast<float>(object_meta->_box[0]));
-            row.push_back(static_cast<float>(object_meta->_box[1]));
-            row.push_back(static_cast<float>(object_meta->_box[2]));
-            row.push_back(static_cast<float>(object_meta->_box[3]));
-            row.push_back(static_cast<float>(object_meta->_confidence));
+            row.push_back(object_meta->_box[0]);
+            row.push_back(object_meta->_box[1]);
+            row.push_back(object_meta->_box[2]);
+            row.push_back(object_meta->_box[3]);
+            row.push_back(object_meta->_confidence);
             row.push_back(static_cast<float>(object_meta->_label));
             row.push_back(static_cast<float>(o)); // input_idx
             data.push_back(row);
@@ -280,26 +290,28 @@ void track(GstDxTracker *self, DXFrameMeta *frame_meta, GstBuffer *buf) {
             self->_trackers[frame_meta->_stream_id]->update(
                 Vector2Matrix(data));
 
+        int assigned_count = 0;
         for (Eigen::RowVectorXf result : results) {
-            int idx = result(7);
-            DXObjectMeta *object_meta = (DXObjectMeta *)g_list_nth_data(
-                frame_meta->_object_meta_list, idx);
+            auto idx = static_cast<int>(result(7));
+            auto *object_meta = frame_meta->_object_meta_list[idx];
 
-            object_meta->_track_id = result(4);
+            object_meta->_track_id = static_cast<int>(result(4));
+            assigned_count++;
         }
 
-        for (int i = objects_size - 1; i >= 0; i--) {
-            DXObjectMeta *object_meta = (DXObjectMeta *)g_list_nth_data(
-                frame_meta->_object_meta_list, i);
+        int removed_count = 0;
+        for (int i = static_cast<int>(objects_size) - 1; i >= 0; i--) {
+            auto *object_meta = frame_meta->_object_meta_list[i];
             if (object_meta->_track_id == -1) {
-                GList *list = g_list_nth(frame_meta->_object_meta_list, i);
-                frame_meta->_object_meta_list =
-                    g_list_remove_link(frame_meta->_object_meta_list, list);
-                g_list_free_1(list);
-                // Remove object metadata using new API
+                // Remove object from vector
                 dx_release_obj_meta(object_meta);
+                frame_meta->_object_meta_list.erase(frame_meta->_object_meta_list.begin() + i);
+                removed_count++;
             }
         }
+        
+        GST_DEBUG_OBJECT(self, "Tracking results: %d IDs assigned, %d objects removed",
+                         assigned_count, removed_count);
     }
 }
 
@@ -307,13 +319,14 @@ static GstFlowReturn gst_dxtracker_transform_ip(GstBaseTransform *trans,
                                                 GstBuffer *buf) {
     GstDxTracker *self = GST_DXTRACKER(trans);
 
-    DXFrameMeta *frame_meta =
-        (DXFrameMeta *)gst_buffer_get_meta(buf, DX_FRAME_META_API_TYPE);
+    GST_DEBUG_OBJECT(self, "Processing buffer: pts=%" GST_TIME_FORMAT,
+                     GST_TIME_ARGS(GST_BUFFER_PTS(buf)));
+    auto *frame_meta = dx_get_frame_meta(buf);
     if (!frame_meta) {
         GST_WARNING_OBJECT(self, "No DXFrameMeta in GstBuffer \n");
         return GST_FLOW_OK;
     }
-    track(self, frame_meta, buf);
+    track(self, frame_meta);
 
     return GST_FLOW_OK;
 }

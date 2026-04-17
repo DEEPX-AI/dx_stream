@@ -3,55 +3,18 @@
 
 #include <cstdint>
 #include <cstring>
+#include <memory>
 #include <string>
 #include <vector>
 
 namespace dxs {
-
-struct SegClsMap {
-    std::vector<unsigned char> data;
-    int width = 0;
-    int height = 0;
-
-    SegClsMap() = default;
-    SegClsMap(const SegClsMap &) = default;
-    SegClsMap &operator=(const SegClsMap &) = default;
-    ~SegClsMap() = default;
-};
-
-template <typename _T> struct Point_ {
-    _T _x;
-    _T _y;
-    _T _z;
-
-    bool operator==(const Point_ &a) {
-        if (_x == a._x && _y == a._y && _z == a._z) {
-            return true;
-        } else {
-            return false;
-        }
-    };
-    Point_<_T>(_T x, _T y, _T z = 0) {
-        this->_x = x;
-        this->_y = y;
-        this->_z = z;
-    };
-    Point_<_T>() {
-        this->_x = 0;
-        this->_y = 0;
-        this->_z = 0;
-    };
-};
-
-typedef Point_<int> Point;
-typedef Point_<float> Point_f;
 
 enum DataType {
     NONE_TYPE = 0,
     FLOAT,  ///< 32bit float
     UINT8,  ///< 8bit unsigned integer
     INT8,   ///< 8bit signed integer
-    UINT16, ///< 16it unsigned integer
+    UINT16, ///< 16bit unsigned integer
     INT16,  ///< 16bit signed integer
     INT32,  ///< 32bit signed integer
     INT64,  ///< 64bit signed integer
@@ -63,7 +26,7 @@ enum DataType {
     MAX_TYPE,
 };
 
-typedef struct _DeviceBoundingBox {
+struct DeviceBoundingBox_t {
     float x;
     float y;
     float w;
@@ -75,14 +38,14 @@ typedef struct _DeviceBoundingBox {
     float score;
     uint32_t label;
     char padding[4];
-} DeviceBoundingBox_t;
+};
 
 /// @cond
 /** \brief face detection data format from device
  * \headerfile "dxrt/dxrt_api.h"
  */
 /// @endcond
-typedef struct _DeviceFace {
+struct DeviceFace_t {
     float x;
     float y;
     float w;
@@ -93,14 +56,14 @@ typedef struct _DeviceFace {
     uint8_t layer_idx;
     float score;
     float kpts[5][2];
-} DeviceFace_t;
+};
 
 /// @cond
 /** \brief pose estimation data format from device
  * \headerfile "dxrt/dxrt_api.h"
  */
 /// @endcond
-typedef struct _DevicePose {
+struct DevicePose_t {
     float x;
     float y;
     float w;
@@ -113,9 +76,9 @@ typedef struct _DevicePose {
     uint32_t label;
     float kpts[17][3];
     char padding[24];
-} DevicePose_t;
+};
 
-typedef struct _DXTensor {
+struct DXTensor {
     std::string _name;
     std::vector<int64_t> _shape;
     uint64_t _phyAddr = 0;
@@ -123,22 +86,29 @@ typedef struct _DXTensor {
     uint32_t _elemSize = 0;
     DataType _type = dxs::DataType::NONE_TYPE;
 
-    _DXTensor() = default;
-    _DXTensor(const _DXTensor &) = default;
-    _DXTensor &operator=(const _DXTensor &) = default;
-    ~_DXTensor() = default;
-} DXTensor;
+    DXTensor() = default;
+    DXTensor(const DXTensor &) = default;
+    DXTensor &operator=(const DXTensor &) = default;
+    ~DXTensor() = default;
+};
 
-typedef struct _DXTensors {
+struct DXTensors {
     uint32_t _mem_size = 0;
-    void *_data = nullptr;
+    std::shared_ptr<void> _data;  // RAII: void* → shared_ptr<void>
     std::vector<DXTensor> _tensors;
 
-    _DXTensors() = default;
-    _DXTensors(const _DXTensors &) = default;
-    _DXTensors &operator=(const _DXTensors &) = default;
-    ~_DXTensors() = default;
-} DXTensors;
+    void *data_ptr() const { return _data.get(); }
+
+    void allocate(size_t size) {
+        _mem_size = static_cast<uint32_t>(size);
+        _data = std::shared_ptr<void>(malloc(size), free);
+    }
+
+    DXTensors() = default;
+    DXTensors(const DXTensors &) = default;
+    DXTensors &operator=(const DXTensors &) = default;
+    ~DXTensors() = default;
+};
 
 } // namespace dxs
 

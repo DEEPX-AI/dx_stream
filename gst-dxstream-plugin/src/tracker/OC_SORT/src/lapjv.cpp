@@ -33,8 +33,6 @@
 #endif
 #endif
 
-const uint_t cost_array_outer_dim_placeholder = 0;
-
 void initializeArrays(const uint_t n, std::vector<int_t> &x,
                       std::vector<int_t> &y, std::vector<cost_t> &v) {
     for (uint_t i = 0; i < n; i++) {
@@ -64,7 +62,7 @@ void assignUniqueMatches(const uint_t n, std::vector<int_t> &x,
                          std::vector<int_t> &y, std::vector<bool> &unique) {
     for (int_t j_signed = static_cast<int_t>(n) - 1; j_signed >= 0;
          --j_signed) {
-        uint_t j = static_cast<uint_t>(j_signed);
+        auto j = static_cast<uint_t>(j_signed);
         int_t i = y.at(j);
         if (i < 0 || static_cast<uint_t>(i) >= n) {
             PRINTF("Warning: assignUniqueMatches - y[%u] = %d is out of bounds "
@@ -85,7 +83,8 @@ void addFreeRowIfUnassigned(uint_t i, const std::vector<int_t> &x,
                             std::vector<int_t> &free_rows, int_t &n_free_rows) {
     if (x.at(i) < 0) {
         if (static_cast<uint_t>(n_free_rows) < free_rows.size()) {
-            free_rows[n_free_rows++] = static_cast<int_t>(i);
+            free_rows[n_free_rows] = static_cast<int_t>(i);
+            n_free_rows++;
         } else {
             PRINTF("Error: addFreeRowIfUnassigned - free_rows is full.\n");
             throw std::overflow_error(
@@ -108,7 +107,7 @@ void adjustPotentialIfUnique(uint_t i, const std::vector<int_t> &x,
                i, j_signed, n);
         return;
     }
-    uint_t j = static_cast<uint_t>(j_signed);
+    auto j = static_cast<uint_t>(j_signed);
 
     cost_t min_val = LARGE;
     for (uint_t j2 = 0; j2 < n; j2++) {
@@ -122,6 +121,7 @@ void adjustPotentialIfUnique(uint_t i, const std::vector<int_t> &x,
     PRINTF("v[%u] = %f - %f\n", j, static_cast<double>(v.at(j)),
            static_cast<double>(min_val));
     if (min_val == LARGE) {
+        // No adjustment needed when min_val is LARGE
     }
     v.at(j) -= min_val;
 }
@@ -157,22 +157,25 @@ int_t _ccrrt_dense(const uint_t n, cost_t *const *cost,
     return n_free_rows;
 }
 
-void findTwoMinIndices(const uint_t n, cost_t *const *cost, int_t free_i_signed,
-                       const std::vector<cost_t> &v, int_t &j1, int_t &j2,
-                       cost_t &v1, cost_t &v2) {
-    if (n == 0) {
-        j1 = -1;
-        j2 = -1;
-        v1 = LARGE;
-        v2 = LARGE;
-        return;
-    }
-    uint_t free_i = static_cast<uint_t>(free_i_signed);
+struct TwoMinIndicesResult {
+    int_t j1;
+    int_t j2;
+    cost_t v1;
+    cost_t v2;
+};
 
-    j1 = 0;
-    v1 = cost[free_i][0] - v.at(0);
-    j2 = -1;
-    v2 = LARGE;
+TwoMinIndicesResult findTwoMinIndices(const uint_t n, cost_t *const *cost,
+                                       int_t free_i_signed,
+                                       const std::vector<cost_t> &v) {
+    if (n == 0) {
+        return {-1, -1, LARGE, LARGE};
+    }
+    auto free_i = static_cast<uint_t>(free_i_signed);
+
+    int_t j1 = 0;
+    cost_t v1 = cost[free_i][0] - v.at(0);
+    int_t j2 = -1;
+    cost_t v2 = LARGE;
 
     for (uint_t j = 1; j < n; j++) {
         cost_t c = cost[free_i][j] - v.at(j);
@@ -188,31 +191,88 @@ void findTwoMinIndices(const uint_t n, cost_t *const *cost, int_t free_i_signed,
             }
         }
     }
+    return {j1, j2, v1, v2};
 }
 
-void updateFreeRows(int_t i0_signed, bool v1_lowers, uint_t &current,
-                    int_t &new_free_rows_count,
-                    std::vector<int_t> &free_rows_vec) {
-
-    if (v1_lowers) {
-        if (current > 0) {
-            free_rows_vec[--current] = i0_signed;
-        } else {
-            PRINTF(
-                "Error: updateFreeRows - current is 0 in v1_lowers branch.\n");
-            throw std::logic_error(
-                "updateFreeRows: current cannot be 0 when v1_lowers is true "
-                "and trying to decrement.");
-        }
+void addToFreeRows(int_t i0_signed, std::vector<int_t> &free_rows,
+                   int_t &new_free_rows_count, uint_t n) {
+    if (static_cast<uint_t>(new_free_rows_count) < n) {
+        free_rows[new_free_rows_count] = i0_signed;
+        new_free_rows_count++;
     } else {
-        if (static_cast<uint_t>(new_free_rows_count) < free_rows_vec.size()) {
-            free_rows_vec[new_free_rows_count++] = i0_signed;
+        throw std::overflow_error("free_rows is full.");
+    }
+}
+
+void prependToFreeRows(int_t i0_signed, std::vector<int_t> &free_rows,
+                       uint_t &current_read_idx, int_t &new_free_rows_count,
+                       uint_t n) {
+    if (current_read_idx > 0) {
+        --current_read_idx;
+        free_rows[current_read_idx] = i0_signed;
+    } else {
+        PRINTF("Error: current_read_idx cannot be decremented further.\n");
+        addToFreeRows(i0_signed, free_rows, new_free_rows_count, n);
+    }
+}
+
+void updateDualVariable(uint_t j1, cost_t v1_new, std::vector<cost_t> &v) {
+    v.at(j1) = v1_new;
+}
+
+bool tryAlternativeColumn(int_t i0_signed, int_t j2_signed, uint_t n,
+                          const std::vector<int_t> &y, uint_t &j1,
+                          int_t &i0_out) {
+    if (i0_signed >= 0 && j2_signed >= 0) {
+        if (static_cast<uint_t>(j2_signed) < n) {
+            j1 = static_cast<uint_t>(j2_signed);
+            i0_out = y.at(j1);
+            return true;
         } else {
-            PRINTF("Error: updateFreeRows - free_rows_vec is full in else "
-                   "branch.\n");
-            throw std::overflow_error(
-                "free_rows_vec is full in updateFreeRows else branch.");
+            PRINTF("Warning: j2_signed (%d) is out of bounds.\n", j2_signed);
+            i0_out = -1;
+            return false;
         }
+    }
+    return false;
+}
+
+struct FastReductionContext {
+    uint_t n;
+    int_t j2_signed;
+    const std::vector<int_t> &y;
+    std::vector<cost_t> &v;
+};
+
+void processFastReductionPath(uint_t &j1, int_t &i0_signed, bool v1_lowers,
+                              cost_t v1_new, const FastReductionContext &ctx) {
+    if (v1_lowers) {
+        updateDualVariable(j1, v1_new, ctx.v);
+    } else {
+        tryAlternativeColumn(i0_signed, ctx.j2_signed, ctx.n, ctx.y, j1, i0_signed);
+    }
+}
+
+void handleFreeRowInFastPath(int_t i0_signed, bool v1_lowers,
+                             std::vector<int_t> &free_rows,
+                             uint_t &current_read_idx,
+                             int_t &new_free_rows_count, uint_t n) {
+    if (i0_signed < 0) {
+        return;
+    }
+    
+    if (v1_lowers) {
+        prependToFreeRows(i0_signed, free_rows, current_read_idx,
+                         new_free_rows_count, n);
+    } else {
+        addToFreeRows(i0_signed, free_rows, new_free_rows_count, n);
+    }
+}
+
+void processSlowPath(int_t i0_signed, std::vector<int_t> &free_rows,
+                     int_t &new_free_rows_count, uint_t n) {
+    if (i0_signed >= 0) {
+        addToFreeRows(i0_signed, free_rows, new_free_rows_count, n);
     }
 }
 
@@ -225,77 +285,41 @@ int_t _carr_dense(const uint_t n, cost_t *const *cost,
     uint_t current_read_idx = 0;
     int_t new_free_rows_count = 0;
     uint_t rr_cnt = 0;
-    uint_t active_free_rows = static_cast<uint_t>(n_free_rows_val);
+    auto active_free_rows = static_cast<uint_t>(n_free_rows_val);
 
     while (current_read_idx < active_free_rows) {
         rr_cnt++;
-        const int_t free_i = free_rows.at(current_read_idx++);
+        const int_t free_i = free_rows.at(current_read_idx);
+        current_read_idx++;
 
-        int_t j1_signed, j2_signed;
-        cost_t v1, v2;
-        findTwoMinIndices(n, cost, free_i, v, j1_signed, j2_signed, v1, v2);
+        TwoMinIndicesResult min_result = findTwoMinIndices(n, cost, free_i, v);
+        int_t j1_signed = min_result.j1;
+        int_t j2_signed = min_result.j2;
+        cost_t v1 = min_result.v1;
+        cost_t v2 = min_result.v2;
 
         if (j1_signed < 0 || static_cast<uint_t>(j1_signed) >= n) {
             PRINTF("Warning: _carr_dense - j1 (%d) is out of bounds for y/v "
                    "array of size %u\n",
                    j1_signed, n);
-
             x.at(free_i) = -1;
             continue;
         }
-        uint_t j1 = static_cast<uint_t>(j1_signed);
+        auto j1 = static_cast<uint_t>(j1_signed);
 
         int_t i0_signed = y.at(j1);
         cost_t v1_new = v.at(j1) - (v2 - v1);
         bool v1_lowers = v1_new < v.at(j1);
 
         if (rr_cnt < current_read_idx * n || rr_cnt < 2 * n) {
-            if (v1_lowers) {
-                v.at(j1) = v1_new;
-            } else if (i0_signed >= 0 && j2_signed >= 0) {
-                if (static_cast<uint_t>(j2_signed) < n) {
-                    j1 = static_cast<uint_t>(j2_signed);
-                    i0_signed = y.at(j1);
-                } else {
-                    PRINTF("Warning: _carr_dense - j2_signed (%d) is out of "
-                           "bounds.\n",
-                           j2_signed);
-                    i0_signed = -1;
-                }
-            }
-
-            if (i0_signed >= 0) {
-                if (v1_lowers) {
-                    if (current_read_idx > 0) {
-                        free_rows[--current_read_idx] = i0_signed;
-                    } else {
-                        PRINTF("Error: _carr_dense - current_read_idx cannot "
-                               "be decremented further.\n");
-
-                        if (static_cast<uint_t>(new_free_rows_count) < n) {
-                            free_rows[new_free_rows_count++] = i0_signed;
-                        } else {
-                            throw std::overflow_error("free_rows is full.");
-                        }
-                    }
-                } else {
-
-                    if (static_cast<uint_t>(new_free_rows_count) < n) {
-                        free_rows[new_free_rows_count++] = i0_signed;
-                    } else {
-                        throw std::overflow_error("free_rows is full.");
-                    }
-                }
-            }
+            FastReductionContext fast_ctx = {n, j2_signed, y, v};
+            processFastReductionPath(j1, i0_signed, v1_lowers, v1_new, fast_ctx);
+            handleFreeRowInFastPath(i0_signed, v1_lowers, free_rows,
+                                    current_read_idx, new_free_rows_count, n);
         } else {
-            if (i0_signed >= 0) {
-                if (static_cast<uint_t>(new_free_rows_count) < n) {
-                    free_rows[new_free_rows_count++] = i0_signed;
-                } else {
-                    throw std::overflow_error("free_rows is full.");
-                }
-            }
+            processSlowPath(i0_signed, free_rows, new_free_rows_count, n);
         }
+        
         x.at(free_i) = static_cast<int_t>(j1);
         y.at(j1) = free_i;
     }
@@ -343,7 +367,7 @@ uint_t _find_dense(const uint_t n, uint_t lo, const std::vector<cost_t> &d,
             } else {
                 PRINTF("Error: _find_dense - current_hi attempting to write "
                        "out of bounds.\n");
-                throw std::logic_error(
+                throw std::invalid_argument(
                     "_find_dense: current_hi out of bounds during write.");
             }
             current_hi++;
@@ -352,56 +376,79 @@ uint_t _find_dense(const uint_t n, uint_t lo, const std::vector<cost_t> &d,
     return current_hi;
 }
 
-int_t prepare_scan_row(uint_t &lo, const std::vector<int_t> &cols,
-                       const std::vector<int_t> &y, cost_t *const *cost,
-                       const std::vector<cost_t> &d,
-                       const std::vector<cost_t> &v, int_t &i_out,
-                       cost_t &mind_out, cost_t &h_out) {
-    int_t j_signed = cols.at(lo++);
-    if (j_signed < 0 || static_cast<uint_t>(j_signed) >= y.size() ||
-        static_cast<uint_t>(j_signed) >= d.size() ||
-        static_cast<uint_t>(j_signed) >= v.size()) {
+struct ScanRowContext {
+    const std::vector<int_t> &cols;
+    const std::vector<int_t> &y;
+    cost_t *const *cost;
+    const std::vector<cost_t> &d;
+    const std::vector<cost_t> &v;
+};
+
+struct ScanRowResult {
+    int_t i_out;
+    cost_t mind_out;
+    cost_t h_out;
+};
+
+int_t prepare_scan_row(uint_t &lo, const ScanRowContext &ctx,
+                       ScanRowResult &result) {
+    int_t j_signed = ctx.cols.at(lo);
+    lo++;
+    if (j_signed < 0 || static_cast<uint_t>(j_signed) >= ctx.y.size() ||
+        static_cast<uint_t>(j_signed) >= ctx.d.size() ||
+        static_cast<uint_t>(j_signed) >= ctx.v.size()) {
         PRINTF("Error: prepare_scan_row - j_signed = %d is out of bounds.\n",
                j_signed);
         throw std::out_of_range(
             "j_signed is out of bounds in prepare_scan_row");
     }
-    uint_t j = static_cast<uint_t>(j_signed);
+    auto j = static_cast<uint_t>(j_signed);
 
-    int_t i_signed = y.at(j);
-    if (i_signed < 0 ||
-        static_cast<uint_t>(i_signed) >= cost_array_outer_dim_placeholder) {
-        PRINTF("Error: prepare_scan_row - i_signed = %d from y[%u] is out of "
-               "bounds for cost array.\n",
-               i_signed, j);
-        if (i_signed < 0) {
-            PRINTF("Warning: prepare_scan_row - y[%u] is %d (unassigned row), "
-                   "cost access might be invalid.\n",
-                   j, i_signed);
+    int_t i_signed = ctx.y.at(j);
+    if (i_signed < 0) {
+        PRINTF("Warning: prepare_scan_row - y[%u] is %d (unassigned row), "
+               "cost access might be invalid.\n",
+               j, i_signed);
 
-            throw std::logic_error("prepare_scan_row: y[j] is negative, cannot "
-                                   "determine row for cost access.");
-        }
+        throw std::invalid_argument("prepare_scan_row: y[j] is negative, cannot "
+                               "determine row for cost access.");
     }
-    uint_t i = static_cast<uint_t>(i_signed);
+    auto i = static_cast<uint_t>(i_signed);
 
-    cost_t mind_val = d.at(j);
-    cost_t h_val = cost[i][j] - v.at(j) - mind_val;
+    cost_t mind_val = ctx.d.at(j);
+    cost_t h_val = ctx.cost[i][j] - ctx.v.at(j) - mind_val;
 
     PRINTF("i=%u j=%u h=%f\n", i, j, static_cast<double>(h_val));
 
-    i_out = i_signed;
-    mind_out = mind_val;
-    h_out = h_val;
+    result.i_out = i_signed;
+    result.mind_out = mind_val;
+    result.h_out = h_val;
 
     return j_signed;
 }
 
-int_t update_candidates(const uint_t n, const int_t i_signed,
-                        const cost_t mind_val, const cost_t h_val,
-                        cost_t *const *cost, std::vector<cost_t> &d,
-                        const std::vector<cost_t> &v, std::vector<int_t> &pred,
-                        const std::vector<int_t> &y, std::vector<int_t> &cols,
+struct CandidateContext {
+    const uint_t n;
+    cost_t *const *cost;
+    std::vector<cost_t> &d;
+    const std::vector<cost_t> &v;
+    std::vector<int_t> &pred;
+    const std::vector<int_t> &y;
+    std::vector<int_t> &cols;
+};
+
+struct ScanDenseContext {
+    const uint_t n;
+    cost_t *const *cost;
+    std::vector<cost_t> &d;
+    std::vector<int_t> &cols;
+    std::vector<int_t> &pred;
+    const std::vector<int_t> &y;
+    const std::vector<cost_t> &v;
+};
+
+int_t update_candidates(const int_t i_signed, const cost_t mind_val,
+                        const cost_t h_val, CandidateContext &ctx,
                         uint_t &hi_ref) {
     if (i_signed < 0) {
         PRINTF("Warning: update_candidates called with invalid row i_signed = "
@@ -409,54 +456,57 @@ int_t update_candidates(const uint_t n, const int_t i_signed,
                i_signed);
         return -1;
     }
-    uint_t i = static_cast<uint_t>(i_signed);
+    auto i = static_cast<uint_t>(i_signed);
 
-    for (uint_t k = hi_ref; k < n; ++k) {
-        int_t j2_signed = cols.at(k);
-        if (j2_signed < 0 || static_cast<uint_t>(j2_signed) >= d.size() ||
-            static_cast<uint_t>(j2_signed) >= v.size() ||
-            static_cast<uint_t>(j2_signed) >= pred.size() ||
-            static_cast<uint_t>(j2_signed) >= y.size()) {
+    for (uint_t k = hi_ref; k < ctx.n; ++k) {
+        int_t j2_signed = ctx.cols.at(k);
+        if (j2_signed < 0 || static_cast<uint_t>(j2_signed) >= ctx.d.size() ||
+            static_cast<uint_t>(j2_signed) >= ctx.v.size() ||
+            static_cast<uint_t>(j2_signed) >= ctx.pred.size() ||
+            static_cast<uint_t>(j2_signed) >= ctx.y.size()) {
             PRINTF("Error: update_candidates - j2_signed = %d from cols[%u] is "
                    "out of bounds.\n",
                    j2_signed, k);
             throw std::out_of_range(
                 "j2_signed is out of bounds in update_candidates");
         }
-        uint_t j2 = static_cast<uint_t>(j2_signed);
-        cost_t cred_ij = cost[i][j2] - v.at(j2) - h_val;
+        auto j2 = static_cast<uint_t>(j2_signed);
+        cost_t cred_ij = ctx.cost[i][j2] - ctx.v.at(j2) - h_val;
 
-        if (cred_ij < d.at(j2)) {
-            d.at(j2) = cred_ij;
-            pred.at(j2) = i_signed;
-
-            if (cred_ij == mind_val) {
-                if (y.at(j2) < 0) {
-                    return j2_signed;
-                }
-                if (k != hi_ref) {
-                    cols.at(k) = cols.at(hi_ref);
-                }
-                if (hi_ref < n) {
-                    cols.at(hi_ref) = j2_signed;
-                } else {
-                    PRINTF("Error: update_candidates - hi_ref is out of bounds "
-                           "during write.\n");
-                    throw std::logic_error("update_candidates: hi_ref out of "
-                                           "bounds during write.");
-                }
-                hi_ref++;
-            }
+        if (cred_ij >= ctx.d.at(j2)) {
+            continue;
         }
+        
+        ctx.d.at(j2) = cred_ij;
+        ctx.pred.at(j2) = i_signed;
+
+        if (cred_ij != mind_val) {
+            continue;
+        }
+        
+        if (ctx.y.at(j2) < 0) {
+            return j2_signed;
+        }
+        
+        if (k != hi_ref) {
+            ctx.cols.at(k) = ctx.cols.at(hi_ref);
+        }
+        
+        if (hi_ref >= ctx.n) {
+            PRINTF("Error: update_candidates - hi_ref is out of bounds "
+                   "during write.\n");
+            throw std::invalid_argument("update_candidates: hi_ref out of "
+                                   "bounds during write.");
+        }
+        
+        ctx.cols.at(hi_ref) = j2_signed;
+        hi_ref++;
     }
     return -1;
 }
 
-int_t _scan_dense(const uint_t n, cost_t *const *cost, uint_t *plo, uint_t *phi,
-                  std::vector<cost_t> &d, std::vector<int_t> &cols,
-                  std::vector<int_t> &pred, const std::vector<int_t> &y,
-                  const std::vector<cost_t> &v) {
-    if (n == 0) {
+int_t _scan_dense(ScanDenseContext &ctx, uint_t *plo, uint_t *phi) {
+    if (ctx.n == 0) {
         *plo = *phi;
         return -1;
     }
@@ -464,24 +514,26 @@ int_t _scan_dense(const uint_t n, cost_t *const *cost, uint_t *plo, uint_t *phi,
     uint_t hi = *phi;
 
     while (lo != hi) {
-        if (lo >= n || hi > n || lo > hi) {
+        if (lo >= ctx.n || hi > ctx.n || lo > hi) {
             PRINTF("Error: _scan_dense - invalid lo/hi values (lo=%u, hi=%u, "
                    "n=%u)\n",
-                   lo, hi, n);
-            throw std::logic_error("_scan_dense: lo/hi state is invalid.");
+                   lo, hi, ctx.n);
+            throw std::invalid_argument("_scan_dense: lo/hi state is invalid.");
         }
-        int_t i_val;
-        cost_t mind_val, h_val;
 
-        if (y.at(cols.at(lo)) < 0) {
+        if (ctx.y.at(ctx.cols.at(lo)) < 0) {
             PRINTF("Warning: _scan_dense - trying to scan from a free column "
                    "cols[%u]=%d. This might be unusual.\n",
-                   lo, cols.at(lo));
+                   lo, ctx.cols.at(lo));
         }
 
-        prepare_scan_row(lo, cols, y, cost, d, v, i_val, mind_val, h_val);
-        int_t result = update_candidates(n, i_val, mind_val, h_val, cost, d, v,
-                                         pred, y, cols, hi);
+        ScanRowContext scan_ctx = {ctx.cols, ctx.y, ctx.cost, ctx.d, ctx.v};
+        ScanRowResult scan_result;
+        prepare_scan_row(lo, scan_ctx, scan_result);
+
+        CandidateContext cand_ctx = {ctx.n, ctx.cost, ctx.d, ctx.v, ctx.pred, ctx.y, ctx.cols};
+        int_t result = update_candidates(scan_result.i_out, scan_result.mind_out,
+                                         scan_result.h_out, cand_ctx, hi);
         if (result != -1) {
             *plo = lo;
             *phi = hi;
@@ -525,7 +577,7 @@ void update_dual_costs(std::vector<cost_t> &v, const std::vector<cost_t> &d,
         throw std::out_of_range("Index out of bounds in update_dual_costs");
     }
     if (lo >= d.size() ||
-        (cols.size() > 0 && (static_cast<uint_t>(cols.at(lo)) >= d.size()))) {
+        (!cols.empty() && (static_cast<uint_t>(cols.at(lo)) >= d.size()))) {
         PRINTF(
             "Error: update_dual_costs - cols[lo] leads to d out of bounds.\n");
         throw std::out_of_range(
@@ -558,7 +610,7 @@ int_t find_path_dense(const uint_t n, cost_t *const *cost,
         throw std::out_of_range(
             "start_i_signed is out of bounds in find_path_dense");
     }
-    uint_t start_i = static_cast<uint_t>(start_i_signed);
+    auto start_i = static_cast<uint_t>(start_i_signed);
 
     std::vector<int_t> cols(n);
     std::vector<cost_t> d(n);
@@ -590,11 +642,12 @@ int_t find_path_dense(const uint_t n, cost_t *const *cost,
             if (lo == hi) {
                 PRINTF("Error: find_path_dense - lo == hi after find, but no "
                        "final_j. Path not found.\n");
-                throw std::logic_error(
+                throw std::invalid_argument(
                     "Path not found in find_path_dense, Dijkstra stalled.");
             }
             PRINTF("%u..%u -> scan\n", lo, hi);
-            final_j = _scan_dense(n, cost, &lo, &hi, d, cols, pred, y, v);
+            ScanDenseContext scan_dense_ctx = {n, cost, d, cols, pred, y, v};
+            final_j = _scan_dense(scan_dense_ctx, &lo, &hi);
             PRINT_COST_ARRAY(d.data(), n);
             PRINT_INDEX_ARRAY(cols.data(), n);
             PRINT_INDEX_ARRAY(pred.data(), n);
@@ -662,7 +715,7 @@ int_t _ca_dense(const uint_t n, cost_t *const *cost,
                 PRINTF(
                     "Error: _ca_dense - Path too long during augmentation.\n");
                 assert(false);
-                throw std::logic_error(
+                throw std::domain_error(
                     "_ca_dense: Augmenting path is too long.");
             }
         }
@@ -689,7 +742,7 @@ int lapjv_internal(const uint_t n, cost_t *const *cost, int_t *x_data,
         if (static_cast<uint_t>(n_actual_free_rows) > n) {
             PRINTF("Error: lapjv_internal - n_actual_free_rows (%d) > n (%u)\n",
                    n_actual_free_rows, n);
-            throw std::runtime_error(
+            throw std::range_error(
                 "lapjv_internal: n_actual_free_rows exceeds n, out of bounds.");
         }
         n_actual_free_rows =
@@ -702,7 +755,7 @@ int lapjv_internal(const uint_t n, cost_t *const *cost, int_t *x_data,
             PRINTF("Error: lapjv_internal - n_actual_free_rows (%d) > n (%u) "
                    "before _ca_dense\n",
                    n_actual_free_rows, n);
-            throw std::runtime_error("lapjv_internal: n_actual_free_rows "
+            throw std::range_error("lapjv_internal: n_actual_free_rows "
                                      "exceeds n before _ca_dense.");
         }
         _ca_dense(n, cost, n_actual_free_rows, free_rows, x, y, v);
@@ -716,57 +769,80 @@ int lapjv_internal(const uint_t n, cost_t *const *cost, int_t *x_data,
     return n_actual_free_rows;
 }
 
-void initializeExtendedCostMatrix(
-    const std::vector<std::vector<float>> &cost_c,
-    std::vector<std::vector<float>> &cost_c_extended, int n_rows, int n_cols,
-    int n, float cost_limit) {
-    float default_val;
-    if (cost_limit < std::numeric_limits<float>::max() && cost_limit > 0) {
-        default_val = cost_limit / 2.0f;
-    } else {
-        float cost_max = 0;
-        bool first = true;
-        if (!cost_c.empty()) {
-            for (const auto &row : cost_c) {
-                for (float val_cost : row) {
-                    if (val_cost < std::numeric_limits<float>::max()) {
-                        if (first || val_cost > cost_max) {
-                            cost_max = val_cost;
-                            first = false;
-                        }
-                    }
-                }
+float computeMaxCostValue(const std::vector<std::vector<float>> &cost_c) {
+    if (cost_c.empty()) {
+        return 0.0f;
+    }
+    
+    float cost_max = 0.0f;
+    bool first = true;
+    
+    for (const auto &row : cost_c) {
+        for (float val_cost : row) {
+            if (val_cost >= std::numeric_limits<float>::max()) {
+                continue;
+            }
+            if (first || val_cost > cost_max) {
+                cost_max = val_cost;
+                first = false;
             }
         }
-        if (first) {
-            default_val = 1.0f;
-        } else {
-            default_val = cost_max + 1.0f;
-        }
-        if (cost_limit < std::numeric_limits<float>::max() &&
-            cost_limit <= cost_max && cost_limit > 0) {
-        }
     }
+    
+    return first ? 0.0f : cost_max;
+}
+
+float computeDefaultValue(const std::vector<std::vector<float>> &cost_c,
+                          float cost_limit) {
+    if (cost_limit < std::numeric_limits<float>::max() && cost_limit > 0) {
+        return cost_limit / 2.0f;
+    }
+    
+    float cost_max = computeMaxCostValue(cost_c);
+    return (cost_max == 0.0f) ? 1.0f : cost_max + 1.0f;
+}
+
+void fillMatrixWithDefault(std::vector<std::vector<float>> &cost_c_extended,
+                           float default_val) {
     for (auto &row : cost_c_extended) {
         std::fill(row.begin(), row.end(), default_val);
     }
+}
+
+void fillExtendedRegionWithZero(std::vector<std::vector<float>> &cost_c_extended,
+                                int n_rows, int n_cols, int n) {
     for (int i = n_rows; i < n; i++) {
         for (int j = n_cols; j < n; j++) {
             cost_c_extended.at(i).at(j) = 0;
         }
     }
+}
+
+void copyOriginalCost(const std::vector<std::vector<float>> &cost_c,
+                      std::vector<std::vector<float>> &cost_c_extended,
+                      int n_rows, int n_cols, float default_val) {
     for (int i = 0; i < n_rows; i++) {
         for (int j = 0; j < n_cols; j++) {
             if (static_cast<size_t>(i) < cost_c.size() &&
                 static_cast<size_t>(j) < cost_c[i].size()) {
                 cost_c_extended.at(i).at(j) = cost_c[i][j];
             } else {
-                PRINTF("Warning: initializeExtendedCostMatrix - cost_c access "
+                PRINTF("Warning: copyOriginalCost - cost_c access "
                        "out of bounds.\n");
                 cost_c_extended.at(i).at(j) = default_val;
             }
         }
     }
+}
+
+void initializeExtendedCostMatrix(
+    const std::vector<std::vector<float>> &cost_c,
+    std::vector<std::vector<float>> &cost_c_extended, int n_rows, int n_cols,
+    int n, float cost_limit) {
+    float default_val = computeDefaultValue(cost_c, cost_limit);
+    fillMatrixWithDefault(cost_c_extended, default_val);
+    fillExtendedRegionWithZero(cost_c_extended, n_rows, n_cols, n);
+    copyOriginalCost(cost_c, cost_c_extended, n_rows, n_cols, default_val);
 }
 
 float computeOptimalCost(const std::vector<int> &rowsol, float *const *cost_ptr,
@@ -823,7 +899,7 @@ int prepareCostMatrix(const std::vector<std::vector<float>> &cost,
     }
 
     if (n_rows != n_cols && !extend_cost) {
-        throw std::runtime_error(
+        throw std::invalid_argument(
             "execLapjv: For non-square matrices that are not being "
             "automatically extended to square, 'extend_cost' must be true (or "
             "handle squaring manually before call).");
@@ -831,11 +907,6 @@ int prepareCostMatrix(const std::vector<std::vector<float>> &cost,
     int n_lapjv;
     if (extend_cost) {
         n_lapjv = std::max(n_rows, n_cols);
-        if (n_rows != n_cols) {
-            n_lapjv = std::max(n_rows, n_cols);
-        } else {
-            n_lapjv = n_rows;
-        }
     } else {
         n_lapjv = n_rows;
     }
@@ -879,7 +950,7 @@ void runLapjvAndPostprocess(int n_lapjv, float *const *cost_matrix_ptr,
     if (ret != 0) {
         PRINTF("Error: execLapjv - lapjv_internal() failed with code %d.\n",
                ret);
-        throw std::runtime_error("execLapjv: lapjv_internal() failed.");
+        throw std::domain_error("execLapjv: lapjv_internal() failed.");
     }
     if (n_lapjv > n_rows_original || n_lapjv > n_cols_original) {
         for (int i = 0; i < n_lapjv; ++i) {
@@ -920,12 +991,14 @@ float execLapjv(const std::vector<std::vector<float>> &cost,
                 std::vector<int> &rowsol, std::vector<int> &colsol,
                 bool extend_cost /*= true*/, float cost_limit /*= LARGE*/,
                 bool return_cost /*= true*/) {
-    int n_rows, n_cols;
+    int n_rows;
+    int n_cols;
 
     try {
         validateInputs(cost, n_rows, n_cols, rowsol, colsol);
     } catch (const std::invalid_argument &e) {
         PRINTF("Validation failed: %s\n", e.what());
+        (void)e; // Suppress unused warning in non-debug builds
         return 0.0f;
     }
 
@@ -933,8 +1006,6 @@ float execLapjv(const std::vector<std::vector<float>> &cost,
     int n_lapjv = prepareCostMatrix(cost, cost_matrix_prepared, n_rows, n_cols,
                                     extend_cost, cost_limit);
 
-    if (n_lapjv == 0 && (!cost.empty() && !cost[0].empty())) {
-    }
     if (n_lapjv == 0) {
         rowsol.assign(n_rows, -1);
         colsol.assign(n_cols, -1);
@@ -952,14 +1023,25 @@ float execLapjv(const std::vector<std::vector<float>> &cost,
     try {
         runLapjvAndPostprocess(n_lapjv, cost_ptr_vec.data(), x_lapjv_sol,
                                y_lapjv_sol, n_rows, n_cols);
+    } catch (const std::invalid_argument &e) {
+        PRINTF("LAPJV invalid argument: %s\n", e.what());
+        (void)e;
+        return 0.0f;
+    } catch (const std::domain_error &e) {
+        PRINTF("LAPJV domain error: %s\n", e.what());
+        (void)e;
+        return 0.0f;
+    } catch (const std::range_error &e) {
+        PRINTF("LAPJV range error: %s\n", e.what());
+        (void)e;
+        return 0.0f;
+    } catch (const std::overflow_error &e) {
+        PRINTF("LAPJV overflow: %s\n", e.what());
+        (void)e;
+        return 0.0f;
     } catch (const std::out_of_range &e) {
-        PRINTF("LAPJV out_of_range error: %s\n", e.what());
-        return 0.0f;
-    } catch (const std::logic_error &e) {
-        PRINTF("LAPJV logic error: %s\n", e.what());
-        return 0.0f;
-    } catch (const std::runtime_error &e) {
-        PRINTF("LAPJV execution failed: %s\n", e.what());
+        PRINTF("LAPJV out of range: %s\n", e.what());
+        (void)e;
         return 0.0f;
     }
     updateSolutions(x_lapjv_sol, y_lapjv_sol, rowsol, colsol, n_rows, n_cols);

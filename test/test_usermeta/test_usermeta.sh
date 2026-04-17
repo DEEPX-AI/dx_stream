@@ -6,6 +6,8 @@
 SCRIPT_DIR=$(realpath "$(dirname "$0")")
 PROJECT_ROOT=$(realpath -s "${SCRIPT_DIR}/../..")
 BUILD_TYPE="debug"
+BUILD_DIR="build"
+INSTALL_DIR="install"
 
 show_help() {
     echo "Usage: $(basename "$0") [--help]"
@@ -44,32 +46,34 @@ build_and_install() {
     echo "🔨 Building user meta test..."
     
     # Clean previous build
-    if [ -d "$SCRIPT_DIR/install" ]; then
-        rm -rf "$SCRIPT_DIR/install"
+    if [ -d "$SCRIPT_DIR/$INSTALL_DIR" ]; then
+        rm -rf "$SCRIPT_DIR/$INSTALL_DIR"
     fi
 
-    if [ -d "$SCRIPT_DIR/build" ]; then
-        rm -rf "$SCRIPT_DIR/build"
+    if [ -d "$SCRIPT_DIR/$BUILD_DIR" ]; then
+        rm -rf "$SCRIPT_DIR/$BUILD_DIR"
     fi
 
     # Setup meson build
-    meson setup build --buildtype="$BUILD_TYPE" --prefix="$SCRIPT_DIR/install"
+    meson setup "${BUILD_DIR}" --buildtype="$BUILD_TYPE" --prefix="$SCRIPT_DIR/$INSTALL_DIR"
     if [ $? -ne 0 ]; then
         echo "❌ Error: meson setup failed"
         return 1
     fi
 
     # Compile
-    meson compile -C build
+    meson compile -C "${BUILD_DIR}"
     if [ $? -ne 0 ]; then
         echo "❌ Error: meson compile failed"
         return 1
     fi
 
     # Install
-    yes | meson install -C build > /dev/null 2>&1
+    meson install -C "${BUILD_DIR}" --no-rebuild > /dev/null 2>&1
     if [ $? -ne 0 ]; then
         echo "❌ Error: meson install failed"
+        echo "Hint: Run 'which -a meson' to check if multiple meson versions are installed."
+        echo "      If so, keep only one and remove the rest. (See: docs/source/docs/06_Troubleshooting_and_FAQ.md)"
         return 1
     fi
 
@@ -84,8 +88,19 @@ run_test() {
     echo "========================================"
     
     # Set up environment for the test
-    export LD_LIBRARY_PATH="$PROJECT_ROOT/install/lib/gstreamer-1.0:$PROJECT_ROOT/install/lib:$LD_LIBRARY_PATH"
-    export GST_PLUGIN_PATH="$PROJECT_ROOT/install/lib/gstreamer-1.0:$GST_PLUGIN_PATH"
+    INSTALL_PREFIX="${INSTALL_PREFIX:-/usr/local}"
+    
+    # Find the actual libdir
+    if pkg-config --exists gstdxstream 2>/dev/null; then
+        ACTUAL_LIBDIR=$(pkg-config --variable=libdir gstdxstream)
+    else
+        ACTUAL_LIBDIR=$(find "${INSTALL_PREFIX}/lib" -type d -name "gstreamer-1.0" 2>/dev/null | head -n 1 | xargs dirname)
+        [ -z "$ACTUAL_LIBDIR" ] && ACTUAL_LIBDIR="${INSTALL_PREFIX}/lib"
+    fi
+    
+    export PKG_CONFIG_PATH="${INSTALL_PREFIX}/lib/pkgconfig:${PKG_CONFIG_PATH}"
+    export GST_PLUGIN_PATH="${ACTUAL_LIBDIR}/gstreamer-1.0:${GST_PLUGIN_PATH}"
+    export LD_LIBRARY_PATH="${ACTUAL_LIBDIR}/gstreamer-1.0:${INSTALL_PREFIX}/share/gstdxstream/lib:${LD_LIBRARY_PATH}"
     
     # Run the test executable
     "$SCRIPT_DIR/install/bin/test_usermeta"
@@ -117,22 +132,17 @@ run_test() {
 cleanup() {
     echo ""
     echo "🧹 Cleaning up..."
-    if [ -d "$SCRIPT_DIR/build" ]; then
-        rm -rf "$SCRIPT_DIR/build"
+    if [ -d "$SCRIPT_DIR/$BUILD_DIR" ]; then
+        rm -rf "$SCRIPT_DIR/$BUILD_DIR"
+    fi
+    if [ -d "$SCRIPT_DIR/$INSTALL_DIR" ]; then
+        rm -rf "$SCRIPT_DIR/$INSTALL_DIR"
     fi
     echo "✅ Cleanup completed"
 }
 
 # Main execution
 main() {
-    # Check if DX-Stream is installed
-    if [ ! -f "$PROJECT_ROOT/install/lib/gstreamer-1.0/libgstdxstream.so" ]; then
-        echo "❌ Error: DX-Stream plugin not found!"
-        echo "Please build and install DX-Stream first:"
-        echo "  cd $PROJECT_ROOT && ./build.sh"
-        exit 1
-    fi
-
     # Build the test
     build_and_install
     if [ $? -ne 0 ]; then

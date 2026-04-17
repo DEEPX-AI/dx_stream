@@ -1,5 +1,5 @@
-#include <dx_stream/gst-dxframemeta.hpp>
-#include <dx_stream/gst-dxobjectmeta.hpp>
+#include <gstdxstream/gst-dxframemeta.hpp>
+#include <gstdxstream/gst-dxobjectmeta.hpp>
 #include <gst/check/gstcheck.h>
 #include <gst/gst.h>
 #include <unistd.h>
@@ -114,13 +114,9 @@ static void link_static_src_to_dynamic_sink(GstElement *element1,
 static GstPadProbeReturn
 probe_create_callback(GstPad *pad, GstPadProbeInfo *info, gpointer user_data) {
     GstBuffer *buffer = GST_PAD_PROBE_INFO_BUFFER(info);
-
-    if (!gst_buffer_is_writable(buffer)) {
-        buffer = gst_buffer_make_writable(buffer);
-    }
-
     // Create frame meta using new API
-    DXFrameMeta *frame_meta = dx_create_frame_meta(buffer);
+    buffer = dx_create_frame_meta(buffer);
+    auto *frame_meta = dx_get_frame_meta(buffer);
     frame_meta->_stream_id = 0;
     frame_meta->_format = g_strdup("I420");
     frame_meta->_name = g_strdup("test");
@@ -145,8 +141,7 @@ static GstPadProbeReturn probe_callback(GstPad *pad, GstPadProbeInfo *info,
     gboolean is_valid = FALSE;
     
     // Iterate through object meta list in frame meta
-    for (GList *l = frame_meta->_object_meta_list; l != nullptr; l = l->next) {
-        DXObjectMeta *object_meta = (DXObjectMeta *)l->data;
+    for (auto object_meta : frame_meta->_object_meta_list) {
         
         // Validate object meta data
         if (object_meta->_box[0] != 0) {
