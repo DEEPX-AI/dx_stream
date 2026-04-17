@@ -234,6 +234,11 @@ superpowers `brainstorming` skill 또는 `/dx-brainstorm-and-plan` 사용 시:
 4. **`/dx-brainstorm-and-plan` 우선** — 일반 superpowers `brainstorming` skill 대신
    프로젝트 수준의 brainstorming skill을 사용한다. 프로젝트 수준 skill에는
    도메인 특화 질문과 사전 점검이 있다.
+5. **규칙 충돌 확인은 필수** — 브레인스토밍 중 에이전트는 사용자 요구사항이
+   HARD GATE 규칙(IFactory 패턴, skeleton-first, Output Isolation,
+   SyncRunner/AsyncRunner)과 충돌하는지 반드시 확인해야 합니다. 충돌이 감지되면
+   브레인스토밍 단계에서 해결해야 하며, 위반 요청을 설계 사양에 조용히 따르면
+   안 됩니다. "Rule Conflict Resolution" 섹션을 참조하세요.
 
 ## 자율 모드 보호 (필수)
 
@@ -371,3 +376,34 @@ plan 문서를 생성할 때 (예: writing-plans 또는 brainstorming skill을 �
 파일 저장 직후 **항상 대화 출력에 전체 plan 내용을 출력한다**.
 파일 경로만 언급하지 않는다 — 사용자가 별도의 파일을 열지 않고도
 프롬프트에서 직접 plan을 검토할 수 있어야 한다.
+
+
+---
+
+## Instruction File Verification Loop (HARD GATE) — 내부 개발 전용
+
+에이전트 지식 베이스 파일 수정 시 — 다음 패턴에 해당하는 파일:
+`**/.cursor/**/*.mdc`, `**/.github/**/*.md`, `**/.opencode/**/*.md`,
+`**/AGENTS*.md`, `**/CLAUDE*.md`, 또는 `**/.deepx/**/*.md` — 작업 완료를
+선언하기 전에 다음 검증-수정 루프를 **반드시** 수행해야 합니다:
+
+1. **자동화 테스트 루프** — `tests/test_agentic_scenarios/`를 실행하고 모든 실패를 수정:
+   ```bash
+   python -m pytest tests/test_agentic_scenarios/ -v --tb=short
+   ```
+2. **수동 감사** — 테스트 결과를 사용하지 않고, 실제 파일 내용을 읽어 크로스 플랫폼
+   sync (CLAUDE vs AGENTS vs copilot)와 레벨 간 sync (suite → 하위 레벨)를 독립적으로
+   검증합니다.
+3. **갭 분석** — 수동 감사에서 테스트가 잡지 못한 이슈를 발견하면, **먼저 테스트
+   케이스를 강화**한 후 파일을 수정합니다.
+4. **반복** — 1단계로 돌아갑니다. 자동화 테스트 통과 AND 수동 감사 이슈 0건이
+   될 때까지 계속 반복합니다.
+
+**수동 감사가 필요한 이유**: 테스트는 알려진 패턴만 검증할 수 있습니다. 수동 감사는
+상호 참조 방향 오류, 섹션 순서 문제, 의미론적 갭 등 기존 테스트가 커버하지 못하는
+새로운 이슈를 발견합니다. 테스트 강화 후에도 수동 감사가 추가 이슈를 일관되게
+발견해왔습니다.
+
+이 게이트는 instruction 파일이 작업의 *주요 산출물*인 경우(예: 규칙 추가, 플랫폼 sync,
+KO 번역 생성)에 적용됩니다. 기능 구현의 일부로 instruction 파일에 단순 한 줄 수정이
+발생하는 경우에는 적용되지 않습니다.
