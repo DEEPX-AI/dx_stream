@@ -20,6 +20,7 @@
 - RGA preprocessing build errors on Rockchip SoC
 - SW rendering buffer management: stream-specific caching for multi-stream scenarios
 - Memory management with smart pointers and improved tensor handling
+- Meson install failure in Python venv environment (PYTHONPATH handling and build directory standardization)
 
 ### 3. Added
 - **DxScale**: New GstBaseTransform element for HW-accelerated scaling (NV12/I420/RGB/BGR)

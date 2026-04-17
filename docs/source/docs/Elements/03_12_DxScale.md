@@ -72,8 +72,13 @@ gst-launch-1.0 \
 
 !!! note "NOTE"
 
-    - `dxscale` does **not** perform color conversion. Input and output must be the same format.  
-    - For color conversion, use **DxConvert**.  
+    - `dxscale` does **not** perform color conversion. Input and output must be the same format.
+    - For color conversion, use **DxConvert**.
     - Both `width` and `height` must be set together. Setting only one is not supported.
+
+!!! warning "DxInputSelector Placement"
+
+    `dxscale` must **not** be placed downstream of **DxInputSelector**. DxInputSelector merges multiple streams with potentially different resolutions into a single output, causing caps to change on every buffer. Since `dxscale` is a `GstBaseTransform` element, it requires stable caps for buffer pool allocation and kernel initialization. Placing it after DxInputSelector will cause repeated caps renegotiation, kernel re-creation, and potential caps/buffer mismatch errors.
+    Place `dxscale` **before** DxInputSelector (per-stream) or **after** DxOutputSelector (per-stream).
 
 ---

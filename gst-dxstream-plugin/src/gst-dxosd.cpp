@@ -20,6 +20,10 @@ static GstFlowReturn gst_dxosd_transform_ip(GstBaseTransform *trans,
 static GstCaps *gst_dxosd_transform_caps(GstBaseTransform *trans,
                                          GstPadDirection direction,
                                          GstCaps *caps, GstCaps *filter);
+static gboolean gst_dxosd_sink_event(GstBaseTransform *trans,
+                                     GstEvent *event);
+static GstStateChangeReturn gst_dxosd_change_state(GstElement *element,
+                                                   GstStateChange transition);
 
 G_DEFINE_TYPE(GstDxOsd, gst_dxosd, GST_TYPE_BASE_TRANSFORM);
 
@@ -32,8 +36,10 @@ static void gst_dxosd_class_init(GstDxOsdClass *klass) {
     auto *basetransform_class = GST_BASE_TRANSFORM_CLASS(klass);
     basetransform_class->transform_ip = GST_DEBUG_FUNCPTR(gst_dxosd_transform_ip);
     basetransform_class->transform_caps = GST_DEBUG_FUNCPTR(gst_dxosd_transform_caps);
+    basetransform_class->sink_event = GST_DEBUG_FUNCPTR(gst_dxosd_sink_event);
 
     auto *element_class = GST_ELEMENT_CLASS(klass);
+    element_class->change_state = gst_dxosd_change_state;
     gst_element_class_set_static_metadata(element_class, "DXOsd", "Generic",
                                           "Draw inference results",
                                           "Jo Sangil <sijo@deepx.ai>");
@@ -65,7 +71,20 @@ static void gst_dxosd_class_init(GstDxOsdClass *klass) {
 
 static void gst_dxosd_init(GstDxOsd *self) {
     GST_INFO_OBJECT(self, "Initializing OSD element (passthrough transform)");
-    // BaseTransform handles pad creation automatically
+    self->_stream_info.clear();
+}
+
+static GstStateChangeReturn gst_dxosd_change_state(GstElement *element,
+                                                   GstStateChange transition) {
+    GstDxOsd *self = GST_DXOSD(element);
+    switch (transition) {
+    case GST_STATE_CHANGE_PAUSED_TO_READY:
+        self->_stream_info.clear();
+        break;
+    default:
+        break;
+    }
+    return GST_ELEMENT_CLASS(parent_class)->change_state(element, transition);
 }
 
 static GstCaps *gst_dxosd_transform_caps(GstBaseTransform *trans,
@@ -76,6 +95,50 @@ static GstCaps *gst_dxosd_transform_caps(GstBaseTransform *trans,
     std::ignore = filter;
     // Passthrough: input caps == output caps
     return gst_caps_ref(caps);
+}
+
+static void set_stream_info(GstDxOsd *self, GstEvent *event, int stream_id) {
+    GstCaps *incaps = nullptr;
+    gst_event_parse_caps(event, &incaps);
+    // Only register on first caps event per stream_id.
+    // Dynamic resolution change within a running stream is not supported.
+    if (incaps && self->_stream_info.find(stream_id) == self->_stream_info.end()) {
+        gst_video_info_init(&self->_stream_info[stream_id]);
+        if (!gst_video_info_from_caps(&self->_stream_info[stream_id], incaps)) {
+            GST_WARNING_OBJECT(self, "Failed to parse caps for stream %d", stream_id);
+            self->_stream_info.erase(stream_id);
+        }
+    }
+}
+
+static gboolean gst_dxosd_sink_event(GstBaseTransform *trans,
+                                     GstEvent *event) {
+    GstDxOsd *self = GST_DXOSD(trans);
+    GstPad *src_pad = GST_BASE_TRANSFORM_SRC_PAD(trans);
+
+    switch (GST_EVENT_TYPE(event)) {
+    case GST_EVENT_CUSTOM_DOWNSTREAM: {
+        const GstStructure *s = gst_event_get_structure(event);
+        if (gst_structure_has_name(s, "application/x-dx-wrapped-event")) {
+            int stream_id = -1;
+            GstEvent *original_event = nullptr;
+            gst_structure_get_int(s, "stream-id", &stream_id);
+            gst_structure_get(s, "event", GST_TYPE_EVENT, &original_event, NULL);
+            if (original_event && GST_EVENT_TYPE(original_event) == GST_EVENT_CAPS) {
+                set_stream_info(self, original_event, stream_id);
+            }
+            if (original_event) {
+                gst_event_unref(original_event);
+            }
+        }
+    } break;
+    case GST_EVENT_CAPS: {
+        set_stream_info(self, event, 0);
+    } break;
+    default:
+        break;
+    }
+    return gst_pad_push_event(src_pad, event);
 }
 
 static GstFlowReturn gst_dxosd_transform_ip(GstBaseTransform *trans,
@@ -89,28 +152,22 @@ static GstFlowReturn gst_dxosd_transform_ip(GstBaseTransform *trans,
     }
 
     GST_DEBUG_OBJECT(self, "Processing buffer: pts=%" GST_TIME_FORMAT " stream=%d, %dx%d",
-                     GST_TIME_ARGS(GST_BUFFER_PTS(buf)), 
+                     GST_TIME_ARGS(GST_BUFFER_PTS(buf)),
                      frame_meta->_stream_id, frame_meta->_width, frame_meta->_height);
 
-    // Get current caps to parse format info
-    GstPad *sinkpad = GST_BASE_TRANSFORM_SINK_PAD(trans);
-    GstCaps *caps = gst_pad_get_current_caps(sinkpad);
-    if (!caps) {
-        GST_ERROR_OBJECT(self, "No caps negotiated yet");
-        return GST_FLOW_ERROR;
+    // Look up video info by stream_id
+    auto it = self->_stream_info.find(frame_meta->_stream_id);
+    if (it == self->_stream_info.end()) {
+        GST_WARNING_OBJECT(self, "No video info for stream %d, passing through",
+                           frame_meta->_stream_id);
+        return GST_FLOW_OK;
     }
 
-    GstVideoInfo info;
-    if (!gst_video_info_from_caps(&info, caps)) {
-        GST_ERROR_OBJECT(self, "Failed to parse caps");
-        gst_caps_unref(caps);
-        return GST_FLOW_ERROR;
-    }
-    gst_caps_unref(caps);
+    GstVideoInfo *info = &it->second;
 
     // Map buffer for read/write
     GstVideoFrame frame;
-    if (!gst_video_frame_map(&frame, &info, buf, GST_MAP_READWRITE)) {
+    if (!gst_video_frame_map(&frame, info, buf, GST_MAP_READWRITE)) {
         GST_ERROR_OBJECT(self, "Failed to map buffer");
         return GST_FLOW_ERROR;
     }
@@ -145,7 +202,7 @@ static GstFlowReturn gst_dxosd_transform_ip(GstBaseTransform *trans,
         float scale_x = static_cast<float>(frame_meta->_width) / static_cast<float>(width);
         float scale_y = static_cast<float>(frame_meta->_height) / static_cast<float>(height);
 
-        GST_DEBUG_OBJECT(self, "Drawing on NV12: %zu objects", 
+        GST_DEBUG_OBJECT(self, "Drawing on NV12: %zu objects",
                         frame_meta->_object_meta_list.size());
 
         // Frame-level segmentation (semantic seg)

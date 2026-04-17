@@ -85,8 +85,13 @@ gst-launch-1.0 \
 
 !!! note "NOTE"
 
-    - `dxconvert` does **not** perform scaling. Input and output resolutions must match.  
-    - For video scaling, use **DxScale**.  
+    - `dxconvert` does **not** perform scaling. Input and output resolutions must match.
+    - For video scaling, use **DxScale**.
     - On RK3588, RGA hardware acceleration is available for NV12→RGB and NV12→BGR conversions. Other combinations use the libyuv software backend.
+
+!!! warning "DxInputSelector Placement"
+
+    `dxconvert` must **not** be placed downstream of **DxInputSelector**. DxInputSelector merges multiple streams with potentially different color formats into a single output, causing caps to change on every buffer. Since `dxconvert` is a `GstBaseTransform` element, it requires stable caps for buffer pool allocation and kernel initialization. Placing it after DxInputSelector will cause repeated caps renegotiation, kernel re-creation, and potential caps/buffer mismatch errors.
+    Place `dxconvert` **before** DxInputSelector (per-stream) or **after** DxOutputSelector (per-stream).
 
 ---

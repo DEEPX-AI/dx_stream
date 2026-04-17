@@ -34,4 +34,8 @@ GObject
     - In DXOSD's output buffers, the `DXFrameMeta` metadata is preserved and passed to downstream elements.
     - Visualizations include bounding boxes, class names, confidence scores, and additional data like segmentation maps, poses, or face landmarks, depending on available metadata.  
 
+!!! note "Multi-Stream Support"
+
+    DxOsd can be safely placed downstream of **DxInputSelector**. It automatically tracks per-stream video information via wrapped caps events, allowing correct OSD rendering for buffers from different streams with different resolutions and formats.
+
 ---

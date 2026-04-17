@@ -2,6 +2,7 @@
 #define GST_DXOSD_H
 
 #include <cstdint>
+#include <map>
 #include <gst/gst.h>
 #include <gst/video/video.h>
 #include <gst/base/gstbasetransform.h>
@@ -13,7 +14,7 @@ G_DECLARE_FINAL_TYPE(GstDxOsd, gst_dxosd, GST, DXOSD, GstBaseTransform)
 
 struct _GstDxOsd {
     GstBaseTransform parent;
-    // Stateless transform - all processing done in-place
+    std::map<int, GstVideoInfo> _stream_info;
 };
 
 G_END_DECLS

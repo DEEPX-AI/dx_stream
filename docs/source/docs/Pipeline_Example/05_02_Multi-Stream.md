@@ -28,9 +28,10 @@ The pipeline in the figure is defined in
 - **`dxoutputselector`**: Routes buffers received from upstream back into multiple output streams.  
 - **`dxscale`**: Scales video frames to a specified resolution. Used to resize streams before display.  
 
-### **Usage Notes**  
+### **Usage Notes**
 
-- Depending on the model size, using a multi sub-pipeline structure may put a burden on memory resources 
+- Depending on the model size, using a multi sub-pipeline structure may put a burden on memory resources
 - While sub-pipeline structures can offer advantages in processing speed, the performance gain may be negligible compared to selector-based pipelines depending on the environment.
+- **DxScale** and **DxConvert** must be placed **before** DxInputSelector or **after** DxOutputSelector (i.e., per-stream). These elements require stable caps and cannot handle the interleaved multi-stream output of DxInputSelector where caps change on every buffer.
 
 ---

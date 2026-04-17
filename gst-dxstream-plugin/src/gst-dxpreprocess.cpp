@@ -352,6 +352,13 @@ static GstStateChangeReturn
 dxpreprocess_change_state(GstElement *element, GstStateChange transition) {
     GstDxPreprocess *self = GST_DXPREPROCESS(element);
     GST_INFO_OBJECT(self, "Attempting to change state");
+    switch (transition) {
+    case GST_STATE_CHANGE_PAUSED_TO_READY:
+        self->_stream.info.clear();
+        break;
+    default:
+        break;
+    }
     GstStateChangeReturn result =
         GST_ELEMENT_CLASS(parent_class)->change_state(element, transition);
     GST_INFO_OBJECT(self, "State change return: %d", result);
@@ -436,10 +443,14 @@ static gboolean gst_dxpreprocess_set_caps(GstBaseTransform *trans,
 void set_input_info(GstDxPreprocess *self, GstEvent *event, int stream_id) {
     GstCaps *incaps = nullptr;
     gst_event_parse_caps(event, &incaps);
+    // Only register on first caps event per stream_id.
+    // Dynamic resolution change within a running stream is not supported.
     if (incaps && self->_stream.info.find(stream_id) == self->_stream.info.end()) {
         gst_video_info_init(&self->_stream.info[stream_id]);
-        gst_video_info_from_caps(
-            &self->_stream.info[stream_id], incaps);
+        if (!gst_video_info_from_caps(&self->_stream.info[stream_id], incaps)) {
+            GST_WARNING_OBJECT(self, "Failed to parse caps for stream %d", stream_id);
+            self->_stream.info.erase(stream_id);
+        }
     }
 }
 
@@ -459,6 +470,9 @@ static gboolean gst_dxpreprocess_sink_event(GstBaseTransform *trans,
             gst_structure_get(s_check, "event", GST_TYPE_EVENT, &original_event, NULL);
             if (original_event && GST_EVENT_TYPE(original_event) == GST_EVENT_CAPS) {
                 set_input_info(self, original_event, stream_id);
+            }
+            if (original_event) {
+                gst_event_unref(original_event);
             }
         }
     } break;

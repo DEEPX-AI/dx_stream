@@ -448,7 +448,12 @@ gboolean handle_custom_downstream_event(GstDxInfer *self, GstEvent *event) {
         GstEvent *original_event = nullptr;
         gst_structure_get_int(s_check, "stream-id", &stream_id);
         gst_structure_get(s_check, "event", GST_TYPE_EVENT, &original_event, NULL);
-        if (original_event && GST_EVENT_TYPE(original_event) == GST_EVENT_EOS) {
+        const gboolean is_eos = original_event &&
+            GST_EVENT_TYPE(original_event) == GST_EVENT_EOS;
+        if (original_event) {
+            gst_event_unref(original_event);
+        }
+        if (is_eos) {
             size_t buffer_size = 0;
             { // NOSONAR - scope for lock
                 std::unique_lock<std::mutex> lock(self->_eos_ctx.eos_lock);
