@@ -73,10 +73,10 @@ Inference requires a model in `.dxnn` format, which is generated from an ONNX fi
 
 The model workflow in **DX-STREAM** consists of three key stages, from model preparation to real-time inference on DEEPX NPU hardware.
 
-**1. Model Compilation**  
+**Step 1. Model Compilation**  
 DX-COM (Compiler) converts `.onnx` model files into .dxnn format, optimized for execution on DEEPX NPU hardware.
 
-**2. Model Execution**  
+**Step 2. Model Execution**  
 The compiled `.dxnn` file is loaded onto the NPU.  
 The host system uses **DX-RT** (Runtime) to  
 
@@ -84,7 +84,7 @@ The host system uses **DX-RT** (Runtime) to
 - Provide input tensors to the inference engine  
 - Receive output tensors (inference results) from the NPU  
 
-**3. Inference Process**  
+**Step 3. Inference Process**  
 All deep learning computations are offloaded to the NPU, ensuring high-performance and low-latency inference execution optimized for edge environments.  
 
 ---

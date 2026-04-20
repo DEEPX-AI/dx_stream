@@ -13,10 +13,10 @@ Execute the following command from the DX-Stream project root directory:
 
 This automated script performs the following actions required for a system-wide GstShark installation:
 
-- **Dependency Installation**: Installs necessary system packages (e.g., graphviz, libgraphviz-dev).
-- **Source Acquisition**: Clones the GstShark repository from GitHub.
-- **Build and Configuration**: Compiles and installs GstShark with the appropriate GStreamer configurations.
-- **PATH Update**: Adds GstShark visualization and analysis tools to your system's PATH environment variable.
+- **Dependency Installation**: Installs necessary system packages (e.g., graphviz, libgraphviz-dev).  
+- **Source Acquisition**: Clones the GstShark repository from GitHub.  
+- **Build and Configuration**: Compiles and installs GstShark with the appropriate GStreamer configurations.  
+- **PATH Update**: Adds GstShark visualization and analysis tools to your system's PATH environment variable.  
 
 
 !!! note "NOTE" 
@@ -103,10 +103,10 @@ GST_DEBUG="GST_TRACER:7" GST_TRACERS="cpuusage;proctime;framerate;queuelevel" \
 
 GstShark provides real-time performance information through console output. Key metrics to monitor:
 
-- **Processing Time**: Time spent in each element
-- **CPU Usage**: CPU utilization per element
-- **Frame Rate**: Actual vs expected frame rates
-- **Queue Levels**: Buffer queue status for bottleneck detection
+- **Processing Time**: Time spent in each element  
+- **CPU Usage**: CPU utilization per element  
+- **Frame Rate**: Actual vs expected frame rates  
+- **Queue Levels**: Buffer queue status for bottleneck detection  
 
 #### Graphical Analysis
 
@@ -136,10 +136,10 @@ GstShark tracers help pinpoint the exact location and nature of performance bott
 
 Applying these strategies can alleviate identified bottlenecks:
 
-- Element Configuration: Adjust element-specific parameters, such as quantization settings in the NPU elements or interpolation methods in video conversion elements.
-- Buffer Management: Optimize queue sizes and buffer pools to balance latency and throughput. Larger queues reduce frame drops but increase latency.
-- Threading: Utilize multi-threaded elements, where available, to leverage multiple CPU cores for parallel processing.
-- Hardware Acceleration: Crucially, ensure GPU acceleration (Mali-G610 MP4) is enabled for supported non-NPU elements (e.g., video conversion) to offload the host CPU.
+- Element Configuration: Adjust element-specific parameters, such as quantization settings in the NPU elements or interpolation methods in video conversion elements.  
+- Buffer Management: Optimize queue sizes and buffer pools to balance latency and throughput. Larger queues reduce frame drops but increase latency.  
+- Threading: Utilize multi-threaded elements, where available, to leverage multiple CPU cores for parallel processing.  
+- Hardware Acceleration: Crucially, ensure GPU acceleration (Mali-G610 MP4) is enabled for supported non-NPU elements (e.g., video conversion) to offload the host CPU.  
 
 
 ## Troubleshooting
@@ -186,10 +186,12 @@ If the GstShark tracers (e.g., sharktime, sharklog) are not recognized by GStrea
 
 !!! note "NOTE" 
 
-    **Best Practices for GstShark Analysis**
+    **Best Practices for GstShark Analysis**  
 
-    Baseline Measurement: Always establish baseline performance before optimization
-    Controlled Environment: Run tests in consistent system conditions
-    Multiple Iterations: Average results across multiple test runs
-    Resource Monitoring: Monitor system resources (CPU, memory, GPU) during testing
-    Documentation: Document test configurations and results for reproducibility
+    - Baseline Measurement: Always establish baseline performance before optimization  
+    - Controlled Environment: Run tests in consistent system conditions  
+    - Multiple Iterations: Average results across multiple test runs  
+    - Resource Monitoring: Monitor system resources (CPU, memory, GPU) during testing  
+    - Documentation: Document test configurations and results for reproducibility  
+
+---

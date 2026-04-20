@@ -76,6 +76,8 @@ $ ./install.sh --help
 
 ####  **Step 3.** Build & Environment **DX-STREAM**
 
+**(1) Build & Installation**  
+
 Compile **DX-STREAM** with the default installation prefix (`/usr/local`) or customize the build using available options.  
 
 ```bash
@@ -208,13 +210,13 @@ You should see the plugin details including available elements (dxpreprocess, dx
 
     **If `gst-inspect-1.0 dxstream` fails with "No such element or plugin":**
 
-    1. **Clear GStreamer cache** (most common fix):
+    - (1) **Clear GStreamer cache** (most common fix):
        ```bash
        $ rm -rf ~/.cache/gstreamer-1.0/
        $ gst-inspect-1.0 dxstream
        ```
 
-    2. **Verify plugin file exists:**
+    - (2) **Verify plugin file exists:**
        ```bash
        # For standard installation
        $ ls -la /usr/local/lib/x86_64-linux-gnu/gstreamer-1.0/libgstdxstream.so
@@ -223,13 +225,13 @@ You should see the plugin details including available elements (dxpreprocess, dx
        $ ls -la /path/to/install/lib/x86_64-linux-gnu/gstreamer-1.0/libgstdxstream.so
        ```
 
-    3. **For custom prefix installations**, check environment variables:
+    - (3) **For custom prefix installations**, check environment variables:
        ```bash
        $ echo $GST_PLUGIN_PATH
        # Should include: /path/to/install/lib/.../gstreamer-1.0
        ```
 
-    4. **Set GST_PLUGIN_PATH manually** (temporary):
+    - (4) **Set GST_PLUGIN_PATH manually** (temporary):
        ```bash
        $ export GST_PLUGIN_PATH="/usr/local/lib/x86_64-linux-gnu/gstreamer-1.0:${GST_PLUGIN_PATH}"
        $ gst-inspect-1.0 dxstream
@@ -262,8 +264,8 @@ The uninstall process automatically removes:
 
     The uninstall script **automatically removes** DX-STREAM environment variables from your `~/.bashrc`. After uninstalling:
     
-    1. Open a new terminal, or
-    2. Reload your shell:
+    - (1) Open a new terminal, or
+    - (2) Reload your shell:
        ```bash
        $ source ~/.bashrc
        ```

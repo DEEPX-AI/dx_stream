@@ -13,9 +13,9 @@ The pipeline in the figure is defined in
 
 **Pipeline Flow**  
 
-1. **Object Detection**: Primary inference detects objects in the input stream
-2. **Tracker**: Assigns unique IDs to detected objects and tracks them across frames
-3. **Secondary Face Detection**: Performs face detection on each tracked object
+- (1) **Object Detection**: Primary inference detects objects in the input stream  
+- (2) **Tracker**: Assigns unique IDs to detected objects and tracks them across frames  
+- (3) **Secondary Face Detection**: Performs face detection on each tracked object  
 
 ### **Usage Notes**  
 

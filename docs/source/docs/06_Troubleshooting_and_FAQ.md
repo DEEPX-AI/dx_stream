@@ -143,23 +143,25 @@ The solution involves overriding the automatic, failing selection by manually sp
 
 When running DX-STREAM pipeline scripts on **Orange Pi 5 Plus with Debian 12**, you may experience corrupted, distorted, or improperly rendered video output. The video display may appear garbled, with incorrect colors, flickering, or visual artifacts that make the output unusable.
 
-**Affected Environment**:
-- **Hardware**: Orange Pi 5 Plus (RK3588 chipset)
-- **Operating System**: Debian 12 (official image from [Orange Pi download page](http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/service-and-support/Orange-Pi-5-plus.html))
-- **Affected Component**: Video rendering pipeline (specifically the fpsdisplaysink element)
+**Affected Environment**:  
+
+- **Hardware**: Orange Pi 5 Plus (RK3588 chipset)  
+- **Operating System**: Debian 12 (official image from [Orange Pi download page](http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/service-and-support/Orange-Pi-5-plus.html))  
+- **Affected Component**: Video rendering pipeline (specifically the fpsdisplaysink element)  
 
 #### **Cause: GStreamer Format Negotiation Bug**
 
 This is a **GStreamer bug specific to the Orange Pi 5 Plus + Debian 12 environment**. The issue occurs during format negotiation between the `videoconvert` element and the `fpsdisplaysink` element:
 
-1. **Format Mismatch**: The default video format negotiated by `videoconvert` is incompatible with the sink element selected by `fpsdisplaysink` in this environment.
+(1) **Format Mismatch**: The default video format negotiated by `videoconvert` is incompatible with the sink element selected by `fpsdisplaysink` in this environment.  
 
-2. **Environment-Specific**: This bug was observed with the official Debian 12 image for Orange Pi 5 Plus. It may or may not occur depending on:
-   - The specific Debian 12 ISO image version used
-   - System library versions (GStreamer, graphics drivers, etc.)
-   - Display server configuration (X11/Wayland)
+(2) **Environment-Specific**: This bug was observed with the official Debian 12 image for Orange Pi 5 Plus. It may or may not occur depending on:  
 
-3. **Not Universal**: While primarily seen on Orange Pi 5 Plus + Debian 12, **similar rendering issues could potentially occur on other ARM-based SBCs or platforms** with comparable GStreamer + display stack configurations.
+   - The specific Debian 12 ISO image version used  
+   - System library versions (GStreamer, graphics drivers, etc.)  
+   - Display server configuration (X11/Wayland)  
+
+(3) **Not Universal**: While primarily seen on Orange Pi 5 Plus + Debian 12, **similar rendering issues could potentially occur on other ARM-based SBCs or platforms** with comparable GStreamer + display stack configurations.  
 
 #### **Solution: Force I420 Format Conversion**
 
@@ -199,12 +201,13 @@ if grep -q "rk3588" /proc/device-tree/compatible 2>/dev/null; then
 fi
 ```
 
-**Location**: This code block appears in all DX-STREAM pipeline scripts that use video display, including:
-- `dx_stream/pipelines/single_network/*/run_*.sh`
-- `dx_stream/pipelines/multi_stream/run_*.sh`
-- `dx_stream/pipelines/rtsp/run_*.sh`
-- `dx_stream/pipelines/tracking/run_*.sh`
-- `dx_stream/pipelines/secondary_mode/run_*.sh`
+**Location**: This code block appears in all DX-STREAM pipeline scripts that use video display, including:  
+
+- `dx_stream/pipelines/single_network/*/run_*.sh`  
+- `dx_stream/pipelines/multi_stream/run_*.sh`  
+- `dx_stream/pipelines/rtsp/run_*.sh`  
+- `dx_stream/pipelines/tracking/run_*.sh`  
+- `dx_stream/pipelines/secondary_mode/run_*.sh`  
 
 **Result**: Forcing the `I420` format ensures proper format negotiation and eliminates the rendering corruption, allowing normal video display.
 

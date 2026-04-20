@@ -22,17 +22,19 @@ enum class DXUserMetaType {
 };
 ```
 
-**When to use Frame-level metadata:**
-- Scene-level analytics (crowd count, scene classification)
-- Frame-wide processing results
-- Pipeline statistics or timing information
-- Global configuration or state data
+**When to use Frame-level metadata:**  
 
-**When to use Object-level metadata:**
-- Per-object features or analytics
-- Object-specific tracking data
-- Custom object attributes or classifications
-- Object relationship information
+- Scene-level analytics (crowd count, scene classification)  
+- Frame-wide processing results  
+- Pipeline statistics or timing information  
+- Global configuration or state data  
+
+**When to use Object-level metadata:**  
+
+- Per-object features or analytics  
+- Object-specific tracking data  
+- Custom object attributes or classifications  
+- Object relationship information  
 
 ## Basic Usage Pattern
 
@@ -278,20 +280,23 @@ extern "C" void custom_analytics_postprocess(GstBuffer *buf,
 
 ### Common Issues
 
-**Segmentation faults when accessing metadata:**
-- Verify that copy and release functions are properly implemented
-- Check that you're not accessing freed memory
-- Ensure deep copying of all pointer data
+**Segmentation faults when accessing metadata:**  
 
-**Memory leaks:**
-- Verify that your release function frees all allocated memory
-- Check that you're not creating circular references
-- Use valgrind to identify leak sources
+- Verify that copy and release functions are properly implemented  
+- Check that you're not accessing freed memory  
+- Ensure deep copying of all pointer data  
 
-**Metadata not found:**
-- Verify that metadata type matches when retrieving
-- Check that metadata was successfully attached
-- Ensure you're checking the correct metadata list
+**Memory leaks:**  
+
+- Verify that your release function frees all allocated memory  
+- Check that you're not creating circular references  
+- Use valgrind to identify leak sources  
+
+**Metadata not found:**  
+
+- Verify that metadata type matches when retrieving  
+- Check that metadata was successfully attached  
+- Ensure you're checking the correct metadata list  
 
 ### Debug Tips
 
@@ -322,3 +327,5 @@ static void my_data_free(gpointer data) {
 ```
 
 This completes the User Metadata Guide. The system is designed to be simple yet flexible, providing the essential functionality needed for most use cases while maintaining memory safety and performance.
+
+---

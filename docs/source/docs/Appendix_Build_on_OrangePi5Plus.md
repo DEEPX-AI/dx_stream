@@ -79,22 +79,22 @@ sudo dd if=./Orangepi5plus_1.2.0_ubuntu_jammy_desktop_xfce_linux6.1.43.img of=/d
 sync
 ```
 
-**Alternative Methods**:
+**Alternative Methods**:  
 
-- **Raspberry Pi Imager**: Cross-platform GUI tool
-- **Balena Etcher**: User-friendly flashing utility
-- **Win32DiskImager**: Windows-specific tool
+- **Raspberry Pi Imager**: Cross-platform GUI tool  
+- **Balena Etcher**: User-friendly flashing utility  
+- **Win32DiskImager**: Windows-specific tool  
 
 #### Step 1.4 Initial Boot
 
-    1. Insert the SD card into the Orange Pi 5 Plus
-    2. Connect power supply and peripherals
-    3. Power on the device
+  - (1) Insert the SD card into the Orange Pi 5 Plus  
+  - (2) Connect power supply and peripherals  
+  - (3) Power on the device  
 
-**Default Credentials** (if applicable):
+**Default Credentials** (if applicable):  
 
-- Username: `orangepi`
-- Password: `orangepi`
+- Username: `orangepi`  
+- Password: `orangepi`  
 
 ### Step 2: DX-RT NPU Driver Installation
 
@@ -138,7 +138,7 @@ cd dx_rt_npu_linux_driver/modules
 sudo ./build.sh -c install
 ```
 
-**What this does**:
+**What this does**:  
 
 - Downloads the NPU kernel driver source code
 
@@ -216,14 +216,14 @@ sudo pip install meson
 sudo apt-get install -y libeigen3-dev libjson-glib-dev librdkafka-dev libmosquitto-dev libyuv-dev
 ```
 
-**Package Descriptions**:
+**Package Descriptions**:  
 
-- `python3-pip`, `ninja-build`, `meson`: Build system components
-- `libeigen3-dev`: Linear algebra library for computer vision
-- `libjson-glib-dev`: JSON parsing library for GLib
-- `librdkafka-dev`: Apache Kafka client library
-- `libmosquitto-dev`: MQTT broker client library
-- `libyuv-dev`: YUV color space conversion library
+- `python3-pip`, `ninja-build`, `meson`: Build system components  
+- `libeigen3-dev`: Linear algebra library for computer vision  
+- `libjson-glib-dev`: JSON parsing library for GLib  
+- `librdkafka-dev`: Apache Kafka client library  
+- `libmosquitto-dev`: MQTT broker client library  
+- `libyuv-dev`: YUV color space conversion library  
 
 #### Step 3.2 Clone and Build DX-Stream
 
@@ -234,12 +234,12 @@ cd dx_stream
 ./build.sh
 ```
 
-**Build Process**:
+**Build Process**:  
 
-- Configures Meson build system
-- Compiles all GStreamer plugins
-- Builds sample applications and utilities
-- Installs plugins to system directories
+- Configures Meson build system  
+- Compiles all GStreamer plugins  
+- Builds sample applications and utilities  
+- Installs plugins to system directories  
 
 **Build Time**: Approximately 10-15 minutes on Orange Pi 5 Plus
 
@@ -251,7 +251,7 @@ Check if DX-Stream plugins are properly installed:
 gst-inspect-1.0 | grep dx
 ```
 
-**Expected Output**:
+**Expected Output**:  
 
 ```
 dxstream:  dxgather: DX Gather
@@ -281,24 +281,22 @@ cd ~/dxnn/dx_stream
 ./run_demo.sh
 ```
 
-**Available Demo Options**:
+**Available Demo Options**:  
 
-- Object detection with YOLO models
-- Face detection and recognition
-- Pose estimation
-- Real-time video processing
+- Object detection with YOLO models  
+- Face detection and recognition  
+- Pose estimation  
+- Real-time video processing  
 
 For detailed demo instructions, refer to the [**Installation Guide**](./02_DX-STREAM_Installation.md).
 
 !!! note "NOTE" 
 
-    Hardware Acceleration
-    
-    The Orange Pi 5 Plus image includes optimized drivers for:
+    Hardware Acceleration. The Orange Pi 5 Plus image includes optimized drivers for:  
 
-    - Video Decode/Encode (VPU): Rockchip RK3588 VPU
-    - GPU Acceleration: Mali-G610 MP4
-    - NPU Acceleration (AI): DEEPX DX-M1 (25 TOPS)
+    - Video Decode/Encode (VPU): Rockchip RK3588 VPU  
+    - GPU Acceleration: Mali-G610 MP4  
+    - NPU Acceleration (AI): DEEPX DX-M1 (25 TOPS)  
 
     For maximum performance, ensure your pipelines utilize these specific hardware accelerators.
 
@@ -356,11 +354,10 @@ Monitor hardware status if performance is slower than expected.
 
 !!! note "NOTE" 
     
-    Next Steps
+    Next Steps. fter successful installation:  
 
-    After successful installation:
-
-    - Explore the [**Pipeline Examples**](./Pipeline_Example/05_01_Single-Stream.md)
-    - Learn about [**Writing Custom Applications**](./04_Writing_Your_Own_Application.md)
-    - Review [**Element Documentation**](./Elements/03_01_DxPreprocess.md) for advanced usage
-
+    - Explore the [**Pipeline Examples**](./Pipeline_Example/05_01_Single-Stream.md)  
+    - Learn about [**Writing Custom Applications**](./04_Writing_Your_Own_Application.md)  
+    - Review [**Element Documentation**](./Elements/03_01_DxPreprocess.md) for advanced usage  
+    
+---
