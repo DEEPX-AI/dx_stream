@@ -118,24 +118,28 @@ kafka_consume_example -n <server_ip> -p 9092 -t test
 
 #### **Network Architecture**
 
-**Processing Server:**
-- DX-STREAM Pipeline (dxmsgconv + dxmsgbroker)
-- Message Broker Service (MQTT/Kafka)
+**Processing Server:**  
 
-**Client Machine:**
-- Consumer Application (Python/C++)
-- Only needs client library (paho-mqtt/kafka-python)
-- No broker service needed
+- DX-STREAM Pipeline (dxmsgconv + dxmsgbroker)  
+- Message Broker Service (MQTT/Kafka)  
 
-**Connection:** Processing Server ←→ Client Machine via network
+**Client Machine:**  
 
-**Requirements:**
+- Consumer Application (Python/C++)  
+- Only needs client library (paho-mqtt/kafka-python)  
+- No broker service needed  
 
-- **Server**: DX-STREAM + Message Broker Service (MQTT/Kafka)
+**Connection:**  
 
-- **Client**: Only consumer application + client library (paho-mqtt/kafka-python)
+- Processing Server ←→ Client Machine via network  
 
-!!! note "NOTE" 
+**Requirements:**  
+
+- **Server**: DX-STREAM + Message Broker Service (MQTT/Kafka)  
+
+- **Client**: Only consumer application + client library (paho-mqtt/kafka-python)  
+
+!!! note "NOTE"  
 
     Replace `<server_ip>` with the actual IP address of your processing server. For local testing, use `localhost`.
 
@@ -172,7 +176,8 @@ This section describes the detailed steps required to set up secure communicatio
 
 #### **SSL/TLS Encryption Setup**
 
-**1. Generate CA Certificate and Server Keys**
+**1. Generate CA Certificate and Server Keys**  
+
 ```bash
 # Create Root CA
 openssl genrsa -out ca.key 2048
@@ -208,7 +213,8 @@ sudo chmod 644 /etc/mosquitto/certs/client.crt
 sudo chmod 600 /etc/mosquitto/certs/client.key
 ```
 
-**2. Configure Mosquitto Server**
+**2. Configure Mosquitto Server**  
+
 ```bash
 # Edit /etc/mosquitto/mosquitto.conf
 sudo tee /etc/mosquitto/mosquitto.conf << 'EOF'
@@ -235,7 +241,8 @@ use_identity_as_username false
 EOF
 ```
 
-**3. Setup Authentication**
+**3. Setup Authentication**  
+
 ```bash
 # Create user credentials
 sudo mosquitto_passwd -b /etc/mosquitto/passwd user 1234
@@ -247,7 +254,8 @@ sudo systemctl restart mosquitto
 sudo systemctl status mosquitto
 ```
 
-**4. Test Connection**
+**4. Test Connection**  
+
 ```bash
 # Test plain MQTT (port 1883)
 mosquitto_sub -h localhost -p 1883 -t test -u user -P 1234
@@ -260,7 +268,8 @@ mosquitto_sub -h localhost -p 8883 -t test -u user -P 1234 --cafile /etc/mosquit
 mosquitto_pub -h localhost -p 8883 -t test -u user -P 1234 --cafile /etc/mosquitto/ca_certificates/ca.crt --insecure -m "TLS test message"
 ```
 
-**5. DxMsgBroker Configuration File**
+**5. DxMsgBroker Configuration File**  
+
 Create `broker_mqtt.cfg`:
 ```ini
 # Authentication
@@ -279,7 +288,7 @@ tls_certfile = /etc/mosquitto/certs/client.crt
 tls_keyfile = /etc/mosquitto/certs/client.key
 ```
 
-**6. Modify DX-Stream Pipeline**
+**6. Modify DX-Stream Pipeline**  
 
 ```
     gst-launch-1.0 -e urisourcebin uri=file://$INPUT_VIDEO_PATH ! decodebin ! \
@@ -296,10 +305,12 @@ tls_keyfile = /etc/mosquitto/certs/client.key
 
 #### **SSL/TLS Setup for Kafka**
 
-**1. Generate Certificates for Kafka**
+**1. Generate Certificates for Kafka**  
+
 Follow the [librdkafka SSL guide](https://github.com/confluentinc/librdkafka/wiki/Using-SSL-with-librdkafka) for detailed certificate generation.
 
-**2. Configure Kafka Server (server.properties)**
+**2. Configure Kafka Server (server.properties)**  
+
 ```properties
 # SSL Configuration
 ssl.protocol=TLS
@@ -314,7 +325,8 @@ ssl.truststore.password=server_truststore_password
 ssl.client.auth=required
 ```
 
-**3. DxMsgBroker Kafka Configuration**
+**3. DxMsgBroker Kafka Configuration**  
+
 Create `broker_kafka.cfg`:
 ```ini
 [kafka]
@@ -328,3 +340,5 @@ ssl.certificate.location=/path/to/client-cert.pem
 ssl.key.location=/path/to/client-key.pem
 ssl.key.password=client_key_password
 ```
+
+---

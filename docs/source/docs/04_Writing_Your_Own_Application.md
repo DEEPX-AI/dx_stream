@@ -338,11 +338,12 @@ for (auto user_meta : *obj_metas) {
 }
 ```
 
-**Important Safety Requirements:**
-- **Copy Function**: Always provide a proper copy function that performs deep copy of your data
-- **Release Function**: Always provide a cleanup function that properly frees all allocated memory
-- **Memory Management**: The UserMeta system will automatically handle lifecycle management using your provided functions
-- **Type Checking**: Always verify the metadata type before casting to your custom structure
+**Important Safety Requirements:**  
+
+- **Copy Function**: Always provide a proper copy function that performs deep copy of your data  
+- **Release Function**: Always provide a cleanup function that properly frees all allocated memory  
+- **Memory Management**: The UserMeta system will automatically handle lifecycle management using your provided functions  
+- **Type Checking**: Always verify the metadata type before casting to your custom structure  
 
 ### **Writing Custom Pre-Process Function**
 For models requiring additional preprocessing beyond the default functionality, you can implement a **Custom Pre-Process Function** using a user-defined library.  
@@ -452,16 +453,17 @@ extern "C" void YOLOV7(GstBuffer *buf,
 
 **Function Parameters:**
 
-- **GstBuffer \*buf**: Direct access to the GStreamer buffer containing frame data
-- **std::vector\<dxs::DXTensor\> network_output**: Output tensors from the inference engine (defined in `dxcommon.hpp`)
-- **DXFrameMeta \*frame_meta**: Frame-level metadata (dimensions, format, etc.)
-- **DXObjectMeta \*object_meta**: Object-level metadata (in Secondary Mode) or nullptr (in Primary Mode)
+- **GstBuffer \*buf**: Direct access to the GStreamer buffer containing frame data  
+- **std::vector\<dxs::DXTensor\> network_output**: Output tensors from the inference engine (defined in `dxcommon.hpp`)  
+- **DXFrameMeta \*frame_meta**: Frame-level metadata (dimensions, format, etc.)  
+- **DXObjectMeta \*object_meta**: Object-level metadata (in Secondary Mode) or nullptr (in Primary Mode)  
 
-**Tensor Access Members:**
-- `network_output[i]._data`: Get pointer to tensor data (void*)
-- `network_output[i]._shape`: Get tensor shape as std::vector<int64_t>
-- `network_output[i]._type`: Get tensor data type (dxs::DataType)
-- `network_output[i]._elemSize`: Get size of each element
+**Tensor Access Members:**  
+
+- `network_output[i]._data`: Get pointer to tensor data (void*)  
+- `network_output[i]._shape`: Get tensor shape as std::vector<int64_t>  
+- `network_output[i]._type`: Get tensor data type (dxs::DataType)  
+- `network_output[i]._elemSize`: Get size of each element  
 - `network_output[i]._name`: Get tensor name
 
 #### **Library Integration**  

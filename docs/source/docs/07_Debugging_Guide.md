@@ -402,10 +402,10 @@ $ GST_DEBUG=2,dxinfer:4,dxtracker:4 GST_DEBUG_FILE=/tmp/debug.log ./your_app
 
 ### Production Deployment
 
-1. **Set global level to WARNING** (`:2`) or ERROR (`:1`)
-2. **Disable unnecessary element logging** to reduce overhead
-3. **Use log rotation** if file logging is enabled
-4. **Monitor ERROR and WARNING** messages for operational issues
+(1) **Set global level to WARNING** (`:2`) or ERROR (`:1`)
+(2) **Disable unnecessary element logging** to reduce overhead
+(3) **Use log rotation** if file logging is enabled
+(4) **Monitor ERROR and WARNING** messages for operational issues
 
 ```bash
 $ GST_DEBUG=1 ./your_app 2>&1 | tee -a /var/log/dxstream.log
@@ -413,9 +413,9 @@ $ GST_DEBUG=1 ./your_app 2>&1 | tee -a /var/log/dxstream.log
 
 ### Performance Testing
 
-1. **Minimize debug output** during benchmarking
-2. **Use selective logging** for targeted profiling
-3. **Capture timing information** for latency analysis
+(1) **Minimize debug output** during benchmarking
+(2) **Use selective logging** for targeted profiling
+(3) **Capture timing information** for latency analysis
 
 ```bash
 $ GST_DEBUG=dxinfer:4 ./your_app 2>&1 | grep "completed in" > inference_times.txt
