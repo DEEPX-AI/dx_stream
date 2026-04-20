@@ -1,0 +1,15 @@
+# AI agent outputs (session-scoped, not committed)
+# Symlinks created by setup.sh (local-only)
+download/
+dx_stream/samples/models
+dx_stream/samples/videos
+
+dx-agentic-dev/
+docs/superpowers/
+copilot-session-*.html
+*.pyc
+__pycache__/
+
+bindings/
+!bindings/python/pydxs/src/
+venv-dx_stream/
