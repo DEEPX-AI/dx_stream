@@ -7,7 +7,7 @@ In this case, each sub-pipeline performs inference asynchronously, maximizing th
 ![](./../../resources/05_02_multi_stream_subpipeline.png)
 
 The pipeline in the figure is defined in 
-`dx_stream/pipelines/multi_stream/run_moulti_stream.sh` and can be used as a reference for execution.  
+`dx_stream/pipelines/multi_stream/run_multi_stream.sh` and can be used as a reference for execution.  
 
 
 The other approach uses **DxInputSelector** and **DxOutputSelector**.  

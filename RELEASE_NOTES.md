@@ -1,5 +1,14 @@
 # RELEASE_NOTES
 
+## DX-Stream v3.0.1 / 2026-04-21
+
+### 1. Changed
+- None
+### 2. Fixed
+- Fix Typos in User Manual
+### 3. Added
+- None
+
 ## DX-Stream v3.0.0 / 2026-04-01
 
 ### 1. Changed

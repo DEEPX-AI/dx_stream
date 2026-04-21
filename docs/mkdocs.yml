@@ -72,7 +72,7 @@ plugins:
       #
       #cover: false
       cover_title: DXNN Streamer (DX-STREAM) User Manual
-      cover_subtitle: 2026/04/01 (v3.0.0)
+      cover_subtitle: 2026/04/21 (v3.0.1)
       cover_logo: img/deepx.png
       custom_template_path: docs/stylesheets
       #back_cover: true
@@ -98,7 +98,7 @@ plugins:
       #render_js: true
       #headless_chrome_path: headless-chromium
       #
-      output_path: ../DEEPX_DX-STREAM_UM_v3.0.0_MAR_2026.pdf
+      output_path: ../DEEPX_DX-STREAM_UM_v3.0.1_APR_2026.pdf
       #enabled_if_env: ENABLE_PDF_EXPORT
       #
       #debug_html: true

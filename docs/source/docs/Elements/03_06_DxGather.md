@@ -6,7 +6,7 @@ This makes **DXGather** ideal for scenarios where duplicated streams need to be 
 
 **PTS-Based Buffer Merging**  
 
-- Merges buffers from multiple sink pads only when their Presentation Timestaps (PTS) match.  
+- Merges buffers from multiple sink pads only when their Presentation Timestamps (PTS) match.  
 - Ensures that only synchronized frames are merged together.  
 
 **Buffer and Metadata Handling**  
