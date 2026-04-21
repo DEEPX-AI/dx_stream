@@ -1,3 +1,8 @@
+## Version 3.0.1 (Apr 2026)
+
+#### Fixed
+- Fix Typos in User Manual
+
 ## Version 3.0.0 (Apr 2026)
 
 #### Changed

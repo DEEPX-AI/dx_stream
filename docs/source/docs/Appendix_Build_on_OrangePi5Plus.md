@@ -266,7 +266,7 @@ dxstream:  dxpreprocess: DX Pre-process
 
 ### Step 4: Running Demo Applications
 
-Verify the complate system functionality and NPU acceleration.
+Verify the complete system functionality and NPU acceleration.
 
 #### Step 4.1 Setup Sample Models and Videos
 
@@ -309,7 +309,7 @@ This section provides guidance for resolving common issues encountered during th
 
 **1. NPU Not Detected**
 
-Verify the NPU module is correctly recongnized and the driver is loaded.
+Verify the NPU module is correctly recognized and the driver is loaded.
 
 ```bash
 # Check PCIe connection

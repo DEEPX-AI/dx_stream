@@ -36,7 +36,7 @@ The pipeline in the figure is defined in
 This pipeline is **not** limited to the YOLOv5s model. It can be easily adapted for other AI tasks by updating the corresponding model and configuration files.  
 
 - **Classification**: Image classification tasks  
-- **Segmentation**: Ppixel-wise semantic segmentation  
+- **Segmentation**: Pixel-wise semantic segmentation  
 - **Pose Estimation**: Detecting human keypoints  
 
 Update the `config-file-path` property in the `dxpreprocess`, `dxinfer`, and `dxpostprocess` elements to match your model’s configuration.  
