@@ -74,6 +74,11 @@ GObject
 | `config-file-path`  | Path to the configuration file. (optional).| String    | `null`     |
 | `library-file-path` | Path to the custom message converter library. **Required**.       | String    | `null`           |
 | `message-interval` | Frame interval at which message is converted.                      | Integer    | `1`             |
+| `include-frame`  | Flag whether to include frame data as base64 JPEG in the message. (optional). | Boolean   | `false`          |
+
+!!! warning "Limitation"
+
+    **DxMsgConv** must not be placed after an `input-selector` element. Caps are configured once via `set_caps` callback and are not re-negotiated during stream switching. Placing **DxMsgConv** downstream of `input-selector` may result in caps mismatch when streams are switched at runtime.
 
 ---
 

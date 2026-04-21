@@ -284,6 +284,17 @@ Solutions focus on optimizing both the PC environment and the GStreamer pipeline
   mosquitto_pub -h localhost -p 1883 -t test -m "hello"
   ```
 
+- Remote Connection Refused
+
+  By default, Mosquitto only accepts connections from `localhost`. To allow remote access, add the following to `/etc/mosquitto/mosquitto.conf`:
+
+  ```
+  listener 1883 0.0.0.0
+  allow_anonymous true
+  ```
+
+  Then restart the service: `sudo systemctl restart mosquitto`
+
 **SSL Certificate Issues**
 
 - Verify Chain
@@ -365,9 +376,9 @@ This error usually means the Kafka broker is not running. To resolve this, verif
     $ mkdir utils && cd utils
     $ sudo apt update
     $ sudo apt-get install default-jdk
-    $ wget https://downloads.apache.org/kafka/3.9.0/kafka_2.13-3.9.0.tgz
-    $ tar -xzf kafka_2.13-3.9.0.tgz
-    $ cd kafka_2.13-3.9.0
+    $ wget https://downloads.apache.org/kafka/3.9.2/kafka_2.13-3.9.2.tgz
+    $ tar -xzf kafka_2.13-3.9.2.tgz
+    $ cd kafka_2.13-3.9.2
     ```
 
     Start Zookeeper (terminal 1): Kafka requires Zookeeper to be running first
@@ -382,9 +393,19 @@ This error usually means the Kafka broker is not running. To resolve this, verif
     $ bin/kafka-server-start.sh config/server.properties
     ```
 
-!!! note "NOTE" 
-  
+!!! note "NOTE"
+
     Keep both terminal sessions running while the DX-STREAM pipeline is active to ensure proper operation.
+
+!!! note "Remote Access"
+
+    If the consumer runs on a different machine from the broker, set `advertised.listeners` in `config/server.properties` to the broker's IP:
+
+    ```
+    advertised.listeners=PLAINTEXT://<broker_ip>:9092
+    ```
+
+    Then restart the Kafka server. Without this, remote consumers will fail to resolve the broker's internal hostname.
 
 ---
 

@@ -5,6 +5,10 @@
 #include <gst/gst.h>
 
 #include "gst-dxmsgmeta.hpp"
+#include "transforms/video_transform_kernel.hpp"
+
+#include <memory>
+#include <vector>
 
 G_BEGIN_DECLS
 
@@ -26,12 +30,20 @@ struct _GstDxMsgConv {
     gchar *_config_file_path;
     gchar *_library_file_path;
     void *_library_handle;
+    gboolean _include_frame;
+    int _cached_width;
+    int _cached_height;
+    GstVideoFormat _cached_format;
 
     DxMsgContext *_context;
 
     DXMsg_CreateContextFptr _create_context_function;
     DXMsg_DeleteContextFptr _delete_context_function;
     DXMsg_ConvertPayloadFptr _convert_payload_function;
+
+    std::unique_ptr<dxt::IVideoTransformKernel> _rgb_kernel;
+    std::vector<uint8_t> _rgb_buf;
+    std::vector<unsigned char> _jpeg_buf;
 };
 
 G_END_DECLS

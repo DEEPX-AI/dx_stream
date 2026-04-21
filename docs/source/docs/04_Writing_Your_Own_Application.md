@@ -584,7 +584,18 @@ gchar *dxpayload_convert_to_json(DxMsgContext *context, GstDxMsgMetaInfo *meta_i
 ```
 
 The `dxpayload_convert_to_json` function processes the metadata and generates the final JSON string using json-glib library functions. The returned JSON data is automatically freed by the DxMsgConv element after transmission.
+
+When `include-frame` is enabled on DxMsgConv, `meta_info->_frame_base64` contains the base64-encoded JPEG frame data. Custom libraries can include this in payloads:
+
+```cpp
+if (meta_info->_frame_base64) {
+    json_object_set_string_member(root, "frameData", meta_info->_frame_base64);
+}
 ```
+
+!!! note "NOTE"
+
+    Even when `include-frame` is set to `true`, `_frame_base64` may be `nullptr` if frame encoding fails (e.g., unsupported format, transform error). Always check for `nullptr` before using `_frame_base64`.
 
 #### **JSON Output Example**
 

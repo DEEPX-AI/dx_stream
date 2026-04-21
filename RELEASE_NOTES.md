@@ -1,5 +1,14 @@
 # RELEASE_NOTES
 
+## v3.1.0 / 2026-04-21
+
+### 1. Changed
+
+### 2. Fixed
+
+### 3. Added
+- **DxMsgConv**: Add `include-frame` property for base64 JPEG frame encoding with Kafka/MQTT consumer display support
+
 ## DX-Stream v3.0.1 / 2026-04-21
 
 ### 1. Changed

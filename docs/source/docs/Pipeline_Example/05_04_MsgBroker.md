@@ -44,6 +44,17 @@ sudo systemctl start mosquitto
 sudo systemctl enable mosquitto
 ```
 
+!!! note "NOTE"
+
+    By default, Mosquitto only accepts connections from `localhost`. To allow remote consumers, add the following to `/etc/mosquitto/mosquitto.conf`:
+
+    ```
+    listener 1883 0.0.0.0
+    allow_anonymous true
+    ```
+
+    Then restart the service: `sudo systemctl restart mosquitto`
+
 **2. Run DX-STREAM Pipeline (Server Side)**
 ```bash
 # Execute the broker pipeline on processing server
@@ -70,7 +81,7 @@ pip install paho-mqtt
 python3 /usr/local/share/gstdxstream/bin/mqtt_sub_example.py -n <server_ip> -p 1883 -t test
 
 # Or for C++ version
-mqtt_sub_example -h <server_ip> -t test -p 1883
+mqtt_sub_example -n <server_ip> -t test -p 1883
 ```
 
 #### **Kafka Demo**
@@ -79,14 +90,24 @@ mqtt_sub_example -h <server_ip> -t test -p 1883
 ```bash
 # Install Java and Kafka
 sudo apt install default-jdk
-wget https://downloads.apache.org/kafka/3.9.0/kafka_2.13-3.9.0.tgz
-tar -xzf kafka_2.13-3.9.0.tgz
-cd kafka_2.13-3.9.0
+wget https://downloads.apache.org/kafka/3.9.2/kafka_2.13-3.9.2.tgz
+tar -xzf kafka_2.13-3.9.2.tgz
+cd kafka_2.13-3.9.2
 
 # Start Zookeeper and Kafka server
-bin/zookeeper-server-start.sh config/zookeeper.properties &
+bin/zookeeper-server-start.sh config/zookeeper.properties & \
 bin/kafka-server-start.sh config/server.properties &
 ```
+
+!!! note "NOTE"
+
+    If the consumer runs on a different machine from the broker, set `advertised.listeners` in `config/server.properties` to the broker's IP:
+
+    ```
+    advertised.listeners=PLAINTEXT://<broker_ip>:9092
+    ```
+
+    Then restart the Kafka server. Without this, remote consumers will fail to resolve the broker's internal hostname.
 
 **2. Run DX-STREAM Pipeline (Server Side)**
 ```bash

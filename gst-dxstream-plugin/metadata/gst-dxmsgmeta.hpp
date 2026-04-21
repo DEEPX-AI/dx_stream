@@ -24,6 +24,8 @@ struct _GstDxMsgMetaInfo {
     gboolean _include_frame;
 
     guint64 _seq_id;
+
+    const gchar *_frame_base64;
 };
 
 struct _GstDxMsgMeta {
