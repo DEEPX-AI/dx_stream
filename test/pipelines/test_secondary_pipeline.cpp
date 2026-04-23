@@ -62,8 +62,8 @@ static GstPadProbeReturn probe_primary(GstPad *pad, GstPadProbeInfo *info,
 
     float max_conf = 0.0;
 
-    std::vector<float> gt_box({245.000000, 14.500000, 415.000000, 355.500000});
-    std::vector<float> gt_face({301.256226, 30.953709, 335.228210, 78.290771});
+    std::vector<float> gt_box({127.633537, 62.656158, 246.538330, 330.089935});
+    std::vector<float> gt_face({198.318054, 79.526176, 225.280426, 120.265518});
 
     std::vector<float> pred_box;
     std::vector<float> pred_face;
@@ -122,7 +122,7 @@ GST_START_TEST(test_face_recognition_pipeline) {
     GstElement *videosrc = gst_element_factory_make("dxgenbuffer", NULL);
     fail_unless(videosrc != NULL, "Failed to create dxgenbuffer element");
 
-    g_object_set(videosrc, "image-path", "./../../test_resources/son.jpg",
+    g_object_set(videosrc, "image-path", "./../../test_resources/test.jpg",
                  NULL);
     GValue framerate = G_VALUE_INIT;
     g_value_init(&framerate, GST_TYPE_FRACTION);

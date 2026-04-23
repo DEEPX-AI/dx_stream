@@ -123,7 +123,7 @@ static GstPadProbeReturn probe_primary(GstPad *pad, GstPadProbeInfo *info,
     GstBuffer *buffer = GST_PAD_PROBE_INFO_BUFFER(info);
     buffer = gst_buffer_ref(buffer);
 
-    vector<float> roi({0, 0, 200, 300});
+    vector<float> roi({100,30,400,340});
 
     GstClockTime current_pts = GST_BUFFER_PTS(buffer);
     fail_unless(current_pts != GST_CLOCK_TIME_NONE, "Buffer has no PTS.");
@@ -132,6 +132,15 @@ static GstPadProbeReturn probe_primary(GstPad *pad, GstPadProbeInfo *info,
     DXFrameMeta *frame_meta = dx_get_frame_meta(buffer);
     if (frame_meta) {
         for (auto object_meta : frame_meta->_object_meta_list) {
+            // g_print("PTS: %" GST_TIME_FORMAT
+            //         " Label : %d  Conf : %f Track : %d BOX : [%f %f %f %f] "
+            //         "FACE BOX : [%f %f %f %f]\n",
+            //         GST_TIME_ARGS(current_pts), object_meta->_label,
+            //         object_meta->_confidence, object_meta->_track_id,
+            //         object_meta->_box[0], object_meta->_box[1],
+            //         object_meta->_box[2], object_meta->_box[3],
+            //         object_meta->_face_box[0], object_meta->_face_box[1],
+            //         object_meta->_face_box[2], object_meta->_face_box[3]);
             pred[object_meta->_label].push_back(
                 {object_meta->_box[0], object_meta->_box[1],
                  object_meta->_box[2], object_meta->_box[3]});
@@ -154,7 +163,7 @@ GST_START_TEST(test_primary) {
     GstElement *videosrc0 = gst_element_factory_make("dxgenbuffer", NULL);
     fail_unless(videosrc0 != NULL, "Failed to create dxgenbuffer element");
 
-    g_object_set(videosrc0, "image-path", "./../../test_resources/1.jpg", NULL);
+    g_object_set(videosrc0, "image-path", "./../../test_resources/test.jpg", NULL);
     g_object_set(G_OBJECT(videosrc0), "framerate", 10, 1, NULL);
     g_object_set(videosrc0, "num-buffers", 10, NULL);
 
@@ -171,7 +180,7 @@ GST_START_TEST(test_primary) {
     g_object_set(preprocess, "resize-height", 640, NULL);
     g_object_set(preprocess, "keep-ratio", true, NULL);
     g_object_set(preprocess, "pad-value", 114, NULL);
-    g_object_set(preprocess, "roi", "0,0,200,300", NULL);
+    g_object_set(preprocess, "roi", "100,30,400,340", NULL);
 
     GstElement *infer = gst_element_factory_make("dxinfer", NULL);
     fail_unless(infer != NULL, "Failed to create GstDxInfer element");
@@ -224,12 +233,12 @@ static GstPadProbeReturn probe_secondary(GstPad *pad, GstPadProbeInfo *info,
     GstBuffer *buffer = GST_PAD_PROBE_INFO_BUFFER(info);
     buffer = gst_buffer_ref(buffer);
 
-    vector<float> roi({240, 10, 420, 360});
+    vector<float> roi({200,30,400,350});
 
     GstClockTime current_pts = GST_BUFFER_PTS(buffer);
     fail_unless(current_pts != GST_CLOCK_TIME_NONE, "Buffer has no PTS.");
 
-    vector<float> pred_face;
+    vector<vector<float>> pred_faces;
 
     DXFrameMeta *frame_meta = dx_get_frame_meta(buffer);
     if (frame_meta) {
@@ -247,15 +256,17 @@ static GstPadProbeReturn probe_secondary(GstPad *pad, GstPadProbeInfo *info,
                 object_meta->_face_box[1] != 0 &&
                 object_meta->_face_box[2] != 0 &&
                 object_meta->_face_box[3] != 0) {
-                pred_face.push_back(object_meta->_face_box[0]);
-                pred_face.push_back(object_meta->_face_box[1]);
-                pred_face.push_back(object_meta->_face_box[2]);
-                pred_face.push_back(object_meta->_face_box[3]);
+                pred_faces.push_back({object_meta->_face_box[0],
+                                      object_meta->_face_box[1],
+                                      object_meta->_face_box[2],
+                                      object_meta->_face_box[3]});
             }
         }
     }
-    fail_unless(pred_face.size() == 4, "pred face not 1");
-    fail_unless(isBoxInsideROI(pred_face, roi), "Out of ROI");
+    fail_unless(pred_faces.size() >= 1, "pred face not found");
+    for (auto &face : pred_faces) {
+        fail_unless(isBoxInsideROI(face, roi), "Out of ROI");
+    }
 
     gst_buffer_unref(buffer);
     return GST_PAD_PROBE_OK;
@@ -271,7 +282,7 @@ GST_START_TEST(test_secondary) {
     GstElement *videosrc0 = gst_element_factory_make("dxgenbuffer", NULL);
     fail_unless(videosrc0 != NULL, "Failed to create dxgenbuffer element");
 
-    g_object_set(videosrc0, "image-path", "./../../test_resources/son.jpg",
+    g_object_set(videosrc0, "image-path", "./../../test_resources/test.jpg",
                  NULL);
     g_object_set(G_OBJECT(videosrc0), "framerate", 10, 1, NULL);
     g_object_set(videosrc0, "num-buffers", 10, NULL);
@@ -315,8 +326,7 @@ GST_START_TEST(test_secondary) {
     g_object_set(preprocess1, "pad-value", 114, NULL);
     g_object_set(preprocess1, "secondary-mode", TRUE, NULL);
     g_object_set(preprocess1, "target-class-id", 0, NULL);
-    g_object_set(preprocess1, "interval", 0, NULL);
-    g_object_set(preprocess1, "roi", "240,10,420,360", NULL);
+    g_object_set(preprocess1, "roi", "200,30,400,350", NULL);
 
     GstElement *infer1 = gst_element_factory_make("dxinfer", NULL);
     fail_unless(infer1 != NULL, "Failed to create GstDxInfer element");
@@ -392,21 +402,15 @@ int main(int argc, char *argv[]) {
     Suite *s = roi_suite();
     SRunner *sr = srunner_create(s);
 
-    gt[0].push_back({384.375000, 67.250000, 498.125000, 349.749969});
-    gt[0].push_back({0.625000, 262.250000, 59.375000, 307.250000});
-    gt[39].push_back({128.125000, 101.625000, 139.375000, 137.875000});
-    gt[41].push_back({141.250000, 267.875000, 171.250000, 301.625000});
-    gt[44].push_back({532.500000, 42.875004, 552.500000, 124.125000});
-    gt[44].push_back({135.000000, 249.125000, 150.000000, 272.875000});
-    gt[45].push_back({57.500000, 288.500000, 135.000000, 328.499969});
-    gt[45].push_back({30.625000, 342.874969, 99.375000, 384.124969});
-    gt[45].push_back({156.250000, 168.500000, 181.250000, 183.500000});
-    gt[45].push_back({0.000000, 302.875000, 85.625000, 361.624969});
-    gt[58].push_back({0.000000, 0.375004, 60.000000, 151.625000});
-    gt[69].push_back({490.625000, 203.500000, 616.875000, 343.499969});
-    gt[69].push_back({242.500000, 131.625000, 327.500000, 245.375000});
-    gt[69].push_back({1.250000, 187.250000, 191.250000, 294.750000});
-    gt[69].push_back({333.750000, 199.750000, 396.250000, 324.749969});
+    gt[0].push_back({124.547783, 62.005188, 246.898804, 329.931824});
+    gt[0].push_back({269.850861, 73.818756, 367.612885, 332.555573});
+    gt[0].push_back({395.051575, 100.663300, 484.869934, 332.248627});
+    gt[1].push_back({392.320831, 81.118011, 623.422607, 279.040558});
+    gt[13].push_back({79.094894, 151.225708, 527.124817, 324.877441});
+    gt[16].push_back({408.001617, 165.888428, 451.949982, 227.317139});
+    gt[24].push_back({94.010223, 89.505127, 186.151764, 230.614990});
+    gt[39].push_back({255.098633, 199.996796, 267.930298, 243.062042});
+    gt[67].push_back({313.397675, 141.667389, 329.099213, 150.474091});
 
     srunner_run_all(sr, CK_NORMAL);
     number_failed = srunner_ntests_failed(sr);

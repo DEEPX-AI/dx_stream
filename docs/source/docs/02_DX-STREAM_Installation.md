@@ -326,4 +326,8 @@ If **no** input is provided within 10 seconds, the default option (`0: Object De
 
     Each demo corresponds to a specific pipeline described in **Chapter. Pipeline Example**.
 
+!!! warning "Third-Party Model License Notice"
+
+    Sample models included in DX-STREAM are provided for **evaluation and development purposes only** and are **not licensed for commercial deployment**. Most models are subject to AGPL-3.0, GPL-3.0, or non-commercial research licenses. For commercial use, users must obtain appropriate licenses from the original model providers or use their own commercially licensed models. See [Third-Party Sample Model Licenses](Appendix_Third_Party_Model_Licenses.md) for details.
+
 ---

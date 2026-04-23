@@ -127,7 +127,7 @@ void yolo_pipeline(std::string models, int input_size, std::string postprocess_l
     GstElement *videosrc = gst_element_factory_make("dxgenbuffer", NULL);
     fail_unless(videosrc != NULL, "Failed to create dxgenbuffer element");
 
-    g_object_set(videosrc, "image-path", "./../../test_resources/1.jpg", NULL);
+    g_object_set(videosrc, "image-path", "./../../test_resources/test.jpg", NULL);
     GValue framerate = G_VALUE_INIT;
     g_value_init(&framerate, GST_TYPE_FRACTION);
     gst_value_set_fraction(&framerate, 30, 1);
@@ -204,7 +204,7 @@ void yolo_pose_pipeline(std::string models, int input_size, std::string postproc
     GstElement *videosrc = gst_element_factory_make("dxgenbuffer", NULL);
     fail_unless(videosrc != NULL, "Failed to create dxgenbuffer element");
 
-    g_object_set(videosrc, "image-path", "./../../test_resources/1.jpg", NULL);
+    g_object_set(videosrc, "image-path", "./../../test_resources/test.jpg", NULL);
     GValue framerate = G_VALUE_INIT;
     g_value_init(&framerate, GST_TYPE_FRACTION);
     gst_value_set_fraction(&framerate, 30, 1);
@@ -303,21 +303,15 @@ int main(int argc, char *argv[]) {
     Suite *s = single_suite();
     SRunner *sr = srunner_create(s);
 
-    gt[0].push_back({384.375000, 67.250000, 498.125000, 349.749969});
-    gt[0].push_back({0.625000, 262.250000, 59.375000, 307.250000});
-    gt[39].push_back({128.125000, 101.625000, 139.375000, 137.875000});
-    gt[41].push_back({141.250000, 267.875000, 171.250000, 301.625000});
-    gt[44].push_back({532.500000, 42.875004, 552.500000, 124.125000});
-    gt[44].push_back({135.000000, 249.125000, 150.000000, 272.875000});
-    gt[45].push_back({57.500000, 288.500000, 135.000000, 328.499969});
-    gt[45].push_back({30.625000, 342.874969, 99.375000, 384.124969});
-    gt[45].push_back({156.250000, 168.500000, 181.250000, 183.500000});
-    gt[45].push_back({0.000000, 302.875000, 85.625000, 361.624969});
-    gt[58].push_back({0.000000, 0.375004, 60.000000, 151.625000});
-    gt[69].push_back({490.625000, 203.500000, 616.875000, 343.499969});
-    gt[69].push_back({242.500000, 131.625000, 327.500000, 245.375000});
-    gt[69].push_back({1.250000, 187.250000, 191.250000, 294.750000});
-    gt[69].push_back({333.750000, 199.750000, 396.250000, 324.749969});
+    gt[0].push_back({124.547783, 62.005188, 246.898804, 329.931824});
+    gt[0].push_back({269.850861, 73.818756, 367.612885, 332.555573});
+    gt[0].push_back({395.051575, 100.663300, 484.869934, 332.248627});
+    gt[1].push_back({392.320831, 81.118011, 623.422607, 279.040558});
+    gt[13].push_back({79.094894, 151.225708, 527.124817, 324.877441});
+    gt[16].push_back({408.001617, 165.888428, 451.949982, 227.317139});
+    gt[24].push_back({94.010223, 89.505127, 186.151764, 230.614990});
+    gt[39].push_back({255.098633, 199.996796, 267.930298, 243.062042});
+    gt[67].push_back({313.397675, 141.667389, 329.099213, 150.474091});
 
     srunner_run_all(sr, CK_NORMAL);
     number_failed = srunner_ntests_failed(sr);

@@ -33,9 +33,16 @@ DX-Stream is a GStreamer-based Vision AI application development tool that allow
 
 [**6. Trouble Shooting & FAQ**](./docs/source/docs/06_Troubleshooting_and_FAQ.md)
 
+[**7. Debugging Guide**](./docs/source/docs/07_Debugging_Guide.md)
+
 **Appendix**
 - [User Metadata Guide](./docs/source/docs/Appendix_User_Metadata_Guide.md)
 - [Build on Orange Pi 5 Plus](./docs/source/docs/Appendix_Build_on_OrangePi5Plus.md)
 - [Performance Evaluation With GstShark](./docs/source/docs/Appendix_Performance_Evaluation_with_GstShark.md)
 - [Change Log](./docs/source/docs/Appendix_Change_Log.md)
+- [Third-Party Sample Model Licenses](./docs/source/docs/Appendix_Third_Party_Model_Licenses.md)
+
+## Third-Party Model License Notice
+
+Sample models included in DX-STREAM are provided for **evaluation and development purposes only** and are **not licensed for commercial deployment**. For commercial use, users must obtain appropriate licenses from the original model providers or use their own commercially licensed models. See [Third-Party Sample Model Licenses](./docs/source/docs/Appendix_Third_Party_Model_Licenses.md) for details.
 
