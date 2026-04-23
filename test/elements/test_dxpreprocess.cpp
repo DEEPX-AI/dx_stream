@@ -213,7 +213,7 @@ GST_START_TEST(test_primary_preprocess) {
     GstElement *videosrc = gst_element_factory_make("dxgenbuffer", NULL);
     fail_unless(videosrc != NULL, "Failed to create dxgenbuffer element");
 
-    g_object_set(videosrc, "image-path", "./../../test_resources/1.jpg", NULL);
+    g_object_set(videosrc, "image-path", "./../../test_resources/test.jpg", NULL);
     GValue framerate = G_VALUE_INIT;
     g_value_init(&framerate, GST_TYPE_FRACTION);
     gst_value_set_fraction(&framerate, 30, 1);

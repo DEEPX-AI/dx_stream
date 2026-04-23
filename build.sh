@@ -80,6 +80,9 @@ clean() {
     fi
     
     echo "Uninstalling DX-Stream plugin and related files..."
+
+    # Remove old installation files from previous major versions
+    check_and_remove_old_files
     
     # Remove GStreamer plugin (search in libdir/*/gstreamer-1.0)
     echo "Searching for libgstdxstream.so..."
@@ -166,11 +169,11 @@ check_and_remove_old_files() {
         OLD_FILES_LIST+=("/usr/share/dx-stream")
     fi
 
-    # If old files found, prompt for removal
+    # If old files found, remove them
     if [ "$OLD_FILES_FOUND" = true ]; then
         echo ""
         echo "=========================================="
-        echo "⚠️  WARNING: Old DX-Stream Installation Detected"
+        echo "Old DX-Stream Installation Detected"
         echo "=========================================="
         echo "The following old installation files were found:"
         echo ""
@@ -178,35 +181,19 @@ check_and_remove_old_files() {
             echo "  - $file"
         done
         echo ""
-        echo "These files are from a previous major version and should be removed"
-        echo "to avoid conflicts with the new installation."
-        echo ""
-        read -p "Do you want to remove these files? (y/N): " -n 1 -r
-        echo ""
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            echo "Removing old installation files..."
-            for file in "${OLD_FILES_LIST[@]}"; do
-                if [ -d "$file" ] && [ ! -L "$file" ]; then
-                    echo "  Removing directory: $file"
-                    sudo rm -rf "$file"
-                elif [ -f "$file" ] || [ -L "$file" ]; then
-                    echo "  Removing file: $file"
-                    sudo rm -f "$file"
-                fi
-            done
-            # Update library cache after removal
-            sudo ldconfig
-            echo "✓ Old files removed successfully"
-        else
-            echo ""
-            echo "⚠️  Skipping removal. Note: This may cause conflicts!"
-            echo "   You can manually remove these files later with:"
-            echo ""
-            for file in "${OLD_FILES_LIST[@]}"; do
-                echo "   sudo rm -rf $file"
-            done
-            echo ""
-        fi
+        echo "Removing old installation files to avoid conflicts..."
+        for file in "${OLD_FILES_LIST[@]}"; do
+            if [ -d "$file" ] && [ ! -L "$file" ]; then
+                echo "  Removing directory: $file"
+                sudo rm -rf "$file"
+            elif [ -f "$file" ] || [ -L "$file" ]; then
+                echo "  Removing file: $file"
+                sudo rm -f "$file"
+            fi
+        done
+        # Update library cache after removal
+        sudo ldconfig
+        echo "✓ Old files removed successfully"
         echo "=========================================="
         echo ""
     fi
@@ -292,6 +279,7 @@ build() {
 
     # Automatically configure environment variables in bashrc
     setup_bashrc_env "$PREFIX" "$ACTUAL_LIBDIR"
+    local bashrc_result=$?
 
     # Build DX-Stream custom libraries
     cd $WRC/dx_stream/custom_library
@@ -341,7 +329,7 @@ build() {
     echo "📦 Installed to: ${PREFIX}"
     echo ""
 
-    if [ $? -eq 0 ]; then
+    if [ $bashrc_result -eq 0 ]; then
         echo "✓ Environment variables have been added to ~/.bashrc"
         echo ""
         echo "To apply the changes:"
