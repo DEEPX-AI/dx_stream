@@ -1,0 +1,178 @@
+# dx_stream — Copilot Global Instructions
+
+> GStreamer-based video analytics framework for DEEPX NPU accelerators.
+> 13 custom GStreamer elements, 6 pipeline categories.
+
+{{FRAGMENT:response-language}}
+
+
+{{FRAGMENT:recommended-model}}
+
+
+## Shared Knowledge
+
+All skills, instructions, toolsets, and memory live in `.deepx/`.
+Read `.deepx/README.md` for the complete index.
+
+## Context Routing Table
+
+| If the task mentions... | Read these files |
+|---|---|
+| **Pipeline, detection, classification** | `.deepx/skills/dx-build-pipeline-app.md`, `.deepx/toolsets/dx-stream-elements.md` |
+| **MQTT, Kafka, message broker** | `.deepx/skills/dx-build-mqtt-kafka-app.md`, `.deepx/toolsets/dx-stream-elements.md` |
+| **Multi-model, cascaded, tiled** | `.deepx/skills/dx-build-pipeline-app.md`, `.deepx/toolsets/dx-stream-metadata.md` |
+| **Model, download** | `.deepx/skills/dx-model-management.md` |
+| **Validation, testing** | `.deepx/skills/dx-validate.md`, `.deepx/instructions/testing-patterns.md` |
+| **Validation, feedback, fix** | `.deepx/skills/dx-validate.md`, parent `dx-runtime/.deepx/skills/dx-validate-and-fix.md` |
+| **Brainstorm, plan, design** | `.deepx/skills/dx-brainstorm-and-plan.md` |
+| **TDD, validation, incremental** | `.deepx/skills/dx-tdd.md` |
+| **Completion, verify, evidence** | `.deepx/skills/dx-verify-completion.md` |
+| **Debug, root cause, investigate** | `.deepx/skills/dx-systematic-debugging/SKILL.md` |
+| **Plan, execute, subagent** | `.deepx/skills/dx-writing-plans/SKILL.md`, `.deepx/skills/dx-executing-plans/SKILL.md` |
+| **Code review, feedback** | `.deepx/skills/dx-receiving-code-review/SKILL.md`, `.deepx/skills/dx-requesting-code-review/SKILL.md` |
+| **ALWAYS read (every task)** | `.deepx/memory/common_pitfalls.md`, `.deepx/instructions/coding-standards.md` |
+
+## Skills
+
+| Skill | Description |
+|-------|-------------|
+| dx-build-pipeline-app | Build GStreamer pipeline (single, multi, cascaded, tiled, parallel, broker) |
+| dx-build-mqtt-kafka-app | Build MQTT/Kafka message broker pipeline |
+| dx-model-management | Download and configure .dxnn models for pipelines |
+| dx-validate | Run pipeline validation checks |
+| dx-validate-and-fix | Full feedback loop: validate, collect, approve, apply, verify |
+| dx-brainstorm-and-plan | Brainstorm, propose 2-3 approaches, spec self-review, then plan |
+| dx-tdd | Validation-driven development with optional Red-Green-Refactor for unit tests |
+| dx-verify-completion | Process: verify before claiming completion — evidence before assertions |
+| dx-writing-plans | Write implementation plans with bite-sized tasks |
+| dx-executing-plans | Execute plans with review checkpoints |
+| dx-subagent-driven-development | Execute plans via fresh subagent per task with two-stage review |
+| dx-systematic-debugging | Systematic debugging — 4-phase root cause investigation before proposing fixes |
+| dx-receiving-code-review | Evaluate code review feedback with technical rigor |
+| dx-requesting-code-review | Request code review after completing features |
+| dx-skill-router | Skill discovery and invocation — check skills before any action |
+| dx-writing-skills | Create and edit skill files |
+| dx-dispatching-parallel-agents | Dispatch parallel subagents for independent tasks |
+
+## Interactive Workflow (MUST FOLLOW)
+
+**Always walk through key decisions with the user before building.** This is a HARD GATE.
+
+Before ANY code generation:
+1. Ask 2-3 clarifying questions (variant, task type, model)
+2. Present a build plan and wait for user approval
+3. After generation, validate each file
+
+### Output Isolation
+All AI-generated code goes to `dx-agentic-dev/<session_id>/` by default.
+Only write to `src/` when explicitly requested by the user.
+
+**Session ID format**: `YYYYMMDD-HHMMSS_<model>_<task>` — the timestamp MUST use the
+**system local timezone** (NOT UTC). Use `$(date +%Y%m%d-%H%M%S)` in Bash or
+`datetime.now().strftime('%Y%m%d-%H%M%S')` in Python. Do NOT use `date -u`,
+`datetime.utcnow()`, or `datetime.now(timezone.utc)`.
+
+## 13 GStreamer Elements
+
+| Element | Purpose |
+|---------|---------|
+| DxPreprocess | Resize, normalize, color-convert for NPU inference |
+| DxInfer | Run .dxnn model inference on NPU |
+| DxPostprocess | Decode raw inference tensors |
+| DxOsd | Draw bounding boxes, labels, overlays |
+| DxRate | Drop excess frames to target FPS |
+| DxScale | Resize frames between ROI and secondary inference |
+| DxRoiExtract | Extract ROI crops from detection results |
+| DxTracker | Multi-object tracking with persistent IDs |
+| DxTile | Split frame into tiles for high-res inference |
+| DxDeTile | Reassemble tiled results to full-frame |
+| DxMsgConv | Serialize results to JSON/protobuf |
+| DxMsgBroker | Publish to MQTT or Kafka |
+| DxMux | Multiplex multiple streams |
+
+## 6 Pipeline Categories
+
+| Category | Description | Key Pattern |
+|----------|-------------|-------------|
+| **Single-model** | One model, one stream | `src ! DxPreprocess ! DxInfer ! DxPostprocess ! DxOsd ! sink` |
+| **Multi-model** | Multiple models, sequential | Chain multiple DxInfer stages with distinct preprocess-ids |
+| **Cascaded** | Primary detection feeds secondary classification | `DxInfer ! DxRoiExtract ! DxScale ! DxInfer` |
+| **Tiled** | High-res input split into tiles | `DxTile ! DxInfer ! DxDeTile` |
+| **Parallel** | Multiple streams processed in parallel | `DxMux` to combine, shared DxInfer |
+| **Broker** | Publish results to MQTT/Kafka | `DxInfer ! DxMsgConv ! DxMsgBroker` |
+
+## Critical Conventions
+
+1. **preprocess-id matching**: DxPreprocess and DxInfer share the same ID
+2. **Queue elements**: `queue` between every processing stage
+3. **DxRate for RTSP**: Always rate-limit RTSP sources
+4. **Absolute model-path**: DxInfer `model-path` must be absolute
+5. **DxMsgConv before DxMsgBroker**: Serialize before publish
+6. **Logging**: `logging.getLogger(__name__)` — no `print()`
+7. **Skill doc is sufficient**: Do NOT read source code unless skill is insufficient
+8. **No hardcoded model paths**: Use variables or config for model path resolution
+9. **Model list**: Query `model_list.json` for model download URLs and expected paths
+10. **PPU model auto-detection**: Auto-detect PPU models by checking model name `_ppu` suffix, `model_list.json` postprocess library, or compiler session context. PPU pipelines omit `DxPostprocess` or use a pass-through library — no separate NMS needed.
+11. **Existing pipeline search**: Before generating a new pipeline, search `pipelines/` and `run_*.sh` scripts for existing examples. If found, ask user: (a) explain existing only, or (b) create new pipeline based on existing. Never silently skip or overwrite.
+12. **PPU pipeline generation is MANDATORY**: If the compiled .dxnn model is PPU, the agent MUST generate a working pipeline example.
+13. **Mandatory output artifacts**: Every pipeline build session MUST produce: `pipeline.py`, `run_<app>.sh`, `session.json`, `README.md`, `setup.sh`, `run.sh`, `session.log`. The `session.log` must contain actual command output (never a hand-written summary). Run self-verification before presenting the final report.
+14. **x264enc universal rule**: Every `x264enc` in ANY context (shell, Python, pipeline strings) MUST include `bitrate=4000 speed-preset=ultrafast tune=zerolatency` — bare `x264enc` causes deadlocks (pitfall #14)
+
+## Pipeline Template
+
+```
+source ! queue ! DxPreprocess preprocess-id=0 ! queue ! DxInfer preprocess-id=0 model-path=/path/to/model.dxnn ! queue ! DxPostprocess ! queue ! DxOsd ! queue ! sink
+```
+
+## Quick Reference
+
+```bash
+./install.sh                         # Install GStreamer plugin bindings
+./setup.sh                           # Download sample models and videos
+dxrt-cli -s                          # Verify NPU availability
+gst-inspect-1.0 dxinfer              # Verify DxInfer plugin
+pytest test/                         # Run unit tests
+```
+
+{{FRAGMENT:no-placeholder-code}}
+
+
+{{FRAGMENT:experimental-features-prohibited}}
+
+
+{{FRAGMENT:brainstorming-spec-before-plan}}
+
+
+## Hardware
+
+| Architecture | Value |
+|---|---|
+| DX-M1 | `dx_m1` |
+
+{{FRAGMENT:autopilot-mode-guard}}
+
+
+## Memory
+
+Persistent knowledge in `.deepx/memory/`. Read at task start, update when learning.
+
+{{FRAGMENT:rule-conflict-resolution}}
+
+
+{{FRAGMENT:git-operations-user-handles}}
+
+
+{{FRAGMENT:git-safety-superpowers}}
+
+
+{{FRAGMENT:session-sentinels}}
+
+
+{{FRAGMENT:plan-output}}
+
+
+
+---
+
+{{FRAGMENT:instruction-verification-loop}}
+

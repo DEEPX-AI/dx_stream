@@ -34,16 +34,26 @@
 
 ## 스킬
 
+16개 스킬이 모든 플랫폼에서 사용 가능합니다. `dx-agentic-gen`으로 생성됩니다.
+
 | 스킬 | 설명 |
 |---|---|
-| `dx-build-pipeline-app` | 6개 카테고리의 GStreamer 파이프라인 빌드: 단일 모델, 다중 모델, 캐스케이드, 타일, 병렬, 브로커 |
-| `dx-build-mqtt-kafka-app` | 이벤트 퍼블리싱을 위한 MQTT 또는 Kafka 메시지 브로커 파이프라인 빌드 |
-| `dx-model-management` | 대상 NPU 아키텍처용 `.dxnn` 모델 다운로드 및 설정 |
-| `dx-validate` | 파이프라인 검증 검사 실행 (문법, 속성, 엘리먼트 순서) |
-| `dx-validate-and-fix` | *(공유, dx-runtime 제공)* 전체 피드백 루프 — 검증, 진단, 수정, 재검증 |
 | `dx-brainstorm-and-plan` | 파이프라인 생성 전 브레인스토밍 및 계획 수립 (프로세스 스킬) |
+| `dx-build-mqtt-kafka-app` | 이벤트 퍼블리싱을 위한 MQTT 또는 Kafka 메시지 브로커 파이프라인 빌드 |
+| `dx-build-pipeline-app` | 6개 카테고리의 GStreamer 파이프라인 빌드: 단일 모델, 다중 모델, 캐스케이드, 타일, 병렬, 브로커 |
+| `dx-dispatching-parallel-agents` | 2개 이상의 독립 작업을 병렬 에이전트에 디스패치 |
+| `dx-executing-plans` | 검토 체크포인트가 포함된 구현 계획 실행 |
+| `dx-model-management` | 대상 NPU 아키텍처용 `.dxnn` 모델 다운로드 및 설정 |
+| `dx-receiving-code-review` | 코드 리뷰 피드백을 기술적 엄밀성으로 수신 및 처리 |
+| `dx-requesting-code-review` | 작업이 요구사항을 충족하는지 코드 리뷰 요청 |
+| `dx-skill-router` | 작업 분류에 따라 적절한 스킬로 라우팅 |
+| `dx-subagent-driven-development` | 독립적 하위 에이전트 작업으로 구현 계획 실행 |
+| `dx-systematic-debugging` | 체계적 디버깅 — 수정 제안 전 진단 |
 | `dx-tdd` | 테스트 주도 개발 — 파일 생성 직후 즉시 검증 (프로세스 스킬) |
+| `dx-validate` | 파이프라인 검증 검사 실행 (문법, 속성, 엘리먼트 순서) |
 | `dx-verify-completion` | 완료 선언 전 검증 — 증거 기반 확인 (프로세스 스킬) |
+| `dx-writing-plans` | 스펙 또는 요구사항에서 구현 계획 작성 |
+| `dx-writing-skills` | 스킬 생성 또는 편집 및 배포 전 검증 |
 
 ---
 
@@ -55,9 +65,9 @@ dx_stream 에이전틱 개발은 4가지 AI 코딩 도구에서 작동합니다.
 | 도구 | 설정 파일 | 사용 가능한 에이전트 |
 |---|---|---|
 | **Claude Code** | `CLAUDE.md` | 컨텍스트 라우팅을 통해 4개 에이전트 전체 |
-| **GitHub Copilot** | `.github/copilot-instructions.md`, `.github/agents/`의 4개 에이전트, `.github/instructions/`의 2개 instruction | `@dx-stream-builder`, `@dx-pipeline-builder`, `@dx-model-manager`, `@dx-validator` |
-| **Cursor** | `.cursor/rules/dx-stream.mdc` (항상), 2개 glob 규칙 (`stream-pipelines`, `tests`) | 자동 적용 규칙과 함께 자유 형식 대화 |
-| **OpenCode** | `AGENTS.md`, `opencode.json`, `.opencode/agents/`의 4개 에이전트, `.opencode/skills/`의 4개 스킬 | `@dx-stream-builder` 또는 `/dx-build-pipeline-app` |
+| **GitHub Copilot** | `.github/copilot-instructions.md`, `.github/agents/`의 4개 에이전트, `.github/skills/`의 16개 스킬, `.github/instructions/`의 2개 instruction | `@dx-stream-builder`, `@dx-pipeline-builder`, `@dx-model-manager`, `@dx-validator` |
+| **Cursor** | `.cursor/rules/dx-stream.mdc` (항상), `dx-model-manager.mdc`, `dx-pipeline-builder.mdc`, `dx-stream-builder.mdc`, `dx-validator.mdc`, `stream-pipelines.mdc`, `tests.mdc`, 16개 `skill-*.mdc` 파일 (총 23개) | 자동 적용 규칙과 함께 자유 형식 대화 |
+| **OpenCode** | `AGENTS.md`, `opencode.json`, `.opencode/agents/`의 4개 에이전트, `.deepx/skills/`의 16개 스킬 | `@dx-stream-builder` 또는 `/dx-build-pipeline-app` |
 
 ### Copilot 파일별 자동 Instruction
 
@@ -70,13 +80,22 @@ dx_stream 에이전틱 개발은 4가지 AI 코딩 도구에서 작동합니다.
 
 | 슬래시 명령 | 설명 |
 |---|---|
-| `/dx-build-pipeline-app` | 6개 카테고리의 GStreamer 파이프라인 빌드 |
-| `/dx-build-mqtt-kafka-app` | MQTT/Kafka 브로커 파이프라인 빌드 |
-| `/dx-model-management` | .dxnn 모델 다운로드 및 설정 |
-| `/dx-validate` | 파이프라인 검증 검사 실행 |
 | `/dx-brainstorm-and-plan` | 파이프라인 생성 전 브레인스토밍 및 계획 수립 |
+| `/dx-build-mqtt-kafka-app` | MQTT/Kafka 브로커 파이프라인 빌드 |
+| `/dx-build-pipeline-app` | 6개 카테고리의 GStreamer 파이프라인 빌드 |
+| `/dx-dispatching-parallel-agents` | 2개 이상의 독립 작업을 병렬 에이전트에 디스패치 |
+| `/dx-executing-plans` | 구현 계획 실행 |
+| `/dx-model-management` | .dxnn 모델 다운로드 및 설정 |
+| `/dx-receiving-code-review` | 코드 리뷰 피드백 처리 |
+| `/dx-requesting-code-review` | 코드 리뷰 요청 |
+| `/dx-skill-router` | 적절한 스킬로 라우팅 |
+| `/dx-subagent-driven-development` | 독립적 하위 에이전트 작업으로 계획 실행 |
+| `/dx-systematic-debugging` | 수정 제안 전 체계적 디버깅 |
 | `/dx-tdd` | 점진적 검증을 포함한 테스트 주도 개발 |
+| `/dx-validate` | 파이프라인 검증 검사 실행 |
 | `/dx-verify-completion` | 증거 기반 완료 검증 |
+| `/dx-writing-plans` | 스펙에서 구현 계획 작성 |
+| `/dx-writing-skills` | 스킬 생성 또는 편집 |
 
 ### 플랫폼별 파일 참조
 
@@ -93,36 +112,85 @@ dx_stream 에이전틱 개발은 4가지 AI 코딩 도구에서 작동합니다.
 
 #### 에이전트 파일 (수동 @mention)
 
-| 에이전트 | Copilot (`@mention`) | OpenCode (`@mention`) |
-|---------|------|---------|
-| `dx-stream-builder` | `.github/agents/dx-stream-builder.agent.md` | `.opencode/agents/dx-stream-builder.md` |
-| `dx-pipeline-builder` | `.github/agents/dx-pipeline-builder.agent.md` | `.opencode/agents/dx-pipeline-builder.md` |
-| `dx-model-manager` | `.github/agents/dx-model-manager.agent.md` | `.opencode/agents/dx-model-manager.md` |
-| `dx-validator` | `.github/agents/dx-validator.agent.md` | `.opencode/agents/dx-validator.md` |
+| 에이전트 | Copilot (`@mention`) | OpenCode (`@mention`) | Claude Code (`@mention`) |
+|---------|------|---------|---------|
+| `dx-stream-builder` | `.github/agents/dx-stream-builder.agent.md` | `.opencode/agents/dx-stream-builder.md` | `.claude/agents/dx-stream-builder.md` |
+| `dx-pipeline-builder` | `.github/agents/dx-pipeline-builder.agent.md` | `.opencode/agents/dx-pipeline-builder.md` | `.claude/agents/dx-pipeline-builder.md` |
+| `dx-model-manager` | `.github/agents/dx-model-manager.agent.md` | `.opencode/agents/dx-model-manager.md` | `.claude/agents/dx-model-manager.md` |
+| `dx-validator` | `.github/agents/dx-validator.agent.md` | `.opencode/agents/dx-validator.md` | `.claude/agents/dx-validator.md` |
 
-#### 스킬 파일 (OpenCode 전용 — `/slash-command`)
+#### 스킬 파일 (모든 플랫폼 — `/slash-command`)
 
 | 스킬 | 파일 |
 |-------|------|
-| `/dx-brainstorm-and-plan` | `.opencode/skills/dx-brainstorm-and-plan/SKILL.md` |
-| `/dx-build-pipeline-app` | `.opencode/skills/dx-build-pipeline-app/SKILL.md` |
-| `/dx-build-mqtt-kafka-app` | `.opencode/skills/dx-build-mqtt-kafka-app/SKILL.md` |
-| `/dx-model-management` | `.opencode/skills/dx-model-management/SKILL.md` |
-| `/dx-validate` | `.opencode/skills/dx-validate/SKILL.md` |
-| `/dx-verify-completion` | `.opencode/skills/dx-verify-completion/SKILL.md` |
-| `/dx-tdd` | `.opencode/skills/dx-tdd/SKILL.md` |
+| `/dx-brainstorm-and-plan` | `.deepx/skills/dx-brainstorm-and-plan/SKILL.md` |
+| `/dx-build-mqtt-kafka-app` | `.deepx/skills/dx-build-mqtt-kafka-app/SKILL.md` |
+| `/dx-build-pipeline-app` | `.deepx/skills/dx-build-pipeline-app/SKILL.md` |
+| `/dx-dispatching-parallel-agents` | `.deepx/skills/dx-dispatching-parallel-agents/SKILL.md` |
+| `/dx-executing-plans` | `.deepx/skills/dx-executing-plans/SKILL.md` |
+| `/dx-model-management` | `.deepx/skills/dx-model-management/SKILL.md` |
+| `/dx-receiving-code-review` | `.deepx/skills/dx-receiving-code-review/SKILL.md` |
+| `/dx-requesting-code-review` | `.deepx/skills/dx-requesting-code-review/SKILL.md` |
+| `/dx-skill-router` | `.deepx/skills/dx-skill-router/SKILL.md` |
+| `/dx-subagent-driven-development` | `.deepx/skills/dx-subagent-driven-development/SKILL.md` |
+| `/dx-systematic-debugging` | `.deepx/skills/dx-systematic-debugging/SKILL.md` |
+| `/dx-tdd` | `.deepx/skills/dx-tdd/SKILL.md` |
+| `/dx-validate` | `.deepx/skills/dx-validate/SKILL.md` |
+| `/dx-verify-completion` | `.deepx/skills/dx-verify-completion/SKILL.md` |
+| `/dx-writing-plans` | `.deepx/skills/dx-writing-plans/SKILL.md` |
+| `/dx-writing-skills` | `.deepx/skills/dx-writing-skills/SKILL.md` |
 
 #### 공유 지식 베이스 (`.deepx/`)
 
-`.deepx/` 디렉토리는 모든 에이전트 플랫폼이 필요 시 참조하는 플랫폼 독립적 지식 베이스입니다. 자동 로딩되지 않으며, 에이전트와 스킬이 작업 실행 중 필요한 파일을 참조합니다.
+`.deepx/` 디렉토리는 모든 에이전틱 개발 콘텐츠의 정식 소스입니다.
+플랫폼별 파일(`.claude/`, `.github/`, `.cursor/`, `.opencode/`)은
+`dx-agentic-gen generate --repo dx-runtime/dx_stream`으로 `.deepx/`에서 생성됩니다.
+생성된 파일을 직접 편집하지 마세요 — `.deepx/`를 수정하고 재생성하세요.
 
 | 디렉토리 | 파일 | 설명 |
 |-----------|-------|-------------|
 | `.deepx/agents/` | 4개 파일 (`dx-stream-builder.md`, `dx-pipeline-builder.md`, `dx-model-manager.md`, `dx-validator.md`) | 권위 있는 에이전트 정의 |
-| `.deepx/skills/` | 7개 파일 (`dx-build-pipeline-app.md`, `dx-build-mqtt-kafka-app.md`, `dx-model-management.md`, `dx-validate.md`, `dx-brainstorm-and-plan.md`, `dx-tdd.md`, `dx-verify-completion.md`) | 상세 스킬 워크플로우 |
+| `.deepx/skills/` | 16개 디렉토리 (스킬당 1개, 각각 `SKILL.md` 포함) | 상세 스킬 워크플로우 |
 | `.deepx/toolsets/` | 4개 파일 | GStreamer 요소 및 API 참조 |
 | `.deepx/instructions/` | 6개 파일 | 코딩 표준 및 워크플로우 규칙 |
 | `.deepx/memory/` | 4개 파일 | 지속적 지식 — 함정 및 세션 메모리 |
+| `.deepx/templates/` | 템플릿 파일 | 코드 생성 템플릿 |
+| `.deepx/knowledge/` | 지식 파일 | 도메인별 지식 베이스 |
+| `.deepx/contextual-rules/` | 규칙 파일 | 에이전트용 컨텍스트 의존 규칙 |
+| `.deepx/prompts/` | 프롬프트 파일 | 재사용 가능한 프롬프트 조각 |
+| `.deepx/scripts/` | 스크립트 파일 | 검증 및 유틸리티 스크립트 |
+
+#### Claude Code 에이전트 (`.claude/agents/`)
+
+| 에이전트 | 파일 |
+|---------|------|
+| `dx-model-manager` | `.claude/agents/dx-model-manager.md` |
+| `dx-pipeline-builder` | `.claude/agents/dx-pipeline-builder.md` |
+| `dx-stream-builder` | `.claude/agents/dx-stream-builder.md` |
+| `dx-validator` | `.claude/agents/dx-validator.md` |
+
+#### GitHub Copilot 스킬 (`.github/skills/`)
+
+16개 스킬 디렉토리 (`dx-agentic-gen`으로 생성된 인라인 복사본), `.deepx/skills/`와 1:1 대응.
+
+---
+
+## 생성 파이프라인
+
+모든 플랫폼별 설정 파일은 정식 소스인 `.deepx/`에서 `dx-agentic-gen` 도구로 생성됩니다:
+
+```bash
+dx-agentic-gen generate --repo dx-runtime/dx_stream
+```
+
+생성 대상:
+- `.claude/agents/` — Claude Code 에이전트 파일
+- `.github/agents/`, `.github/skills/`, `.github/instructions/` — GitHub Copilot 파일
+- `.cursor/rules/` — Cursor 규칙 파일 (총 23개)
+- `.opencode/agents/` — OpenCode 에이전트 파일
+- `CLAUDE.md`, `AGENTS.md`, `opencode.json` — 플랫폼 진입점
+
+**생성된 파일을 직접 편집하지 마세요.** `.deepx/`를 수정하고 재생성하세요.
 
 ---
 
