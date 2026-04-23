@@ -6,7 +6,6 @@
 - None
 ### 2. Fixed
 - Fix Typos in User Manual
-- Replace licensed test images with license-free alternative
 ### 3. Added
 - Third-party sample model license notice documentation
 
