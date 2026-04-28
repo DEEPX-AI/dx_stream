@@ -38,12 +38,27 @@ dx-agentic-dev/<YYYYMMDD-HHMMSS>_<model>_<pipeline_category>/
 ```json
 {
   "session_id": "<YYYYMMDD-HHMMSS>_<model>_<category>",
-  "created_at": "<ISO 8601 timestamp>",
+  "created_at": "<ISO 8601 with local timezone — use datetime.now().astimezone().isoformat(timespec='seconds')>",
   "model": "<model_name>",
   "pipeline_category": "<single_model|multi_model|cascaded|tiled|parallel|broker>",
+  "task": "<Object Detection|Pose Estimation|Segmentation|Classification>",
+  "postprocess_lib": "<libpostprocess_xxx.so>",
+  "tracker": "<dxtracker|none>",
+  "input_size": "<WxH e.g. 640x640>",
   "status": "complete",
   "notes": "<any relevant notes>"
 }
+```
+
+**`created_at` MUST include timezone offset.** Do NOT use `datetime.now().strftime(...)` without appending
+timezone — downstream ISO 8601 parsers will reject timestamps without an offset.
+
+```python
+# Correct — includes +09:00 or equivalent local offset:
+"created_at": datetime.now().astimezone().isoformat(timespec='seconds')
+
+# Wrong — missing timezone:
+"created_at": datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
 ```
 
 ### When to Use Production Path
@@ -105,6 +120,9 @@ runtime. Generated code MUST follow these templates exactly.
 - Copying `SRC_DIR` calculation from production scripts in `dx_stream/pipelines/`
 - Writing log messages in Korean or other non-English languages
 - Adding features the user did not request (e.g., FPS overlay, auto-recording)
+- **Omitting `dxrate` after RTSP decodebin** — always add `dxrate max-rate=30` in the
+  RTSP source branch. Example: `urisourcebin uri=rtsp://... ! decodebin ! dxrate max-rate=30 ! dxpreprocess ...`
+- **`created_at` without timezone offset** — always use `datetime.now().astimezone().isoformat(timespec='seconds')`
 
 ## Phase 0: Prerequisites Check
 
@@ -165,7 +183,7 @@ source → dxpreprocess → queue → dxinfer → queue → dxpostprocess → qu
 > **DxTracker is MANDATORY for object-detection pipelines.** Any pipeline whose
 > task is object detection (yolo*, ssd, scrfd, efficient-det, etc.) MUST include
 > `dxtracker` between `dxpostprocess` and `dxosd`. Use the default config file
-> `../../configs/tracker_config.json` (relative to the session directory). This
+> `../../dx_stream/configs/tracker_config.json` (relative to the session directory). This
 > requirement also applies when the `--tracker-config` argument is omitted —
 > always pass the default config path so the element is present in the pipeline.
 > Omitting tracker from a detection pipeline is a test failure.
@@ -181,7 +199,15 @@ source → dxpreprocess → queue → dxinfer → queue → dxpostprocess → qu
 import argparse
 import logging
 import os
+from pathlib import Path
 import sys
+
+try:
+    import pydxs  # noqa: F401 — confirms dx_stream venv is active
+except ImportError:
+    print("Error: pydxs not found. Activate the dx_stream venv first:", file=sys.stderr)
+    print("  source ../../venv-dx_stream/bin/activate", file=sys.stderr)
+    sys.exit(1)
 
 import gi
 gi.require_version('Gst', '1.0')
@@ -217,7 +243,8 @@ def parse_args():
 def build_source_string(input_path):
     """Build source element string from input specification."""
     if input_path.startswith('rtsp://'):
-        return f'urisourcebin uri={input_path} ! decodebin'
+        # Always add DxRate after decodebin to cap frame ingestion rate (convention #3)
+        return f'urisourcebin uri={input_path} ! decodebin ! dxrate max-rate=30'
     elif input_path.startswith('/dev/video'):
         return f'v4l2src device={input_path} ! videoconvert'
     elif input_path == 'usb':
@@ -241,10 +268,12 @@ def build_pipeline_string(args):
                    f'library-file-path={args.postprocess_lib} '
                    f'function-name={args.function_name}')
 
-    # Optional tracker
-    tracker = ''
-    if args.tracker_config:
-        tracker = f'queue max-size-buffers=1 ! dxtracker config-file-path={args.tracker_config} !'
+    # Tracker is mandatory for detection pipelines — always include with a resolved default path
+    _default_tracker_cfg = str(
+        (Path(__file__).resolve().parent / "../../dx_stream/configs/tracker_config.json").resolve()
+    )
+    tracker_config_path = args.tracker_config or _default_tracker_cfg
+    tracker = f'queue max-size-buffers=1 ! dxtracker config-file-path={tracker_config_path} !'
 
     # Sink
     file_enc = 'videoconvert ! x264enc bitrate=4000 speed-preset=ultrafast tune=zerolatency ! h264parse ! mp4mux'
