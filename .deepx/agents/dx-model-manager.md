@@ -3,7 +3,7 @@ name: DX Model Manager
 description: Query, download, and validate DEEPX NPU models (.dxnn) for dx_stream pipeline use.
 version: '1.0'
 argument-hint: 'e.g., List detection models, Download yolo26n'
-capabilities: [execute, read, search]
+capabilities: [execute, read, search, sub-agent]
 ---
 
 **Response Language**: Match your response language to the user's prompt language — when asking questions or responding, use the same language the user is using. When responding in Korean, keep English technical terms in English. Do NOT transliterate into Korean phonetics (한글 음차 표기 금지).

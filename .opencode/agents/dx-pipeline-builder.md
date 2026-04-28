@@ -1,6 +1,6 @@
 ---
 description: Build GStreamer dx_stream pipeline applications with full element composition, postprocess integration, and validation.
-mode: normal
+mode: subagent
 tools:
   bash: true
   edit: true

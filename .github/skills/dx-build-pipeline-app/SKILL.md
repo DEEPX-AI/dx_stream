@@ -159,8 +159,16 @@ Before starting the build workflow, verify:
 ### Core Pipeline Pattern
 
 ```
-source → dxpreprocess → queue → dxinfer → queue → dxpostprocess → queue → [dxtracker → queue →] dxosd → sink
+source → dxpreprocess → queue → dxinfer → queue → dxpostprocess → queue → dxtracker → queue → dxosd → sink
 ```
+
+> **DxTracker is MANDATORY for object-detection pipelines.** Any pipeline whose
+> task is object detection (yolo*, ssd, scrfd, efficient-det, etc.) MUST include
+> `dxtracker` between `dxpostprocess` and `dxosd`. Use the default config file
+> `../../configs/tracker_config.json` (relative to the session directory). This
+> requirement also applies when the `--tracker-config` argument is omitted —
+> always pass the default config path so the element is present in the pipeline.
+> Omitting tracker from a detection pipeline is a test failure.
 
 ---
 

@@ -3,7 +3,7 @@ name: DX Stream Validator
 description: Validate dx_stream GStreamer pipeline applications and .deepx/ framework files. Checks pipeline property matching, element connectivity, and framework consistency.
 version: '1.0'
 argument-hint: 'e.g., validate detection pipeline, validate framework'
-capabilities: [ask-user, edit, execute, read, search, todo]
+capabilities: [ask-user, edit, execute, read, search, sub-agent, todo]
 routes-to: []
 ---
 

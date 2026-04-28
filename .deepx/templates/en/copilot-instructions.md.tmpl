@@ -117,6 +117,7 @@ Only write to `src/` when explicitly requested by the user.
 12. **PPU pipeline generation is MANDATORY**: If the compiled .dxnn model is PPU, the agent MUST generate a working pipeline example.
 13. **Mandatory output artifacts**: Every pipeline build session MUST produce: `pipeline.py`, `run_<app>.sh`, `session.json`, `README.md`, `setup.sh`, `run.sh`, `session.log`. The `session.log` must contain actual command output (never a hand-written summary). Run self-verification before presenting the final report.
 14. **x264enc universal rule**: Every `x264enc` in ANY context (shell, Python, pipeline strings) MUST include `bitrate=4000 speed-preset=ultrafast tune=zerolatency` — bare `x264enc` causes deadlocks (pitfall #14)
+15. **DxTracker mandatory for detection**: Any pipeline for an object-detection model (yolo*, ssd, scrfd, etc.) MUST include `dxtracker config-file-path=../../configs/tracker_config.json` between `dxpostprocess` and `dxosd`. Never omit the tracker element from detection pipelines.
 
 ## Pipeline Template
 

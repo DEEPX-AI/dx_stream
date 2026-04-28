@@ -5,6 +5,7 @@ description: Validate dx_stream GStreamer pipeline applications and .deepx/ fram
 argument-hint: e.g., validate detection pipeline, validate framework
 tools:
 - agent/askQuestions
+- agent/runSubagent
 - edit/createDirectory
 - edit/createFile
 - edit/editFiles

@@ -2,6 +2,7 @@
 name: DX Pipeline Builder
 description: Build GStreamer dx_stream pipeline applications with full element composition, postprocess integration, and validation.
 tools:
+- Agent
 - AskUserQuestion
 - Bash
 - Edit

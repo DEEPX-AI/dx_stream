@@ -3,7 +3,7 @@ name: DX Pipeline Builder
 description: Build GStreamer dx_stream pipeline applications with full element composition, postprocess integration, and validation.
 version: '1.0'
 argument-hint: 'e.g., Build yolo26n detection with tracking pipeline'
-capabilities: [ask-user, edit, execute, read, search, todo]
+capabilities: [ask-user, edit, execute, read, search, sub-agent, todo]
 ---
 
 **Response Language**: Match your response language to the user's prompt language — when asking questions or responding, use the same language the user is using. When responding in Korean, keep English technical terms in English. Do NOT transliterate into Korean phonetics (한글 음차 표기 금지).

@@ -3,6 +3,7 @@ name: DX Model Manager
 description: Query, download, and validate DEEPX NPU models (.dxnn) for dx_stream pipeline use.
 argument-hint: e.g., List detection models, Download yolo26n
 tools:
+- agent/runSubagent
 - edit/findTextInFiles
 - edit/getDocumentText
 - edit/getSelectedText

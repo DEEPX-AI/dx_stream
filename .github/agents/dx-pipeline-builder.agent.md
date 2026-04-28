@@ -4,6 +4,7 @@ description: Build GStreamer dx_stream pipeline applications with full element c
 argument-hint: e.g., Build yolo26n detection with tracking pipeline
 tools:
 - agent/askQuestions
+- agent/runSubagent
 - edit/createDirectory
 - edit/createFile
 - edit/editFiles

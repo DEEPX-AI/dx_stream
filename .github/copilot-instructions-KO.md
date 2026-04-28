@@ -179,6 +179,7 @@ Python에서는 `datetime.now().strftime('%Y%m%d-%H%M%S')`를 사용한다. `dat
 12. **PPU 파이프라인 생성은 필수**: 컴파일된 .dxnn 모델이 PPU인 경우, 에이전트는 반드시 작동하는 파이프라인 예제를 생성해야 한다.
 13. **필수 출력 아티팩트**: 모든 파이프라인 빌드 세션은 반드시 다음을 생성해야 한다: `pipeline.py`, `run_<app>.sh`, `session.json`, `README.md`, `setup.sh`, `run.sh`, `session.log`. `session.log`는 실제 명령 출력을 포함해야 한다 (수기 요약 불가). 최종 보고서 제시 전에 자체 검증을 실행한다.
 14. **x264enc 범용 규칙**: 모든 컨텍스트 (shell, Python, 파이프라인 문자열)의 모든 `x264enc`는 반드시 `bitrate=4000 speed-preset=ultrafast tune=zerolatency`를 포함해야 한다 — bare `x264enc`는 데드락을 유발한다 (pitfall #14)
+15. **객체 감지 파이프라인에서 DxTracker 필수**: 객체 감지 모델(yolo*, ssd, scrfd 등)을 위한 파이프라인은 반드시 `dxpostprocess`와 `dxosd` 사이에 `dxtracker config-file-path=../../configs/tracker_config.json`를 포함해야 한다. 감지 파이프라인에서 tracker 요소를 생략하지 않는다.
 
 ## 파이프라인 템플릿
 

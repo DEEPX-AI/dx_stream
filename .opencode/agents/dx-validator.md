@@ -1,7 +1,7 @@
 ---
 description: Validate dx_stream GStreamer pipeline applications and .deepx/ framework files. Checks pipeline property matching,
   element connectivity, and framework consistency.
-mode: normal
+mode: subagent
 tools:
   bash: true
   edit: true

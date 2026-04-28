@@ -1,6 +1,6 @@
 ---
 description: Query, download, and validate DEEPX NPU models (.dxnn) for dx_stream pipeline use.
-mode: normal
+mode: subagent
 tools:
   bash: true
 ---

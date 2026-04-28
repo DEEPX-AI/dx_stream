@@ -183,6 +183,7 @@ Only write to `src/` when explicitly requested by the user.
 12. **PPU pipeline generation is MANDATORY**: If the compiled .dxnn model is PPU, the agent MUST generate a working pipeline example.
 13. **Mandatory output artifacts**: Every pipeline build session MUST produce: `pipeline.py`, `run_<app>.sh`, `session.json`, `README.md`, `setup.sh`, `run.sh`, `session.log`. The `session.log` must contain actual command output (never a hand-written summary). Run self-verification before presenting the final report.
 14. **x264enc universal rule**: Every `x264enc` in ANY context (shell, Python, pipeline strings) MUST include `bitrate=4000 speed-preset=ultrafast tune=zerolatency` — bare `x264enc` causes deadlocks (pitfall #14)
+15. **DxTracker mandatory for detection**: Any pipeline for an object-detection model (yolo*, ssd, scrfd, etc.) MUST include `dxtracker config-file-path=../../configs/tracker_config.json` between `dxpostprocess` and `dxosd`. Never omit the tracker element from detection pipelines.
 
 ## Pipeline Template
 
@@ -457,6 +458,28 @@ When modifying the canonical source — files in `**/.deepx/**/*.md`
 Before modifying ANY `.md` or `.mdc` file in the repository, classify it into
 one of three categories. **Never skip this step** — editing a generator-managed
 file directly is a silent corruption that will be overwritten on next generate.
+
+**Answer these three questions in order before every file edit:**
+
+> **Q1. Is the file path inside `**/.deepx/**`?**
+> - YES → **Canonical source.** Edit directly, then run `dx-agentic-gen generate` + `check`.
+> - NO → go to Q2.
+>
+> **Q2. Does the file path or name match any of these?**
+> ```
+> .github/agents/    .github/skills/    .opencode/agents/
+> .claude/agents/    .claude/skills/    .cursor/rules/
+> CLAUDE.md          CLAUDE-KO.md       AGENTS.md    AGENTS-KO.md
+> copilot-instructions.md               copilot-instructions-KO.md
+> ```
+> - YES → **Generator output. DO NOT edit directly.**
+>   Find the `.deepx/` source (template, fragment, or agent/skill) and edit that instead,
+>   then run `dx-agentic-gen generate`.
+> - NO → go to Q3.
+>
+> **Q3. Does the file begin with `<!-- AUTO-GENERATED`?**
+> - YES → **Generator output. DO NOT edit directly.** Same as Q2.
+> - NO → **Independent source.** Edit directly. Run `dx-agentic-gen check` once afterward.
 
 1. **Canonical source** (`**/.deepx/**/*.md`) — Modify directly, then run the
    Verification Loop above.

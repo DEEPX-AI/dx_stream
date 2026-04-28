@@ -2,6 +2,7 @@
 name: DX Model Manager
 description: Query, download, and validate DEEPX NPU models (.dxnn) for dx_stream pipeline use.
 tools:
+- Agent
 - Bash
 - Glob
 - Grep
