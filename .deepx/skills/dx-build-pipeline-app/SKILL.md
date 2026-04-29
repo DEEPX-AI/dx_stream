@@ -35,8 +35,8 @@ dx-agentic-dev/<YYYYMMDD-HHMMSS>_<model>_<pipeline_category>/
 {
   "session_id": "<YYYYMMDD-HHMMSS>_<model>_<category>",
   "created_at": "<ISO 8601 with local timezone — use datetime.now().astimezone().isoformat(timespec='seconds')>",
-  "model": "<model_name>",
-  "pipeline_category": "<single_model|multi_model|cascaded|tiled|parallel|broker>",
+  "model": "<DX inference model name — e.g. 'yolo26n' — NOT the AI agent model name>",
+  "pipeline_category": "<single_model|multi_model|cascaded|tiled|parallel|broker> (use underscores, NOT hyphens)",
   "task": "<Object Detection|Pose Estimation|Segmentation|Classification>",
   "postprocess_lib": "<libpostprocess_xxx.so>",
   "tracker": "<dxtracker|none>",
@@ -84,8 +84,12 @@ runtime. Generated code MUST follow these templates exactly.
 2. **Default: single output sink** — `fpsdisplaysink` OR `fakesink`. If the user
    requests file output, replace the display sink with
    `videoconvert ! x264enc bitrate=4000 speed-preset=ultrafast tune=zerolatency ! h264parse ! mp4mux ! filesink location=...`
-3. **Dual output (tee) is allowed** — if the user requests both display AND file
-   recording, use `tee`:
+3. **`--output` / `tee` is MANDATORY in all detection pipelines** — All detection
+   pipelines MUST include the `--output` argument in `parse_args()` and the `tee`
+   code path for simultaneous display+recording. _"All detection pipelines MUST
+   support `--output` for file recording. Use `tee name=t` to support simultaneous
+   display and recording."_ Even if the user does not mention recording, the `--output`
+   flag and tee implementation MUST be present in `pipeline.py`:
    ```
    tee name=t \
      t. ! queue ! videoconvert ! fpsdisplaysink sync=false \
@@ -101,8 +105,10 @@ runtime. Generated code MUST follow these templates exactly.
    these options causes slow encoding and B-frame deadlocks (pitfall #14)
 6. **`--headless` flag** — always include it in `pipeline.py`. Additionally check
    `DISPLAY` env as fallback (see template)
-7. **`run_<app>.sh` uses `gst-launch-1.0` directly** — the shell wrapper invokes
-   `gst-launch-1.0`, NOT `python3 pipeline.py`. `pipeline.py` is for programmatic use
+7. **`run_<app>.sh` MUST delegate to `pipeline.py`** — the shell wrapper MUST invoke
+   `python pipeline.py` with `--input` and `--model` arguments. Embedding `gst-launch-1.0`
+   inline in `run_<app>.sh` is PROHIBITED (see Anti-Patterns below). The test
+   `test_run_script_invokes_pipeline` enforces this and will fail on inline gst-launch.
 8. **Path resolution** — `run_<app>.sh` uses `DX_STREAM_ROOT` (2 levels up from
    `dx-agentic-dev/<session>/`), NOT the production 3-level-up pattern.
    See the `run_<app>.sh` template below for the exact code
@@ -116,15 +122,36 @@ runtime. Generated code MUST follow these templates exactly.
 - Copying `SRC_DIR` calculation from production scripts in `dx_stream/pipelines/`
 - Writing log messages in Korean or other non-English languages
 - Adding features the user did not request (e.g., FPS overlay, auto-recording)
+- **Embedding `gst-launch-1.0` inline in `run_<app>.sh`** — PROHIBITED. The run script
+  MUST delegate to `python pipeline.py`, not call `gst-launch-1.0` directly. Example of
+  the correct pattern:
+  ```bash
+  # CORRECT — delegates to pipeline.py:
+  source "$DX_STREAM_ROOT/venv-dx_stream/bin/activate"
+  python pipeline.py --input "$INPUT_VIDEO" --model "$MODEL_PATH" \
+      --postprocess-lib /usr/local/share/gstdxstream/lib/{POSTPROCESS_LIB}
+
+  # ANTI-PATTERN (PROHIBITED) — inline gst-launch embedding:
+  gst-launch-1.0 urisourcebin uri=file://$INPUT_VIDEO ! decodebin ! dxpreprocess ...
+  ```
 - **Omitting `dxrate` after RTSP decodebin** — always add `dxrate max-rate=30` in the
   RTSP source branch. Example: `urisourcebin uri=rtsp://... ! decodebin ! dxrate max-rate=30 ! dxpreprocess ...`
 - **`created_at` without timezone offset** — always use `datetime.now().astimezone().isoformat(timespec='seconds')`
+- **Omitting `--output` argument from pipeline.py** — ALL detection pipelines MUST
+  include `--output` in argparse and the `tee name=t` dual-sink code path. A pipeline
+  without `--output` fails the `test_pipeline_has_output_recording` test.
 
 ## Phase 0: Prerequisites Check
 
 Before starting the build workflow, verify:
 
+> **Working directory note**: All Phase 0 commands assume you are in the `dx_stream/` root.
+> The sanity check script lives TWO levels up: `../../scripts/sanity_check.sh`
+> (NOT `scripts/sanity_check.sh` — that path does not exist from `dx_stream/`).
+> NEVER pipe through `| tail` or `| head` — they mask the exit code and may hide failures.
+
 1. **dx-runtime**: `bash ../../scripts/sanity_check.sh --dx_rt`
+   - ← **MANDATORY: run from `dx_stream/` root with the `../../` prefix. Do NOT truncate the path.**
    - FAIL → `bash ../../install.sh --all --exclude-app --exclude-stream --skip-uninstall --venv-reuse`
    - Re-run sanity_check.sh — must PASS after install
    - **If still failing → STOP (unconditional).** User instructions to continue do NOT override this.
@@ -350,6 +377,9 @@ if __name__ == '__main__':
 
 ## Template: run_<app>.sh (Shell Script Wrapper)
 
+> **CRITICAL — Delegation Rule**: `run_<app>.sh` MUST invoke `python pipeline.py`.
+> Do NOT embed `gst-launch-1.0` inline — this fails `test_run_script_invokes_pipeline`.
+>
 > **CRITICAL — Path Resolution**: This script lives in `dx-agentic-dev/<session>/`,
 > which is **2 levels below** `dx_stream/` root. Do NOT copy the `SRC_DIR` calculation
 > from production scripts (`dx_stream/pipelines/...`) — those are 4 levels deep.
@@ -363,9 +393,18 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ─── Path Resolution (dx-agentic-dev context) ─────────────────────
 # This script is at: dx_stream/dx-agentic-dev/<session>/run_<app>.sh
-# dx_stream root is 2 levels up. Samples live under dx_stream/dx_stream/samples/.
+# dx_stream root is 2 levels up.
 DX_STREAM_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 SRC_DIR="$DX_STREAM_ROOT/dx_stream"
+
+# ─── Virtual Environment ───────────────────────────────────────────
+VENV_DIR="$DX_STREAM_ROOT/venv-dx_stream"
+if [ -f "$VENV_DIR/bin/activate" ]; then
+    # shellcheck source=/dev/null
+    source "$VENV_DIR/bin/activate"
+else
+    echo "[WARN] dx_stream venv not found at $VENV_DIR — pydxs may be unavailable"
+fi
 
 # ─── Model Auto-Download ───────────────────────────────────────────
 MODEL_NAME="{MODEL}.dxnn"
@@ -390,34 +429,13 @@ if [ ! -f "$INPUT_VIDEO" ]; then
     exit 1
 fi
 
-# ─── Video Sink Detection ─────────────────────────────────────────
-if [ -z "${DISPLAY:-}" ]; then
-    SINK="fakesink sync=false"
-    echo "[INFO] No DISPLAY detected, using fakesink"
-else
-    VIDEOCONVERT_PIPELINE="videoconvert"
-    SINK="$VIDEOCONVERT_PIPELINE ! fpsdisplaysink sync=false"
-fi
-
-# ─── Pipeline ──────────────────────────────────────────────────────
-gst-launch-1.0 \
-    urisourcebin uri=file://$INPUT_VIDEO ! decodebin ! \
-    dxpreprocess \
-        preprocess-id=1 \
-        resize-width={WIDTH} \
-        resize-height={HEIGHT} ! \
-    queue max-size-buffers=1 ! \
-    dxinfer \
-        preprocess-id=1 \
-        inference-id=1 \
-        model-path=$MODEL_PATH ! \
-    queue max-size-buffers=1 ! \
-    dxpostprocess \
-        inference-id=1 \
-        library-file-path=/usr/local/share/gstdxstream/lib/{POSTPROCESS_LIB} \
-        function-name=PostProcess ! \
-    queue max-size-buffers=1 ! \
-    dxosd ! $SINK
+# ─── Run pipeline.py ──────────────────────────────────────────────
+# MANDATORY: delegate to pipeline.py — do NOT embed gst-launch-1.0 inline
+POSTPROCESS_LIB="/usr/local/share/gstdxstream/lib/{POSTPROCESS_LIB}"
+python pipeline.py \
+    --input "$INPUT_VIDEO" \
+    --model "$MODEL_PATH" \
+    --postprocess-lib "$POSTPROCESS_LIB"
 ```
 
 ---
@@ -696,6 +714,132 @@ Rules:
 
 ---
 
+## Cascaded Pipeline Requirements (pipeline_category: cascaded)
+
+When `pipeline_category` is `cascaded`, the following are **MANDATORY** in addition
+to the standard single-model requirements. The E2E tests verify all of these:
+
+1. **`DxRoiExtract` is MANDATORY** — crops detection results from the primary inference
+   stage into per-detection frames for the secondary classification stage.
+   The test `test_pipeline_has_cascaded_roi_extract` checks for its presence.
+
+2. **Two `DxInfer` stages** — one for primary detection (yolo26n), one for secondary
+   classification. The test `test_pipeline_has_two_inference_stages` verifies this.
+
+3. **`pipeline_category: "cascaded"`** in `session.json` — the test
+   `test_session_json_pipeline_category_is_cascaded` checks for this exact value.
+
+4. **`DxScale` between RoiExtract and secondary DxInfer** — resizes cropped ROIs
+   to the secondary model's input size.
+
+**MANDATORY (cascaded pipeline HARD GATE — R61):**
+- The literal string `'dxroiextract'` MUST appear in the GStreamer pipeline **string** inside `pipeline.py`.
+- Before outputting DONE, run this self-check and log the result:
+  ```bash
+  grep -q "'dxroiextract'" pipeline.py \
+    && echo "[OK] dxroiextract found in pipeline.py" | tee -a session.log \
+    || { echo "HARD GATE: dxroiextract missing from pipeline string" | tee -a session.log; exit 1; }
+  ```
+- ANY approach that wires primary detection output to secondary inference WITHOUT
+  a `dxroiextract` element in the pipeline string is PROHIBITED — this includes
+  secondary-mode=true, inline crop operations, custom tee branches, and any approach
+  that mentions dxroiextract only in comments while using a different element in the
+  actual pipeline string.
+
+### Cascaded Anti-Pattern (PROHIBITED — R53/R67)
+
+> **NEVER use `dxpreprocess secondary-mode=true` as a substitute for `DxRoiExtract`.**
+> **NEVER mention `dxroiextract` only in comments while using a different element in the actual pipeline string.**
+
+PROHIBITED patterns (all are violations even if `dxroiextract` is mentioned in comments):
+1. `dxpreprocess secondary-mode=true` as the inter-stage connection
+2. Mentioning `dxroiextract` only in comments while using any other element as the ROI stage
+3. `dxgather` used as a cascaded merge point instead of ROI-based branching through `dxroiextract`
+
+The self-check `grep -q "'dxroiextract'" pipeline.py` must pass — a comment-only match
+(e.g., `# dxroiextract equivalent`) does **NOT** satisfy this check.
+The companion test `test_cascaded_roi_extract_in_pipeline_string` uses the same quoted-string pattern,
+so a comment-only mention will produce a false positive in `test_pipeline_has_cascaded_roi_extract`
+but will still **FAIL** `test_cascaded_roi_extract_in_pipeline_string`.
+
+Some agents attempt a shortcut by adding a `secondary-mode=true` property to
+`DxPreprocess` instead of inserting an explicit `DxRoiExtract` element. This is
+**PROHIBITED** because:
+- `secondary-mode=true` does NOT perform ROI cropping — it is not an equivalent.
+- The test `test_pipeline_has_cascaded_roi_extract` explicitly checks for the
+  presence of `dxroiextract` / `DxRoiExtract` / `roi_extract` in the generated code.
+  A pipeline using only `secondary-mode=true` will **FAIL** this test.
+- The secondary classification model requires spatially cropped per-detection frames,
+  which only `DxRoiExtract` can provide.
+- Writing `# dxroiextract equivalent` in a comment while using `secondary-mode=true`
+  is also PROHIBITED — the test `test_cascaded_roi_extract_in_pipeline_string` checks
+  for `'dxroiextract'` as a quoted element string, not a comment.
+
+**Correct approach**: always insert `DxRoiExtract` between the primary `DxPostprocess`
+and the secondary `DxScale → DxPreprocess → DxInfer` chain.
+
+### Cascaded Pipeline Pattern
+
+```
+source → DxPreprocess(id=0) → DxInfer(id=0) [primary detection]
+       → DxPostprocess → DxRoiExtract
+       → DxScale → DxPreprocess(id=1) → DxInfer(id=1) [secondary classification]
+       → DxPostprocess → DxOsd → sink
+```
+
+### Cascaded session.json Example
+
+```json
+{
+  "session_id": "YYYYMMDD-HHMMSS_<model>_cascaded",
+  "created_at": "<ISO-8601-with-timezone>",
+  "model": "yolo26n",
+  "pipeline_category": "cascaded",
+  "task": "Object Detection + Classification",
+  "secondary_model": "EfficientNet_Lite0",
+  "postprocess_lib": "<libpostprocess_xxx.so>",
+  "secondary_postprocess_lib": "<libpostprocess_yyy.so>",
+  "tracker": "<dxtracker|none>",
+  "input_size": "640x640",
+  "secondary_input_size": "224x224",
+  "status": "complete",
+  "notes": "Primary: yolo26n detection; Secondary: EfficientNet_Lite0 classification"
+}
+```
+
+**The following fields are REQUIRED in every cascaded `session.json`:**
+- `created_at` — ISO-8601 timestamp with local timezone
+- `status` — must be `"complete"` when the session finishes
+- `postprocess_lib` — shared object path for the primary model's postprocessor
+- `secondary_postprocess_lib` — shared object path for the secondary model's postprocessor
+- `tracker` — tracker element name (e.g. `"dxtracker"`) or `"none"` if not used
+
+Omitting any of these fields produces an incomplete cascaded `session.json`.
+
+> **CRITICAL**: `pipeline_category` MUST be `"cascaded"` — NOT `"single_model"`.
+> Never copy `pipeline_category: "single_model"` from a single-model template for
+> cascaded sessions. The test `test_session_json_pipeline_category_is_cascaded`
+> will fail if this field contains any value other than `"cascaded"`.
+
+### Pre-DONE Checklist (cascaded) — R58
+
+Before outputting DONE for a cascaded session, verify ALL of the following exist:
+
+- [ ] `pipeline.py` — verify `dxroiextract` and two `DxInfer` stages are present
+- [ ] `run_cascaded.sh` (or `run_<app>.sh`) — verify it delegates to `pipeline.py`
+- [ ] `session.json` — verify `pipeline_category="cascaded"` and `secondary_model` field are present
+- [ ] `README.md` — **MANDATORY** (`test_readme_md_exists` WILL FAIL without it; do NOT skip)
+- [ ] `setup.sh` — verify present (`test_setup_sh_exists` WILL FAIL without it)
+- [ ] `run.sh` — verify present
+- [ ] `session.log` — actual command output (never a hand-written summary)
+
+> **R58 NOTE**: Cascaded sessions in fast autopilot mode frequently omit README.md
+> and setup.sh because the agent focuses on pipeline.py and forgets documentation.
+> These files are tested explicitly — a cascaded build without README.md or setup.sh
+> is **incomplete** and MUST be corrected before outputting DONE.
+
+---
+
 ## File Creation Checklist (MANDATORY HARD-GATE)
 
 <HARD-GATE>
@@ -714,6 +858,17 @@ Do NOT skip this checklist. Do NOT treat it as optional.
 - [ ] `run.sh` — one-command launcher (**MUST** use real model/video paths — see run.sh template below)
 - [ ] `session.log` — actual command output (captured via tee, NOT a summary)
 
+### README.md Required Sections (HARD-GATE)
+
+Every `README.md` MUST contain ALL of the following sections. Missing sections
+are a test failure (`test_readme_has_pipeline_diagram`, `test_readme_has_files_section`):
+
+- [ ] **Prerequisites** — venv activation, GStreamer plugin check (`gst-inspect-1.0 dxinfer`), model download
+- [ ] **How to Run** — `bash run_<app>.sh`, `python3 pipeline.py`, headless mode (`--headless`)
+- [ ] **Pipeline Diagram** — ASCII `→` chain showing element flow (e.g., `source → DxPreprocess → DxInfer → DxPostprocess → DxOsd → sink`)
+- [ ] **Configuration Table** — model name, task, input size, postprocess library
+- [ ] **Files Table** — lists all generated artifacts: `pipeline.py`, `run_<app>.sh`, `session.json`, `README.md`, `setup.sh`, `run.sh`, `session.log`
+
 ### Conditional Files (create if applicable)
 
 - [ ] Model downloaded: `dx_stream/samples/models/<model>.dxnn`
@@ -731,9 +886,97 @@ SESSION_DIR="dx-agentic-dev/<YYYYMMDD-HHMMSS>_<model>_<category>"
 for f in session.json README.md run_*.sh pipeline.py; do
     [ -f "$SESSION_DIR/$f" ] && echo "OK: $f" || echo "MISSING: $f"
 done
+
+# model-path: accept absolute path (/...) or $VAR reference ($...)
+MP=$(grep -oP 'model-path=\K\S+' "$SESSION_DIR"/run_*.sh 2>/dev/null | head -n1)
+if [ -n "$MP" ]; then
+    echo "$MP" | grep -qE '^[/$]' \
+        && echo "model-path OK: $MP" \
+        || { echo "model-path FAIL: $MP — must be absolute path or \$VAR reference"; exit 1; }
+fi
 ```
 
 If any mandatory file shows `MISSING`, create it before completing the build.
+
+### session.log required content
+
+`session.log` MUST contain output from **both** of the following stages, not just pipeline
+runtime output. A pipeline that finishes in under 2 seconds produces only 4 lines of
+Python logger output — that passes content checks, but pre-execution verification lines
+make the log self-documenting and useful for debugging:
+
+1. **Pre-execution checks** (at minimum one of):
+   - Model path check: `ls -la "$MODEL_PATH"`
+   - GStreamer element check: `gst-inspect-1.0 dxinfer 2>&1 | head -3`
+   - Element factory count: `gst-inspect-1.0 dxinfer | grep -c factory`
+2. **Pipeline execution output** — all stdout/stderr from `python pipeline.py`
+
+Collect both stages with a single compound redirect:
+
+```bash
+{
+  echo "=== Pre-execution checks ==="
+  ls -la "$MODEL_PATH" 2>&1 || echo "[WARN] model path not found"
+  gst-inspect-1.0 dxinfer 2>&1 | head -3
+  echo "=== Pipeline execution ==="
+  python pipeline.py --input "$INPUT_VIDEO" --model "$MODEL_PATH" \
+      --postprocess-lib "$POSTPROCESS_LIB" 2>&1
+} | tee session.log
+```
+
+> **MANDATORY — Explicit pipeline execution (R68):** `python pipeline.py` MUST be
+> launched as a **separate, explicitly labelled step** in session.log. Running ONLY
+> dx-stream's run-script validator (e.g., `validate_run_sh.py` or similar tools)
+> without also running `python pipeline.py` is PROHIBITED. Validator output such as
+> `[INFO] syntax: Shell syntax OK` and `Validation: PASS | 0 error(s)` does NOT
+> contain GStreamer `Pipeline` output. `test_session_log_has_meaningful_content` WILL
+> FAIL if the session.log contains only validator output. Use a separate tee block
+> after any pre-checks:
+>
+> ```bash
+> # MANDATORY: Explicit pipeline execution — MUST be a distinct step
+> echo "=== pipeline execution ===" | tee -a session.log
+> timeout 30 python pipeline.py \
+>   --input "$INPUT_VIDEO" \
+>   --model "$MODEL_PATH" \
+>   --postprocess-lib "$POSTPROCESS_LIB" \
+>   --headless \
+>   2>&1 | tee -a session.log || true
+>
+> # Verify GStreamer output is present (session.log must contain "Pipeline")
+> grep -q "Pipeline" session.log \
+>   && echo "[OK] Pipeline keyword confirmed in session.log" \
+>   || echo "[WARNING] Pipeline keyword not found — pipeline may not have executed"
+> ```
+
+This ensures `session.log` has substantive content (≥10 non-empty lines) regardless of
+how quickly the pipeline finishes, satisfying `test_session_log_has_meaningful_content`.
+
+> **Portable grep idiom (MANDATORY in all in-session verification scripts)**:
+> Do NOT use `rg` (ripgrep) directly — it is not universally installed and its
+> absence produces `rg: command not found` noise in `session.log`. Always use
+> `grep` or the portable fallback:
+> ```bash
+> RG=$(command -v rg 2>/dev/null || echo grep)
+> $RG "queue max-size-buffers" pipeline.py
+> ```
+
+#### Cascaded verification in session.log (R64)
+
+For **cascaded** pipelines, add this explicit `dxroiextract` self-check immediately before
+launching the pipeline, and log the result to `session.log`:
+
+```bash
+grep -q "'dxroiextract'" pipeline.py \
+  && echo "[OK] dxroiextract found in pipeline.py" | tee -a session.log \
+  || { echo "[FAIL] dxroiextract missing from pipeline string" | tee -a session.log; exit 1; }
+```
+
+This converts `session.log` into a self-verifying artifact: if `[OK] dxroiextract found`
+appears in the log, it provides independent confirmation that the pipeline string is
+correct — the same fact that `test_cascaded_roi_extract_in_pipeline_string` asserts
+from the outside. A log that lacks this line (or shows `[FAIL]`) signals a prohibited
+anti-pattern (e.g., `secondary-mode=true` or comment-only mention).
 
 ## setup.sh Template (MANDATORY)
 
