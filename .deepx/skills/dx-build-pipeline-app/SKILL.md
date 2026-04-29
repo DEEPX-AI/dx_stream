@@ -31,11 +31,14 @@ dx-agentic-dev/<YYYYMMDD-HHMMSS>_<model>_<pipeline_category>/
 
 ### session.json Template
 
-```json
+```jsonc
 {
-  "session_id": "<YYYYMMDD-HHMMSS>_<model>_<category>",
+  "session_id": "<YYYYMMDD-HHMMSS>_<agent>_<model>_<category>",
   "created_at": "<ISO 8601 with local timezone — use datetime.now().astimezone().isoformat(timespec='seconds')>",
-  "model": "<DX inference model name — e.g. 'yolo26n' — NOT the AI agent model name>",
+  "model": "<DX inference model name — e.g. 'yolo26n'>",
+  // ⚠ HARD ERROR: This is the DXNN model name deployed (e.g., "yolo26n", "EfficientNet_Lite0").
+  // NOT the AI agent name. Writing "claude-sonnet-4.6", "gpt-4.1", or any AI model name
+  // here will cause test_session_json_model_is_dx_model to FAIL.
   "pipeline_category": "<single_model|multi_model|cascaded|tiled|parallel|broker> (use underscores, NOT hyphens)",
   "task": "<Object Detection|Pose Estimation|Segmentation|Classification>",
   "postprocess_lib": "<libpostprocess_xxx.so>",
@@ -44,6 +47,14 @@ dx-agentic-dev/<YYYYMMDD-HHMMSS>_<model>_<pipeline_category>/
   "status": "complete",
   "notes": "<any relevant notes>"
 }
+```
+
+**`session_id` MUST contain the agent identifier (R81).** Format: `YYYYMMDD-HHMMSS_<agent>_<model>_<task>`
+where `<agent>` is one of: `claude`, `copilot`, `cursor`, `opencode`.
+
+```jsonc
+// CORRECT:  "session_id": "20260429-155626_copilot_yolo26n_cascaded"
+// WRONG:    "session_id": "20260429-155626_yolo26n_cascaded"  ← missing agent identifier
 ```
 
 **`created_at` MUST include timezone offset.** Do NOT use `datetime.now().strftime(...)` without appending
@@ -778,6 +789,25 @@ Some agents attempt a shortcut by adding a `secondary-mode=true` property to
 **Correct approach**: always insert `DxRoiExtract` between the primary `DxPostprocess`
 and the secondary `DxScale → DxPreprocess → DxInfer` chain.
 
+#### PROHIBITED — Runtime conditional fallback (R82)
+
+Do NOT introduce dynamic fallback logic that switches to `secondary-mode=true` at runtime
+when `dxroiextract` is absent. This is a violation even when the static pipeline string
+contains `'dxroiextract'`:
+
+```python
+# WRONG — runtime anti-pattern (R82): bypasses R75 hard gate at runtime
+if dxroiextract_registered():
+    pipeline = "... 'dxroiextract' ..."
+else:
+    pipeline = "... dxpreprocess secondary-mode=true ..."  # ← anti-pattern path executes
+```
+
+The pipeline string MUST use `dxroiextract` unconditionally. If the plugin is absent,
+the pipeline MUST fail — this is the expected behavior (guarded by R48 test skips for
+runtime tests). Never introduce a fallback that allows `secondary-mode=true` to execute
+in place of `dxroiextract`.
+
 ### Cascaded Pipeline Pattern
 
 ```
@@ -801,11 +831,14 @@ source → DxPreprocess(id=0) → DxInfer(id=0) [primary detection]
 > The `model` field MUST contain the DX inference model name (e.g. `yolo26n`,
 > `EfficientNet_Lite0`), NOT the name of the AI coding assistant running this session.
 
-```json
+```jsonc
 {
   "session_id": "YYYYMMDD-HHMMSS_<model>_cascaded",
   "created_at": "<ISO-8601-with-timezone>",
   "model": "yolo26n",
+  // ⚠ HARD ERROR: This is the DXNN model name deployed (e.g., "yolo26n", "EfficientNet_Lite0").
+  // NOT the AI agent name. Writing "claude-sonnet-4.6", "gpt-4.1", or any AI model name
+  // here will cause test_session_json_model_is_dx_model to FAIL.
   "pipeline_category": "cascaded",
   "task": "Object Detection + Classification",
   "secondary_model": "EfficientNet_Lite0",
@@ -869,6 +902,7 @@ Do NOT skip this checklist. Do NOT treat it as optional.
 - [ ] `setup.sh` — environment setup (**MUST** detect/activate venv — see setup.sh template below)
 - [ ] `run.sh` — one-command launcher (**MUST** use real model/video paths — see run.sh template below)
 - [ ] `session.log` — actual command output (captured via tee, NOT a summary)
+- [ ] `session.json session_id` contains agent identifier (`claude`/`copilot`/`cursor`/`opencode`) — R81
 
 ### README.md Required Sections (HARD-GATE)
 
@@ -936,6 +970,8 @@ Collect both stages with a single compound redirect:
 } | tee session.log
 ```
 
+> **IMPORTANT (R84)**: If your session.log contains only validation output (validate_app, gst-inspect, py_compile) and no GStreamer runtime lines, you have NOT completed the Verification Step — `python pipeline.py` has not been run.
+
 > ⛔ **MANDATORY EXECUTION — HARD GATE (R72)**
 > Running `gst-inspect-1.0` or the run-script validator is **NOT sufficient** to complete the session.
 > The pipeline **MUST** be launched with `python pipeline.py ... 2>&1 | tee -a session.log`.
@@ -955,6 +991,9 @@ Collect both stages with a single compound redirect:
 >
 > ```bash
 > # MANDATORY: Explicit pipeline execution — MUST be a distinct step
+> # Paste this output into the conversation to prove execution before DONE (R84)
+> # Expected output must contain 'Pipeline' or 'PLAYING' or 'End of stream'
+> # If output shows only import errors or is empty → fix pipeline.py first
 > echo "=== pipeline execution ===" | tee -a session.log
 > timeout 30 python pipeline.py \
 >   --input "$INPUT_VIDEO" \
@@ -965,8 +1004,9 @@ Collect both stages with a single compound redirect:
 >
 > # Verify GStreamer output is present (session.log must contain "Pipeline")
 > grep -q "Pipeline" session.log \
->   && echo "[OK] Pipeline keyword confirmed in session.log" \
->   || echo "[WARNING] Pipeline keyword not found — pipeline may not have executed"
+>   && echo "[OK] Pipeline keyword confirmed in session.log" | tee -a session.log \
+>   || echo "[WARNING] Pipeline keyword not found — pipeline may not have executed" | tee -a session.log
+> echo "=== pipeline.py execution verified ===" | tee -a session.log
 > ```
 
 This ensures `session.log` has substantive content (≥10 non-empty lines) regardless of
@@ -998,28 +1038,31 @@ correct — the same fact that `test_cascaded_roi_extract_in_pipeline_string` as
 from the outside. A log that lacks this line (or shows `[FAIL]`) signals a prohibited
 anti-pattern (e.g., `secondary-mode=true` or comment-only mention).
 
-#### ⛔ CASCADED HARD GATE — Pre-DONE self-check (R75)
+#### ⛔ CASCADED HARD GATE — Pre-DONE self-check (R83)
 
-Before outputting `[DX-AGENTIC-DEV: DONE ...]`, run this compound self-check and log
-the result. If either check fails, the session is **INCOMPLETE** — do NOT output DONE
-until the issue is resolved:
+**You MUST run these checks and show the `[MANDATORY-ALL-OK]` line in the conversation before outputting `[DX-AGENTIC-DEV: DONE ...]`. A DONE sentinel emitted without `[MANDATORY-ALL-OK]` evidence is INVALID.**
+
+Before outputting `[DX-AGENTIC-DEV: DONE ...]`, run this compound self-check and paste the output into the conversation. If any check produces `[MANDATORY-FAIL]`, the session is **INCOMPLETE** — do NOT output DONE until the issue is resolved:
 
 ```bash
-echo "=== Cascaded self-check (R75) ===" | tee -a session.log
+# ⛔ CASCADED MANDATORY CHECK — paste output into conversation before DONE (R83)
+echo "=== Cascaded mandatory checks ===" | tee -a session.log
 grep -q "'dxroiextract'" pipeline.py \
-  && echo "[OK] dxroiextract present as quoted element" | tee -a session.log \
-  || { echo "[ERROR] dxroiextract ABSENT — session INCOMPLETE. Use DxRoiExtract, not secondary-mode=true"; \
-       echo "[ERROR] dxroiextract ABSENT — session INCOMPLETE" | tee -a session.log; exit 1; }
-grep -q 'pipeline.py' run_cascaded*.sh run_*.sh 2>/dev/null \
-  && echo "[OK] run script delegates to pipeline.py" | tee -a session.log \
-  || { echo "[ERROR] run script uses inline gst-launch — session INCOMPLETE. run_<app>.sh MUST invoke python pipeline.py"; \
-       echo "[ERROR] run script missing pipeline.py delegation — session INCOMPLETE" | tee -a session.log; exit 1; }
-echo "[OK] cascaded self-check PASSED" | tee -a session.log
+  && echo "[MANDATORY-OK] dxroiextract quoted element present" | tee -a session.log \
+  || { echo "[MANDATORY-FAIL] dxroiextract ABSENT — do NOT emit DONE" | tee -a session.log; exit 1; }
+grep -q "pipeline.py" run_cascaded*.sh run_*.sh 2>/dev/null \
+  && echo "[MANDATORY-OK] run script delegates to pipeline.py" | tee -a session.log \
+  || { echo "[MANDATORY-FAIL] run script uses inline gst-launch — do NOT emit DONE" | tee -a session.log; exit 1; }
+grep -qE "(--output|tee name=)" pipeline.py \
+  && echo "[MANDATORY-OK] output recording present" | tee -a session.log \
+  || { echo "[MANDATORY-FAIL] --output/tee recording absent — do NOT emit DONE" | tee -a session.log; exit 1; }
+echo "[MANDATORY-ALL-OK] All cascaded checks passed" | tee -a session.log
 ```
 
-This check catches the two most common cascaded regressions:
+This check catches the three most common cascaded regressions:
 - Missing `dxroiextract` (agent used `dxpreprocess secondary-mode=true` anti-pattern)
 - Inline `gst-launch-1.0` in run script (agent wrote self-contained launcher instead of delegating)
+- Missing `--output`/`tee` recording (agent omitted the output recording code path)
 
 ## setup.sh Template (MANDATORY)
 
