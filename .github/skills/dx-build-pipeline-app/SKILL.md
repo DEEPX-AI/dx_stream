@@ -793,6 +793,18 @@ source → DxPreprocess(id=0) → DxInfer(id=0) [primary detection]
 
 ### Cascaded session.json Example
 
+> **`model` field — CORRECT vs WRONG (R76):**
+>
+> ```
+> "model": "yolo26n"           ← CORRECT — the DXNN model name being deployed
+> "model": "claude-sonnet-4.6" ← WRONG — AI agent's own model identifier
+> "model": "gpt-4.1"           ← WRONG — AI agent's own model identifier
+> "model": "gemini-pro"        ← WRONG — AI agent's own model identifier
+> ```
+>
+> The `model` field MUST contain the DX inference model name (e.g. `yolo26n`,
+> `EfficientNet_Lite0`), NOT the name of the AI coding assistant running this session.
+
 ```json
 {
   "session_id": "YYYYMMDD-HHMMSS_<model>_cascaded",
@@ -989,6 +1001,29 @@ appears in the log, it provides independent confirmation that the pipeline strin
 correct — the same fact that `test_cascaded_roi_extract_in_pipeline_string` asserts
 from the outside. A log that lacks this line (or shows `[FAIL]`) signals a prohibited
 anti-pattern (e.g., `secondary-mode=true` or comment-only mention).
+
+#### ⛔ CASCADED HARD GATE — Pre-DONE self-check (R75)
+
+Before outputting `[DX-AGENTIC-DEV: DONE ...]`, run this compound self-check and log
+the result. If either check fails, the session is **INCOMPLETE** — do NOT output DONE
+until the issue is resolved:
+
+```bash
+echo "=== Cascaded self-check (R75) ===" | tee -a session.log
+grep -q "'dxroiextract'" pipeline.py \
+  && echo "[OK] dxroiextract present as quoted element" | tee -a session.log \
+  || { echo "[ERROR] dxroiextract ABSENT — session INCOMPLETE. Use DxRoiExtract, not secondary-mode=true"; \
+       echo "[ERROR] dxroiextract ABSENT — session INCOMPLETE" | tee -a session.log; exit 1; }
+grep -q 'pipeline.py' run_cascaded*.sh run_*.sh 2>/dev/null \
+  && echo "[OK] run script delegates to pipeline.py" | tee -a session.log \
+  || { echo "[ERROR] run script uses inline gst-launch — session INCOMPLETE. run_<app>.sh MUST invoke python pipeline.py"; \
+       echo "[ERROR] run script missing pipeline.py delegation — session INCOMPLETE" | tee -a session.log; exit 1; }
+echo "[OK] cascaded self-check PASSED" | tee -a session.log
+```
+
+This check catches the two most common cascaded regressions:
+- Missing `dxroiextract` (agent used `dxpreprocess secondary-mode=true` anti-pattern)
+- Inline `gst-launch-1.0` in run script (agent wrote self-contained launcher instead of delegating)
 
 ## setup.sh Template (MANDATORY)
 
