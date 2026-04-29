@@ -76,11 +76,6 @@ $ ./install.sh --help
 
 ####  **Step 3.** Build & Environment **DX-STREAM**
 
-<<<<<<< HEAD
-**(1) Build & Installation**  
-
-=======
->>>>>>> b363ffb (v3.0.0-rc+manual-20260407.073a204)
 Compile **DX-STREAM** with the default installation prefix (`/usr/local`) or customize the build using available options.  
 
 ```bash

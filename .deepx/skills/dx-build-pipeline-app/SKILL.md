@@ -924,6 +924,14 @@ Collect both stages with a single compound redirect:
 } | tee session.log
 ```
 
+> ⛔ **MANDATORY EXECUTION — HARD GATE (R72)**
+> Running `gst-inspect-1.0` or the run-script validator is **NOT sufficient** to complete the session.
+> The pipeline **MUST** be launched with `python pipeline.py ... 2>&1 | tee -a session.log`.
+> If `session.log` does not contain the word `"Pipeline"` after this step, the session is **INCOMPLETE**.
+> `test_session_log_has_pipeline_execution_evidence` **WILL FAIL** if this step is skipped.
+> Completing validation and stopping WITHOUT running `python pipeline.py` is a **PROHIBITED anti-pattern** —
+> validator output (`Validation: PASS`, `syntax: Shell syntax OK`) does NOT satisfy this gate.
+
 > **MANDATORY — Explicit pipeline execution (R68):** `python pipeline.py` MUST be
 > launched as a **separate, explicitly labelled step** in session.log. Running ONLY
 > dx-stream's run-script validator (e.g., `validate_run_sh.py` or similar tools)
