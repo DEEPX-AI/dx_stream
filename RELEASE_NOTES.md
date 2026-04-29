@@ -6,6 +6,7 @@
 - None
 ### 2. Fixed
 - Fix Typos in User Manual
+- Fix uninstall not removing apps build directories and pydxs build cache
 ### 3. Added
 - Third-party sample model license notice documentation
 

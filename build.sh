@@ -131,9 +131,20 @@ clean() {
     # Update library cache
     sudo ldconfig
 
+    # Clean pydxs build cache
+    echo "Cleaning pydxs build cache..."
+    rm -rf "${PROJECT_ROOT}/bindings/python/pydxs/build"
+    rm -rf "${PROJECT_ROOT}/bindings/python/pydxs/_skbuild"
+    rm -rf "${PROJECT_ROOT}/bindings/python/pydxs/dist"
+    rm -rf "${PROJECT_ROOT}/bindings/python/pydxs"/*.egg-info
+
     # uninstall custom libraries
     cd $WRC/dx_stream/custom_library
     ./build.sh --prefix=${PREFIX} --uninstall
+
+    # uninstall apps
+    cd $WRC/dx_stream/apps
+    ./build.sh --uninstall
 }
 
 # Check and remove old installation files from previous major versions

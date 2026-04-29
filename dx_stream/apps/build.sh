@@ -16,10 +16,12 @@ show_help() {
   echo "Example 3): $0 --clean"
   echo "Example 4): $0 --type=debug"
   echo "Example 5): $0 --type=Release"
+  echo "Example 6): $0 --uninstall"
   echo "Options:"
   echo "  [--prefix=PATH] Set installation prefix (default: /usr/local)"
   echo "  [--clean]       Clean build directories before building"
   echo "  [--type=TYPE]   Set build type: Debug/debug or Release/release (default: release)"
+  echo "  [--uninstall]   Uninstall previously built applications."
   echo "  [--help]        Show this help message"
 
   if [ "$1" == "error" ]; then
@@ -29,6 +31,18 @@ show_help() {
   exit 0
 }
 
+uninstall() {
+    TARGET_DIR="$1"
+    for subdir in "$TARGET_DIR"/*/; do
+        cd "$subdir" || exit 1
+        if [ -d "${BUILD_DIR}" ]; then
+            rm -rf "${BUILD_DIR}"
+        else
+            echo "Warn: ${BUILD_DIR} not found in $subdir. So, skip uninstall."
+        fi
+        cd - > /dev/null || exit 1
+    done
+}
 
 # Parse arguments
 for i in "$@"; do
@@ -57,6 +71,10 @@ for i in "$@"; do
             ;;
         --sonar)
             SONAR_MODE_ARG="--sonar"
+            ;;
+        --uninstall)
+            uninstall "."
+            exit 0
             ;;
         --help)
             show_help
