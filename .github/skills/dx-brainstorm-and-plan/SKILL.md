@@ -54,7 +54,7 @@ Ask 2-3 targeted questions covering:
 | **Output** | display, headless (fakesink), file, broker (MQTT/Kafka) | display |
 | **Tracking** | yes / no | no |
 | **Tiling** | yes / no (for high-res input) | no |
-| **Multi-stream** | yes / no (DxMux for parallel streams) | no |
+| **Multi-stream** | yes / no (DxInputSelector+DxOutputSelector for shared inference, or independent sub-pipelines) | no |
 
 Skip decisions that are already clear from the user's request.
 

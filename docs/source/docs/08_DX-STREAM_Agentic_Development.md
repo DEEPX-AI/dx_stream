@@ -234,7 +234,7 @@ This generates:
 
 | Tool | How to Use |
 |---|---|
-| **Claude Code** | Type the prompt directly. Generates cascaded pattern: `DxInfer (primary) → DxRoiExtract → DxScale → DxInfer (secondary)`. |
+| **Claude Code** | Type the prompt directly. Generates cascaded pattern: `DxInfer (primary) → DxPostprocess → DxTracker → tee → DxPreprocess(secondary-mode=true) → DxInfer(secondary-mode=true) → DxGather`. |
 | **GitHub Copilot** | `@dx-pipeline-builder` followed by the prompt. |
 | **Cursor** | Type the prompt directly. |
 | **OpenCode** | `@dx-stream-builder` followed by the prompt, or `/dx-build-pipeline-app` skill directly. |
@@ -294,7 +294,7 @@ This generates:
 
 | Tool | How to Use |
 |---|---|
-| **Claude Code** | Type the prompt directly. Routes to `dx-build-pipeline-app` with parallel category. Generates `DxMux` to merge 4 sources, shared `DxInfer` for efficient NPU utilization. |
+| **Claude Code** | Type the prompt directly. Routes to `dx-build-pipeline-app` with parallel category. Generates `DxInputSelector`+`DxOutputSelector` for shared inference, or independent sub-pipelines per stream. |
 | **GitHub Copilot** | `@dx-pipeline-builder` followed by the prompt. |
 | **Cursor** | Type the prompt directly. |
 | **OpenCode** | `@dx-stream-builder` followed by the prompt, or `/dx-build-pipeline-app` skill directly. |

@@ -170,14 +170,14 @@ Python에서는 `datetime.now().strftime('%Y%m%d-%H%M%S')`를 사용한다. `dat
 | `DxPostprocess` | 원시 추론 텐서를 감지/분류로 디코딩 |
 | `DxOsd` | 프레임에 바운딩 박스, 라벨, 오버레이 그리기 |
 | `DxRate` | 대상 추론 FPS에 맞게 초과 프레임 드롭 |
-| `DxScale` | 프레임 크기 조정 (ROI 추출과 보조 추론 사이에 사용) |
-| `DxRoiExtract` | 주요 감지 결과에서 ROI 크롭 추출 |
+| `DxScale` | 프레임 크기 조정 (필요한 입력 해상도로 조정) |
 | `DxTracker` | 다중 객체 추적 (영구 ID 할당) |
 | `DxTile` | 고해상도 추론을 위해 프레임을 타일로 분할 |
 | `DxDeTile` | 타일 추론 결과를 전체 프레임 좌표로 재조립 |
 | `DxMsgConv` | 추론 결과를 와이어 형식 (JSON/protobuf)으로 직렬화 |
 | `DxMsgBroker` | MQTT 또는 Kafka로 직렬화된 메시지 발행 |
-| `DxMux` | 여러 스트림을 단일 파이프라인으로 다중화 |
+| `DxInputSelector` | 여러 입력 스트림 중 하나를 선택해 공유 추론으로 전달 (N:1) |
+| `DxOutputSelector` | 추론 결과를 여러 출력 스트림으로 라우팅 (1:N) |
 
 ## 6개 파이프라인 카테고리
 
@@ -185,9 +185,9 @@ Python에서는 `datetime.now().strftime('%Y%m%d-%H%M%S')`를 사용한다. `dat
 |----------|------|-----------|
 | **Single-model** | 하나의 모델, 하나의 스트림 | `src ! DxPreprocess ! DxInfer ! DxPostprocess ! DxOsd ! sink` |
 | **Multi-model** | 여러 모델, 순차 처리 | 서로 다른 preprocess-id로 여러 DxInfer 단계를 체인 |
-| **Cascaded** | 주요 감지가 보조 분류를 공급 | `DxInfer ! DxRoiExtract ! DxScale ! DxInfer` |
+| **Cascaded** | 주요 감지가 보조 분류를 공급 | `DxInfer ! DxPostprocess ! DxTracker ! tee ! DxPreprocess(secondary-mode=true) ! DxInfer(secondary-mode=true) ! DxGather` |
 | **Tiled** | 고해상도 입력을 타일로 분할 | `DxTile ! DxInfer ! DxDeTile` |
-| **Parallel** | 여러 스트림을 병렬로 처리 | `DxMux`로 결합, 공유 DxInfer |
+| **Parallel** | 여러 스트림을 공유 추론으로 처리 | `DxInputSelector ! DxInfer ! DxOutputSelector` 또는 독립 서브파이프라인 |
 | **Broker** | 결과를 MQTT/Kafka로 발행 | `DxInfer ! DxMsgConv ! DxMsgBroker` |
 
 ## 파이프라인 템플릿

@@ -236,7 +236,7 @@ dx-agentic-gen generate --repo dx-runtime/dx_stream
 
 | 도구 | 사용 방법 |
 |---|---|
-| **Claude Code** | 프롬프트를 직접 입력. 캐스케이드 패턴 생성: `DxInfer (1차) → DxRoiExtract → DxScale → DxInfer (2차)`. |
+| **Claude Code** | 프롬프트를 직접 입력. 캐스케이드 패턴 생성: `DxInfer (1차) → DxPostprocess → DxTracker → tee → DxPreprocess(secondary-mode=true) → DxInfer(secondary-mode=true) → DxGather`. |
 | **GitHub Copilot** | `@dx-pipeline-builder` 뒤에 프롬프트 입력. |
 | **Cursor** | 프롬프트를 직접 입력. |
 | **OpenCode** | `@dx-stream-builder` 뒤에 프롬프트 입력, 또는 `/dx-build-pipeline-app` 스킬 직접 사용. |
@@ -296,7 +296,7 @@ dx-agentic-gen generate --repo dx-runtime/dx_stream
 
 | 도구 | 사용 방법 |
 |---|---|
-| **Claude Code** | 프롬프트를 직접 입력. 병렬 카테고리로 `dx-build-pipeline-app`에 라우팅. `DxMux`로 4개 소스 병합, 효율적 NPU 활용을 위한 공유 `DxInfer` 생성. |
+| **Claude Code** | 프롬프트를 직접 입력. 병렬 카테고리로 `dx-build-pipeline-app`에 라우팅. `DxInputSelector+DxOutputSelector`를 이용한 공유 추론 또는 독립 서브파이프라인으로 4개 소스 처리. |
 | **GitHub Copilot** | `@dx-pipeline-builder` 뒤에 프롬프트 입력. |
 | **Cursor** | 프롬프트를 직접 입력. |
 | **OpenCode** | `@dx-stream-builder` 뒤에 프롬프트 입력, 또는 `/dx-build-pipeline-app` 스킬 직접 사용. |
@@ -367,9 +367,9 @@ dx_stream은 6개 파이프라인 카테고리를 지원합니다. 각각 고유
 |---|---|---|
 | **단일 모델** | `src ! DxPreprocess ! DxInfer ! DxPostprocess ! DxOsd ! sink` | 핵심 추론 트리오 + 화면 표시 |
 | **다중 모델** | 각각 고유한 `preprocess-id`를 가진 여러 `DxInfer` 단계 체인 | 순차적 다중 추론 패스 |
-| **캐스케이드** | 1차 `DxInfer` → `DxRoiExtract` → `DxScale` → 2차 `DxInfer` | ROI 추출이 2차 모델에 입력 |
+| **캐스케이드** | `DxInfer` → `DxPostprocess` → `DxTracker` → `tee` → `DxPreprocess(secondary-mode=true)` → `DxInfer(secondary-mode=true)` → `DxGather` | secondary-mode=true로 2차 추론에 ROI 자동 공급 |
 | **타일** | `DxTile ! DxInfer ! DxDeTile` | 고해상도 프레임을 타일로 분할하여 추론 |
-| **병렬** | `DxMux`로 여러 소스 스트림을 하나의 파이프라인에 병합 | 다중 스트림 수집 및 처리 |
+| **병렬** | `DxInputSelector ! DxInfer ! DxOutputSelector` 또는 독립 서브파이프라인 | 다중 스트림 수집 및 처리 |
 | **브로커** | `DxPostprocess ! DxMsgConv ! DxMsgBroker` | 감지 결과 직렬화하여 MQTT/Kafka에 퍼블리시 |
 
 ---

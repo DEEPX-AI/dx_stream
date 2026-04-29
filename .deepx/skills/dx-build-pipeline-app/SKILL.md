@@ -730,92 +730,40 @@ Rules:
 When `pipeline_category` is `cascaded`, the following are **MANDATORY** in addition
 to the standard single-model requirements. The E2E tests verify all of these:
 
-1. **`DxRoiExtract` is MANDATORY** — crops detection results from the primary inference
-   stage into per-detection frames for the secondary classification stage.
-   The test `test_pipeline_has_cascaded_roi_extract` checks for its presence.
+1. **`secondary-mode=true`** — set this property on the `dxpreprocess`, `dxinfer`,
+   and `dxpostprocess` elements that form the secondary inference stage. When
+   `secondary-mode=true`, `DxPreprocess` automatically extracts and preprocesses
+   individual object regions detected by the primary stage (ROI extraction is built in).
+   The test `test_pipeline_has_secondary_mode` checks for its presence.
 
-2. **Two `DxInfer` stages** — one for primary detection (yolo26n), one for secondary
-   classification. The test `test_pipeline_has_two_inference_stages` verifies this.
+2. **Two `DxInfer` stages** — one for primary detection (e.g., yolo26n), one for
+   secondary classification (e.g., EfficientNet_Lite0).
+   The test `test_pipeline_has_two_inference_stages` verifies this.
 
 3. **`pipeline_category: "cascaded"`** in `session.json` — the test
    `test_session_json_pipeline_category_is_cascaded` checks for this exact value.
 
-4. **`DxScale` between RoiExtract and secondary DxInfer** — resizes cropped ROIs
-   to the secondary model's input size.
-
-**MANDATORY (cascaded pipeline HARD GATE — R61):**
-- The literal string `'dxroiextract'` MUST appear in the GStreamer pipeline **string** inside `pipeline.py`.
-- Before outputting DONE, run this self-check and log the result:
-  ```bash
-  grep -q "'dxroiextract'" pipeline.py \
-    && echo "[OK] dxroiextract found in pipeline.py" | tee -a session.log \
-    || { echo "HARD GATE: dxroiextract missing from pipeline string" | tee -a session.log; exit 1; }
-  ```
-- ANY approach that wires primary detection output to secondary inference WITHOUT
-  a `dxroiextract` element in the pipeline string is PROHIBITED — this includes
-  secondary-mode=true, inline crop operations, custom tee branches, and any approach
-  that mentions dxroiextract only in comments while using a different element in the
-  actual pipeline string.
-
-### Cascaded Anti-Pattern (PROHIBITED — R53/R67)
-
-> **NEVER use `dxpreprocess secondary-mode=true` as a substitute for `DxRoiExtract`.**
-> **NEVER mention `dxroiextract` only in comments while using a different element in the actual pipeline string.**
-
-PROHIBITED patterns (all are violations even if `dxroiextract` is mentioned in comments):
-1. `dxpreprocess secondary-mode=true` as the inter-stage connection
-2. Mentioning `dxroiextract` only in comments while using any other element as the ROI stage
-3. `dxgather` used as a cascaded merge point instead of ROI-based branching through `dxroiextract`
-
-The self-check `grep -q "'dxroiextract'" pipeline.py` must pass — a comment-only match
-(e.g., `# dxroiextract equivalent`) does **NOT** satisfy this check.
-The companion test `test_cascaded_roi_extract_in_pipeline_string` uses the same quoted-string pattern,
-so a comment-only mention will produce a false positive in `test_pipeline_has_cascaded_roi_extract`
-but will still **FAIL** `test_cascaded_roi_extract_in_pipeline_string`.
-
-Some agents attempt a shortcut by adding a `secondary-mode=true` property to
-`DxPreprocess` instead of inserting an explicit `DxRoiExtract` element. This is
-**PROHIBITED** because:
-- `secondary-mode=true` does NOT perform ROI cropping — it is not an equivalent.
-- The test `test_pipeline_has_cascaded_roi_extract` explicitly checks for the
-  presence of `dxroiextract` / `DxRoiExtract` / `roi_extract` in the generated code.
-  A pipeline using only `secondary-mode=true` will **FAIL** this test.
-- The secondary classification model requires spatially cropped per-detection frames,
-  which only `DxRoiExtract` can provide.
-- Writing `# dxroiextract equivalent` in a comment while using `secondary-mode=true`
-  is also PROHIBITED — the test `test_cascaded_roi_extract_in_pipeline_string` checks
-  for `'dxroiextract'` as a quoted element string, not a comment.
-
-**Correct approach**: always insert `DxRoiExtract` between the primary `DxPostprocess`
-and the secondary `DxScale → DxPreprocess → DxInfer` chain.
-
-#### PROHIBITED — Runtime conditional fallback (R82)
-
-Do NOT introduce dynamic fallback logic that switches to `secondary-mode=true` at runtime
-when `dxroiextract` is absent. This is a violation even when the static pipeline string
-contains `'dxroiextract'`:
-
-```python
-# WRONG — runtime anti-pattern (R82): bypasses R75 hard gate at runtime
-if dxroiextract_registered():
-    pipeline = "... 'dxroiextract' ..."
-else:
-    pipeline = "... dxpreprocess secondary-mode=true ..."  # ← anti-pattern path executes
-```
-
-The pipeline string MUST use `dxroiextract` unconditionally. If the plugin is absent,
-the pipeline MUST fail — this is the expected behavior (guarded by R48 test skips for
-runtime tests). Never introduce a fallback that allows `secondary-mode=true` to execute
-in place of `dxroiextract`.
+4. **`tee` + `dxgather`** — branch the stream after `dxtracker` using GStreamer `tee`,
+   run secondary inference on each branch with `secondary-mode=true`, then merge
+   results with `dxgather` before `dxosd`.
 
 ### Cascaded Pipeline Pattern
 
 ```
-source → DxPreprocess(id=0) → DxInfer(id=0) [primary detection]
-       → DxPostprocess → DxRoiExtract
-       → DxScale → DxPreprocess(id=1) → DxInfer(id=1) [secondary classification]
-       → DxPostprocess → DxOsd → sink
+source → dxpreprocess → dxinfer → dxpostprocess [primary detection]
+       → dxtracker
+       → tee name=t
+         t. → queue ! dxpreprocess(secondary-mode=true, preprocess-id=2)
+                    ! queue ! dxinfer(secondary-mode=true, preprocess-id=2, inference-id=2)
+                    ! queue ! dxpostprocess(secondary-mode=true, inference-id=2)
+                    ! queue ! gather.sink_0
+       → dxgather name=gather → dxosd → sink
 ```
+
+ROI extraction for secondary inference is handled **automatically** by `DxPreprocess`
+when `secondary-mode=true` — no separate ROI extraction element is required or exists.
+
+> **Reference implementation**: `dx_stream/pipelines/secondary_mode/run_secondary_mode.sh`
 
 ### Cascaded session.json Example
 
@@ -870,7 +818,7 @@ Omitting any of these fields produces an incomplete cascaded `session.json`.
 
 Before outputting DONE for a cascaded session, verify ALL of the following exist:
 
-- [ ] `pipeline.py` — verify `dxroiextract` and two `DxInfer` stages are present
+- [ ] `pipeline.py` — verify `secondary-mode=true` and two `DxInfer` stages are present
 - [ ] `run_cascaded.sh` (or `run_<app>.sh`) — verify it delegates to `pipeline.py`
 - [ ] `session.json` — verify `pipeline_category="cascaded"` and `secondary_model` field are present
 - [ ] `README.md` — **MANDATORY** (`test_readme_md_exists` WILL FAIL without it; do NOT skip)
@@ -1023,20 +971,17 @@ how quickly the pipeline finishes, satisfying `test_session_log_has_meaningful_c
 
 #### Cascaded verification in session.log (R64)
 
-For **cascaded** pipelines, add this explicit `dxroiextract` self-check immediately before
-launching the pipeline, and log the result to `session.log`:
+For **cascaded** pipelines, add this self-check immediately before launching the
+pipeline, and log the result to `session.log`:
 
 ```bash
-grep -q "'dxroiextract'" pipeline.py \
-  && echo "[OK] dxroiextract found in pipeline.py" | tee -a session.log \
-  || { echo "[FAIL] dxroiextract missing from pipeline string" | tee -a session.log; exit 1; }
+grep -q "secondary-mode=true" pipeline.py \
+  && echo "[OK] secondary-mode=true found in pipeline.py" | tee -a session.log \
+  || { echo "[FAIL] secondary-mode=true missing — secondary stage not configured" | tee -a session.log; exit 1; }
 ```
 
-This converts `session.log` into a self-verifying artifact: if `[OK] dxroiextract found`
-appears in the log, it provides independent confirmation that the pipeline string is
-correct — the same fact that `test_cascaded_roi_extract_in_pipeline_string` asserts
-from the outside. A log that lacks this line (or shows `[FAIL]`) signals a prohibited
-anti-pattern (e.g., `secondary-mode=true` or comment-only mention).
+This converts `session.log` into a self-verifying artifact: if `[OK] secondary-mode=true found`
+appears in the log, it confirms the secondary inference stage is correctly configured.
 
 #### ⛔ CASCADED HARD GATE — Pre-DONE self-check (R83)
 
@@ -1047,9 +992,9 @@ Before outputting `[DX-AGENTIC-DEV: DONE ...]`, run this compound self-check and
 ```bash
 # ⛔ CASCADED MANDATORY CHECK — paste output into conversation before DONE (R83)
 echo "=== Cascaded mandatory checks ===" | tee -a session.log
-grep -q "'dxroiextract'" pipeline.py \
-  && echo "[MANDATORY-OK] dxroiextract quoted element present" | tee -a session.log \
-  || { echo "[MANDATORY-FAIL] dxroiextract ABSENT — do NOT emit DONE" | tee -a session.log; exit 1; }
+grep -q "secondary-mode=true" pipeline.py \
+  && echo "[MANDATORY-OK] secondary-mode=true present in pipeline.py" | tee -a session.log \
+  || { echo "[MANDATORY-FAIL] secondary-mode=true ABSENT — secondary stage not configured" | tee -a session.log; exit 1; }
 grep -q "pipeline.py" run_cascaded*.sh run_*.sh 2>/dev/null \
   && echo "[MANDATORY-OK] run script delegates to pipeline.py" | tee -a session.log \
   || { echo "[MANDATORY-FAIL] run script uses inline gst-launch — do NOT emit DONE" | tee -a session.log; exit 1; }
@@ -1060,7 +1005,7 @@ echo "[MANDATORY-ALL-OK] All cascaded checks passed" | tee -a session.log
 ```
 
 This check catches the three most common cascaded regressions:
-- Missing `dxroiextract` (agent used `dxpreprocess secondary-mode=true` anti-pattern)
+- Missing `secondary-mode=true` (secondary inference stage not properly configured)
 - Inline `gst-launch-1.0` in run script (agent wrote self-contained launcher instead of delegating)
 - Missing `--output`/`tee` recording (agent omitted the output recording code path)
 

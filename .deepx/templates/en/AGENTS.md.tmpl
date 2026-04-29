@@ -108,14 +108,14 @@ Only write to `src/` when explicitly requested by the user.
 | `DxPostprocess` | Decode raw inference tensors into detections/classifications |
 | `DxOsd` | Draw bounding boxes, labels, and overlays on frames |
 | `DxRate` | Drop excess frames to match target inference FPS |
-| `DxScale` | Resize frames (used between ROI extraction and secondary inference) |
-| `DxRoiExtract` | Extract ROI crops from primary detection results |
+| `DxScale` | Resize frames to required input dimensions |
 | `DxTracker` | Multi-object tracking (assign persistent IDs) |
 | `DxTile` | Split frame into tiles for higher-resolution inference |
 | `DxDeTile` | Reassemble tiled inference results into full-frame coordinates |
 | `DxMsgConv` | Serialize inference results into wire format (JSON/protobuf) |
 | `DxMsgBroker` | Publish serialized messages to MQTT or Kafka |
-| `DxMux` | Multiplex multiple streams into a single pipeline |
+| `DxInputSelector` | Select one stream from multiple inputs (N:1) for shared inference |
+| `DxOutputSelector` | Route inference results back to multiple output streams (1:N) |
 
 ## 6 Pipeline Categories
 
@@ -123,9 +123,9 @@ Only write to `src/` when explicitly requested by the user.
 |----------|-------------|-------------|
 | **Single-model** | One model, one stream | `src ! DxPreprocess ! DxInfer ! DxPostprocess ! DxOsd ! sink` |
 | **Multi-model** | Multiple models, sequential | Chain multiple DxInfer stages with distinct preprocess-ids |
-| **Cascaded** | Primary detection feeds secondary classification | `DxInfer ! DxRoiExtract ! DxScale ! DxInfer` |
+| **Cascaded** | Primary detection feeds secondary classification | `DxInfer ! DxPostprocess ! DxTracker ! tee ! DxPreprocess(secondary-mode=true) ! DxInfer(secondary-mode=true) ! DxGather` |
 | **Tiled** | High-res input split into tiles | `DxTile ! DxInfer ! DxDeTile` |
-| **Parallel** | Multiple streams processed in parallel | `DxMux` to combine, shared DxInfer |
+| **Parallel** | Multiple streams through shared inference | `DxInputSelector ! DxInfer ! DxOutputSelector` or independent sub-pipelines |
 | **Broker** | Publish results to MQTT/Kafka | `DxInfer ! DxMsgConv ! DxMsgBroker` |
 
 ## Pipeline Template
