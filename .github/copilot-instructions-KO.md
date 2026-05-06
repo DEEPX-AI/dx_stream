@@ -535,6 +535,12 @@ Pre-commit hook이 generator output 무결성을 강제합니다: 생성된 파�
 tools/dx-agentic-dev-gen/scripts/install-hooks.sh
 ```
 
+> **KO 대응 파일 규칙**: EN fragment를 편집할 때, KO 대응 파일도 업데이트가
+> 필요한지 확인하세요. 단락 1개 이상을 추가하거나 제거했다면, 커밋 전에
+> `.deepx/templates/fragments/ko/<stem>.md`를 업데이트하세요. `dx-agentic-gen lint`를
+> 실행하여 `[OK]`를 확인하세요 — EN이 KO보다 10줄 이상 많으면 lint가 ERROR를
+> 반환합니다.
+
 이 게이트는 `.deepx/` 파일이 작업의 *주요 산출물*인 경우(규칙 추가, 플랫폼 sync,
 KO 번역 생성, agents/skills 수정)에 적용됩니다. 기능 구현 중 `.deepx/`에 단순
 한 줄 수정이 발생하는 경우에는 적용되지 않습니다.
