@@ -1,5 +1,5 @@
 **DxRate** is an element that adjusts the framerate of a video stream to match a defined target framerate.  
-**DxRate** archives this by dropping or duplicating frames based on the timestamps of incoming buffers. If the input stream already matches the desired framerate, no frames are altered.  
+**DxRate** achieves this by dropping or duplicating frames based on the timestamps of incoming buffers. If the input stream already matches the desired framerate, no frames are altered.  
 Otherwise, **DxRate** modifies the output buffer timestamps to maintain consistent intervals, ensuring the smooth and accurate playback at the specified framerate.  
 
 ### **Key Features**  

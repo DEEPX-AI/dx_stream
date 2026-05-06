@@ -257,7 +257,7 @@ static std::string qc_resource_path(const char *filename) {
 }
 
 static cv::Mat qc_load_bgr(int w, int h) {
-    std::string path = qc_resource_path("1.jpg");
+    std::string path = qc_resource_path("test.jpg");
     cv::Mat img = cv::imread(path, cv::IMREAD_COLOR);
     fail_unless(!img.empty(), "Could not load test image: %s", path.c_str());
     cv::Mat out;
@@ -305,7 +305,7 @@ static double qc_psnr_y(const uint8_t *data, int w, int h,
 static GstSample *qc_run_convert_pipeline(const char *src_fmt,
                                            const char *dst_fmt,
                                            int w, int h) {
-    std::string path = qc_resource_path("1.jpg");
+    std::string path = qc_resource_path("test.jpg");
 
     gchar *desc = g_strdup_printf(
         "multifilesrc location=\"%s\" num-buffers=1"
