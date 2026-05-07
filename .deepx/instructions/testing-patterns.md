@@ -143,6 +143,10 @@ fi
 #!/bin/bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+DX_STREAM_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SRC_DIR="$DX_STREAM_ROOT/dx_stream"
+
 # Test: Verify pipeline runs without errors
 echo "=== Test: Single Network Object Detection ==="
 MODEL_PATH="$SRC_DIR/samples/models/yolo26n.dxnn"

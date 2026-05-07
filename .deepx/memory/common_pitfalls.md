@@ -254,8 +254,8 @@ with `/path/to/<model>.dxnn` placeholders instead of real relative paths.
    done
    ```
 2. **run.sh** and **README.md** MUST use real paths:
-   - Model: `$(realpath ../../samples/models/<model>.dxnn)` (GStreamer needs absolute)
-   - Video: `../../samples/videos/<video>.mp4` or `../../assets/videos/dogs.mp4`
+   - Model: `$(realpath ../../dx_stream/samples/models/<model>.dxnn)` (GStreamer needs absolute)
+   - Video: `../../dx_stream/samples/videos/<video>.mp4` or `../../assets/videos/dogs.mp4`
    - Never use `/path/to/` placeholders
 
 **Prevention**: Use the setup.sh/run.sh templates in `dx-build-pipeline-app.md`.

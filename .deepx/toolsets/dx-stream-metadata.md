@@ -1,5 +1,7 @@
 # dx_stream Metadata Reference (pydxs)
 
+> **SDK Source of Truth**: `docs/source/docs/04_Writing_Your_Own_Application.md`, `docs/source/docs/Appendix_User_Metadata_Guide.md`
+
 ## Overview
 
 The `pydxs` Python package provides bindings for accessing GStreamer buffer metadata

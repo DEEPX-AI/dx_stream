@@ -1,5 +1,7 @@
 # Model Registry Reference
 
+> **SDK Source of Truth**: `config/model_registry.json`
+
 ## Overview
 
 The `model_list.json` file at the dx_stream root is the authoritative registry

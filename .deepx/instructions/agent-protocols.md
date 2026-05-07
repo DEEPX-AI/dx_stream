@@ -82,7 +82,8 @@ Never hardcode absolute paths in committed scripts. Always derive paths from
 
 ```bash
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SRC_DIR=$(dirname "$(dirname "$SCRIPT_DIR")")
+DX_STREAM_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SRC_DIR="$DX_STREAM_ROOT/dx_stream"
 MODEL_PATH="$SRC_DIR/samples/models/$MODEL_NAME"
 ```
 

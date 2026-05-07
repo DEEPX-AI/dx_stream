@@ -86,14 +86,15 @@ Key points:
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SRC_DIR=$(dirname "$(dirname "$SCRIPT_DIR")")
+DX_STREAM_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SRC_DIR="$DX_STREAM_ROOT/dx_stream"
 
 # Model auto-download
 MODEL_NAME="YoloV5S_PPU.dxnn"
 MODEL_PATH="$SRC_DIR/samples/models/$MODEL_NAME"
 if [ ! -f "$MODEL_PATH" ]; then
     echo "[INFO] $MODEL_NAME not found. Downloading..."
-    (cd "$SRC_DIR"/.. && ./setup.sh --model="$MODEL_NAME")
+    (cd "$DX_STREAM_ROOT" && ./setup.sh --model="$MODEL_NAME")
     if [ ! -f "$MODEL_PATH" ]; then
         echo "[ERROR] Failed to download $MODEL_NAME"
         exit 1
@@ -190,14 +191,15 @@ if __name__ == '__main__':
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SRC_DIR=$(dirname "$(dirname "$SCRIPT_DIR")")
+DX_STREAM_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+SRC_DIR="$DX_STREAM_ROOT/dx_stream"
 
 # Model auto-download
 MODEL_NAME="YoloV5S_PPU.dxnn"
 MODEL_PATH="$SRC_DIR/samples/models/$MODEL_NAME"
 if [ ! -f "$MODEL_PATH" ]; then
     echo "[INFO] $MODEL_NAME not found. Downloading..."
-    (cd "$SRC_DIR"/.. && ./setup.sh --model="$MODEL_NAME")
+    (cd "$DX_STREAM_ROOT" && ./setup.sh --model="$MODEL_NAME")
     if [ ! -f "$MODEL_PATH" ]; then
         echo "[ERROR] Failed to download $MODEL_NAME"
         exit 1

@@ -219,8 +219,8 @@ directory and run `./setup.sh` without manually activating any venv first. The s
 
 `run.sh` MUST include **real, working example commands** with actual relative paths:
 
-1. **Model path**: Use absolute path resolved from `samples/models/<model>.dxnn` or
-   `model_list.json` lookup — GStreamer `model-path` requires absolute paths
+1. **Model path**: Use absolute path resolved from `$SRC_DIR/samples/models/<model>.dxnn`
+   (where `SRC_DIR="$DX_STREAM_ROOT/dx_stream"`) — GStreamer `model-path` requires absolute paths
 2. **Video input**: Use actual sample video — e.g., `../../assets/videos/dogs.mp4`
    or `samples/videos/<video>.mp4`
 3. **Never use placeholders** like `/path/to/video.mp4` or `/path/to/<model>.dxnn` —

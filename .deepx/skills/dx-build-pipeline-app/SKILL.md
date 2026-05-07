@@ -90,31 +90,25 @@ runtime. Generated code MUST follow these templates exactly.
 
 ### Rules
 
-1. **Use the template as-is** — do NOT invent features not in the template
-   (no custom logging format, no unrequested features)
+1. **Follow the template structure** — use the template as the baseline for correctness.
+   User-requested additions and modifications are allowed. Do NOT add unrequested
+   features (no custom logging format, no FPS overlay unless asked)
 2. **Default: single output sink** — `fpsdisplaysink` OR `fakesink`. If the user
    requests file output, replace the display sink with
    `videoconvert ! x264enc bitrate=4000 speed-preset=ultrafast tune=zerolatency ! h264parse ! mp4mux ! filesink location=...`
-3. **`--output` / `tee` is MANDATORY in all detection pipelines** — All detection
-   pipelines MUST include the `--output` argument in `parse_args()` and the `tee`
-   code path for simultaneous display+recording. _"All detection pipelines MUST
-   support `--output` for file recording. Use `tee name=t` to support simultaneous
-   display and recording."_ Even if the user does not mention recording, the `--output`
-   flag and tee implementation MUST be present in `pipeline.py`:
+3. **`--output` / `tee` is RECOMMENDED for detection pipelines** — Detection
+   pipelines SHOULD include the `--output` argument in `parse_args()` and the `tee`
+   code path for simultaneous display+recording, unless the user explicitly excludes
+   it. When included, use the `tee name=t` pattern:
    ```
    tee name=t \
      t. ! queue ! videoconvert ! fpsdisplaysink sync=false \
      t. ! queue ! videoconvert ! x264enc bitrate=4000 speed-preset=ultrafast tune=zerolatency ! h264parse ! mp4mux ! filesink location=output.mp4
    ```
-   **CRITICAL: `x264enc` MUST include `tune=zerolatency`** — without it,
-   B-frame buffering causes pipeline deadlock (see pitfall #14)
+   **CRITICAL: `x264enc` MUST include `tune=zerolatency`** — see Pitfall #14
 4. **English log messages** — all `logger.info`/`logger.error` messages in English,
    matching the style of existing examples
-5. **x264enc universal rule** — every occurrence of `x264enc` in ANY context
-   (shell scripts, Python code, pipeline strings) MUST include all three options:
-   `bitrate=4000 speed-preset=ultrafast tune=zerolatency`. Bare `x264enc` without
-   these options causes slow encoding and B-frame deadlocks (pitfall #14)
-6. **`--headless` flag** — always include it in `pipeline.py`. Additionally check
+5. **`--headless` flag** — always include it in `pipeline.py`. Additionally check
    `DISPLAY` env as fallback (see template)
 7. **`run_<app>.sh` MUST delegate to `pipeline.py`** — the shell wrapper MUST invoke
    `python pipeline.py` with `--input` and `--model` arguments. Embedding `gst-launch-1.0`
@@ -126,13 +120,11 @@ runtime. Generated code MUST follow these templates exactly.
 
 ### Anti-Patterns (NEVER Do)
 
-- Using `x264enc` without `tune=zerolatency` (causes deadlock — pitfall #14)
-- Using bare `x264enc` in Python pipeline string building (e.g., `f"x264enc ! mp4mux"`)
-  — always use `f"x264enc bitrate=4000 speed-preset=ultrafast tune=zerolatency ! ..."`
+- Using `x264enc` without `tune=zerolatency` (see Pitfall #14)
 - Using relative model paths in `dxinfer model-path=` (must be absolute)
 - Copying `SRC_DIR` calculation from production scripts in `dx_stream/pipelines/`
 - Writing log messages in Korean or other non-English languages
-- Adding features the user did not request (e.g., FPS overlay, auto-recording)
+- Adding unrequested features that complicate the pipeline (e.g., FPS overlay, auto-recording)
 - **Embedding `gst-launch-1.0` inline in `run_<app>.sh`** — PROHIBITED. The run script
   MUST delegate to `python pipeline.py`, not call `gst-launch-1.0` directly. Example of
   the correct pattern:
@@ -148,9 +140,6 @@ runtime. Generated code MUST follow these templates exactly.
 - **Omitting `dxrate` after RTSP decodebin** — always add `dxrate max-rate=30` in the
   RTSP source branch. Example: `urisourcebin uri=rtsp://... ! decodebin ! dxrate max-rate=30 ! dxpreprocess ...`
 - **`created_at` without timezone offset** — always use `datetime.now().astimezone().isoformat(timespec='seconds')`
-- **Omitting `--output` argument from pipeline.py** — ALL detection pipelines MUST
-  include `--output` in argparse and the `tee name=t` dual-sink code path. A pipeline
-  without `--output` fails the `test_pipeline_has_output_recording` test.
 
 ## Phase 0: Prerequisites Check
 
@@ -214,13 +203,11 @@ Before starting the build workflow, verify:
 source → dxpreprocess → queue → dxinfer → queue → dxpostprocess → queue → dxtracker → queue → dxosd → sink
 ```
 
-> **DxTracker is MANDATORY for object-detection pipelines.** Any pipeline whose
-> task is object detection (yolo*, ssd, scrfd, efficient-det, etc.) MUST include
-> `dxtracker` between `dxpostprocess` and `dxosd`. Use the default config file
-> `../../dx_stream/configs/tracker_config.json` (relative to the session directory). This
-> requirement also applies when the `--tracker-config` argument is omitted —
-> always pass the default config path so the element is present in the pipeline.
-> Omitting tracker from a detection pipeline is a test failure.
+> **DxTracker is RECOMMENDED for object-detection pipelines.** Pipelines whose
+> task is object detection (yolo*, ssd, scrfd, efficient-det, etc.) SHOULD include
+> `dxtracker` between `dxpostprocess` and `dxosd` by default. Use the config file
+> `../../dx_stream/configs/tracker_config.json` (relative to the session directory).
+> The user may explicitly exclude tracker if not needed for their use case.
 
 ---
 
@@ -1087,9 +1074,10 @@ source "$SCRIPT_DIR/setup.sh" 2>/dev/null || true
 # --- Default paths ---
 # Model (absolute path required by GStreamer)
 DX_STREAM_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-DEFAULT_MODEL="${DX_STREAM_ROOT}/samples/models/{MODEL}.dxnn"
+SRC_DIR="$DX_STREAM_ROOT/dx_stream"
+DEFAULT_MODEL="${SRC_DIR}/samples/models/{MODEL}.dxnn"
 # Video input
-DEFAULT_VIDEO="${DX_STREAM_ROOT}/samples/videos/{VIDEO}"
+DEFAULT_VIDEO="${SRC_DIR}/samples/videos/{VIDEO}"
 
 MODEL="${1:-$DEFAULT_MODEL}"
 VIDEO="${2:-$DEFAULT_VIDEO}"
@@ -1099,7 +1087,7 @@ if [ ! -f "$MODEL" ]; then
     echo "Usage: bash run.sh [model_path] [video_path]"
     echo ""
     echo "Model locations:"
-    echo "  dx_stream: ${DX_STREAM_ROOT}/samples/models/{MODEL}.dxnn"
+    echo "  dx_stream: ${SRC_DIR}/samples/models/{MODEL}.dxnn"
     echo "  dx_app:    ${DX_STREAM_ROOT}/../dx_app/assets/models/{MODEL}.dxnn"
     exit 1
 fi

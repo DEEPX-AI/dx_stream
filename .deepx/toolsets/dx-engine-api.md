@@ -1,5 +1,7 @@
 # DX Engine API Reference (dx_stream subset)
 
+> **SDK Source of Truth**: `dx_rt/python_package/src/dx_engine/`, shared with dx_app
+
 ## Overview
 
 This is a minimal reference for the DEEPX inference engine as it relates to
