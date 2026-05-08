@@ -83,7 +83,7 @@ for the exact prompt template).
 ## Phase 2: Load Context
 
 Read these files before composing:
-1. `.deepx/skills/dx-build-pipeline-app.md` — Pipeline templates and patterns
+1. `.deepx/skills/dx-agentic-stream-build-pipeline.md` — Pipeline templates and patterns
 2. `.deepx/toolsets/dx-stream-elements.md` — Element properties reference
 3. `.deepx/memory/common_pitfalls.md` — Avoid known issues
 

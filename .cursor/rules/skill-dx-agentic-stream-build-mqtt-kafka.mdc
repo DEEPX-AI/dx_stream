@@ -1,0 +1,6 @@
+---
+description: "Build MQTT/Kafka broker application"
+alwaysApply: false
+---
+
+Read and follow the skill documentation at `.deepx/skills/dx-agentic-stream-build-mqtt-kafka/SKILL.md`.

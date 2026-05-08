@@ -48,7 +48,7 @@ Checks performed:
 - `library-file-path` existence (`.so` file for custom postprocess)
 - GStreamer element registration (`gst-inspect-1.0` probing)
 
-Reference: `.deepx/skills/dx-validate.md` for property validation details.
+Reference: `.deepx/skills/dx-agentic-stream-validate.md` for property validation details.
 
 ### Framework Validation
 
@@ -119,7 +119,7 @@ Missing queues cause pipeline deadlocks under load.
 
 ```
 1. .deepx/memory/common_pitfalls.md    (always)
-2. .deepx/skills/dx-validate.md        (validation reference)
+2. .deepx/skills/dx-agentic-stream-validate.md        (validation reference)
 3. .deepx/scripts/validate_app.py      (pipeline validator)
 4. .deepx/scripts/validate_framework.py (framework validator)
 ```

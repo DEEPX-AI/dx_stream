@@ -32,7 +32,7 @@ Before classifying or routing any task:
 
 1. Read `.github/copilot-instructions.md` for this level's global context (MANDATORY)
 2. Read `.deepx/memory/common_pitfalls.md` (always)
-3. Read `.deepx/skills/dx-build-pipeline-app.md` (if building pipeline)
+3. Read `.deepx/skills/dx-agentic-stream-build-pipeline.md` (if building pipeline)
 
 ## Step 0: Prerequisites Check
 

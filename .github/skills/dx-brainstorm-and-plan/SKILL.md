@@ -19,8 +19,8 @@ generating any dx_stream GStreamer pipeline application.
 
 ## When to Use
 
-Invoke this skill BEFORE any pipeline build task. This includes `/dx-build-pipeline-app`
-and `/dx-build-mqtt-kafka-app`. Skip only if the user explicitly says "just build it".
+Invoke this skill BEFORE any pipeline build task. This includes `/dx-agentic-stream-build-pipeline`
+and `/dx-agentic-stream-build-mqtt-kafka`. Skip only if the user explicitly says "just build it".
 
 ---
 
@@ -108,8 +108,8 @@ After approval, invoke the appropriate build skill:
 
 | Pipeline type | Route to |
 |---------------|----------|
-| single-model, multi-model, cascaded, tiled, parallel | `/dx-build-pipeline-app` |
-| broker (MQTT/Kafka) | `/dx-build-mqtt-kafka-app` |
+| single-model, multi-model, cascaded, tiled, parallel | `/dx-agentic-stream-build-pipeline` |
+| broker (MQTT/Kafka) | `/dx-agentic-stream-build-mqtt-kafka` |
 
 Pass the approved plan context to the build skill.
 

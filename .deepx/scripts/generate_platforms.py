@@ -129,26 +129,26 @@ class DeepXReader:
         return [
             {
                 "trigger": "Pipeline, detection, classification",
-                "files": ".deepx/skills/dx-build-pipeline-app.md, "
+                "files": ".deepx/skills/dx-agentic-stream-build-pipeline.md, "
                          ".deepx/toolsets/dx-stream-elements.md",
             },
             {
                 "trigger": "MQTT, Kafka, message broker",
-                "files": ".deepx/skills/dx-build-mqtt-kafka-app.md, "
+                "files": ".deepx/skills/dx-agentic-stream-build-mqtt-kafka.md, "
                          ".deepx/toolsets/dx-stream-elements.md",
             },
             {
                 "trigger": "Multi-model, cascaded, tiled",
-                "files": ".deepx/skills/dx-build-pipeline-app.md, "
+                "files": ".deepx/skills/dx-agentic-stream-build-pipeline.md, "
                          ".deepx/toolsets/dx-stream-metadata.md",
             },
             {
                 "trigger": "Model, download",
-                "files": ".deepx/skills/dx-model-management.md",
+                "files": ".deepx/skills/dx-agentic-stream-model-management.md",
             },
             {
                 "trigger": "Validation, testing",
-                "files": ".deepx/skills/dx-validate.md, "
+                "files": ".deepx/skills/dx-agentic-stream-validate.md, "
                          ".deepx/instructions/testing-patterns.md",
             },
             {

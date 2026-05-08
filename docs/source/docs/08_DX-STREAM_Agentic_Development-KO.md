@@ -34,26 +34,30 @@
 
 ## 스킬
 
-16개 스킬이 모든 플랫폼에서 사용 가능합니다. `dx-agentic-gen`으로 생성됩니다.
+#### 범용 SWE 프로세스
 
 | 스킬 | 설명 |
-|---|---|
-| `dx-brainstorm-and-plan` | 파이프라인 생성 전 브레인스토밍 및 계획 수립 (프로세스 스킬) |
-| `dx-build-mqtt-kafka-app` | 이벤트 퍼블리싱을 위한 MQTT 또는 Kafka 메시지 브로커 파이프라인 빌드 |
-| `dx-build-pipeline-app` | 6개 카테고리의 GStreamer 파이프라인 빌드: 단일 모델, 다중 모델, 캐스케이드, 타일, 병렬, 브로커 |
-| `dx-dispatching-parallel-agents` | 2개 이상의 독립 작업을 병렬 에이전트에 디스패치 |
-| `dx-executing-plans` | 검토 체크포인트가 포함된 구현 계획 실행 |
-| `dx-model-management` | 대상 NPU 아키텍처용 `.dxnn` 모델 다운로드 및 설정 |
-| `dx-receiving-code-review` | 코드 리뷰 피드백을 기술적 엄밀성으로 수신 및 처리 |
-| `dx-requesting-code-review` | 작업이 요구사항을 충족하는지 코드 리뷰 요청 |
+|------|------|
+| `dx-swe-brainstorm` | 파이프라인 생성 전 브레인스토밍 및 계획 수립 |
+| `dx-swe-tdd` | 테스트 주도 개발 — 파일 생성 직후 즉시 검증 |
+| `dx-swe-verify` | 완료 선언 전 검증 — 증거 기반 확인 |
+| `dx-swe-writing-plans` | 스펙 또는 요구사항에서 구현 계획 작성 |
+| `dx-swe-executing-plans` | 검토 체크포인트가 포함된 구현 계획 실행 |
+| `dx-swe-debugging` | 체계적 디버깅 — 수정 제안 전 진단 |
+| `dx-swe-parallel-agents` | 2개 이상의 독립 작업을 병렬 에이전트에 디스패치 |
+| `dx-swe-subagent-dev` | 독립적 하위 에이전트 작업으로 구현 계획 실행 |
+| `dx-swe-receiving-review` | 코드 리뷰 피드백을 기술적 엄밀성으로 수신 및 처리 |
+| `dx-swe-requesting-review` | 작업이 요구사항을 충족하는지 코드 리뷰 요청 |
 | `dx-skill-router` | 작업 분류에 따라 적절한 스킬로 라우팅 |
-| `dx-subagent-driven-development` | 독립적 하위 에이전트 작업으로 구현 계획 실행 |
-| `dx-systematic-debugging` | 체계적 디버깅 — 수정 제안 전 진단 |
-| `dx-tdd` | 테스트 주도 개발 — 파일 생성 직후 즉시 검증 (프로세스 스킬) |
-| `dx-validate` | 파이프라인 검증 검사 실행 (문법, 속성, 엘리먼트 순서) |
-| `dx-verify-completion` | 완료 선언 전 검증 — 증거 기반 확인 (프로세스 스킬) |
-| `dx-writing-plans` | 스펙 또는 요구사항에서 구현 계획 작성 |
-| `dx-writing-skills` | 스킬 생성 또는 편집 및 배포 전 검증 |
+
+#### DEEPX 빌드
+
+| 스킬 | 설명 |
+|------|------|
+| `dx-agentic-stream-build-pipeline` | 6개 카테고리의 GStreamer 파이프라인 빌드: 단일 모델, 다중 모델, 캐스케이드, 타일, 병렬, 브로커 |
+| `dx-agentic-stream-build-mqtt-kafka` | 이벤트 퍼블리싱을 위한 MQTT 또는 Kafka 메시지 브로커 파이프라인 빌드 |
+| `dx-agentic-stream-model-management` | 대상 NPU 아키텍처용 `.dxnn` 모델 다운로드 및 설정 |
+| `dx-agentic-stream-validate` | 파이프라인 검증 검사 실행 (문법, 속성, 엘리먼트 순서) |
 
 ---
 
@@ -67,7 +71,7 @@ dx_stream 에이전틱 개발은 4가지 AI 코딩 도구에서 작동합니다.
 | **Claude Code** | `CLAUDE.md` | 컨텍스트 라우팅을 통해 4개 에이전트 전체 |
 | **GitHub Copilot** | `.github/copilot-instructions.md`, `.github/agents/`의 4개 에이전트, `.github/skills/`의 16개 스킬, `.github/instructions/`의 2개 instruction | `@dx-stream-builder`, `@dx-pipeline-builder`, `@dx-model-manager`, `@dx-validator` |
 | **Cursor** | `.cursor/rules/dx-stream.mdc` (항상), `dx-model-manager.mdc`, `dx-pipeline-builder.mdc`, `dx-stream-builder.mdc`, `dx-validator.mdc`, `stream-pipelines.mdc`, `tests.mdc`, 16개 `skill-*.mdc` 파일 (총 23개) | 자동 적용 규칙과 함께 자유 형식 대화 |
-| **OpenCode** | `AGENTS.md`, `opencode.json`, `.opencode/agents/`의 4개 에이전트, `.deepx/skills/`의 16개 스킬 | `@dx-stream-builder` 또는 `/dx-build-pipeline-app` |
+| **OpenCode** | `AGENTS.md`, `opencode.json`, `.opencode/agents/`의 4개 에이전트, `.deepx/skills/`의 16개 스킬 | `@dx-stream-builder` 또는 `/dx-agentic-stream-build-pipeline` |
 
 ### Copilot 파일별 자동 Instruction
 
@@ -78,24 +82,30 @@ dx_stream 에이전틱 개발은 4가지 AI 코딩 도구에서 작동합니다.
 
 ### OpenCode 스킬 (슬래시 명령)
 
+**범용 SWE 프로세스**
+
 | 슬래시 명령 | 설명 |
 |---|---|
-| `/dx-brainstorm-and-plan` | 파이프라인 생성 전 브레인스토밍 및 계획 수립 |
-| `/dx-build-mqtt-kafka-app` | MQTT/Kafka 브로커 파이프라인 빌드 |
-| `/dx-build-pipeline-app` | 6개 카테고리의 GStreamer 파이프라인 빌드 |
-| `/dx-dispatching-parallel-agents` | 2개 이상의 독립 작업을 병렬 에이전트에 디스패치 |
-| `/dx-executing-plans` | 구현 계획 실행 |
-| `/dx-model-management` | .dxnn 모델 다운로드 및 설정 |
-| `/dx-receiving-code-review` | 코드 리뷰 피드백 처리 |
-| `/dx-requesting-code-review` | 코드 리뷰 요청 |
+| `/dx-swe-brainstorm` | 파이프라인 생성 전 브레인스토밍 및 계획 수립 |
+| `/dx-swe-tdd` | 점진적 검증을 포함한 테스트 주도 개발 |
+| `/dx-swe-verify` | 증거 기반 완료 검증 |
+| `/dx-swe-writing-plans` | 스펙에서 구현 계획 작성 |
+| `/dx-swe-executing-plans` | 구현 계획 실행 |
+| `/dx-swe-debugging` | 수정 제안 전 체계적 디버깅 |
+| `/dx-swe-parallel-agents` | 2개 이상의 독립 작업을 병렬 에이전트에 디스패치 |
+| `/dx-swe-subagent-dev` | 독립적 하위 에이전트 작업으로 계획 실행 |
+| `/dx-swe-receiving-review` | 코드 리뷰 피드백 처리 |
+| `/dx-swe-requesting-review` | 코드 리뷰 요청 |
 | `/dx-skill-router` | 적절한 스킬로 라우팅 |
-| `/dx-subagent-driven-development` | 독립적 하위 에이전트 작업으로 계획 실행 |
-| `/dx-systematic-debugging` | 수정 제안 전 체계적 디버깅 |
-| `/dx-tdd` | 점진적 검증을 포함한 테스트 주도 개발 |
-| `/dx-validate` | 파이프라인 검증 검사 실행 |
-| `/dx-verify-completion` | 증거 기반 완료 검증 |
-| `/dx-writing-plans` | 스펙에서 구현 계획 작성 |
-| `/dx-writing-skills` | 스킬 생성 또는 편집 |
+
+**DEEPX 빌드**
+
+| 슬래시 명령 | 설명 |
+|---|---|
+| `/dx-agentic-stream-build-pipeline` | 6개 카테고리의 GStreamer 파이프라인 빌드 |
+| `/dx-agentic-stream-build-mqtt-kafka` | MQTT/Kafka 브로커 파이프라인 빌드 |
+| `/dx-agentic-stream-model-management` | .dxnn 모델 다운로드 및 설정 |
+| `/dx-agentic-stream-validate` | 파이프라인 검증 검사 실행 |
 
 ### 플랫폼별 파일 참조
 
@@ -123,22 +133,21 @@ dx_stream 에이전틱 개발은 4가지 AI 코딩 도구에서 작동합니다.
 
 | 스킬 | 파일 |
 |-------|------|
-| `/dx-brainstorm-and-plan` | `.deepx/skills/dx-brainstorm-and-plan/SKILL.md` |
-| `/dx-build-mqtt-kafka-app` | `.deepx/skills/dx-build-mqtt-kafka-app/SKILL.md` |
-| `/dx-build-pipeline-app` | `.deepx/skills/dx-build-pipeline-app/SKILL.md` |
-| `/dx-dispatching-parallel-agents` | `.deepx/skills/dx-dispatching-parallel-agents/SKILL.md` |
-| `/dx-executing-plans` | `.deepx/skills/dx-executing-plans/SKILL.md` |
-| `/dx-model-management` | `.deepx/skills/dx-model-management/SKILL.md` |
-| `/dx-receiving-code-review` | `.deepx/skills/dx-receiving-code-review/SKILL.md` |
-| `/dx-requesting-code-review` | `.deepx/skills/dx-requesting-code-review/SKILL.md` |
+| `/dx-swe-brainstorm` | `.deepx/skills/dx-swe-brainstorm/SKILL.md` |
+| `/dx-agentic-stream-build-mqtt-kafka` | `.deepx/skills/dx-agentic-stream-build-mqtt-kafka/SKILL.md` |
+| `/dx-agentic-stream-build-pipeline` | `.deepx/skills/dx-agentic-stream-build-pipeline/SKILL.md` |
+| `/dx-swe-parallel-agents` | `.deepx/skills/dx-swe-parallel-agents/SKILL.md` |
+| `/dx-swe-executing-plans` | `.deepx/skills/dx-swe-executing-plans/SKILL.md` |
+| `/dx-agentic-stream-model-management` | `.deepx/skills/dx-agentic-stream-model-management/SKILL.md` |
+| `/dx-swe-receiving-review` | `.deepx/skills/dx-swe-receiving-review/SKILL.md` |
+| `/dx-swe-requesting-review` | `.deepx/skills/dx-swe-requesting-review/SKILL.md` |
 | `/dx-skill-router` | `.deepx/skills/dx-skill-router/SKILL.md` |
-| `/dx-subagent-driven-development` | `.deepx/skills/dx-subagent-driven-development/SKILL.md` |
-| `/dx-systematic-debugging` | `.deepx/skills/dx-systematic-debugging/SKILL.md` |
-| `/dx-tdd` | `.deepx/skills/dx-tdd/SKILL.md` |
-| `/dx-validate` | `.deepx/skills/dx-validate/SKILL.md` |
-| `/dx-verify-completion` | `.deepx/skills/dx-verify-completion/SKILL.md` |
-| `/dx-writing-plans` | `.deepx/skills/dx-writing-plans/SKILL.md` |
-| `/dx-writing-skills` | `.deepx/skills/dx-writing-skills/SKILL.md` |
+| `/dx-swe-subagent-dev` | `.deepx/skills/dx-swe-subagent-dev/SKILL.md` |
+| `/dx-swe-debugging` | `.deepx/skills/dx-swe-debugging/SKILL.md` |
+| `/dx-swe-tdd` | `.deepx/skills/dx-swe-tdd/SKILL.md` |
+| `/dx-agentic-stream-validate` | `.deepx/skills/dx-validate/SKILL.md` |
+| `/dx-swe-verify` | `.deepx/skills/dx-swe-verify/SKILL.md` |
+| `/dx-swe-writing-plans` | `.deepx/skills/dx-swe-writing-plans/SKILL.md` |
 
 #### 공유 지식 베이스 (`.deepx/`)
 
@@ -206,10 +215,10 @@ dx-agentic-gen generate --repo dx-runtime/dx_stream
 
 | 도구 | 사용 방법 |
 |---|---|
-| **Claude Code** | 프롬프트를 직접 입력. `CLAUDE.md`가 `dx-build-pipeline-app` 스킬로 라우팅. RTSP URL, 디스플레이 설정, 트래커 유형 질문 후 DxRate → DxPreprocess → DxInfer → DxTracker → DxOsd 체인 생성. |
+| **Claude Code** | 프롬프트를 직접 입력. `CLAUDE.md`가 `dx-agentic-stream-build-pipeline` 스킬로 라우팅. RTSP URL, 디스플레이 설정, 트래커 유형 질문 후 DxRate → DxPreprocess → DxInfer → DxTracker → DxOsd 체인 생성. |
 | **GitHub Copilot** | `@dx-stream-builder` 뒤에 프롬프트 입력. "단일 모델 + 트래킹"으로 분류, `dx-pipeline-builder`에 핸드오프, `dx-validator` 검사 실행. |
 | **Cursor** | 프롬프트를 직접 입력. `dx-stream.mdc`(항상 로드)가 13개 엘리먼트 카탈로그 제공. 파이프라인 파일 편집 시 `stream-pipelines.mdc` 활성화. |
-| **OpenCode** | `@dx-stream-builder` 뒤에 프롬프트 입력, 또는 `/dx-build-pipeline-app` 스킬 직접 사용. |
+| **OpenCode** | `@dx-stream-builder` 뒤에 프롬프트 입력, 또는 `/dx-agentic-stream-build-pipeline` 스킬 직접 사용. |
 
 ### 시나리오 2: MQTT 브로커 파이프라인 빌드
 
@@ -221,10 +230,10 @@ dx-agentic-gen generate --repo dx-runtime/dx_stream
 
 | 도구 | 사용 방법 |
 |---|---|
-| **Claude Code** | 프롬프트를 직접 입력. `dx-build-mqtt-kafka-app` 스킬로 라우팅. `DxPostprocess ! DxMsgConv ! DxMsgBroker`로 끝나는 파이프라인 생성. |
+| **Claude Code** | 프롬프트를 직접 입력. `dx-agentic-stream-build-mqtt-kafka` 스킬로 라우팅. `DxPostprocess ! DxMsgConv ! DxMsgBroker`로 끝나는 파이프라인 생성. |
 | **GitHub Copilot** | `@dx-stream-builder` 뒤에 프롬프트 입력. |
 | **Cursor** | 프롬프트를 직접 입력. |
-| **OpenCode** | `@dx-stream-builder` 뒤에 프롬프트 입력, 또는 `/dx-build-mqtt-kafka-app` 스킬 직접 사용. |
+| **OpenCode** | `@dx-stream-builder` 뒤에 프롬프트 입력, 또는 `/dx-agentic-stream-build-mqtt-kafka` 스킬 직접 사용. |
 
 ### 시나리오 3: 다중 모델 캐스케이드 파이프라인
 
@@ -239,7 +248,7 @@ dx-agentic-gen generate --repo dx-runtime/dx_stream
 | **Claude Code** | 프롬프트를 직접 입력. 캐스케이드 패턴 생성: `DxInfer (1차) → DxPostprocess → DxTracker → tee → DxPreprocess(secondary-mode=true) → DxInfer(secondary-mode=true) → DxGather`. |
 | **GitHub Copilot** | `@dx-pipeline-builder` 뒤에 프롬프트 입력. |
 | **Cursor** | 프롬프트를 직접 입력. |
-| **OpenCode** | `@dx-stream-builder` 뒤에 프롬프트 입력, 또는 `/dx-build-pipeline-app` 스킬 직접 사용. |
+| **OpenCode** | `@dx-stream-builder` 뒤에 프롬프트 입력, 또는 `/dx-agentic-stream-build-pipeline` 스킬 직접 사용. |
 
 ### 시나리오 4: 파이프라인 검증
 
@@ -266,10 +275,10 @@ dx-agentic-gen generate --repo dx-runtime/dx_stream
 
 | 도구 | 사용 방법 |
 |---|---|
-| **Claude Code** | 프롬프트를 직접 입력. 포즈 추정 모델로 `dx-build-pipeline-app`에 라우팅. `DxOsd`를 통한 키포인트 오버레이 파이프라인 생성. |
+| **Claude Code** | 프롬프트를 직접 입력. 포즈 추정 모델로 `dx-agentic-stream-build-pipeline`에 라우팅. `DxOsd`를 통한 키포인트 오버레이 파이프라인 생성. |
 | **GitHub Copilot** | `@dx-stream-builder` 뒤에 프롬프트 입력. "단일 모델 + 포즈"로 분류, `dx-pipeline-builder`에 핸드오프. |
 | **Cursor** | 프롬프트를 직접 입력. 파이프라인 파일 생성 시 `stream-pipelines.mdc` 활성화. |
-| **OpenCode** | `@dx-stream-builder` 뒤에 프롬프트 입력, 또는 `/dx-build-pipeline-app` 스킬 직접 사용. |
+| **OpenCode** | `@dx-stream-builder` 뒤에 프롬프트 입력, 또는 `/dx-agentic-stream-build-pipeline` 스킬 직접 사용. |
 
 ### 시나리오 6: 타일 고해상도 파이프라인 빌드
 
@@ -281,10 +290,10 @@ dx-agentic-gen generate --repo dx-runtime/dx_stream
 
 | 도구 | 사용 방법 |
 |---|---|
-| **Claude Code** | 프롬프트를 직접 입력. 타일 카테고리로 `dx-build-pipeline-app`에 라우팅. 고해상도 입력을 위한 `DxTile → DxInfer → DxDeTile` 패턴 생성. |
+| **Claude Code** | 프롬프트를 직접 입력. 타일 카테고리로 `dx-agentic-stream-build-pipeline`에 라우팅. 고해상도 입력을 위한 `DxTile → DxInfer → DxDeTile` 패턴 생성. |
 | **GitHub Copilot** | `@dx-pipeline-builder` 뒤에 프롬프트 입력. |
 | **Cursor** | 프롬프트를 직접 입력. |
-| **OpenCode** | `@dx-stream-builder` 뒤에 프롬프트 입력, 또는 `/dx-build-pipeline-app` 스킬 직접 사용. |
+| **OpenCode** | `@dx-stream-builder` 뒤에 프롬프트 입력, 또는 `/dx-agentic-stream-build-pipeline` 스킬 직접 사용. |
 
 ### 시나리오 7: 멀티스트림 병렬 파이프라인 빌드
 
@@ -296,10 +305,10 @@ dx-agentic-gen generate --repo dx-runtime/dx_stream
 
 | 도구 | 사용 방법 |
 |---|---|
-| **Claude Code** | 프롬프트를 직접 입력. 병렬 카테고리로 `dx-build-pipeline-app`에 라우팅. `DxInputSelector+DxOutputSelector`를 이용한 공유 추론 또는 독립 서브파이프라인으로 4개 소스 처리. |
+| **Claude Code** | 프롬프트를 직접 입력. 병렬 카테고리로 `dx-agentic-stream-build-pipeline`에 라우팅. `DxInputSelector+DxOutputSelector`를 이용한 공유 추론 또는 독립 서브파이프라인으로 4개 소스 처리. |
 | **GitHub Copilot** | `@dx-pipeline-builder` 뒤에 프롬프트 입력. |
 | **Cursor** | 프롬프트를 직접 입력. |
-| **OpenCode** | `@dx-stream-builder` 뒤에 프롬프트 입력, 또는 `/dx-build-pipeline-app` 스킬 직접 사용. |
+| **OpenCode** | `@dx-stream-builder` 뒤에 프롬프트 입력, 또는 `/dx-agentic-stream-build-pipeline` 스킬 직접 사용. |
 
 ### 시나리오 8: 세그멘테이션 파이프라인 빌드
 
@@ -311,10 +320,10 @@ dx-agentic-gen generate --repo dx-runtime/dx_stream
 
 | 도구 | 사용 방법 |
 |---|---|
-| **Claude Code** | 프롬프트를 직접 입력. 세그멘테이션 모델로 `dx-build-pipeline-app`에 라우팅. `DxOsd`를 통한 픽셀별 마스크 오버레이 파이프라인 생성. |
+| **Claude Code** | 프롬프트를 직접 입력. 세그멘테이션 모델로 `dx-agentic-stream-build-pipeline`에 라우팅. `DxOsd`를 통한 픽셀별 마스크 오버레이 파이프라인 생성. |
 | **GitHub Copilot** | `@dx-stream-builder` 뒤에 프롬프트 입력. "단일 모델 + 세그멘테이션"으로 분류. |
 | **Cursor** | 프롬프트를 직접 입력. 파이프라인 파일 생성 시 `stream-pipelines.mdc` 활성화. |
-| **OpenCode** | `@dx-stream-builder` 뒤에 프롬프트 입력, 또는 `/dx-build-pipeline-app` 스킬 직접 사용. |
+| **OpenCode** | `@dx-stream-builder` 뒤에 프롬프트 입력, 또는 `/dx-agentic-stream-build-pipeline` 스킬 직접 사용. |
 
 ---
 

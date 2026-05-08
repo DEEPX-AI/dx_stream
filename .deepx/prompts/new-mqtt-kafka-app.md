@@ -14,7 +14,7 @@ Create a dx_stream pipeline that publishes inference results to **{broker_type}*
 
 ### 1. Compose Broker Pipeline
 
-Read `.deepx/skills/dx-build-mqtt-kafka-app.md` for the broker pattern.
+Read `.deepx/skills/dx-agentic-stream-build-mqtt-kafka.md` for the broker pattern.
 
 Pipeline: `source → dxpreprocess → dxinfer → dxpostprocess → dxmsgconv → dxmsgbroker`
 

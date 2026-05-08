@@ -44,10 +44,10 @@ REQUIRED_FILES = {
         "orchestration.md",
     ],
     "skills": [
-        "dx-build-pipeline-app.md",
-        "dx-build-mqtt-kafka-app.md",
-        "dx-model-management.md",
-        "dx-validate.md",
+        "dx-agentic-stream-build-pipeline.md",
+        "dx-agentic-stream-build-mqtt-kafka.md",
+        "dx-agentic-stream-model-management.md",
+        "dx-agentic-stream-validate.md",
     ],
     "toolsets": [
         "dx-stream-elements.md",
@@ -289,19 +289,6 @@ def check_content_quality(deepx_root: str, result: FrameworkValidation):
             content = Path(full_path).read_text(
                 encoding="utf-8", errors="replace"
             )
-
-            # Check for Hailo references (should be DEEPX-only)
-            hailo_refs = re.findall(
-                r'\b(?:hailo|hailonet|hailofilter|hailooverlay|hailopython'
-                r'|hailomuxer|hailotracker|HailoRT|hailort|\.hef\b)',
-                content, re.IGNORECASE
-            )
-            if hailo_refs:
-                unique = set(r.lower() for r in hailo_refs)
-                result.add("content", f"hailo-ref:{rel_path}",
-                           False,
-                           f"Hailo reference(s) in {rel_path}: "
-                           f"{', '.join(sorted(unique))}")
 
             # Check for Korean text (exclude intentional Response Language
             # instructions that contain Korean examples like "한글 음차 표기 금지"

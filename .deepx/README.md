@@ -22,11 +22,11 @@ Based on what the task involves, read **only** the matching rows:
 
 | If the task mentions... | Read these files |
 |---|---|
-| **Pipeline, detection, classification** | `skills/dx-build-pipeline-app.md`, `toolsets/dx-stream-elements.md` |
-| **MQTT, Kafka, message broker** | `skills/dx-build-mqtt-kafka-app.md`, `toolsets/dx-stream-elements.md` |
-| **Multi-model, cascaded, tiled** | `skills/dx-build-pipeline-app.md`, `toolsets/dx-stream-metadata.md` |
-| **Model, download, registry** | `skills/dx-model-management.md`, `toolsets/model-registry.md` |
-| **Validation, testing** | `skills/dx-validate.md`, `instructions/testing-patterns.md` |
+| **Pipeline, detection, classification** | `skills/dx-agentic-stream-build-pipeline.md`, `toolsets/dx-stream-elements.md` |
+| **MQTT, Kafka, message broker** | `skills/dx-agentic-stream-build-mqtt-kafka.md`, `toolsets/dx-stream-elements.md` |
+| **Multi-model, cascaded, tiled** | `skills/dx-agentic-stream-build-pipeline.md`, `toolsets/dx-stream-metadata.md` |
+| **Model, download, registry** | `skills/dx-agentic-stream-model-management.md`, `toolsets/model-registry.md` |
+| **Validation, testing** | `skills/dx-agentic-stream-validate.md`, `instructions/testing-patterns.md` |
 | **Architecture, structure** | `instructions/architecture.md` |
 | **Coding rules, conventions** | `instructions/coding-standards.md` |
 | **GStreamer elements, properties** | `toolsets/dx-stream-elements.md` |
@@ -42,10 +42,10 @@ Based on what the task involves, read **only** the matching rows:
 
 | Command | Description |
 |---------|-------------|
-| `/dx-build-pipeline-app` | Build GStreamer pipeline app (6 categories: single-model, multi-model, cascaded, tiled, parallel, broker) |
-| `/dx-build-mqtt-kafka-app` | Build MQTT/Kafka message broker pipeline app |
-| `/dx-model-management` | Download, register, and configure .dxnn models |
-| `/dx-validate` | Run pipeline validation checks |
+| `/dx-agentic-stream-build-pipeline` | Build GStreamer pipeline app (6 categories: single-model, multi-model, cascaded, tiled, parallel, broker) |
+| `/dx-agentic-stream-build-mqtt-kafka` | Build MQTT/Kafka message broker pipeline app |
+| `/dx-agentic-stream-model-management` | Download, register, and configure .dxnn models |
+| `/dx-agentic-stream-validate` | Run pipeline validation checks |
 | `/dx-brainstorm-and-plan` | Brainstorm and plan before any code generation (process skill) |
 | `/dx-tdd` | Test-driven development — validate each file immediately after creation (process skill) |
 | `/dx-verify-completion` | Verify before claiming completion — evidence before assertions, mandatory artifacts enforcement (process skill) |
@@ -68,10 +68,10 @@ Based on what the task involves, read **only** the matching rows:
     agent-protocols.md                   # 11 inter-agent protocols
     orchestration.md                     # 5-phase pipeline lifecycle
   skills/
-    dx-build-pipeline-app.md             # Full pipeline build skill
-    dx-build-mqtt-kafka-app.md           # Broker integration skill
-    dx-model-management.md               # Model management skill
-    dx-validate.md                       # Pipeline validation skill
+    dx-agentic-stream-build-pipeline.md             # Full pipeline build skill
+    dx-agentic-stream-build-mqtt-kafka.md           # Broker integration skill
+    dx-agentic-stream-model-management.md               # Model management skill
+    dx-agentic-stream-validate.md                       # Pipeline validation skill
     dx-brainstorm-and-plan.md            # Process skill
     dx-tdd.md                            # Process skill
     dx-verify-completion.md              # Process skill

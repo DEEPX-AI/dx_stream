@@ -102,7 +102,7 @@ for the exact prompt template).
 ## Phase 2: Load Context
 
 Read these files before composing:
-1. `.github/skills/dx-build-pipeline-app.md` — Pipeline templates and patterns
+1. `.github/skills/dx-agentic-stream-build-pipeline.md` — Pipeline templates and patterns
 2. `.github/toolsets/dx-stream-elements.md` — Element properties reference
 3. `.github/memory/common_pitfalls.md` — Avoid known issues
 

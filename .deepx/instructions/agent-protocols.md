@@ -3,7 +3,7 @@
 ## Protocol 1: Research Before Building
 
 **Never compose a pipeline without first reading:**
-- `.deepx/skills/dx-build-pipeline-app.md` for templates
+- `.deepx/skills/dx-agentic-stream-build-pipeline.md` for templates
 - `.deepx/toolsets/dx-stream-elements.md` for element properties
 - `.deepx/memory/common_pitfalls.md` for known issues
 
@@ -36,7 +36,7 @@ Before declaring completion:
 
 ## Protocol 5: Skill Document Sufficiency
 
-The skill document (`.deepx/skills/dx-build-pipeline-app.md`) contains complete
+The skill document (`.deepx/skills/dx-agentic-stream-build-pipeline.md`) contains complete
 templates and patterns. Read it FIRST before exploring source code. Only read
 source files if the skill document lacks the specific information needed.
 

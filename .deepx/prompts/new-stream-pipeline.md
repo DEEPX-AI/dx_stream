@@ -14,7 +14,7 @@ Create a dx_stream GStreamer pipeline for **{vision_task}** using **{model_name}
 
 ### 1. Compose Pipeline
 
-Read `.deepx/skills/dx-build-pipeline-app.md` for the pipeline template.
+Read `.deepx/skills/dx-agentic-stream-build-pipeline.md` for the pipeline template.
 Select the pattern matching `{pipeline_type}`.
 
 Compose the gst-launch-1.0 pipeline string with:

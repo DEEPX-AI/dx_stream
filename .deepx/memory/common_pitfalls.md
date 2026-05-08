@@ -228,7 +228,7 @@ because `pydxs` is not on `sys.path`.
    as a prerequisite — this is the #1 reason users cannot run agent-generated
    pipelines.
 
-**Agent responsibility:** The README.md template in `dx-build-pipeline-app.md`
+**Agent responsibility:** The README.md template in `dx-agentic-stream-build-pipeline.md`
 includes the venv activation instructions. Ensure every generated README.md
 follows this template.
 
@@ -258,7 +258,7 @@ with `/path/to/<model>.dxnn` placeholders instead of real relative paths.
    - Video: `../../dx_stream/samples/videos/<video>.mp4` or `../../assets/videos/dogs.mp4`
    - Never use `/path/to/` placeholders
 
-**Prevention**: Use the setup.sh/run.sh templates in `dx-build-pipeline-app.md`.
+**Prevention**: Use the setup.sh/run.sh templates in `dx-agentic-stream-build-pipeline.md`.
 
 ---
 

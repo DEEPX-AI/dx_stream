@@ -19,7 +19,7 @@ expectation first, create the file, then verify it passes — for every single a
 
 ## When to Use
 
-Active during any pipeline build (`/dx-build-pipeline-app`, `/dx-build-mqtt-kafka-app`).
+Active during any pipeline build (`/dx-agentic-stream-build-pipeline`, `/dx-agentic-stream-build-mqtt-kafka`).
 This skill runs alongside the build skill, not instead of it.
 
 ---
