@@ -2,7 +2,7 @@
 
 ## Overview
 
-This guide describes how to use AI-powered agentic development to build GStreamer pipeline applications with **dx_stream** and DEEPX NPU accelerators. Agents handle pipeline construction, model management, and validation so you can go from a natural-language request to a working pipeline script in minutes.
+This guide describes how to use DEEPX agentic development (dx-agentic-dev) to build GStreamer pipeline applications with **dx_stream** and DEEPX NPU accelerators. Agents handle pipeline construction, model management, and validation so you can go from a natural-language request to a working pipeline script in minutes.
 
 ---
 

@@ -12,8 +12,9 @@ python3 .deepx/scripts/validate_app.py dx_stream/pipelines/single_network/object
 # Validate .deepx/ integrity
 python3 .deepx/scripts/validate_framework.py
 
-# Generate platform configs (.github/, .claude/, .cursor/, .vscode/)
-python3 .deepx/scripts/generate_platforms.py --dry-run
+# Generate platform configs (suite-level dx-agentic-gen)
+dx-agentic-gen generate    # single repo
+bash ../../.deepx/tools/scripts/run_all.sh generate    # suite-wide (all 5 repos)
 ```
 
 ## Context Routing Table
@@ -98,12 +99,13 @@ Based on what the task involves, read **only** the matching rows:
   scripts/
     validate_app.py                      # Pipeline app validator (11 checks)
     validate_framework.py                # .deepx/ integrity checker (8 categories)
-    generate_platforms.py                # Platform sync (.github/, .claude/, .cursor/, .vscode/)
   templates/
-    copilot-instructions.md              # GitHub Copilot instructions template
+    en/                                  # English `.tmpl` files (processed by dx-agentic-gen)
+    ko/                                  # Korean `.tmpl` files (processed by dx-agentic-gen)
 ```
 
-**Total: 37 files across 11 categories**
+> Platform file generation is handled by the suite-level **`dx-agentic-gen`** CLI
+> located in the suite-root `tools/` directory (run `dx-agentic-gen --help` for usage).
 
 ## 13 GStreamer Elements
 
@@ -173,8 +175,9 @@ python3 .deepx/scripts/validate_app.py <script.sh> --smoke-test
 # Validate .deepx/ integrity
 python3 .deepx/scripts/validate_framework.py
 
-# Generate platform configs
-python3 .deepx/scripts/generate_platforms.py --platforms github claude cursor vscode
+# Generate platform configs (single repo or suite-wide)
+dx-agentic-gen generate
+bash ../../.deepx/tools/scripts/run_all.sh generate
 ```
 
 ## Memory

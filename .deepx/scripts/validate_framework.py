@@ -77,10 +77,6 @@ REQUIRED_FILES = {
     "scripts": [
         "validate_app.py",
         "validate_framework.py",
-        "generate_platforms.py",
-    ],
-    "templates": [
-        "copilot-instructions.md",
     ],
     ".": [
         "README.md",
