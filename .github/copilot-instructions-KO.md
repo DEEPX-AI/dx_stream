@@ -154,7 +154,7 @@ API accuracy. Please switch to a recommended model.
 **시스템 로컬 시간대**를 사용해야 한다 (UTC 아님). Bash에서는 `$(date +%Y%m%d-%H%M%S)`,
 Python에서는 `datetime.now().strftime('%Y%m%d-%H%M%S')`를 사용한다. `date -u`,
 `datetime.utcnow()`, `datetime.now(timezone.utc)`는 사용하지 않는다.
-- **`<agent>`**: 코딩 에이전트 식별자 — `claude`, `copilot`, `cursor`, `opencode` 중 하나를 사용하세요.
+- **`<agent>`**: 코딩 에이전트 식별자 — `claude`, `codex`, `copilot`, `cursor`, `opencode` 중 하나를 사용하세요.
 
 ## 13개 GStreamer 요소
 

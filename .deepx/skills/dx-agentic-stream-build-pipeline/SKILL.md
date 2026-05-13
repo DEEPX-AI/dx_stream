@@ -50,7 +50,7 @@ dx-agentic-dev/<YYYYMMDD-HHMMSS>_<model>_<pipeline_category>/
 ```
 
 **`session_id` MUST contain the agent identifier (R81).** Format: `YYYYMMDD-HHMMSS_<agent>_<model>_<task>`
-where `<agent>` is one of: `claude`, `copilot`, `cursor`, `opencode`.
+where `<agent>` is one of: `claude`, `codex`, `copilot`, `cursor`, `opencode`.
 
 ```jsonc
 // CORRECT:  "session_id": "20260429-155626_copilot_yolo26n_cascaded"
@@ -837,7 +837,7 @@ Do NOT skip this checklist. Do NOT treat it as optional.
 - [ ] `setup.sh` — environment setup (**MUST** detect/activate venv — see setup.sh template below)
 - [ ] `run.sh` — one-command launcher (**MUST** use real model/video paths — see run.sh template below)
 - [ ] `session.log` — actual command output (captured via tee, NOT a summary)
-- [ ] `session.json session_id` contains agent identifier (`claude`/`copilot`/`cursor`/`opencode`) — R81
+- [ ] `session.json session_id` contains agent identifier (`claude`/`codex`/`copilot`/`cursor`/`opencode`) — R81
 
 ### README.md Required Sections (HARD-GATE)
 
