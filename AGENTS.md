@@ -146,11 +146,12 @@ pytest test/                        # Run unit tests
 All AI-generated code goes to `dx-agentic-dev/<session_id>/` by default.
 Only write to `src/` when explicitly requested by the user.
 
-**Session ID format**: `YYYYMMDD-HHMMSS_<agent>_<model>_<task>` — the timestamp MUST use the
+**Session ID format**: `YYYYMMDD-HHMMSS_<agent>_<coding_model>_<target_model>_<task>` — the timestamp MUST use the
 **system local timezone** (NOT UTC). Use `$(date +%Y%m%d-%H%M%S)` in Bash or
 `datetime.now().strftime('%Y%m%d-%H%M%S')` in Python. Do NOT use `date -u`,
 `datetime.utcnow()`, or `datetime.now(timezone.utc)`.
 - **`<agent>`**: the coding agent identifier — use `claude`, `codex`, `copilot`, `cursor`, or `opencode`.
+- **`<coding_model>`**: shortened coding model name — e.g., `sonnet46`, `opus46`, `gpt53codex`, `gpt55`.
 
 ## Critical Conventions
 

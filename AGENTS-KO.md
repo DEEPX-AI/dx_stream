@@ -144,11 +144,12 @@ pytest test/                        # 단위 테스트 실행
 모든 AI 생성 코드는 기본적으로 `dx-agentic-dev/<session_id>/`에 저장된다.
 사용자가 명시적으로 요청한 경우에만 `src/`에 작성한다.
 
-**Session ID 형식**: `YYYYMMDD-HHMMSS_<agent>_<model>_<task>` — 타임스탬프는 반드시
+**Session ID 형식**: `YYYYMMDD-HHMMSS_<agent>_<coding_model>_<target_model>_<task>` — 타임스탬프는 반드시
 **시스템 로컬 시간대**를 사용해야 한다 (UTC 아님). Bash에서는 `$(date +%Y%m%d-%H%M%S)`,
 Python에서는 `datetime.now().strftime('%Y%m%d-%H%M%S')`를 사용한다. `date -u`,
 `datetime.utcnow()`, `datetime.now(timezone.utc)`는 사용하지 않는다.
 - **`<agent>`**: 코딩 에이전트 식별자 — `claude`, `codex`, `copilot`, `cursor`, `opencode` 중 하나를 사용하세요.
+- **`<coding_model>`**: 코딩 모델 축약명 — 예: `sonnet46`, `opus46`, `gpt53codex`, `gpt55`.
 
 ## 핵심 규칙
 
