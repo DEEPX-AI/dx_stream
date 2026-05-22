@@ -26,6 +26,26 @@ This agent is the entry point for all dx_stream pipeline tasks. It classifies th
 user's request, asks targeted questions, presents a build plan, and hands off to
 the appropriate sub-agent.
 
+## Session-ID Freshness (HARD GATE — READ FIRST)
+
+Each round MUST start with a **fresh** session-id from the system clock.
+Reading prior-round state markers (`.codex_*`, `.cursor_*`, `.current_*`,
+`.active_*`, `.tmp_dx_*`) or re-entering a pre-existing
+`dx-agentic-dev/<sid>/` directory is a HARD GATE violation (CLAUDE.md
+"Previous session reference PROHIBITED").
+
+```bash
+# ✓ Required pattern (per round):
+SESSION_ID="$(date +%Y%m%d-%H%M%S)_<agent>_<coding_model>_<target>_<task>"
+WORK_DIR="dx-agentic-dev/${SESSION_ID}"
+mkdir -p "${WORK_DIR}"
+```
+
+If a prior session-dir exists with similar model/task, **ignore it**. The
+harness re-executes each round end-to-end and the analyzer's
+`test_session_freshness` check fails sessions whose timestamp predates the
+round start.
+
 ## Context Loading (MANDATORY)
 
 Before classifying or routing any task:
