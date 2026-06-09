@@ -1,6 +1,0 @@
----
-description: "Build MQTT/Kafka broker application"
-alwaysApply: false
----
-
-Read and follow the skill documentation at `.deepx/skills/dx-build-mqtt-kafka-app/SKILL.md`.
