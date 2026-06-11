@@ -972,9 +972,9 @@ appears in the log, it confirms the secondary inference stage is correctly confi
 
 #### ⛔ CASCADED HARD GATE — Pre-DONE self-check (R83)
 
-**You MUST run these checks and show the `[MANDATORY-ALL-OK]` line in the conversation before outputting `[DX-AGENTIC-DEV: DONE ...]`. A DONE sentinel emitted without `[MANDATORY-ALL-OK]` evidence is INVALID.**
+**You MUST run these checks and show the `[MANDATORY-ALL-OK]` line in the conversation before outputting `[DX-AGENT-DEV: DONE ...]`. A DONE sentinel emitted without `[MANDATORY-ALL-OK]` evidence is INVALID.**
 
-Before outputting `[DX-AGENTIC-DEV: DONE ...]`, run this compound self-check and paste the output into the conversation. If any check produces `[MANDATORY-FAIL]`, the session is **INCOMPLETE** — do NOT output DONE until the issue is resolved:
+Before outputting `[DX-AGENT-DEV: DONE ...]`, run this compound self-check and paste the output into the conversation. If any check produces `[MANDATORY-FAIL]`, the session is **INCOMPLETE** — do NOT output DONE until the issue is resolved:
 
 ```bash
 # ⛔ CASCADED MANDATORY CHECK — paste output into conversation before DONE (R83)
