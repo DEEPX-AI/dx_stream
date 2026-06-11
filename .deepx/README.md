@@ -1,4 +1,4 @@
-# .deepx/ — dx_stream Agentic Knowledge Base
+# .deepx/ — dx_stream Agent-Driven Knowledge Base
 
 > Self-contained knowledge base for AI-assisted development of dx_stream,
 > a GStreamer-based video analytics framework for DEEPX NPU accelerators.
@@ -12,8 +12,8 @@ python3 .deepx/scripts/validate_app.py dx_stream/pipelines/single_network/object
 # Validate .deepx/ integrity
 python3 .deepx/scripts/validate_framework.py
 
-# Generate platform configs (suite-level dx-agentic-gen)
-dx-agentic-gen generate    # single repo
+# Generate platform configs (suite-level dx-agent-gen)
+dx-agent-gen generate    # single repo
 bash ../../.deepx/tools/scripts/run_all.sh generate    # suite-wide (all 5 repos)
 ```
 
@@ -23,11 +23,11 @@ Based on what the task involves, read **only** the matching rows:
 
 | If the task mentions... | Read these files |
 |---|---|
-| **Pipeline, detection, classification** | `skills/dx-agentic-stream-build-pipeline.md`, `toolsets/dx-stream-elements.md` |
-| **MQTT, Kafka, message broker** | `skills/dx-agentic-stream-build-mqtt-kafka.md`, `toolsets/dx-stream-elements.md` |
-| **Multi-model, cascaded, tiled** | `skills/dx-agentic-stream-build-pipeline.md`, `toolsets/dx-stream-metadata.md` |
-| **Model, download, registry** | `skills/dx-agentic-stream-model-management.md`, `toolsets/model-registry.md` |
-| **Validation, testing** | `skills/dx-agentic-stream-validate.md`, `instructions/testing-patterns.md` |
+| **Pipeline, detection, classification** | `skills/dx-agent-stream-build-pipeline.md`, `toolsets/dx-stream-elements.md` |
+| **MQTT, Kafka, message broker** | `skills/dx-agent-stream-build-mqtt-kafka.md`, `toolsets/dx-stream-elements.md` |
+| **Multi-model, cascaded, tiled** | `skills/dx-agent-stream-build-pipeline.md`, `toolsets/dx-stream-metadata.md` |
+| **Model, download, registry** | `skills/dx-agent-stream-model-management.md`, `toolsets/model-registry.md` |
+| **Validation, testing** | `skills/dx-agent-stream-validate.md`, `instructions/testing-patterns.md` |
 | **Architecture, structure** | `instructions/architecture.md` |
 | **Coding rules, conventions** | `instructions/coding-standards.md` |
 | **GStreamer elements, properties** | `toolsets/dx-stream-elements.md` |
@@ -43,10 +43,10 @@ Based on what the task involves, read **only** the matching rows:
 
 | Command | Description |
 |---------|-------------|
-| `/dx-agentic-stream-build-pipeline` | Build GStreamer pipeline app (6 categories: single-model, multi-model, cascaded, tiled, parallel, broker) |
-| `/dx-agentic-stream-build-mqtt-kafka` | Build MQTT/Kafka message broker pipeline app |
-| `/dx-agentic-stream-model-management` | Download, register, and configure .dxnn models |
-| `/dx-agentic-stream-validate` | Run pipeline validation checks |
+| `/dx-agent-stream-build-pipeline` | Build GStreamer pipeline app (6 categories: single-model, multi-model, cascaded, tiled, parallel, broker) |
+| `/dx-agent-stream-build-mqtt-kafka` | Build MQTT/Kafka message broker pipeline app |
+| `/dx-agent-stream-model-management` | Download, register, and configure .dxnn models |
+| `/dx-agent-stream-validate` | Run pipeline validation checks |
 | `/dx-brainstorm-and-plan` | Brainstorm and plan before any code generation (process skill) |
 | `/dx-tdd` | Test-driven development — validate each file immediately after creation (process skill) |
 | `/dx-verify-completion` | Verify before claiming completion — evidence before assertions, mandatory artifacts enforcement (process skill) |
@@ -69,10 +69,10 @@ Based on what the task involves, read **only** the matching rows:
     agent-protocols.md                   # 11 inter-agent protocols
     orchestration.md                     # 5-phase pipeline lifecycle
   skills/
-    dx-agentic-stream-build-pipeline.md             # Full pipeline build skill
-    dx-agentic-stream-build-mqtt-kafka.md           # Broker integration skill
-    dx-agentic-stream-model-management.md               # Model management skill
-    dx-agentic-stream-validate.md                       # Pipeline validation skill
+    dx-agent-stream-build-pipeline.md             # Full pipeline build skill
+    dx-agent-stream-build-mqtt-kafka.md           # Broker integration skill
+    dx-agent-stream-model-management.md               # Model management skill
+    dx-agent-stream-validate.md                       # Pipeline validation skill
     dx-brainstorm-and-plan.md            # Process skill
     dx-tdd.md                            # Process skill
     dx-verify-completion.md              # Process skill
@@ -100,12 +100,12 @@ Based on what the task involves, read **only** the matching rows:
     validate_app.py                      # Pipeline app validator (11 checks)
     validate_framework.py                # .deepx/ integrity checker (8 categories)
   templates/
-    en/                                  # English `.tmpl` files (processed by dx-agentic-gen)
-    ko/                                  # Korean `.tmpl` files (processed by dx-agentic-gen)
+    en/                                  # English `.tmpl` files (processed by dx-agent-gen)
+    ko/                                  # Korean `.tmpl` files (processed by dx-agent-gen)
 ```
 
-> Platform file generation is handled by the suite-level **`dx-agentic-gen`** CLI
-> located in the suite-root `tools/` directory (run `dx-agentic-gen --help` for usage).
+> Platform file generation is handled by the suite-level **`dx-agent-gen`** CLI
+> located in the suite-root `tools/` directory (run `dx-agent-gen --help` for usage).
 
 ## 13 GStreamer Elements
 
@@ -176,7 +176,7 @@ python3 .deepx/scripts/validate_app.py <script.sh> --smoke-test
 python3 .deepx/scripts/validate_framework.py
 
 # Generate platform configs (single repo or suite-wide)
-dx-agentic-gen generate
+dx-agent-gen generate
 bash ../../.deepx/tools/scripts/run_all.sh generate
 ```
 

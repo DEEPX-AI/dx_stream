@@ -7,7 +7,7 @@ applyTo: "**/pipeline/**,**/pipelines/**,**/*pipeline*.py"
 Working on dx_stream GStreamer pipeline code.
 
 ## Required Context
-- `.deepx/skills/dx-agentic-stream-build-pipeline.md`
+- `.deepx/skills/dx-agent-stream-build-pipeline.md`
 - `.deepx/toolsets/dx-stream-elements.md`
 - `.deepx/memory/common_pitfalls.md`
 

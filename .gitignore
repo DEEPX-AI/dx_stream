@@ -4,7 +4,7 @@ download/
 dx_stream/samples/models
 dx_stream/samples/videos
 
-dx-agentic-dev/
+dx-agent-dev/
 docs/superpowers/
 copilot-session-*.html
 *.pyc

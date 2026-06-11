@@ -1,8 +1,8 @@
-# DX-STREAM Agentic Development Guide
+# DX-STREAM Agent-Driven Development Guide
 
 ## Overview
 
-This guide describes how to use DEEPX agentic development (dx-agentic-dev) to build GStreamer pipeline applications with **dx_stream** and DEEPX NPU accelerators. Agents handle pipeline construction, model management, and validation so you can go from a natural-language request to a working pipeline script in minutes.
+This guide describes how to use DEEPX agent-driven development (dx-agent-dev) to build GStreamer pipeline applications with **dx_stream** and DEEPX NPU accelerators. Agents handle pipeline construction, model management, and validation so you can go from a natural-language request to a working pipeline script in minutes.
 
 ---
 
@@ -51,16 +51,16 @@ User Request
 
 | Skill | Description |
 |-------|-------------|
-| `dx-agentic-stream-build-pipeline` | Build a GStreamer pipeline across 6 categories: single-model, multi-model, cascaded, tiled, parallel, broker |
-| `dx-agentic-stream-build-mqtt-kafka` | Build an MQTT or Kafka message broker pipeline for event publishing |
-| `dx-agentic-stream-model-management` | Download and configure `.dxnn` models for target NPU architecture |
-| `dx-agentic-stream-validate` | Run pipeline validation checks (syntax, properties, element order) |
+| `dx-agent-stream-build-pipeline` | Build a GStreamer pipeline across 6 categories: single-model, multi-model, cascaded, tiled, parallel, broker |
+| `dx-agent-stream-build-mqtt-kafka` | Build an MQTT or Kafka message broker pipeline for event publishing |
+| `dx-agent-stream-model-management` | Download and configure `.dxnn` models for target NPU architecture |
+| `dx-agent-stream-validate` | Run pipeline validation checks (syntax, properties, element order) |
 
 ---
 
 ## Supported AI Tools
 
-dx_stream agentic development works with four AI coding tools. Each auto-loads
+dx_stream agent-driven development works with four AI coding tools. Each auto-loads
 the knowledge base through its own configuration.
 
 | Tool | Config Files | Agents Available |
@@ -68,7 +68,7 @@ the knowledge base through its own configuration.
 | **Claude Code** | `CLAUDE.md` | All 4 agents via context routing |
 | **GitHub Copilot** | `.github/copilot-instructions.md`, 4 agents in `.github/agents/`, 16 skills in `.github/skills/`, 2 instructions in `.github/instructions/` | `@dx-stream-builder`, `@dx-pipeline-builder`, `@dx-model-manager`, `@dx-validator` |
 | **Cursor** | `.cursor/rules/dx-stream.mdc` (always), `dx-model-manager.mdc`, `dx-pipeline-builder.mdc`, `dx-stream-builder.mdc`, `dx-validator.mdc`, `stream-pipelines.mdc`, `tests.mdc`, 16 `skill-*.mdc` files (23 total) | Free-form with auto-applied rules |
-| **OpenCode** | `AGENTS.md`, `opencode.json`, 4 agents in `.opencode/agents/`, 16 skills in `.deepx/skills/` | `@dx-stream-builder` or `/dx-agentic-stream-build-pipeline` |
+| **OpenCode** | `AGENTS.md`, `opencode.json`, 4 agents in `.opencode/agents/`, 16 skills in `.deepx/skills/` | `@dx-stream-builder` or `/dx-agent-stream-build-pipeline` |
 
 ### Copilot File-Specific Instructions
 
@@ -99,10 +99,10 @@ the knowledge base through its own configuration.
 
 | Slash Command | Description |
 |---|---|
-| `/dx-agentic-stream-build-pipeline` | Build a GStreamer pipeline across 6 categories |
-| `/dx-agentic-stream-build-mqtt-kafka` | Build an MQTT/Kafka broker pipeline |
-| `/dx-agentic-stream-model-management` | Download and configure .dxnn models |
-| `/dx-agentic-stream-validate` | Run pipeline validation checks |
+| `/dx-agent-stream-build-pipeline` | Build a GStreamer pipeline across 6 categories |
+| `/dx-agent-stream-build-mqtt-kafka` | Build an MQTT/Kafka broker pipeline |
+| `/dx-agent-stream-model-management` | Download and configure .dxnn models |
+| `/dx-agent-stream-validate` | Run pipeline validation checks |
 
 ### Platform File Loading Reference
 
@@ -131,26 +131,26 @@ Each AI coding agent auto-loads different configuration files at the dx_stream l
 | Skill | File |
 |-------|------|
 | `/dx-swe-brainstorm` | `.deepx/skills/dx-swe-brainstorm/SKILL.md` |
-| `/dx-agentic-stream-build-mqtt-kafka` | `.deepx/skills/dx-agentic-stream-build-mqtt-kafka/SKILL.md` |
-| `/dx-agentic-stream-build-pipeline` | `.deepx/skills/dx-agentic-stream-build-pipeline/SKILL.md` |
+| `/dx-agent-stream-build-mqtt-kafka` | `.deepx/skills/dx-agent-stream-build-mqtt-kafka/SKILL.md` |
+| `/dx-agent-stream-build-pipeline` | `.deepx/skills/dx-agent-stream-build-pipeline/SKILL.md` |
 | `/dx-swe-parallel-agents` | `.deepx/skills/dx-swe-parallel-agents/SKILL.md` |
 | `/dx-swe-executing-plans` | `.deepx/skills/dx-swe-executing-plans/SKILL.md` |
-| `/dx-agentic-stream-model-management` | `.deepx/skills/dx-agentic-stream-model-management/SKILL.md` |
+| `/dx-agent-stream-model-management` | `.deepx/skills/dx-agent-stream-model-management/SKILL.md` |
 | `/dx-swe-receiving-review` | `.deepx/skills/dx-swe-receiving-review/SKILL.md` |
 | `/dx-swe-requesting-review` | `.deepx/skills/dx-swe-requesting-review/SKILL.md` |
 | `/dx-skill-router` | `.deepx/skills/dx-skill-router/SKILL.md` |
 | `/dx-swe-subagent-dev` | `.deepx/skills/dx-swe-subagent-dev/SKILL.md` |
 | `/dx-swe-debugging` | `.deepx/skills/dx-swe-debugging/SKILL.md` |
 | `/dx-swe-tdd` | `.deepx/skills/dx-swe-tdd/SKILL.md` |
-| `/dx-agentic-stream-validate` | `.deepx/skills/dx-validate/SKILL.md` |
+| `/dx-agent-stream-validate` | `.deepx/skills/dx-validate/SKILL.md` |
 | `/dx-swe-verify` | `.deepx/skills/dx-swe-verify/SKILL.md` |
 | `/dx-swe-writing-plans` | `.deepx/skills/dx-swe-writing-plans/SKILL.md` |
 
 #### Shared Knowledge Base (`.deepx/`)
 
-The `.deepx/` directory is the canonical source for all agentic development content.
+The `.deepx/` directory is the canonical source for all agent-driven development content.
 Platform-specific files (`.claude/`, `.github/`, `.cursor/`, `.opencode/`) are generated
-from `.deepx/` by `dx-agentic-gen generate --repo dx-runtime/dx_stream`. Never edit
+from `.deepx/` by `dx-agent-gen generate --repo dx-runtime/dx_stream`. Never edit
 generated files directly — update `.deepx/` and regenerate.
 
 | Directory | Files | Description |
@@ -177,17 +177,17 @@ generated files directly — update `.deepx/` and regenerate.
 
 #### GitHub Copilot Skills (`.github/skills/`)
 
-16 skill directories (inline copies generated by `dx-agentic-gen`), one per skill matching `.deepx/skills/`.
+16 skill directories (inline copies generated by `dx-agent-gen`), one per skill matching `.deepx/skills/`.
 
 ---
 
 ## Generation Pipeline
 
 All platform-specific configuration files are generated from the canonical `.deepx/`
-source by the `dx-agentic-gen` tool:
+source by the `dx-agent-gen` tool:
 
 ```bash
-dx-agentic-gen generate --repo dx-runtime/dx_stream
+dx-agent-gen generate --repo dx-runtime/dx_stream
 ```
 
 This generates:
@@ -213,10 +213,10 @@ This generates:
 
 | Tool | How to Use |
 |---|---|
-| **Claude Code** | Type the prompt directly. `CLAUDE.md` routes to `dx-agentic-stream-build-pipeline` skill. Asks about RTSP URL, display preferences, and tracker type, then generates the pipeline with DxRate → DxPreprocess → DxInfer → DxTracker → DxOsd chain. |
+| **Claude Code** | Type the prompt directly. `CLAUDE.md` routes to `dx-agent-stream-build-pipeline` skill. Asks about RTSP URL, display preferences, and tracker type, then generates the pipeline with DxRate → DxPreprocess → DxInfer → DxTracker → DxOsd chain. |
 | **GitHub Copilot** | `@dx-stream-builder` followed by the prompt. Classifies as "single-model + tracking", hands off to `dx-pipeline-builder`, runs `dx-validator` checks. |
 | **Cursor** | Type the prompt directly. `dx-stream.mdc` (always loaded) provides the 13-element catalog. `stream-pipelines.mdc` activates for pipeline files. |
-| **OpenCode** | `@dx-stream-builder` followed by the prompt, or `/dx-agentic-stream-build-pipeline` skill directly. |
+| **OpenCode** | `@dx-stream-builder` followed by the prompt, or `/dx-agent-stream-build-pipeline` skill directly. |
 
 ### Scenario 2: Build an MQTT Broker Pipeline
 
@@ -228,10 +228,10 @@ This generates:
 
 | Tool | How to Use |
 |---|---|
-| **Claude Code** | Type the prompt directly. Routes to `dx-agentic-stream-build-mqtt-kafka` skill. Generates a pipeline ending with `DxPostprocess ! DxMsgConv ! DxMsgBroker`. |
+| **Claude Code** | Type the prompt directly. Routes to `dx-agent-stream-build-mqtt-kafka` skill. Generates a pipeline ending with `DxPostprocess ! DxMsgConv ! DxMsgBroker`. |
 | **GitHub Copilot** | `@dx-stream-builder` followed by the prompt. |
 | **Cursor** | Type the prompt directly. |
-| **OpenCode** | `@dx-stream-builder` followed by the prompt, or `/dx-agentic-stream-build-mqtt-kafka` skill directly. |
+| **OpenCode** | `@dx-stream-builder` followed by the prompt, or `/dx-agent-stream-build-mqtt-kafka` skill directly. |
 
 ### Scenario 3: Multi-Model Cascaded Pipeline
 
@@ -246,7 +246,7 @@ This generates:
 | **Claude Code** | Type the prompt directly. Generates cascaded pattern: `DxInfer (primary) → DxPostprocess → DxTracker → tee → DxPreprocess(secondary-mode=true) → DxInfer(secondary-mode=true) → DxGather`. |
 | **GitHub Copilot** | `@dx-pipeline-builder` followed by the prompt. |
 | **Cursor** | Type the prompt directly. |
-| **OpenCode** | `@dx-stream-builder` followed by the prompt, or `/dx-agentic-stream-build-pipeline` skill directly. |
+| **OpenCode** | `@dx-stream-builder` followed by the prompt, or `/dx-agent-stream-build-pipeline` skill directly. |
 
 ### Scenario 4: Validate a Pipeline
 
@@ -273,10 +273,10 @@ This generates:
 
 | Tool | How to Use |
 |---|---|
-| **Claude Code** | Type the prompt directly. Routes to `dx-agentic-stream-build-pipeline` with pose estimation model. Generates pipeline with keypoint overlay via `DxOsd`. |
+| **Claude Code** | Type the prompt directly. Routes to `dx-agent-stream-build-pipeline` with pose estimation model. Generates pipeline with keypoint overlay via `DxOsd`. |
 | **GitHub Copilot** | `@dx-stream-builder` followed by the prompt. Classifies as "single-model + pose", hands off to `dx-pipeline-builder`. |
 | **Cursor** | Type the prompt directly. `stream-pipelines.mdc` activates for generated pipeline files. |
-| **OpenCode** | `@dx-stream-builder` followed by the prompt, or `/dx-agentic-stream-build-pipeline` skill directly. |
+| **OpenCode** | `@dx-stream-builder` followed by the prompt, or `/dx-agent-stream-build-pipeline` skill directly. |
 
 ### Scenario 6: Build a Tiled High-Resolution Pipeline
 
@@ -288,10 +288,10 @@ This generates:
 
 | Tool | How to Use |
 |---|---|
-| **Claude Code** | Type the prompt directly. Routes to `dx-agentic-stream-build-pipeline` with tiled category. Generates `DxTile → DxInfer → DxDeTile` pattern for high-resolution input. |
+| **Claude Code** | Type the prompt directly. Routes to `dx-agent-stream-build-pipeline` with tiled category. Generates `DxTile → DxInfer → DxDeTile` pattern for high-resolution input. |
 | **GitHub Copilot** | `@dx-pipeline-builder` followed by the prompt. |
 | **Cursor** | Type the prompt directly. |
-| **OpenCode** | `@dx-stream-builder` followed by the prompt, or `/dx-agentic-stream-build-pipeline` skill directly. |
+| **OpenCode** | `@dx-stream-builder` followed by the prompt, or `/dx-agent-stream-build-pipeline` skill directly. |
 
 ### Scenario 7: Build a Multi-Stream Parallel Pipeline
 
@@ -303,10 +303,10 @@ This generates:
 
 | Tool | How to Use |
 |---|---|
-| **Claude Code** | Type the prompt directly. Routes to `dx-agentic-stream-build-pipeline` with parallel category. Generates `DxInputSelector`+`DxOutputSelector` for shared inference, or independent sub-pipelines per stream. |
+| **Claude Code** | Type the prompt directly. Routes to `dx-agent-stream-build-pipeline` with parallel category. Generates `DxInputSelector`+`DxOutputSelector` for shared inference, or independent sub-pipelines per stream. |
 | **GitHub Copilot** | `@dx-pipeline-builder` followed by the prompt. |
 | **Cursor** | Type the prompt directly. |
-| **OpenCode** | `@dx-stream-builder` followed by the prompt, or `/dx-agentic-stream-build-pipeline` skill directly. |
+| **OpenCode** | `@dx-stream-builder` followed by the prompt, or `/dx-agent-stream-build-pipeline` skill directly. |
 
 ### Scenario 8: Build a Segmentation Pipeline
 
@@ -318,10 +318,10 @@ This generates:
 
 | Tool | How to Use |
 |---|---|
-| **Claude Code** | Type the prompt directly. Routes to `dx-agentic-stream-build-pipeline` with segmentation model. Generates pipeline with per-pixel mask overlay via `DxOsd`. |
+| **Claude Code** | Type the prompt directly. Routes to `dx-agent-stream-build-pipeline` with segmentation model. Generates pipeline with per-pixel mask overlay via `DxOsd`. |
 | **GitHub Copilot** | `@dx-stream-builder` followed by the prompt. Classifies as "single-model + segmentation". |
 | **Cursor** | Type the prompt directly. `stream-pipelines.mdc` activates for generated pipeline files. |
-| **OpenCode** | `@dx-stream-builder` followed by the prompt, or `/dx-agentic-stream-build-pipeline` skill directly. |
+| **OpenCode** | `@dx-stream-builder` followed by the prompt, or `/dx-agent-stream-build-pipeline` skill directly. |
 
 ---
 
@@ -345,13 +345,13 @@ The agent will:
 
 ## What Gets Created
 
-By default, AI-generated pipeline code is placed in the `dx-agentic-dev/` isolation
+By default, AI-generated pipeline code is placed in the `dx-agent-dev/` isolation
 directory to prevent conflicts with existing scripts.
 
-### Default Output (dx-agentic-dev/)
+### Default Output (dx-agent-dev/)
 
 ```
-dx-agentic-dev/<session_id>/
+dx-agent-dev/<session_id>/
 ├── README.md              # Session metadata and run instructions
 ├── session.json           # Machine-readable session config
 └── {pipeline_name}.py     # Generated pipeline script

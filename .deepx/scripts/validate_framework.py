@@ -44,10 +44,10 @@ REQUIRED_FILES = {
         "orchestration.md",
     ],
     "skills": [
-        "dx-agentic-stream-build-pipeline.md",
-        "dx-agentic-stream-build-mqtt-kafka.md",
-        "dx-agentic-stream-model-management.md",
-        "dx-agentic-stream-validate.md",
+        "dx-agent-stream-build-pipeline.md",
+        "dx-agent-stream-build-mqtt-kafka.md",
+        "dx-agent-stream-model-management.md",
+        "dx-agent-stream-validate.md",
     ],
     "toolsets": [
         "dx-stream-elements.md",

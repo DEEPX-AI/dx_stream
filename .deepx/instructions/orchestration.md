@@ -107,18 +107,18 @@ User Request
 
 ## Output Isolation
 
-All AI-generated pipeline applications MUST be created under `dx-agentic-dev/`,
+All AI-generated pipeline applications MUST be created under `dx-agent-dev/`,
 not in production directories. This is a HARD GATE.
 
 ### Rules
 
-1. **Default output**: `dx-agentic-dev/<YYYYMMDD-HHMMSS>_<model>_<category>/`
+1. **Default output**: `dx-agent-dev/<YYYYMMDD-HHMMSS>_<model>_<category>/`
 2. **Session metadata**: Include `session.json` and `README.md` in every session
 3. **Production write**: Only when user EXPLICITLY requests it
 4. **Validation**: `validate_app.py` accepts any directory path
 
 ### Integration with 5-Phase Lifecycle
 
-- **Phase 1 (Discovery)**: Determine output path — default `dx-agentic-dev/`
+- **Phase 1 (Discovery)**: Determine output path — default `dx-agent-dev/`
 - **Phase 3 (Composition)**: Create session directory, write `session.json`
 - **Phase 5 (Delivery)**: Report full path to created session directory

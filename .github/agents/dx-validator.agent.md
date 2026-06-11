@@ -24,7 +24,7 @@ tools:
 
 <!-- AUTO-GENERATED from .deepx/ — DO NOT EDIT DIRECTLY -->
 <!-- Source: .deepx/agents/dx-validator.md -->
-<!-- Run: dx-agentic-gen generate -->
+<!-- Run: dx-agent-gen generate -->
 
 **Response Language**: Match your response language to the user's prompt language — when asking questions or responding, use the same language the user is using. When responding in Korean, keep English technical terms in English. Do NOT transliterate into Korean phonetics (한글 음차 표기 금지). <!-- KOREAN-OK: rule text references the Korean notation term agents must recognize -->
 
@@ -56,7 +56,7 @@ Checks performed:
 - `library-file-path` existence (`.so` file for custom postprocess)
 - GStreamer element registration (`gst-inspect-1.0` probing)
 
-Reference: `.github/skills/dx-agentic-stream-validate.md` for property validation details.
+Reference: `.github/skills/dx-agent-stream-validate.md` for property validation details.
 
 ### Framework Validation
 
@@ -127,7 +127,7 @@ Missing queues cause pipeline deadlocks under load.
 
 ```
 1. .github/memory/common_pitfalls.md    (always)
-2. .github/skills/dx-agentic-stream-validate.md        (validation reference)
+2. .github/skills/dx-agent-stream-validate.md        (validation reference)
 3. .deepx/scripts/validate_app.py      (pipeline validator)
 4. .deepx/scripts/validate_framework.py (framework validator)
 ```

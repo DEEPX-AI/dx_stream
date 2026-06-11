@@ -29,11 +29,11 @@ pytest test/                        # Run unit tests
 
 | Command | Description |
 |---------|-------------|
-| /dx-agentic-stream-build-pipeline | Build GStreamer pipeline app (6 categories: single-model, multi-model, cascaded, tiled, parallel, broker) |
-| /dx-agentic-stream-build-mqtt-kafka | Build MQTT/Kafka message broker pipeline app |
-| /dx-agentic-stream-model-management | Download and configure .dxnn models for pipelines |
-| /dx-agentic-stream-validate | Run pipeline validation checks |
-| /dx-agentic-runtime-validate | Full feedback loop: validate, collect, approve, apply, verify |
+| /dx-agent-stream-build-pipeline | Build GStreamer pipeline app (6 categories: single-model, multi-model, cascaded, tiled, parallel, broker) |
+| /dx-agent-stream-build-mqtt-kafka | Build MQTT/Kafka message broker pipeline app |
+| /dx-agent-stream-model-management | Download and configure .dxnn models for pipelines |
+| /dx-agent-stream-validate | Run pipeline validation checks |
+| /dx-agent-runtime-validate | Full feedback loop: validate, collect, approve, apply, verify |
 | /dx-swe-brainstorm | Brainstorm, propose 2-3 approaches, spec self-review, then plan |
 | /dx-swe-tdd | Validation-driven development with optional Red-Green-Refactor for unit tests |
 | /dx-swe-verify | Process: verify before claiming completion — evidence before assertions |
@@ -57,7 +57,7 @@ pytest test/                        # Run unit tests
 3. **Verify**: Evidence before claims — run validation scripts before declaring success.
 
 ### Output Isolation
-All AI-generated code goes to `dx-agentic-dev/<session_id>/` by default.
+All AI-generated code goes to `dx-agent-dev/<session_id>/` by default.
 Only write to `src/` when explicitly requested by the user.
 
 **Session ID format**: `YYYYMMDD-HHMMSS_<agent>_<coding_model>_<target_model>_<task>` — the timestamp MUST use the
@@ -88,12 +88,12 @@ Only write to `src/` when explicitly requested by the user.
 
 | Task mentions... | Read these files |
 |---|---|
-| **Pipeline, detection, classification** | `.deepx/skills/dx-agentic-stream-build-pipeline.md`, `.deepx/toolsets/dx-stream-elements.md` |
-| **MQTT, Kafka, message broker** | `.deepx/skills/dx-agentic-stream-build-mqtt-kafka.md`, `.deepx/toolsets/dx-stream-elements.md` |
-| **Multi-model, cascaded, tiled** | `.deepx/skills/dx-agentic-stream-build-pipeline.md`, `.deepx/toolsets/dx-stream-metadata.md` |
-| **Model, download** | `.deepx/skills/dx-agentic-stream-model-management.md` |
-| **Validation, testing** | `.deepx/skills/dx-agentic-stream-validate.md`, `.deepx/instructions/testing-patterns.md` |
-| **Validation, feedback, fix** | `.deepx/skills/dx-agentic-stream-validate.md`, parent `dx-runtime/.deepx/skills/dx-agentic-runtime-validate.md` |
+| **Pipeline, detection, classification** | `.deepx/skills/dx-agent-stream-build-pipeline.md`, `.deepx/toolsets/dx-stream-elements.md` |
+| **MQTT, Kafka, message broker** | `.deepx/skills/dx-agent-stream-build-mqtt-kafka.md`, `.deepx/toolsets/dx-stream-elements.md` |
+| **Multi-model, cascaded, tiled** | `.deepx/skills/dx-agent-stream-build-pipeline.md`, `.deepx/toolsets/dx-stream-metadata.md` |
+| **Model, download** | `.deepx/skills/dx-agent-stream-model-management.md` |
+| **Validation, testing** | `.deepx/skills/dx-agent-stream-validate.md`, `.deepx/instructions/testing-patterns.md` |
+| **Validation, feedback, fix** | `.deepx/skills/dx-agent-stream-validate.md`, parent `dx-runtime/.deepx/skills/dx-agent-runtime-validate.md` |
 | **ALWAYS read (every task)** | `.deepx/memory/common_pitfalls.md`, `.deepx/instructions/coding-standards.md` |
 | **Brainstorm, plan, design** | `.deepx/skills/dx-swe-brainstorm.md` |
 | **TDD, validation, incremental** | `.deepx/skills/dx-swe-tdd.md` |

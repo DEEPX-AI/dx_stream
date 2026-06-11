@@ -1,6 +1,0 @@
----
-description: "Pipeline validation for dx_stream"
-alwaysApply: false
----
-
-Read and follow the skill documentation at `.deepx/skills/dx-agentic-stream-validate/SKILL.md`.

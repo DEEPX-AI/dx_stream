@@ -1,7 +1,7 @@
-# .deepx/ — dx_stream Agentic 지식 베이스
+# .deepx/ — dx_stream Agent-Driven 지식 베이스
 
 > DEEPX NPU 가속기를 위한 GStreamer 기반 비디오 분석 프레임워크인 dx_stream의
-> dx-agentic-dev 개발을 위한 자체 완결형 지식 베이스.
+> dx-agent-dev 개발을 위한 자체 완결형 지식 베이스.
 
 ## Quick Start
 
@@ -12,8 +12,8 @@ python3 .deepx/scripts/validate_app.py dx_stream/pipelines/single_network/object
 # .deepx/ 무결성 검증
 python3 .deepx/scripts/validate_framework.py
 
-# 플랫폼 config 생성 (suite-level dx-agentic-gen)
-dx-agentic-gen generate    # 단일 repo
+# 플랫폼 config 생성 (suite-level dx-agent-gen)
+dx-agent-gen generate    # 단일 repo
 bash ../../.deepx/tools/scripts/run_all.sh generate    # suite 전체 (5개 repo 전부)
 ```
 
@@ -23,11 +23,11 @@ bash ../../.deepx/tools/scripts/run_all.sh generate    # suite 전체 (5개 repo
 
 | 작업이 언급하는 경우... | 다음 파일을 읽으십시오 |
 |---|---|
-| **Pipeline, detection, classification** | `skills/dx-agentic-stream-build-pipeline.md`, `toolsets/dx-stream-elements.md` |
-| **MQTT, Kafka, message broker** | `skills/dx-agentic-stream-build-mqtt-kafka.md`, `toolsets/dx-stream-elements.md` |
-| **Multi-model, cascaded, tiled** | `skills/dx-agentic-stream-build-pipeline.md`, `toolsets/dx-stream-metadata.md` |
-| **Model, download, registry** | `skills/dx-agentic-stream-model-management.md`, `toolsets/model-registry.md` |
-| **Validation, testing** | `skills/dx-agentic-stream-validate.md`, `instructions/testing-patterns.md` |
+| **Pipeline, detection, classification** | `skills/dx-agent-stream-build-pipeline.md`, `toolsets/dx-stream-elements.md` |
+| **MQTT, Kafka, message broker** | `skills/dx-agent-stream-build-mqtt-kafka.md`, `toolsets/dx-stream-elements.md` |
+| **Multi-model, cascaded, tiled** | `skills/dx-agent-stream-build-pipeline.md`, `toolsets/dx-stream-metadata.md` |
+| **Model, download, registry** | `skills/dx-agent-stream-model-management.md`, `toolsets/model-registry.md` |
+| **Validation, testing** | `skills/dx-agent-stream-validate.md`, `instructions/testing-patterns.md` |
 | **Architecture, structure** | `instructions/architecture.md` |
 | **Coding rules, conventions** | `instructions/coding-standards.md` |
 | **GStreamer elements, properties** | `toolsets/dx-stream-elements.md` |
@@ -43,10 +43,10 @@ bash ../../.deepx/tools/scripts/run_all.sh generate    # suite 전체 (5개 repo
 
 | Command | 설명 |
 |---------|-------------|
-| `/dx-agentic-stream-build-pipeline` | GStreamer 파이프라인 app 빌드 (6 카테고리: single-model, multi-model, cascaded, tiled, parallel, broker) |
-| `/dx-agentic-stream-build-mqtt-kafka` | MQTT/Kafka 메시지 broker 파이프라인 app 빌드 |
-| `/dx-agentic-stream-model-management` | .dxnn 모델 다운로드, 등록, 설정 |
-| `/dx-agentic-stream-validate` | 파이프라인 검증 체크 실행 |
+| `/dx-agent-stream-build-pipeline` | GStreamer 파이프라인 app 빌드 (6 카테고리: single-model, multi-model, cascaded, tiled, parallel, broker) |
+| `/dx-agent-stream-build-mqtt-kafka` | MQTT/Kafka 메시지 broker 파이프라인 app 빌드 |
+| `/dx-agent-stream-model-management` | .dxnn 모델 다운로드, 등록, 설정 |
+| `/dx-agent-stream-validate` | 파이프라인 검증 체크 실행 |
 | `/dx-brainstorm-and-plan` | 모든 코드 생성 이전에 브레인스토밍 및 계획 수립 (process skill) |
 | `/dx-tdd` | 테스트 주도 개발 — 생성 직후 각 파일 즉시 검증 (process skill) |
 | `/dx-verify-completion` | 완료 주장 전 검증 — 단정 이전에 증거 제시, 필수 산출물 강제 (process skill) |
@@ -69,10 +69,10 @@ bash ../../.deepx/tools/scripts/run_all.sh generate    # suite 전체 (5개 repo
     agent-protocols.md                   # 11개 agent 간 프로토콜
     orchestration.md                     # 5-phase 파이프라인 라이프사이클
   skills/
-    dx-agentic-stream-build-pipeline.md             # 전체 파이프라인 빌드 skill
-    dx-agentic-stream-build-mqtt-kafka.md           # Broker 통합 skill
-    dx-agentic-stream-model-management.md               # 모델 관리 skill
-    dx-agentic-stream-validate.md                       # 파이프라인 검증 skill
+    dx-agent-stream-build-pipeline.md             # 전체 파이프라인 빌드 skill
+    dx-agent-stream-build-mqtt-kafka.md           # Broker 통합 skill
+    dx-agent-stream-model-management.md               # 모델 관리 skill
+    dx-agent-stream-validate.md                       # 파이프라인 검증 skill
     dx-brainstorm-and-plan.md            # Process skill
     dx-tdd.md                            # Process skill
     dx-verify-completion.md              # Process skill
@@ -100,12 +100,12 @@ bash ../../.deepx/tools/scripts/run_all.sh generate    # suite 전체 (5개 repo
     validate_app.py                      # 파이프라인 app 검증기 (11개 체크)
     validate_framework.py                # .deepx/ 무결성 체커 (8 카테고리)
   templates/
-    en/                                  # 영문 `.tmpl` 파일 (dx-agentic-gen 처리)
-    ko/                                  # 한국어 `.tmpl` 파일 (dx-agentic-gen 처리)
+    en/                                  # 영문 `.tmpl` 파일 (dx-agent-gen 처리)
+    ko/                                  # 한국어 `.tmpl` 파일 (dx-agent-gen 처리)
 ```
 
-> 플랫폼 파일 생성은 suite-root `tools/` 디렉토리에 위치한 suite-level **`dx-agentic-gen`** CLI에서
-> 처리됩니다 (사용법은 `dx-agentic-gen --help` 실행).
+> 플랫폼 파일 생성은 suite-root `tools/` 디렉토리에 위치한 suite-level **`dx-agent-gen`** CLI에서
+> 처리됩니다 (사용법은 `dx-agent-gen --help` 실행).
 
 ## 13 GStreamer Elements
 
@@ -176,7 +176,7 @@ python3 .deepx/scripts/validate_app.py <script.sh> --smoke-test
 python3 .deepx/scripts/validate_framework.py
 
 # 플랫폼 config 생성 (단일 repo 또는 suite 전체)
-dx-agentic-gen generate
+dx-agent-gen generate
 bash ../../.deepx/tools/scripts/run_all.sh generate
 ```
 

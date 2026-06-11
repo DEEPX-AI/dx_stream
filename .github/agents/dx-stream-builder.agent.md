@@ -33,7 +33,7 @@ handoffs:
 
 <!-- AUTO-GENERATED from .deepx/ — DO NOT EDIT DIRECTLY -->
 <!-- Source: .deepx/agents/dx-stream-builder.md -->
-<!-- Run: dx-agentic-gen generate -->
+<!-- Run: dx-agent-gen generate -->
 
 **Response Language**: Match your response language to the user's prompt language — when asking questions or responding, use the same language the user is using. When responding in Korean, keep English technical terms in English. Do NOT transliterate into Korean phonetics (한글 음차 표기 금지). <!-- KOREAN-OK: rule text references the Korean notation term agents must recognize -->
 
@@ -48,13 +48,13 @@ the appropriate sub-agent.
 Each round MUST start with a **fresh** session-id from the system clock.
 Reading prior-round state markers (`.codex_*`, `.cursor_*`, `.current_*`,
 `.active_*`, `.tmp_dx_*`) or re-entering a pre-existing
-`dx-agentic-dev/<sid>/` directory is a HARD GATE violation (CLAUDE.md
+`dx-agent-dev/<sid>/` directory is a HARD GATE violation (CLAUDE.md
 "Previous session reference PROHIBITED").
 
 ```bash
 # ✓ Required pattern (per round):
 SESSION_ID="$(date +%Y%m%d-%H%M%S)_<agent>_<coding_model>_<target>_<task>"
-WORK_DIR="dx-agentic-dev/${SESSION_ID}"
+WORK_DIR="dx-agent-dev/${SESSION_ID}"
 mkdir -p "${WORK_DIR}"
 ```
 
@@ -69,7 +69,7 @@ Before classifying or routing any task:
 
 1. Read `.github/copilot-instructions.md` for this level's global context (MANDATORY)
 2. Read `.github/memory/common_pitfalls.md` (always)
-3. Read `.github/skills/dx-agentic-stream-build-pipeline.md` (if building pipeline)
+3. Read `.github/skills/dx-agent-stream-build-pipeline.md` (if building pipeline)
 
 ## Step 0: Prerequisites Check
 
@@ -214,7 +214,7 @@ Output: {display/broker/file}
 ## MANDATORY OUTPUT REQUIREMENTS — READ FIRST
 
 > **BEFORE starting any work**, memorize these required artifacts. Every pipeline
-> building session MUST produce ALL of these files in `dx-agentic-dev/<session_id>/`.
+> building session MUST produce ALL of these files in `dx-agent-dev/<session_id>/`.
 > If ANY are missing when you finish, the session is INCOMPLETE.
 
 | # | Artifact | Required | Purpose |
@@ -245,7 +245,7 @@ Output: {display/broker/file}
 directory and run `./setup.sh` without manually activating any venv first. The script MUST:
 
 1. **Detect the dx_stream venv** by searching upward for `venv-dx_stream/`
-   (typically at `../../../venv-dx_stream/` from `dx-agentic-dev/<session>/`);
+   (typically at `../../../venv-dx_stream/` from `dx-agent-dev/<session>/`);
    also search for `venv-dx-runtime/` as a fallback
 2. **Activate the venv if found** — this is required for `pydxs` and GStreamer bindings
 3. **Fall back to creating a local `.venv/`** if no shared venv is found
@@ -301,7 +301,7 @@ Before presenting the final report to the user, the agent MUST:
 ```
 ## Completion Report: <Model> <Category> Pipeline
 
-**Status**: PASS  |  **Output dir**: dx-agentic-dev/<session_id>/
+**Status**: PASS  |  **Output dir**: dx-agent-dev/<session_id>/
 
 | File | Status |  | File | Status |
 |------|--------|--|------|--------|

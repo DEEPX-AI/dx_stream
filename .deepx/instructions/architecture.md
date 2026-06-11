@@ -157,5 +157,5 @@ dx_stream/
   gst-dxstream-plugin/         # GStreamer element C++ source
   bindings/python/pydxs/       # Python metadata bindings
   test/                        # Test scripts
-  .deepx/                      # Agentic knowledge base (this directory)
+  .deepx/                      # Agent-Driven knowledge base (this directory)
 ```

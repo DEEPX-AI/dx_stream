@@ -134,7 +134,7 @@ Update `run_*.sh` scripts to use task-appropriate default videos.
 
 ---
 
-## 13. [DX_STREAM] dx-agentic-dev Path Resolution Trap
+## 13. [DX_STREAM] dx-agent-dev Path Resolution Trap
 
 **Symptom:** `run_<app>.sh` fails with "No such file or directory" for
 `./setup.sh`, model file, or sample video. The error points to a completely
@@ -142,11 +142,11 @@ wrong parent directory (e.g., `dx-runtime/` instead of `dx_stream/dx_stream/`).
 
 **Cause:** The `SRC_DIR` calculation was copied from production scripts
 (`dx_stream/dx_stream/pipelines/category/task/run_*.sh`) which live 4 levels
-below `dx_stream/dx_stream/`. Agent-generated scripts in `dx-agentic-dev/<session>/`
+below `dx_stream/dx_stream/`. Agent-generated scripts in `dx-agent-dev/<session>/`
 are only 2 levels below `dx_stream/` root — the same dirname-of-dirname-of-dirname
 formula lands at the wrong directory.
 
-**Fix:** In `dx-agentic-dev/` scripts, use explicit path resolution:
+**Fix:** In `dx-agent-dev/` scripts, use explicit path resolution:
 
 ```bash
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -157,7 +157,7 @@ MODEL_PATH="$SRC_DIR/samples/models/$MODEL_NAME"
 (cd "$DX_STREAM_ROOT" && ./setup.sh --model="$MODEL_NAME")
 ```
 
-**Never** copy the production `SRC_DIR=$(dirname "$(dirname "$(dirname "$SCRIPT_DIR")")")` pattern into `dx-agentic-dev/` scripts.
+**Never** copy the production `SRC_DIR=$(dirname "$(dirname "$(dirname "$SCRIPT_DIR")")")` pattern into `dx-agent-dev/` scripts.
 
 ---
 
@@ -228,7 +228,7 @@ because `pydxs` is not on `sys.path`.
    as a prerequisite — this is the #1 reason users cannot run agent-generated
    pipelines.
 
-**Agent responsibility:** The README.md template in `dx-agentic-stream-build-pipeline.md`
+**Agent responsibility:** The README.md template in `dx-agent-stream-build-pipeline.md`
 includes the venv activation instructions. Ensure every generated README.md
 follows this template.
 
@@ -258,7 +258,7 @@ with `/path/to/<model>.dxnn` placeholders instead of real relative paths.
    - Video: `../../dx_stream/samples/videos/<video>.mp4` or `../../assets/videos/dogs.mp4`
    - Never use `/path/to/` placeholders
 
-**Prevention**: Use the setup.sh/run.sh templates in `dx-agentic-stream-build-pipeline.md`.
+**Prevention**: Use the setup.sh/run.sh templates in `dx-agent-stream-build-pipeline.md`.
 
 ---
 

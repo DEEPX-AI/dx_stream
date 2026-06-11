@@ -14,6 +14,6 @@ globs: ["**/pipeline/**", "**/pipelines/**", "**/*pipeline*.py"]
 - DxMsgConv before DxMsgBroker for message publishing
 - Read `.deepx/skills/dx-build-pipeline-app.md` for full patterns
 - **Template Compliance**: Use templates as-is, default single sink. Dual output (tee) allowed with `x264enc tune=zerolatency` (MANDATORY — without it pipeline deadlocks)
-- **Path resolution in dx-agentic-dev**: Use `DX_STREAM_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"`, NOT production 3-level-up pattern
+- **Path resolution in dx-agent-dev**: Use `DX_STREAM_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"`, NOT production 3-level-up pattern
 - **Mandatory deliverables**: Every pipeline build MUST produce `session.json`, `README.md`, `run_<app>.sh`, `pipeline.py`. README.md MUST include venv activation (`source ../../venv-dx_stream/bin/activate`) — `pydxs` is only available inside the venv (pitfall #15)
 - **x264enc universal rule**: Every `x264enc` in any context MUST include `bitrate=4000 speed-preset=ultrafast tune=zerolatency`

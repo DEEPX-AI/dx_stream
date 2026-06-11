@@ -1,6 +1,0 @@
----
-description: "Model management for dx_stream pipelines"
-alwaysApply: false
----
-
-Read and follow the skill documentation at `.deepx/skills/dx-agentic-stream-model-management/SKILL.md`.

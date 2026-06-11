@@ -36,7 +36,7 @@ alwaysApply: true
 - Ask 2-3 questions before building
 - Present plan, get approval
 - Validate after generation
-- Output to `dx-agentic-dev/<session_id>/` by default
+- Output to `dx-agent-dev/<session_id>/` by default
 
 ## Pipeline Template
 ```

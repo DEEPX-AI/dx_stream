@@ -20,12 +20,12 @@
 
 | 작업에서 언급하는 내용... | 읽을 파일 |
 |---|---|
-| **Pipeline, detection, classification** | `.deepx/skills/dx-agentic-stream-build-pipeline.md`, `.deepx/toolsets/dx-stream-elements.md` |
-| **MQTT, Kafka, message broker** | `.deepx/skills/dx-agentic-stream-build-mqtt-kafka.md`, `.deepx/toolsets/dx-stream-elements.md` |
-| **Multi-model, cascaded, tiled** | `.deepx/skills/dx-agentic-stream-build-pipeline.md`, `.deepx/toolsets/dx-stream-metadata.md` |
-| **Model, download** | `.deepx/skills/dx-agentic-stream-model-management.md` |
-| **Validation, testing** | `.deepx/skills/dx-agentic-stream-validate.md`, `.deepx/instructions/testing-patterns.md` |
-| **Validation, feedback, fix** | `.deepx/skills/dx-agentic-stream-validate.md`, parent `dx-runtime/.deepx/skills/dx-agentic-runtime-validate.md` |
+| **Pipeline, detection, classification** | `.deepx/skills/dx-agent-stream-build-pipeline.md`, `.deepx/toolsets/dx-stream-elements.md` |
+| **MQTT, Kafka, message broker** | `.deepx/skills/dx-agent-stream-build-mqtt-kafka.md`, `.deepx/toolsets/dx-stream-elements.md` |
+| **Multi-model, cascaded, tiled** | `.deepx/skills/dx-agent-stream-build-pipeline.md`, `.deepx/toolsets/dx-stream-metadata.md` |
+| **Model, download** | `.deepx/skills/dx-agent-stream-model-management.md` |
+| **Validation, testing** | `.deepx/skills/dx-agent-stream-validate.md`, `.deepx/instructions/testing-patterns.md` |
+| **Validation, feedback, fix** | `.deepx/skills/dx-agent-stream-validate.md`, parent `dx-runtime/.deepx/skills/dx-agent-runtime-validate.md` |
 | **Brainstorm, plan, design** | `.deepx/skills/dx-swe-brainstorm.md` |
 | **TDD, validation, incremental** | `.deepx/skills/dx-swe-tdd.md` |
 | **Completion, verify, evidence** | `.deepx/skills/dx-swe-verify.md` |
@@ -35,11 +35,11 @@
 
 | Skill | 설명 |
 |-------|------|
-| dx-agentic-stream-build-pipeline | GStreamer 파이프라인 빌드 (single, multi, cascaded, tiled, parallel, broker) |
-| dx-agentic-stream-build-mqtt-kafka | MQTT/Kafka message broker 파이프라인 빌드 |
-| dx-agentic-stream-model-management | 파이프라인용 .dxnn 모델 다운로드 및 구성 |
-| dx-agentic-stream-validate | 파이프라인 검증 검사 실행 |
-| dx-agentic-runtime-validate | 전체 피드백 루프: 검증, 수집, 승인, 적용, 확인 |
+| dx-agent-stream-build-pipeline | GStreamer 파이프라인 빌드 (single, multi, cascaded, tiled, parallel, broker) |
+| dx-agent-stream-build-mqtt-kafka | MQTT/Kafka message broker 파이프라인 빌드 |
+| dx-agent-stream-model-management | 파이프라인용 .dxnn 모델 다운로드 및 구성 |
+| dx-agent-stream-validate | 파이프라인 검증 검사 실행 |
+| dx-agent-runtime-validate | 전체 피드백 루프: 검증, 수집, 승인, 적용, 확인 |
 | dx-swe-brainstorm | 브레인스토밍, 2-3가지 접근법 제안, 스펙 자체 검토 후 계획 |
 | dx-swe-tdd | 검증 주도 개발, 선택적 Red-Green-Refactor 단위 테스트 |
 | dx-swe-verify | 프로세스: 완료 선언 전 검증 — 주장 전 증거 |
@@ -63,7 +63,7 @@
 3. 생성 후 각 파일을 검증한다
 
 ### 출력 격리
-모든 AI 생성 코드는 기본적으로 `dx-agentic-dev/<session_id>/`에 저장된다.
+모든 AI 생성 코드는 기본적으로 `dx-agent-dev/<session_id>/`에 저장된다.
 사용자가 명시적으로 요청한 경우에만 `src/`에 작성한다.
 
 **Session ID 형식**: `YYYYMMDD-HHMMSS_<agent>_<coding_model>_<target_model>_<task>` — 타임스탬프는 반드시

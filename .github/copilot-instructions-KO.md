@@ -15,7 +15,7 @@
 
 ## 권장 모델 (사전 비행 점검)
 
-DX Agentic Development는 강력한 instruction following과 knowledge base 활용 능력을
+DX Agent-Driven Development는 강력한 instruction following과 knowledge base 활용 능력을
 요구합니다. 작업을 시작하기 전에 권장 모델 중 하나로 실행 중인지 확인하세요:
 
 - **Claude Sonnet 4.6** 이상
@@ -28,7 +28,7 @@ DX Agentic Development는 강력한 instruction following과 knowledge base 활�
 ══════════════════════════════════════════════════════════════
 ⚠  DX-AGENTIC-DEV: MODEL NOTICE
 
-DX Agentic Development recommends Claude Sonnet 4.6+ or
+DX Agent-Driven Development recommends Claude Sonnet 4.6+ or
 Opus 4.6+. Your current model may produce lower quality
 in instruction following, knowledge base utilization, and
 API accuracy. Please switch to a recommended model.
@@ -104,12 +104,12 @@ API accuracy. Please switch to a recommended model.
 
 | 작업에서 언급하는 내용... | 읽을 파일 |
 |---|---|
-| **Pipeline, detection, classification** | `.deepx/skills/dx-agentic-stream-build-pipeline.md`, `.deepx/toolsets/dx-stream-elements.md` |
-| **MQTT, Kafka, message broker** | `.deepx/skills/dx-agentic-stream-build-mqtt-kafka.md`, `.deepx/toolsets/dx-stream-elements.md` |
-| **Multi-model, cascaded, tiled** | `.deepx/skills/dx-agentic-stream-build-pipeline.md`, `.deepx/toolsets/dx-stream-metadata.md` |
-| **Model, download** | `.deepx/skills/dx-agentic-stream-model-management.md` |
-| **Validation, testing** | `.deepx/skills/dx-agentic-stream-validate.md`, `.deepx/instructions/testing-patterns.md` |
-| **Validation, feedback, fix** | `.deepx/skills/dx-agentic-stream-validate.md`, parent `dx-runtime/.deepx/skills/dx-agentic-runtime-validate.md` |
+| **Pipeline, detection, classification** | `.deepx/skills/dx-agent-stream-build-pipeline.md`, `.deepx/toolsets/dx-stream-elements.md` |
+| **MQTT, Kafka, message broker** | `.deepx/skills/dx-agent-stream-build-mqtt-kafka.md`, `.deepx/toolsets/dx-stream-elements.md` |
+| **Multi-model, cascaded, tiled** | `.deepx/skills/dx-agent-stream-build-pipeline.md`, `.deepx/toolsets/dx-stream-metadata.md` |
+| **Model, download** | `.deepx/skills/dx-agent-stream-model-management.md` |
+| **Validation, testing** | `.deepx/skills/dx-agent-stream-validate.md`, `.deepx/instructions/testing-patterns.md` |
+| **Validation, feedback, fix** | `.deepx/skills/dx-agent-stream-validate.md`, parent `dx-runtime/.deepx/skills/dx-agent-runtime-validate.md` |
 | **Brainstorm, plan, design** | `.deepx/skills/dx-swe-brainstorm.md` |
 | **TDD, validation, incremental** | `.deepx/skills/dx-swe-tdd.md` |
 | **Completion, verify, evidence** | `.deepx/skills/dx-swe-verify.md` |
@@ -119,11 +119,11 @@ API accuracy. Please switch to a recommended model.
 
 | Skill | 설명 |
 |-------|------|
-| dx-agentic-stream-build-pipeline | GStreamer 파이프라인 빌드 (single, multi, cascaded, tiled, parallel, broker) |
-| dx-agentic-stream-build-mqtt-kafka | MQTT/Kafka message broker 파이프라인 빌드 |
-| dx-agentic-stream-model-management | 파이프라인용 .dxnn 모델 다운로드 및 구성 |
-| dx-agentic-stream-validate | 파이프라인 검증 검사 실행 |
-| dx-agentic-runtime-validate | 전체 피드백 루프: 검증, 수집, 승인, 적용, 확인 |
+| dx-agent-stream-build-pipeline | GStreamer 파이프라인 빌드 (single, multi, cascaded, tiled, parallel, broker) |
+| dx-agent-stream-build-mqtt-kafka | MQTT/Kafka message broker 파이프라인 빌드 |
+| dx-agent-stream-model-management | 파이프라인용 .dxnn 모델 다운로드 및 구성 |
+| dx-agent-stream-validate | 파이프라인 검증 검사 실행 |
+| dx-agent-runtime-validate | 전체 피드백 루프: 검증, 수집, 승인, 적용, 확인 |
 | dx-swe-brainstorm | 브레인스토밍, 2-3가지 접근법 제안, 스펙 자체 검토 후 계획 |
 | dx-swe-tdd | 검증 주도 개발, 선택적 Red-Green-Refactor 단위 테스트 |
 | dx-swe-verify | 프로세스: 완료 선언 전 검증 — 주장 전 증거 |
@@ -147,7 +147,7 @@ API accuracy. Please switch to a recommended model.
 3. 생성 후 각 파일을 검증한다
 
 ### 출력 격리
-모든 AI 생성 코드는 기본적으로 `dx-agentic-dev/<session_id>/`에 저장된다.
+모든 AI 생성 코드는 기본적으로 `dx-agent-dev/<session_id>/`에 저장된다.
 사용자가 명시적으로 요청한 경우에만 `src/`에 작성한다.
 
 **Session ID 형식**: `YYYYMMDD-HHMMSS_<agent>_<coding_model>_<target_model>_<task>` — 타임스탬프는 반드시
@@ -279,14 +279,14 @@ superpowers `brainstorming` 스킬 또는 `/dx-swe-brainstorm` 사용 시:
    조용히 따르지 마세요. 위의 "규칙 충돌 해결"을 참조하세요.
 ## 필수 프로세스 스킬 시퀀스 — 모든 코드 생성 (HARD GATE)
 
-이 gate는 `dx-agentic-dev/<session_id>/`에 코드 artifact를 생성하는 모든 세션에
+이 gate는 `dx-agent-dev/<session_id>/`에 코드 artifact를 생성하는 모든 세션에
 적용됩니다. "내부 개발" SWE Process Gates와 독립적입니다 — 내부 개발 gate는
-dx-agentic-dev infrastructure 작업에 적용되고, 이 gate는 user-facing 코드 생성
+dx-agent-dev infrastructure 작업에 적용되고, 이 gate는 user-facing 코드 생성
 (inference app, pipeline, compilation)에 적용됩니다.
 
 ### 적용 시점
 
-`dx-agentic-dev/<session_id>/`에 파일을 생성하는 모든 세션은 아래의 완전한
+`dx-agent-dev/<session_id>/`에 파일을 생성하는 모든 세션은 아래의 완전한
 프로세스 스킬 시퀀스를 반드시 따라야 합니다:
 - ONNX → DXNN compilation session
 - Python/C++ inference app 생성 (dx_app)
@@ -306,10 +306,10 @@ dx-agentic-dev infrastructure 작업에 적용되고, 이 gate는 user-facing �
 | Step | Skill | 요구사항 |
 |------|-------|----------|
 | 1 | `/dx-skill-router` | **항상** — 어떤 action보다 먼저 호출. `skill-router-mandatory` fragment로 이미 강제됨. |
-| 2 | `/dx-agentic-brainstorm` | **모든 non-trivial 코드 생성** — 요구사항 수집, approach 제안, 승인 후 파일 생성. |
+| 2 | `/dx-agent-brainstorm` | **모든 non-trivial 코드 생성** — 요구사항 수집, approach 제안, 승인 후 파일 생성. |
 | 3 | `/dx-swe-writing-plans` | **항상** — 복잡도와 무관하게 모든 코드 생성 세션에서 구조화된 구현 계획 작성 필수. |
-| 4 | `/dx-agentic-tdd` | **항상** — 합격 기준 정의 (Red), artifact 생성 (Green), 즉시 검증 (Verify). |
-| 5 | `/dx-agentic-verify` | **항상** — DONE 선언 전, 동작하는 artifact의 증거 제시 필수. 증거 없는 주장 금지. |
+| 4 | `/dx-agent-tdd` | **항상** — 합격 기준 정의 (Red), artifact 생성 (Green), 즉시 검증 (Verify). |
+| 5 | `/dx-agent-verify` | **항상** — DONE 선언 전, 동작하는 artifact의 증거 제시 필수. 증거 없는 주장 금지. |
 
 ### 시퀀스 강제 규칙
 
@@ -344,15 +344,15 @@ Autopilot 모드 (사용자 부재, `--yolo` 플래그, auto-response):
 Artifact Verification Gate는 각 artifact가 **어떻게** 검증되는지 정의합니다
 (파일 유형별 구체적 command). 함께 작동합니다:
 
-- Step 4 (`/dx-agentic-tdd`)는 Artifact Verification Gate의 검증 command 사용
+- Step 4 (`/dx-agent-tdd`)는 Artifact Verification Gate의 검증 command 사용
   (syntax check, execution test, import resolution).
-- Step 5 (`/dx-agentic-verify`)는 모든 mandatory deliverable이 존재하고
+- Step 5 (`/dx-agent-verify`)는 모든 mandatory deliverable이 존재하고
   Artifact Verification Gate check를 통과하는지 확인.
 
 ### Invoke = 실제 Tool Call
 
 "skill을 호출한다"는 것은 `skill` tool을 호출하여 load하는 것을 의미합니다.
-텍스트에 "dx-agentic-tdd를 사용합니다"라고 쓰는 것은 호출이 **아닙니다** — tool이
+텍스트에 "dx-agent-tdd를 사용합니다"라고 쓰는 것은 호출이 **아닙니다** — tool이
 반드시 호출되어야 합니다. `skill` tool을 호출하지 않았다면 해당 단계는
 미완료입니다.
 
@@ -362,17 +362,17 @@ Artifact Verification Gate는 각 artifact가 **어떻게** 검증되는지 정�
   항상 필요. "간단한" 프로젝트에서 검토되지 않은 가정이 가장 많은 재작업을 유발.
 - `/dx-swe-writing-plans` 이전에 코드 생성 → HARD GATE 위반.
   Plan-before-code는 협상 불가.
-- "artifact-verification-gate가 이미 파일을 확인하니까" `/dx-agentic-verify`
+- "artifact-verification-gate가 이미 파일을 확인하니까" `/dx-agent-verify`
   생략 → 목적이 다름. Artifact gate는 개별 파일 확인. Verify-completion은
   전체 세션 deliverable을 총체적으로 확인.
 - 실행 출력 없이 DONE 선언 → 증거 필수. "검증했다"는 출력 없이는 불가.
 - "사용자가 빨리 하라고 했다" → 사용자 지시가 이 HARD GATE를 override하지 않음.
   속도가 프로세스 생략을 정당화하지 않음.
-- **텍스트 언급 ≠ skill 호출** — 응답 텍스트에 "dx-agentic-tdd를 사용합니다" 또는
-  "dx-agentic-brainstorm을 따릅니다"라고 작성하는 것은 유효한 호출이 아닙니다.
+- **텍스트 언급 ≠ skill 호출** — 응답 텍스트에 "dx-agent-tdd를 사용합니다" 또는
+  "dx-agent-brainstorm을 따릅니다"라고 작성하는 것은 유효한 호출이 아닙니다.
   각 단계마다 `skill` tool이 반드시 호출되어야 합니다.
 - **대화 맥락 ≠ brainstorming** — 이전 메시지에서 요구사항을 논의했다고 해서
-  `/dx-agentic-brainstorm` 호출을 대체할 수 없습니다. 각 기능에는 명시적
+  `/dx-agent-brainstorm` 호출을 대체할 수 없습니다. 각 기능에는 명시적
   사용자 승인이 포함된 정식 brainstorm이 필요합니다.
 
 
@@ -391,7 +391,7 @@ Artifact Verification Gate는 각 artifact가 **어떻게** 검증되는지 정�
    모든 필수 게이트가 여전히 적용됩니다: brainstorming spec, 계획, TDD, 필수 산출물,
    실행 검증, 자체 검증 확인.
    **SWE Process Gates의 필수 Skill 시퀀스도 포함됩니다** — autopilot에서도
-   `/dx-skill-router` → `/dx-agentic-brainstorm` → `/dx-agentic-tdd`를 interactive mode와
+   `/dx-skill-router` → `/dx-agent-brainstorm` → `/dx-agent-tdd`를 interactive mode와
    동일하게 따라야 합니다. Autopilot mode는 이 시퀀스를 면제하지 않습니다.
 2. **`ask_user`를 호출하지 마세요** — knowledge base 기본값과 문서화된 모범 사례를
    사용하여 결정하세요. autopilot에서 `ask_user`를 호출하면 한 턴을 낭비하며
@@ -501,7 +501,7 @@ Artifact Verification Gate는 각 artifact가 **어떻게** 검증되는지 정�
 
 - **응답의 첫 번째 줄**: `[DX-AGENTIC-DEV: START]`
 - **모든 작업 완료 후 마지막 줄**: `[DX-AGENTIC-DEV: DONE (output-dir: <relative_path>)]`
-  여기서 `<relative_path>`는 세션 출력 디렉토리입니다 (예: `dx-agentic-dev/20260409-143022_yolo26n_detection/`)
+  여기서 `<relative_path>`는 세션 출력 디렉토리입니다 (예: `dx-agent-dev/20260409-143022_yolo26n_detection/`)
 
 ### DEEPX 배너 (MANDATORY — 센티넬과 함께 출력)
 
@@ -540,7 +540,7 @@ DONE은 맨 마지막 줄 유지).
    **Cross-project 태스크** (예: compile + app 생성)의 경우, 모든 output directory를
    ` + ` 구분자로 나열하세요:
    ```
-   [DX-AGENTIC-DEV: DONE (output-dir: dx-compiler/dx-agentic-dev/20260409-143022_copilot_yolo26n_compile/ + dx-runtime/dx_app/dx-agentic-dev/20260409-143022_copilot_yolo26n_inference/)]
+   [DX-AGENTIC-DEV: DONE (output-dir: dx-compiler/dx-agent-dev/20260409-143022_copilot_yolo26n_compile/ + dx-runtime/dx_app/dx-agent-dev/20260409-143022_copilot_yolo26n_inference/)]
    ```
 6. **계획 산출물만 생성한 후에는 절대 DONE을 출력하지 마세요** (spec, plan, 설계
    문서). DONE은 모든 산출물이 생성되었음을 의미합니다 — 구현 코드, 스크립트,
@@ -632,12 +632,12 @@ fragments 포함) — 작업 완료 선언 전에 다음 루프를 **반드시**
 
 1. **Generator 실행** — `.deepx/` 변경을 모든 플랫폼으로 전파:
    ```bash
-   dx-agentic-gen generate
+   dx-agent-gen generate
    # Suite 전체: bash .deepx/tools/scripts/run_all.sh generate
    ```
 2. **Drift 검증** — 생성물과 commit 상태 일치 확인:
    ```bash
-   dx-agentic-gen check
+   dx-agent-gen check
    ```
    drift 발견 시 1단계로 복귀.
 3. **자동화 테스트 루프** — 테스트는 generator 출력이 정책을 만족하는지 검증:
@@ -665,7 +665,7 @@ fragments 포함) — 작업 완료 선언 전에 다음 루프를 **반드시**
 **모든 파일 편집 전 다음 세 가지 질문에 순서대로 답하세요:**
 
 > **Q1. 파일 경로가 `**/.deepx/**` 내부에 있나요?**
-> - YES → **Canonical source.** 직접 수정 후 `dx-agentic-gen generate` + `check` 실행.
+> - YES → **Canonical source.** 직접 수정 후 `dx-agent-gen generate` + `check` 실행.
 > - NO → Q2로 이동.
 >
 > **Q2. 파일 경로 또는 이름이 다음 중 하나와 일치하나요?**
@@ -677,12 +677,12 @@ fragments 포함) — 작업 완료 선언 전에 다음 루프를 **반드시**
 > ```
 > - YES → **Generator output. 직접 수정 금지.**
 >   `.deepx/` source(template, fragment, 또는 agent/skill)를 찾아 수정한 후
->   `dx-agentic-gen generate`를 실행하세요.
+>   `dx-agent-gen generate`를 실행하세요.
 > - NO → Q3으로 이동.
 >
 > **Q3. 파일이 `<!-- AUTO-GENERATED`로 시작하나요?**
 > - YES → **Generator output. 직접 수정 금지.** Q2와 동일.
-> - NO → **Independent source.** 직접 수정 가능. 수정 후 `dx-agentic-gen check`를 한 번 실행.
+> - NO → **Independent source.** 직접 수정 가능. 수정 후 `dx-agent-gen check`를 한 번 실행.
 
 1. **Canonical source** (`**/.deepx/**/*.md`) — 직접 수정 후 위의 Verification
    Loop을 실행합니다.
@@ -691,14 +691,14 @@ fragments 포함) — 작업 완료 선언 전에 다음 루프를 **반드시**
    `copilot-instructions.md`, `.github/agents/`, `.github/skills/`,
    `.claude/agents/`, `.claude/skills/`, `.opencode/agents/`, `.cursor/rules/`
    → **직접 수정 금지.** `.deepx/` source(template, fragment, 또는
-   agent/skill)를 찾아 수정한 후 `dx-agentic-gen generate`를 실행하세요.
+   agent/skill)를 찾아 수정한 후 `dx-agent-gen generate`를 실행하세요.
 3. **독립 소스** — 위 두 카테고리에 해당하지 않는 모든 파일 (`docs/source/`,
    `source/docs/`, `tests/`, 서브 프로젝트의 `README.md` 등)
-   → 직접 수정 가능. 수정 후 `dx-agentic-gen check`를 한 번 실행하여 예상치
+   → 직접 수정 가능. 수정 후 `dx-agent-gen check`를 한 번 실행하여 예상치
    못한 drift가 없는지 확인하세요.
 
 **Anti-pattern**: 분류 없이 바로 파일을 수정하는 것. 해당 파일이 generator
-output인지 확실하지 않으면, 수정 전후에 `dx-agentic-gen check`를 실행하세요
+output인지 확실하지 않으면, 수정 전후에 `dx-agent-gen check`를 실행하세요
 — check가 수정 내용을 덮어쓰면 해당 파일은 generator가 관리하는 파일이므로
 `.deepx/` source를 통해 수정해야 합니다.
 
@@ -710,7 +710,7 @@ Pre-commit hook이 generator output 무결성을 강제합니다: 생성된 파�
 
 > **KO 대응 파일 규칙**: EN fragment를 편집할 때, KO 대응 파일도 업데이트가
 > 필요한지 확인하세요. 단락 1개 이상을 추가하거나 제거했다면, 커밋 전에
-> `.deepx/templates/fragments/ko/<stem>.md`를 업데이트하세요. `dx-agentic-gen lint`를
+> `.deepx/templates/fragments/ko/<stem>.md`를 업데이트하세요. `dx-agent-gen lint`를
 > 실행하여 `[OK]`를 확인하세요 — EN이 KO보다 10줄 이상 많으면 lint가 ERROR를
 > 반환합니다.
 
