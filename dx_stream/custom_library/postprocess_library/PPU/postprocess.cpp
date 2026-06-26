@@ -250,7 +250,7 @@ std::vector<BoundingBox> decode_face(const dxs::DXTensor& output, const YoloConf
     return boxes;
 }
 
-extern "C" void YOLOV5S_PPU(GstBuffer* buf,
+DX_CUSTOM_EXPORT void YOLOV5S_PPU(GstBuffer* buf,
                             std::vector<dxs::DXTensor> network_output,
                             DXFrameMeta* frame_meta,
                             DXObjectMeta* object_meta) {
@@ -309,7 +309,7 @@ extern "C" void YOLOV5S_PPU(GstBuffer* buf,
 }
 
 
-extern "C" void YOLOV5Pose_PPU(GstBuffer* buf,
+DX_CUSTOM_EXPORT void YOLOV5Pose_PPU(GstBuffer* buf,
                                std::vector<dxs::DXTensor> network_output,
                                DXFrameMeta* frame_meta,
                                DXObjectMeta* object_meta) {
@@ -398,7 +398,7 @@ extern "C" void YOLOV5Pose_PPU(GstBuffer* buf,
     }
 }
 
-extern "C" void SCRFD500M_PPU(GstBuffer* buf,
+DX_CUSTOM_EXPORT void SCRFD500M_PPU(GstBuffer* buf,
                               std::vector<dxs::DXTensor> network_output,
                               DXFrameMeta* frame_meta,
                               DXObjectMeta* object_meta) {
@@ -486,7 +486,7 @@ extern "C" void SCRFD500M_PPU(GstBuffer* buf,
     }
 }
 
-extern "C" void SCRFD500M_PPU_SECOND(GstBuffer* buf,
+DX_CUSTOM_EXPORT void SCRFD500M_PPU_SECOND(GstBuffer* buf,
                                      std::vector<dxs::DXTensor> network_output,
                                      DXFrameMeta* frame_meta,
                                      DXObjectMeta* object_meta) {

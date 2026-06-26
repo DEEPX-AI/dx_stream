@@ -5,7 +5,7 @@
 
 #define MAX_EXPECTED_JSON_SIZE ((size_t)(10 * 1024 * 1024))
 
-extern "C" DxMsgContext *dxmsg_create_context() {
+DX_CUSTOM_EXPORT DxMsgContext *dxmsg_create_context() {
     auto *context = g_new0(DxMsgContext, 1);
 
     context->_priv_data = (void *)dxcontext_create_contextPriv();
@@ -13,14 +13,14 @@ extern "C" DxMsgContext *dxmsg_create_context() {
     return context;
 }
 
-extern "C" void dxmsg_delete_context(DxMsgContext *context) {
+DX_CUSTOM_EXPORT void dxmsg_delete_context(DxMsgContext *context) {
     g_return_if_fail(context != nullptr);
 
     dxcontext_delete_contextPriv((DxMsgContextPriv *)context->_priv_data);
     g_free(context);
 }
 
-extern "C" DxMsgPayload *dxmsg_convert_payload(DxMsgContext *context,
+DX_CUSTOM_EXPORT DxMsgPayload *dxmsg_convert_payload(DxMsgContext *context,
                                                GstDxMsgMetaInfo *meta_info) {
     auto *payload = g_new0(DxMsgPayload, 1);
     if (!payload) {

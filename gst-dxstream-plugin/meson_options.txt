@@ -1,1 +1,2 @@
 option('v3_flag', type: 'boolean', value: false, description: 'Enable V3 mode')
+option('dxvnpu_flag', type: 'boolean', value: false, description: 'Enable DXVNPU elements (requires dxvnpu library)')

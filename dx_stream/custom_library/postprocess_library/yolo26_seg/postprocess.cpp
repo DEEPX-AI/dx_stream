@@ -250,7 +250,7 @@ static std::pair<const float*, std::pair<int,int>> find_proto(const std::vector<
     return {nullptr, {0, 0}};
 }
 
-extern "C" void PostProcess(GstBuffer* buf,
+DX_CUSTOM_EXPORT void PostProcess(GstBuffer* buf,
                             std::vector<dxs::DXTensor> network_output,
                             DXFrameMeta* frame_meta,
                             DXObjectMeta* object_meta) {

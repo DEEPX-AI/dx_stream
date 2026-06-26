@@ -4,6 +4,21 @@ SCRIPT_DIR=$(realpath "$(dirname "$0")")
 PROJECT_ROOT=$(realpath -s "${SCRIPT_DIR}")
 VENV_PATH=${PROJECT_ROOT}/venv-dx_stream
 
+# Fix builddir ownership if it contains root-owned files (left over from previous sudo build)
+fix_builddir_ownership() {
+    local dir="$1"
+    if [ -d "$dir" ] && [ "$(id -u)" -ne 0 ] && [ -n "$(find "$dir" -maxdepth 1 -user root 2>/dev/null | head -1)" ]; then
+        echo "⚠ Warning: '$dir' contains root-owned files (from a previous sudo build)."
+        echo "  Fixing ownership automatically..."
+        sudo chown -R "$(id -u):$(id -g)" "$dir"
+        if [ $? -ne 0 ]; then
+            echo "❌ Error: Failed to fix ownership of '$dir'."
+            exit 1
+        fi
+        echo "✓ Ownership fixed."
+    fi
+}
+
 # Set default PREFIX (can be overridden with --prefix option)
 PREFIX="/usr/local"
 
@@ -17,11 +32,13 @@ BUILD_TYPE="release"
 TYPE_ARG=""
 SONAR_MODE_ARG=""
 V3_MODE=""
+DXVNPU_MODE=""
 CLEAN_MODE=""
 UNINSTALL_MODE=""
+PLUGIN_ONLY=""
 
 show_help() {
-  echo "Usage: $(basename "$0") [--prefix=PATH] [--clean] [--v3] [--type=TYPE] [--sonar] [--uninstall] [--help]"
+  echo "Usage: $(basename "$0") [--prefix=PATH] [--clean] [--v3] [--dxvnpu] [--type=TYPE] [--sonar] [--plugin-only] [--uninstall] [--help]"
   echo "Example 1: $0"
   echo "Example 2: $0 --prefix=/opt/dx-stream"
   echo "Example 3: $0 --clean"
@@ -31,6 +48,7 @@ show_help() {
   echo "Example 7: $0 --sonar"
   echo "Example 8: $0 --uninstall"
   echo "Example 9: $0 --uninstall --prefix=./install"
+  echo "Example 10: $0 --plugin-only"
   echo "Options:"
   echo "  [--prefix=PATH] Set installation prefix (default: /usr/local)"
   echo "                  Plugin will be installed to PREFIX/lib/ARCH/gstreamer-1.0/"
@@ -38,6 +56,8 @@ show_help() {
   echo "                  Apps to PREFIX/share/gstdxstream/bin/"
   echo "  [--clean]       Remove previous build files before building & installing"
   echo "  [--v3]          Build for DEEPX V3 Standalone Device (skip Host installation)."
+  echo "  [--dxvnpu]      Enable DXVNPU elements (VNPU decoder, encoder, pipeline, overlay)."
+  echo "  [--plugin-only] Build only the GStreamer plugin (skip custom libs/apps/pydxs)."
   echo "  [--uninstall]   Remove installed files (use --prefix if installed to custom location)."
   echo "  [--type=TYPE]   Set build type: Debug/debug or Release/release (default: release)"
   echo "  [--sonar]       Build for SonarQube analysis (includes coverage)"
@@ -64,17 +84,18 @@ clean() {
         echo "Cleaning build directories..."
         if [ -d "${PROJECT_ROOT}/gst-dxstream-plugin/${BUILD_DIR}" ]; then
             echo "Removing build directory: ${PROJECT_ROOT}/gst-dxstream-plugin/${BUILD_DIR}"
-            rm -rf "${PROJECT_ROOT}/gst-dxstream-plugin/${BUILD_DIR}"
+            # sudo required: meson install runs as root and creates root-owned files in builddir
+            sudo rm -rf "${PROJECT_ROOT}/gst-dxstream-plugin/${BUILD_DIR}"
         else
             echo "Warn: Build directory ${PROJECT_ROOT}/gst-dxstream-plugin/${BUILD_DIR} not found. So, skip to remove directory."
         fi
         
         # Clean pydxs build cache
         echo "Cleaning pydxs build cache..."
-        rm -rf "${PROJECT_ROOT}/bindings/python/pydxs/build"
+        sudo rm -rf "${PROJECT_ROOT}/bindings/python/pydxs/build"
         rm -rf "${PROJECT_ROOT}/bindings/python/pydxs/_skbuild"
         rm -rf "${PROJECT_ROOT}/bindings/python/pydxs/dist"
-        rm -rf "${PROJECT_ROOT}/bindings/python/pydxs"/*.egg-info
+        rm -rf "${PROJECT_ROOT}/bindings/python/pydxs/src/pydxs.egg-info"
         
         return 0
     fi
@@ -123,7 +144,8 @@ clean() {
 
     if [ -d "${PROJECT_ROOT}/gst-dxstream-plugin/${BUILD_DIR}" ]; then
         echo "Removing build directory: ${PROJECT_ROOT}/gst-dxstream-plugin/${BUILD_DIR}"
-        rm -rf "${PROJECT_ROOT}/gst-dxstream-plugin/${BUILD_DIR}"
+        # sudo required: meson install runs as root and creates root-owned files in builddir
+        sudo rm -rf "${PROJECT_ROOT}/gst-dxstream-plugin/${BUILD_DIR}"
     else
         echo "Warn: Build directory ${PROJECT_ROOT}/gst-dxstream-plugin/${BUILD_DIR} not found. So, skip to remove directory."
     fi
@@ -133,10 +155,10 @@ clean() {
 
     # Clean pydxs build cache
     echo "Cleaning pydxs build cache..."
-    rm -rf "${PROJECT_ROOT}/bindings/python/pydxs/build"
+    sudo rm -rf "${PROJECT_ROOT}/bindings/python/pydxs/build"
     rm -rf "${PROJECT_ROOT}/bindings/python/pydxs/_skbuild"
     rm -rf "${PROJECT_ROOT}/bindings/python/pydxs/dist"
-    rm -rf "${PROJECT_ROOT}/bindings/python/pydxs"/*.egg-info
+    rm -rf "${PROJECT_ROOT}/bindings/python/pydxs/src/pydxs.egg-info"
 
     # uninstall custom libraries
     cd $WRC/dx_stream/custom_library
@@ -234,6 +256,13 @@ build() {
         echo "Building in V3 mode..."
     fi
 
+    # Set DXVNPU option
+    DXVNPU_OPTION=""
+    if [ "$DXVNPU_MODE" == "--dxvnpu" ]; then
+        DXVNPU_OPTION="-Ddxvnpu_flag=true"
+        echo "Building with DXVNPU elements..."
+    fi
+
     # Set coverage option
     COVERAGE_OPTION=""
     if [ "$SONAR_MODE_ARG" == "--sonar" ]; then
@@ -245,7 +274,8 @@ build() {
     echo "Starting build process... build_type(${BUILD_TYPE})"
     echo "  PREFIX: ${PREFIX}"
     cd gst-dxstream-plugin
-    meson setup ${BUILD_DIR} --prefix=${PREFIX} --buildtype=${BUILD_TYPE} ${V3_OPTION} ${COVERAGE_OPTION}
+    fix_builddir_ownership "${BUILD_DIR}"
+    meson setup ${BUILD_DIR} --prefix=${PREFIX} --buildtype=${BUILD_TYPE} ${V3_OPTION} ${DXVNPU_OPTION} ${COVERAGE_OPTION}
     if [ $? -ne 0 ]; then
         echo -e "Error: meson setup failed"
         exit 1
@@ -291,6 +321,17 @@ build() {
     # Automatically configure environment variables in bashrc
     setup_bashrc_env "$PREFIX" "$ACTUAL_LIBDIR"
     local bashrc_result=$?
+
+    # If --plugin-only, skip custom libraries, apps, and pydxs
+    if [ "$PLUGIN_ONLY" == "--plugin-only" ]; then
+        echo ""
+        echo "=========================================="
+        echo "✅ Plugin-only build complete!"
+        echo "=========================================="
+        echo "📦 Installed to: ${PREFIX}"
+        echo ""
+        return 0
+    fi
 
     # Build DX-Stream custom libraries
     cd $WRC/dx_stream/custom_library
@@ -514,6 +555,10 @@ install_pydxs() {
     # Install pydxs
     cd "${PROJECT_ROOT}/bindings/python/pydxs"
     echo "→ Installing pydxs..."
+
+    # Fix root-owned egg-info left over from previous sudo builds
+    fix_builddir_ownership "${PROJECT_ROOT}/bindings/python/pydxs/src/pydxs.egg-info"
+    fix_builddir_ownership "${PROJECT_ROOT}/bindings/python/pydxs/build"
     
     export PROJECT_ROOT="${PROJECT_ROOT}"
     
@@ -591,6 +636,12 @@ for i in "$@"; do
             ;;
         --v3)
             V3_MODE="--v3"
+            ;;
+        --dxvnpu)
+            DXVNPU_MODE="--dxvnpu"
+            ;;
+        --plugin-only)
+            PLUGIN_ONLY="--plugin-only"
             ;;
         --help)
             show_help

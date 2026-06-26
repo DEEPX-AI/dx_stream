@@ -1,9 +1,11 @@
 #include "gst-dxscale.hpp"
-#include "gst_frame_desc.hpp"
-#include "video_transform_factory.hpp"
+#include "transforms/gst_frame_desc.hpp"
+#include "transforms/transform_kernel_pool.hpp"
+#include "../metadata/gst-dxframemeta.hpp"
 #include <gst/video/video.h>
 #include <algorithm>
 #include <array>
+#include <new>
 
 GST_DEBUG_CATEGORY_STATIC(gst_dxscale_debug_category);
 #define GST_CAT_DEFAULT gst_dxscale_debug_category
@@ -27,6 +29,7 @@ static void gst_dxscale_get_property(GObject *object, guint property_id,
 static void gst_dxscale_finalize(GObject *object);
 static gboolean gst_dxscale_start(GstBaseTransform *trans);
 static gboolean gst_dxscale_stop(GstBaseTransform *trans);
+static gboolean gst_dxscale_sink_event(GstBaseTransform *trans, GstEvent *event);
 static gboolean gst_dxscale_set_caps(GstBaseTransform *trans,
                                      GstCaps *incaps, GstCaps *outcaps);
 static GstCaps *gst_dxscale_transform_caps(GstBaseTransform *trans,
@@ -38,6 +41,12 @@ static gboolean gst_dxscale_transform_size(GstBaseTransform *trans,
                                            GstCaps *othercaps, gsize *othersize);
 static GstFlowReturn gst_dxscale_transform(GstBaseTransform *trans,
                                            GstBuffer *inbuf, GstBuffer *outbuf);
+static gboolean gst_dxscale_propose_allocation(GstBaseTransform *trans,
+                                               GstQuery *decide_query,
+                                               GstQuery *query);
+static gboolean gst_dxscale_query(GstBaseTransform *trans,
+                                  GstPadDirection direction,
+                                  GstQuery *query);
 
 // ---------------------------------------------------------------------------
 // GObject / GstElement boilerplate
@@ -47,16 +56,6 @@ G_DEFINE_TYPE_WITH_CODE(
     GST_DEBUG_CATEGORY_INIT(gst_dxscale_debug_category, "dxscale", 0,
                             "debug category for dxscale element"))
 
-// GstVideoFormat → dxt::VideoFormat
-static dxt::VideoFormat gst_to_dxt_format(GstVideoFormat fmt) {
-    switch (fmt) {
-        case GST_VIDEO_FORMAT_I420: return dxt::VideoFormat::I420;
-        case GST_VIDEO_FORMAT_NV12: return dxt::VideoFormat::NV12;
-        case GST_VIDEO_FORMAT_RGB:  return dxt::VideoFormat::RGB;
-        case GST_VIDEO_FORMAT_BGR:  return dxt::VideoFormat::BGR;
-        default: return dxt::VideoFormat::RGB;
-    }
-}
 
 // ---------------------------------------------------------------------------
 // class_init
@@ -102,7 +101,7 @@ static void gst_dxscale_class_init(GstDxScaleClass *klass) {
     gst_element_class_set_static_metadata(
         element_class, "DXScale", "Filter/Converter/Video/Scaler",
         "Hardware-accelerated video scaler using VideoTransformKernel",
-        "DeepX AI <support@deepx.ai>");
+        "Sangil Jo <sijo@deepx.ai>");
 
     base_transform_class->start =
         GST_DEBUG_FUNCPTR(gst_dxscale_start);
@@ -116,24 +115,30 @@ static void gst_dxscale_class_init(GstDxScaleClass *klass) {
         GST_DEBUG_FUNCPTR(gst_dxscale_transform_size);
     base_transform_class->transform =
         GST_DEBUG_FUNCPTR(gst_dxscale_transform);
+    base_transform_class->sink_event =
+        GST_DEBUG_FUNCPTR(gst_dxscale_sink_event);
+    base_transform_class->propose_allocation =
+        GST_DEBUG_FUNCPTR(gst_dxscale_propose_allocation);
+    base_transform_class->query = GST_DEBUG_FUNCPTR(gst_dxscale_query);
 }
 
 // ---------------------------------------------------------------------------
 // init / finalize
 // ---------------------------------------------------------------------------
 static void gst_dxscale_init(GstDxScale *self) {
-    self->_kernel     = nullptr;
     self->_width      = 0;
     self->_height     = 0;
     self->_negotiated = FALSE;
     gst_video_info_init(&self->_input_info);
     gst_video_info_init(&self->_output_info);
+    // GObject zero-fills instance memory but does not call C++ constructors.
+    // MSVC std::unique_ptr requires proper construction.
+    new (&self->_kernel_pool) std::unique_ptr<dxt::TransformKernelPool>();
 }
 
 static void gst_dxscale_finalize(GObject *object) {
     auto *self = GST_DXSCALE(object);
-    delete self->_kernel;
-    self->_kernel = nullptr;
+    self->_kernel_pool.~unique_ptr();
     G_OBJECT_CLASS(gst_dxscale_parent_class)->finalize(object);
 }
 
@@ -146,9 +151,11 @@ static void gst_dxscale_set_property(GObject *object, guint property_id,
     switch (property_id) {
         case static_cast<guint>(PropertyID::PROP_WIDTH):
             self->_width = g_value_get_uint(value);
+            gst_base_transform_reconfigure_src(GST_BASE_TRANSFORM(self));
             break;
         case static_cast<guint>(PropertyID::PROP_HEIGHT):
             self->_height = g_value_get_uint(value);
+            gst_base_transform_reconfigure_src(GST_BASE_TRANSFORM(self));
             break;
         default:
             G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
@@ -183,10 +190,17 @@ static gboolean gst_dxscale_start(GstBaseTransform *trans) {
 
 static gboolean gst_dxscale_stop(GstBaseTransform *trans) {
     auto *self = GST_DXSCALE(trans);
+    GST_DEBUG_OBJECT(self, "stop");
     self->_negotiated = FALSE;
-    delete self->_kernel;
-    self->_kernel = nullptr;
+    self->_kernel_pool.reset();
     return TRUE;
+}
+
+static gboolean gst_dxscale_sink_event(GstBaseTransform *trans, GstEvent *event) {
+    if (GST_EVENT_TYPE(event) == GST_EVENT_EOS) {
+        GST_DEBUG_OBJECT(trans, "EOS event received on sink pad");
+    }
+    return GST_BASE_TRANSFORM_CLASS(gst_dxscale_parent_class)->sink_event(trans, event);
 }
 
 // ---------------------------------------------------------------------------
@@ -260,74 +274,22 @@ static gboolean gst_dxscale_set_caps(GstBaseTransform *trans,
     gint out_w = GST_VIDEO_INFO_WIDTH(&self->_output_info);
     gint out_h = GST_VIDEO_INFO_HEIGHT(&self->_output_info);
 
-    // Destroy existing kernel on renegotiation
-    delete self->_kernel;
-    self->_kernel = nullptr;
+    // Destroy existing kernel pool on renegotiation
+    self->_kernel_pool.reset();
 
     // Build dst template for factory
-    dxt::VideoFormat fmt = gst_to_dxt_format(in_fmt);
-
-    dxt::FrameDesc dst_template;
-    dst_template.width       = out_w;
-    dst_template.height      = out_h;
-    dst_template.format      = fmt;
-    dst_template.memory_type = dxt::MemoryType::CPU_VIRTUAL;
-    dst_template.num_planes  = dxt::num_planes_for_format(fmt);
-
-    if (fmt == dxt::VideoFormat::NV12) {
-        dst_template.planes[0].stride = out_w;
-        dst_template.planes[0].height = out_h;
-        dst_template.planes[1].stride = out_w;
-        dst_template.planes[1].height = out_h / 2;
-    } else if (fmt == dxt::VideoFormat::I420) {
-        dst_template.planes[0].stride = out_w;
-        dst_template.planes[0].height = out_h;
-        dst_template.planes[1].stride = out_w / 2;
-        dst_template.planes[1].height = out_h / 2;
-        dst_template.planes[2].stride = out_w / 2;
-        dst_template.planes[2].height = out_h / 2;
-    } else {
-        dst_template.planes[0].stride = out_w * dxt::bytes_per_pixel(fmt);
-        dst_template.planes[0].height = out_h;
-    }
+    dxt::VideoFormat fmt = dxt::video_format_from_gst(in_fmt);
+    auto dst_template = dxt::make_dst_template(out_w, out_h, fmt);
 
     // Scale-only: no crop, no aspect-ratio padding
     dxt::TransformOps ops;
 
-    auto kernel = dxt::VideoTransformFactory::create(dst_template, ops);
+    self->_kernel_pool = std::make_unique<dxt::TransformKernelPool>(dst_template, ops);
 
-    // dxscale is same-format: verify the auto-selected backend actually
-    // supports our format as *source*.  E.g. RGA accepts dst=RGB in init()
-    // but only handles NV12 input — that would fail at transform time.
-    if (kernel) {
-        auto caps = kernel->capabilities();
-        bool src_ok = false;
-        for (auto &f : caps.src_formats) {
-            if (f == fmt) { src_ok = true; break; }
-        }
-        if (!src_ok) {
-            GST_INFO_OBJECT(self,
-                "Backend '%s' cannot take %s as source, falling back to libyuv",
-                kernel->backend_name(),
-                gst_video_format_to_string(in_fmt));
-            kernel = dxt::VideoTransformFactory::create_backend(
-                "libyuv", dst_template, ops);
-        }
-    }
-
-    if (!kernel) {
-        GST_ERROR_OBJECT(self,
-            "No transform backend available for %s %dx%d -> %dx%d",
-            gst_video_format_to_string(in_fmt), in_w, in_h, out_w, out_h);
-        return FALSE;
-    }
-
-    GST_INFO_OBJECT(self, "Scale %dx%d -> %dx%d [%s] via %s",
+    GST_INFO_OBJECT(self, "Scale %dx%d -> %dx%d [%s] kernel pool created",
                     in_w, in_h, out_w, out_h,
-                    gst_video_format_to_string(in_fmt),
-                    kernel->backend_name());
+                    gst_video_format_to_string(in_fmt));
 
-    self->_kernel     = kernel.release();
     self->_negotiated = TRUE;
     return TRUE;
 }
@@ -361,123 +323,77 @@ static GstFlowReturn gst_dxscale_transform(GstBaseTransform *trans,
                                            GstBuffer *outbuf) {
     auto *self = GST_DXSCALE(trans);
 
-    if (!self->_negotiated || !self->_kernel) {
-        GST_ERROR_OBJECT(self, "Caps not negotiated or kernel missing");
+    GST_LOG_OBJECT(self, "Processing buffer: pts=%" GST_TIME_FORMAT,
+                   GST_TIME_ARGS(GST_BUFFER_PTS(inbuf)));
+
+    if (!self->_negotiated || !self->_kernel_pool) {
+        GST_ERROR_OBJECT(self, "Caps not negotiated or kernel pool missing");
         return GST_FLOW_NOT_NEGOTIATED;
     }
-
-    GstMapInfo in_map  = GST_MAP_INFO_INIT;
-    GstMapInfo out_map = GST_MAP_INFO_INIT;
-
-    if (!gst_buffer_map(inbuf, &in_map, GST_MAP_READ)) {
-        GST_ERROR_OBJECT(self, "Failed to map input buffer");
-        return GST_FLOW_ERROR;
-    }
-    if (!gst_buffer_map(outbuf, &out_map, GST_MAP_WRITE)) {
-        gst_buffer_unmap(inbuf, &in_map);
-        GST_ERROR_OBJECT(self, "Failed to map output buffer");
-        return GST_FLOW_ERROR;
-    }
-
-    GstFlowReturn ret = GST_FLOW_OK;
 
     gint in_w  = GST_VIDEO_INFO_WIDTH(&self->_input_info);
     gint in_h  = GST_VIDEO_INFO_HEIGHT(&self->_input_info);
     gint out_w = GST_VIDEO_INFO_WIDTH(&self->_output_info);
     gint out_h = GST_VIDEO_INFO_HEIGHT(&self->_output_info);
 
-    // Same size → fast copy (passthrough path)
-    // For YUV formats, copy plane-by-plane to handle stride/offset
-    // differences between padded HW decoder buffers and output buffers.
-    if (in_w == out_w && in_h == out_h) {
-        GstVideoFormat pt_fmt = GST_VIDEO_INFO_FORMAT(&self->_input_info);
-        if (pt_fmt == GST_VIDEO_FORMAT_NV12 || pt_fmt == GST_VIDEO_FORMAT_I420) {
-            GstVideoMeta *vmeta = gst_buffer_get_video_meta(inbuf);
-            int n_planes = (pt_fmt == GST_VIDEO_FORMAT_NV12) ? 2 : 3;
-            for (int p = 0; p < n_planes; ++p) {
-                int src_stride = vmeta ? static_cast<int>(vmeta->stride[p])
-                                       : GST_VIDEO_INFO_PLANE_STRIDE(&self->_input_info, p);
-                size_t src_off = vmeta ? vmeta->offset[p]
-                                       : GST_VIDEO_INFO_PLANE_OFFSET(&self->_input_info, p);
-                int dst_stride = GST_VIDEO_INFO_PLANE_STRIDE(&self->_output_info, p);
-                size_t dst_off = GST_VIDEO_INFO_PLANE_OFFSET(&self->_output_info, p);
-                int plane_h = (p == 0) ? in_h : in_h / 2;
-                int row_bytes = (pt_fmt == GST_VIDEO_FORMAT_NV12)
-                    ? in_w  // Y and UV both have width bytes per row
-                    : ((p == 0) ? in_w : (in_w + 1) / 2);
-                for (int row = 0; row < plane_h; ++row) {
-                    memcpy(out_map.data + dst_off + row * dst_stride,
-                           in_map.data  + src_off + row * src_stride,
-                           row_bytes);
-                }
-            }
-        } else {
-            memcpy(out_map.data, in_map.data,
-                   std::min(in_map.size, out_map.size));
-        }
-        gst_buffer_copy_into(outbuf, inbuf, GST_BUFFER_COPY_METADATA, 0, -1);
-        goto cleanup;
+    // Same size → plane-aware passthrough copy
+    if (in_w == out_w && in_h == out_h)
+        return dxt::gst_copy_video_frame(inbuf, outbuf, self->_input_info, self->_output_info);
+
+    dxt::GstSrcFrame src(inbuf, self->_input_info);
+    dxt::GstDstFrame dst(outbuf, self->_output_info);
+    if (!src.ok() || !dst.ok()) {
+        GST_ERROR_OBJECT(self, "Failed to map buffers");
+        return GST_FLOW_ERROR;
     }
 
-    {
-        GstVideoFormat gst_fmt = GST_VIDEO_INFO_FORMAT(&self->_input_info);
-        dxt::FrameDesc src_desc;
-        dxt::FrameDesc dst_desc;
-
-        if (gst_fmt == GST_VIDEO_FORMAT_NV12) {
-            // make_nv12_frame_desc handles layout priority:
-            //   GstVideoMeta > GstVideoInfo > heuristic
-            src_desc = dxt::make_nv12_frame_desc(inbuf, in_w, in_h, &self->_input_info);
-            // dxscale always uses CPU-mapped buffers
-            // src_desc.memory_type = dxt::MemoryType::CPU_VIRTUAL;
-            // src_desc.dma_fd = -1;
-            src_desc.planes[0].data = in_map.data + src_desc.planes[0].offset;
-            src_desc.planes[1].data = in_map.data + src_desc.planes[1].offset;
-
-            // Output: standard NV12 layout from GstVideoInfo
-            dst_desc.width       = out_w;
-            dst_desc.height      = out_h;
-            dst_desc.format      = dxt::VideoFormat::NV12;
-            dst_desc.memory_type = dxt::MemoryType::CPU_VIRTUAL;
-            dst_desc.num_planes  = 2;
-            dst_desc.dma_fd      = -1;
-            dst_desc.planes[0].data   = out_map.data;
-            dst_desc.planes[0].stride = GST_VIDEO_INFO_PLANE_STRIDE(&self->_output_info, 0);
-            dst_desc.planes[0].height = out_h;
-            dst_desc.planes[0].offset = 0;
-            dst_desc.planes[1].data   = out_map.data + GST_VIDEO_INFO_PLANE_OFFSET(&self->_output_info, 1);
-            dst_desc.planes[1].stride = GST_VIDEO_INFO_PLANE_STRIDE(&self->_output_info, 1);
-            dst_desc.planes[1].height = out_h / 2;
-            dst_desc.planes[1].offset = GST_VIDEO_INFO_PLANE_OFFSET(&self->_output_info, 1);
-        } else if (gst_fmt == GST_VIDEO_FORMAT_I420) {
-            // Build I420 descriptors with GstVideoInfo strides/offsets
-            src_desc = dxt::make_i420_frame_desc(self->_input_info);
-            for (int i = 0; i < src_desc.num_planes; ++i)
-                src_desc.planes[i].data = in_map.data + src_desc.planes[i].offset;
-
-            dst_desc = dxt::make_i420_frame_desc(self->_output_info);
-            for (int i = 0; i < dst_desc.num_planes; ++i)
-                dst_desc.planes[i].data = out_map.data + dst_desc.planes[i].offset;
-        } else {
-            // Packed RGB/BGR — use GstVideoInfo strides for actual buffer layout
-            dxt::VideoFormat fmt = gst_to_dxt_format(gst_fmt);
-            src_desc = dxt::make_packed_frame_desc(in_map.data, in_w, in_h, fmt);
-            src_desc.planes[0].stride = GST_VIDEO_INFO_PLANE_STRIDE(&self->_input_info, 0);
-            dst_desc = dxt::make_packed_frame_desc(out_map.data, out_w, out_h, fmt);
-            dst_desc.planes[0].stride = GST_VIDEO_INFO_PLANE_STRIDE(&self->_output_info, 0);
-        }
-
-        auto result = self->_kernel->transform(src_desc, dst_desc);
-        if (!result.success) {
-            GST_ERROR_OBJECT(self, "Kernel transform failed");
-            ret = GST_FLOW_ERROR;
-        } else {
-            gst_buffer_copy_into(outbuf, inbuf, GST_BUFFER_COPY_METADATA, 0, -1);
-        }
+    dxt::InputConfig input_cfg{src.desc().format, src.desc().width, src.desc().height};
+    auto result = self->_kernel_pool->transform(input_cfg, src.desc(), dst.desc());
+    if (!result.success) {
+        GST_ELEMENT_ERROR(self, STREAM, FAILED,
+            ("Kernel transform failed"), (NULL));
+        return GST_FLOW_ERROR;
     }
 
-cleanup:
-    gst_buffer_unmap(inbuf, &in_map);
-    gst_buffer_unmap(outbuf, &out_map);
+    gst_buffer_copy_into(outbuf, inbuf, static_cast<GstBufferCopyFlags>(GST_BUFFER_COPY_FLAGS | GST_BUFFER_COPY_TIMESTAMPS), 0, -1);
+    auto* src_meta = dx_get_frame_meta(inbuf);
+    if (src_meta) {
+        dx_create_frame_meta(outbuf);
+        auto* dst_meta = dx_get_frame_meta(outbuf);
+        dx_frame_meta_copy(inbuf, src_meta, outbuf, dst_meta);
+        dst_meta->_width = GST_VIDEO_INFO_WIDTH(&self->_output_info);
+        dst_meta->_height = GST_VIDEO_INFO_HEIGHT(&self->_output_info);
+    }
+    return GST_FLOW_OK;
+}
+
+static gboolean gst_dxscale_propose_allocation(GstBaseTransform *trans,
+                                               GstQuery *decide_query,
+                                               GstQuery *query) {
+    GstBaseTransformClass *base_class =
+        GST_BASE_TRANSFORM_CLASS(gst_dxscale_parent_class);
+    gboolean ret = TRUE;
+    if (base_class && base_class->propose_allocation)
+        ret = base_class->propose_allocation(trans, decide_query, query);
+    gst_query_add_allocation_meta(query, DX_FRAME_META_API_TYPE, NULL);
     return ret;
+}
+
+static gboolean gst_dxscale_query(GstBaseTransform *trans,
+                                  GstPadDirection direction,
+                                  GstQuery *query) {
+    if (direction == GST_PAD_SRC && GST_QUERY_TYPE(query) == GST_QUERY_LATENCY) {
+        if (!GST_BASE_TRANSFORM_CLASS(gst_dxscale_parent_class)->query(trans, direction, query))
+            return FALSE;
+        gboolean live;
+        GstClockTime min_lat, max_lat;
+        gst_query_parse_latency(query, &live, &min_lat, &max_lat);
+        const GstClockTime self_lat = 1 * GST_USECOND;
+        min_lat += self_lat;
+        if (max_lat != GST_CLOCK_TIME_NONE)
+            max_lat += self_lat;
+        gst_query_set_latency(query, live, min_lat, max_lat);
+        return TRUE;
+    }
+    return GST_BASE_TRANSFORM_CLASS(gst_dxscale_parent_class)->query(trans, direction, query);
 }

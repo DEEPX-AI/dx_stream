@@ -2,7 +2,7 @@
 #include <tuple>
 #include <gst/gst.h>
 
-GST_DEBUG_CATEGORY_EXTERN(dxframemeta_cat);
+GST_DEBUG_CATEGORY_EXTERN(dxmeta_cat);
 
 #define GST_CAT_DEBUG_SAFE(cat, ...) \
     G_STMT_START { \
@@ -63,7 +63,7 @@ static gboolean gst_dxmsg_meta_init(GstMeta *meta, gpointer params,
     std::ignore = params;
     std::ignore = buffer;
 
-    GST_CAT_DEBUG_SAFE(dxframemeta_cat, "Initializing GstDxMsgMeta");
+    GST_CAT_DEBUG_SAFE(dxmeta_cat, "Initializing GstDxMsgMeta");
     auto *dxmsg_meta = (GstDxMsgMeta *)meta;
     dxmsg_meta->_payload = nullptr;
     return TRUE;
@@ -72,12 +72,12 @@ static gboolean gst_dxmsg_meta_init(GstMeta *meta, gpointer params,
 static void gst_dxmsg_meta_free(GstMeta *meta, GstBuffer *buffer) {
     std::ignore = buffer;
 
-    GST_CAT_DEBUG_SAFE(dxframemeta_cat, "Freeing GstDxMsgMeta");
+    GST_CAT_DEBUG_SAFE(dxmeta_cat, "Freeing GstDxMsgMeta");
     auto *dxmsg_meta = (GstDxMsgMeta *)meta;
     auto *payload = (DxMsgPayload *)dxmsg_meta->_payload;
 
     if (payload) {
-        GST_CAT_DEBUG_SAFE(dxframemeta_cat, "Freeing payload data (size=%u)", payload->_size);
+        GST_CAT_DEBUG_SAFE(dxmeta_cat, "Freeing payload data (size=%u)", payload->_size);
         g_free(payload->_data);
         g_free(payload);
         payload = nullptr;
@@ -92,7 +92,7 @@ static gboolean gst_dxmsg_meta_transform(GstBuffer *dest, GstMeta *meta,
     std::ignore = data;
     std::ignore = buffer;
 
-    GST_CAT_DEBUG_SAFE(dxframemeta_cat, "Transforming GstDxMsgMeta");
+    GST_CAT_DEBUG_SAFE(dxmeta_cat, "Transforming GstDxMsgMeta");
     const auto *src_msg_meta = (const GstDxMsgMeta *)meta;
     const auto *exist_msg_meta = dx_get_msg_meta(dest);
     if (exist_msg_meta) {
@@ -114,7 +114,7 @@ static gboolean gst_dxmsg_meta_transform(GstBuffer *dest, GstMeta *meta,
 }
 
 GstBuffer *dx_create_msg_meta(GstBuffer *buffer) {
-    GST_CAT_DEBUG_SAFE(dxframemeta_cat, "Creating GstDxMsgMeta");
+    GST_CAT_DEBUG_SAFE(dxmeta_cat, "Creating GstDxMsgMeta");
     if (!gst_buffer_is_writable(buffer)) {
         buffer = gst_buffer_make_writable(buffer);
     }
@@ -123,7 +123,7 @@ GstBuffer *dx_create_msg_meta(GstBuffer *buffer) {
 }
 
 GstDxMsgMeta *dx_get_msg_meta(GstBuffer *buffer) {
-    GST_CAT_DEBUG_SAFE(dxframemeta_cat, "Getting GstDxMsgMeta");
+    GST_CAT_DEBUG_SAFE(dxmeta_cat, "Getting GstDxMsgMeta");
     auto *msg_meta =
         (GstDxMsgMeta *)gst_buffer_get_meta(buffer, GST_DXMSG_META_API_TYPE);
     return msg_meta;
@@ -133,7 +133,7 @@ void dx_add_payload_to_buffer(GstBuffer *buffer, const DxMsgPayload *payload) {
     std::ignore = buffer;
     std::ignore = payload;
     
-    GST_CAT_DEBUG_SAFE(dxframemeta_cat, "Adding payload to buffer (size=%u)", payload->_size);
+    GST_CAT_DEBUG_SAFE(dxmeta_cat, "Adding payload to buffer (size=%u)", payload->_size);
     buffer = dx_create_msg_meta(buffer);
     auto *msg_meta = dx_get_msg_meta(buffer);
 

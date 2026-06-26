@@ -2,7 +2,7 @@
 #define GST_DXCONVERT_H
 
 #include "dxcommon.hpp"
-#include "video_transform_kernel.hpp"
+#include "transforms/transform_kernel_pool.hpp"
 #include <gst/base/gstbasetransform.h>
 #include <gst/gst.h>
 #include <gst/video/video.h>
@@ -19,7 +19,7 @@ struct _GstDxConvert {
     GstVideoInfo _input_info;
     GstVideoInfo _output_info;
 
-    dxt::IVideoTransformKernel* _kernel;
+    std::unique_ptr<dxt::TransformKernelPool> _kernel_pool;
 
     gboolean _negotiated;
 };

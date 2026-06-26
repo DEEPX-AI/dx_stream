@@ -286,7 +286,7 @@ FaceDetection scale_face(const FaceDetection& face, int orig_width, int orig_hei
  * @param frame_meta Frame metadata containing image dimensions and ROI
  * @param object_meta Object metadata (output parameter)
  */
-extern "C" void PostProcess(GstBuffer* buf,
+DX_CUSTOM_EXPORT void PostProcess(GstBuffer* buf,
                             std::vector<dxs::DXTensor> network_output,
                             DXFrameMeta* frame_meta,
                             DXObjectMeta* object_meta) {
@@ -302,7 +302,7 @@ extern "C" void PostProcess(GstBuffer* buf,
     // OUTPUT PARSING
     // ============================================================================
     if (network_output.empty()) {
-        g_error("No output tensors found for SCRFD\n");
+        g_warning("SCRFD postprocess: no output tensors for this frame, skipping");
         return;
     }
     

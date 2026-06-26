@@ -22,6 +22,10 @@ DX-Stream is a GStreamer-based Vision AI application development tool that allow
 - [DxMsgBroker](./docs/source/docs/Elements/03_11_DxMsgBroker.md)
 - [DxScale](./docs/source/docs/Elements/03_12_DxScale.md)
 - [DxConvert](./docs/source/docs/Elements/03_13_DxConvert.md)
+- [DxVnpuDec](./docs/source/docs/Elements/03_14_DxVnpuDec.md)
+- [DxVnpuEnc](./docs/source/docs/Elements/03_15_DxVnpuEnc.md)
+- [DxVnpuPipeline](./docs/source/docs/Elements/03_16_DxVnpuPipeline.md)
+- [DxVnpuOverlay](./docs/source/docs/Elements/03_17_DxVnpuOverlay.md)
 
 [**4. Writing Your Own Application**](./docs/source/docs/04_Writing_Your_Own_Application.md)
 

@@ -27,13 +27,32 @@ GObject
  +----GInitiallyUnowned
        +----GstObject
              +----GstElement
-                   +----GstDxGather
+                   +----GstAggregator
+                         +----GstDxGather
 ```
+
+### **Pad Templates**
+
+**Sink (input, request pad `sink_%u`)**
+
+| **Property** | **Value** |
+|---|---|
+| Format | `video/x-raw` |
+
+**Src (output, always pad `src`)**
+
+| **Property** | **Value** |
+|---|---|
+| Format | `video/x-raw` |
 
 ### **Properties**
 
 | **Name**  | **Description**                              | **Type**  | **Default Value** |
 |-----------|----------------------------------------------|-----------|--------------------|
 | `name`    | Sets the unique name of the DxGather element.   | String    | `"dxgather0"`         |
+
+!!! warning "DxInputSelector Placement"
+
+    `dxgather` must **not** be placed downstream of **DxInputSelector** (i.e., it cannot be used inside the multi-stream domain). `dxgather` is designed to merge multiple branches that originate from the *same* source (e.g., split by `tee`), not to demultiplex multiple distinct streams. Inside the domain, buffers carry per-stream `DXFrameMeta` and `dxgather` has no notion of stream-id. See [Multi-Stream Domain](./03_00_Multi_Stream_Domain.md).
 
 ---

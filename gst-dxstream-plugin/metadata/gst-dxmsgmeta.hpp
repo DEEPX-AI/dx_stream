@@ -1,6 +1,7 @@
 #ifndef __GST_DXMSGMETA_H__
 #define __GST_DXMSGMETA_H__
 
+#include "dxcommon.hpp"
 #include <gst/gst.h>
 #include <gst/video/video.h>
 
@@ -24,6 +25,8 @@ struct _GstDxMsgMetaInfo {
     gboolean _include_frame;
 
     guint64 _seq_id;
+
+    const gchar *_frame_base64;
 };
 
 struct _GstDxMsgMeta {
@@ -37,13 +40,13 @@ using DxMsgContext = struct _DxMsgContext;
 using GstDxMsgMetaInfo = struct _GstDxMsgMetaInfo;
 using GstDxMsgMeta = struct _GstDxMsgMeta;
 
-GType gst_dxmsg_meta_api_get_type(void);
+DX_API GType gst_dxmsg_meta_api_get_type(void);
 
-const GstMetaInfo *gst_dxmsg_meta_get_info(void);
+DX_API const GstMetaInfo *gst_dxmsg_meta_get_info(void);
 
-GstBuffer*dx_create_msg_meta(GstBuffer *buffer);
-GstDxMsgMeta *dx_get_msg_meta(GstBuffer *buffer);
-void dx_add_payload_to_buffer(GstBuffer *buffer, const DxMsgPayload *payload);
+DX_API GstBuffer*dx_create_msg_meta(GstBuffer *buffer);
+DX_API GstDxMsgMeta *dx_get_msg_meta(GstBuffer *buffer);
+DX_API void dx_add_payload_to_buffer(GstBuffer *buffer, const DxMsgPayload *payload);
 
 G_END_DECLS
 

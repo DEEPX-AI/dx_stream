@@ -7,7 +7,6 @@
 #include <gst/base/gstbasetransform.h>
 #include <gst/gst.h>
 #include <gst/video/video.h>
-#include <opencv2/opencv.hpp>
 #include <map>
 #include <vector>
 
