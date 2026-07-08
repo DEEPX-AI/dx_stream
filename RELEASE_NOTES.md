@@ -9,6 +9,7 @@
 - **Base class migration**: `dxinputselector` and `dxgather` migrated to `GstAggregator` for standard N:1 multiplexing; `dxvnpuoverlay` migrated to `GstBaseSink` for proper render/preroll lifecycle
 - Introduce TransformKernelPool for automatic src-format-based kernel selection with libyuv fallback, and migrate dxscale, dxconvert, dxpreprocess, dxmsgconv to use it
 - Refactor dxinfer to use InferBackend abstraction (Put/Get async pattern) with backend property (auto/dxrt/dxvnpu) replacing direct dxrt dependency
+- The model list has been updated with models compiled in DX-COM v2.4.0
 
 ### 2. Fixed
 - **LATENCY reporting**: All processing elements now correctly account for their own processing time in LATENCY queries, stabilizing synchronization and QoS behavior in pipelines that include live sources
@@ -16,14 +17,14 @@
 - **Push thread lifecycle**: Separated `drain_push_thread` for safe thread cleanup during EOS / FLUSH / state transitions, resolving single-frame input hangs ()
 - **Caps negotiation**: Pad template caps tightened so incompatible element connections fail immediately at negotiation time instead of producing runtime anomalies
 - **Error handling**: `abort()` / uncaught exceptions replaced with `GST_ELEMENT_ERROR` across all elements — missing model files, NPU init failures, and errors in user-provided libraries (`dxpreprocess` / `dxpostprocess` / `dxmsgconv`) now produce proper GStreamer error messages instead of crashing the pipeline ()
-- Fix pipeline abort on error by replacing g_error with GST logging macros for graceful error handling
 
 ### 3. Added
-- DEEPX Agent-Driven Development (dx-agent-dev) — Beta.
+- **Windows Build and Runtime Environment**: Full Windows MSVC support including dependency check, build, demo launcher, test suite, Python binding (pydxs), and build guide documentation
+- **DEEPX Agent-Driven Development** (dx-agent-dev) — Beta.
 Describe a pipeline in natural language and an AI agent assembles the GStreamer graph from DEEPX elements, wiring NPU inference into real-time video/stream pipelines end to end.
 - **Test Suite**: Reorganized test infrastructure under `test/base/{element,metadata,pipeline}/` with 73 new test binaries covering element contracts, domain boundaries, end-to-end pipelines, metadata, and pydxs scenarios
      - Per-suite runners: `run_element.sh`, `run_pipeline.sh`, `run_metadata.sh`, `run_pydxs.sh`, `run_all.sh`
-- Added a comprehensive YOLO26 benchmark toolkit, which provides:
+- **YOLO26 benchmark toolkit** added, which provides:
     - Model-level, end-to-end pipeline, and multi-stream performance measurements
     - Automated result aggregation, static dashboard and report generation, and version-trend comparison across runs
     - Detailed documentation and analysis guides, including benchmark summaries for supported environments

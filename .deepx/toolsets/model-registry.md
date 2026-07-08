@@ -16,29 +16,29 @@ of supported .dxnn models for dx_stream v2.3.0.
 }
 ```
 
-- `version`: Release version using underscores (e.g., "2_3_0" for v2.3.0)
+- `version`: Release version using underscores (e.g., "2_4_0" for v2.3.0)
 - `models`: Array of .dxnn filenames
 
 ## Current Registry (v2.3.0, 14 models)
 
 ```json
 {
-    "version": "2_3_0",
+    "version": "2_4_0",
     "models": [
-        "EfficientNet_Lite0.dxnn",
-        "SCRFD500M.dxnn",
-        "YoloV5S_PPU.dxnn",
-        "YOLOv5s_Face.dxnn",
-        "yolo26n.dxnn",
-        "yolo26n-pose.dxnn",
-        "yolo26n-seg.dxnn",
-        "YoloV5S.dxnn",
-        "YoloV7.dxnn",
-        "YoloV8N.dxnn",
-        "YoloV9S.dxnn",
-        "YoloXS.dxnn",
-        "YOLOV11N.dxnn",
-        "yolov8m_pose.dxnn"
+        "efficientnet-lite0_256x256.dxnn",
+        "scrfd-500m_640x640.dxnn",
+        "yolov5-s_640x640_ppu.dxnn",
+        "yolov5-s-face_640x640.dxnn",
+        "yolo26-n_640x640.dxnn",
+        "yolo26-n-pose_640x640.dxnn",
+        "yolo26-n-seg_640x640.dxnn",
+        "yolov5-s_640x640.dxnn",
+        "yolov7_640x640.dxnn",
+        "yolov8-n_640x640.dxnn",
+        "yolov9-s_640x640.dxnn",
+        "yolox-s_640x640.dxnn",
+        "yolo11-n_640x640.dxnn",
+        "yolov8-m-pose_640x640.dxnn"
     ]
 }
 ```
@@ -89,7 +89,7 @@ of supported .dxnn models for dx_stream v2.3.0.
 ### Bash: Check if Model Exists
 
 ```bash
-MODEL_NAME="YoloV8N.dxnn"
+MODEL_NAME="yolov8-n_640x640.dxnn"
 if python3 -c "import json; data=json.load(open('model_list.json')); exit(0 if '$MODEL_NAME' in data['models'] else 1)"; then
     echo "Model $MODEL_NAME is supported"
 else
@@ -154,7 +154,7 @@ The download URL pattern is internal to `setup.sh`.
 
 ```bash
 # Download specific model
-./setup.sh --model="YoloV8N.dxnn"
+./setup.sh --model="yolov8-n_640x640.dxnn"
 
 # Download all models
 ./setup.sh

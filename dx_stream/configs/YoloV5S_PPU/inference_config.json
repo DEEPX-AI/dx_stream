@@ -1,6 +1,6 @@
 {
     "preprocess_id": 1,
     "inference_id": 1,
-    "model_path" : "./dx_stream/samples/models/YoloV5S_PPU.dxnn",
+    "model_path" : "./dx_stream/samples/models/yolov5-s_640x640_ppu.dxnn",
     "use_ort": false
 }

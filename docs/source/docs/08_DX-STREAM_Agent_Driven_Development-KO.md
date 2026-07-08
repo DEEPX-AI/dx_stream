@@ -466,6 +466,6 @@ python .deepx/scripts/validate_framework.py
 | 추론이 감지 결과를 생성하지 않음 | `DxPreprocess`와 `DxInfer` 간 `preprocess-id` 불일치 | 두 엘리먼트가 동일한 `preprocess-id` 값을 공유하는지 확인 |
 | 파이프라인 데드락 또는 멈춤 | 처리 단계 사이에 `queue` 엘리먼트 누락 | 모든 처리 엘리먼트 쌍 사이에 `queue` 엘리먼트 추가 |
 | RTSP 스트림 프레임 드롭 | 소스 후 프레임 속도 제한 없음 | RTSP 소스 엘리먼트 직후에 `DxRate` 삽입 |
-| 런타임에 `model-path` 미발견 | `model-path` 속성에 상대 경로 사용 | 절대 경로 사용 (예: `/opt/deepx/models/yolo26n.dxnn`) |
+| 런타임에 `model-path` 미발견 | `model-path` 속성에 상대 경로 사용 | 절대 경로 사용 (예: `/opt/deepx/models/yolo26-n_640x640.dxnn`) |
 | `DxInfer` 플러그인 미등록 | 플러그인 미설치 또는 `GST_PLUGIN_PATH` 미설정 | `gst-inspect-1.0 dxinfer`로 확인; `GST_PLUGIN_PATH` 검사 |
 | 브로커 파이프라인이 빈 메시지 전송 | `DxMsgBroker` 전에 `DxMsgConv` 누락 | 브로커 엘리먼트 전에 `DxMsgConv`로 메타데이터 직렬화 추가 |

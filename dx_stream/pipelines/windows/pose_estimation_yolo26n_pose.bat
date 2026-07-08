@@ -12,7 +12,7 @@ set "MODEL_DIR=%BASE_FWD%/dx_stream/samples/models"
 set "VIDEO_DIR=%BASE_FWD%/dx_stream/samples/videos"
 set "LIB_DIR=%BASE_FWD%/install/share/gstdxstream/lib"
 
-set "MODEL=%MODEL_DIR%/yolo26n-pose.dxnn"
+set "MODEL=%MODEL_DIR%/yolo26-n-pose_640x640.dxnn"
 set "LIB=%LIB_DIR%/postprocess_yolo26pose.dll"
 set "VIDEO=%VIDEO_DIR%/dance-group.mov"
 

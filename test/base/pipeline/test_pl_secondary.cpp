@@ -17,9 +17,9 @@ using namespace dxtest;
 static bool can_run_secondary() {
     if (!npu_available()) return false;
 
-    std::string primary_model = resolve_model_path("YoloV5S_PPU.dxnn");
-    std::string classify_model = resolve_model_path("EfficientNet_Lite0.dxnn");
-    std::string face_model = resolve_model_path("SCRFD500M.dxnn");
+    std::string primary_model = resolve_model_path("yolov5-s_640x640_ppu.dxnn");
+    std::string classify_model = resolve_model_path("efficientnet-lite0_256x256.dxnn");
+    std::string face_model = resolve_model_path("scrfd-500m_640x640.dxnn");
     if (primary_model.empty() || classify_model.empty() || face_model.empty())
         return false;
 
@@ -45,9 +45,9 @@ GST_START_TEST(PL_A2_secondary_iou_validation) {
                    "secondary models/NPU/postprocess not available");
 
     std::string image = resolve_resource_path("images/test.jpg");
-    std::string primary_model = resolve_model_path("YoloV5S_PPU.dxnn");
-    std::string cls_model = resolve_model_path("EfficientNet_Lite0.dxnn");
-    std::string face_model = resolve_model_path("SCRFD500M.dxnn");
+    std::string primary_model = resolve_model_path("yolov5-s_640x640_ppu.dxnn");
+    std::string cls_model = resolve_model_path("efficientnet-lite0_256x256.dxnn");
+    std::string face_model = resolve_model_path("scrfd-500m_640x640.dxnn");
     std::string pp_primary = dxtest::resolve_lib_path("libpostprocess_ppu.so");
     std::string pp_cls = dxtest::resolve_lib_path("libpostprocess_object_class.so");
     std::string pp_face = dxtest::resolve_lib_path("libpostprocess_scrfd500m.so");
@@ -214,9 +214,9 @@ GST_START_TEST(PL_A2_secondary_eos) {
                    "secondary models/NPU/postprocess not available");
 
     std::string image = resolve_resource_path("images/test.jpg");
-    std::string primary_model = resolve_model_path("YoloV5S_PPU.dxnn");
-    std::string cls_model = resolve_model_path("EfficientNet_Lite0.dxnn");
-    std::string face_model = resolve_model_path("SCRFD500M.dxnn");
+    std::string primary_model = resolve_model_path("yolov5-s_640x640_ppu.dxnn");
+    std::string cls_model = resolve_model_path("efficientnet-lite0_256x256.dxnn");
+    std::string face_model = resolve_model_path("scrfd-500m_640x640.dxnn");
     std::string pp_primary = dxtest::resolve_lib_path("libpostprocess_ppu.so");
     std::string pp_cls = dxtest::resolve_lib_path("libpostprocess_object_class.so");
     std::string pp_face = dxtest::resolve_lib_path("libpostprocess_scrfd500m.so");

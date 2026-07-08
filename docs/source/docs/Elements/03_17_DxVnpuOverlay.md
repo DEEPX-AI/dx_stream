@@ -55,13 +55,13 @@ Used after DxPostprocess in a DxVnpuPipeline chain:
 
 ```bash
 gst-launch-1.0 \
-  dxvnpupipeline name=vp model-path=yolo26n.dxnn inference-id=0 \
+  dxvnpupipeline name=vp model-path=yolo26-n_640x640.dxnn inference-id=0 \
     device-id=0 use-vnpu-hdmi=true \
   filesrc location=input.mp4 ! parsebin ! vp.sink_0 \
   vp.src_0 ! queue ! \
     dxpostprocess inference-id=0 \
       library-file-path=libpostprocess_yolo26od.so function-name=PostProcess ! \
-    dxvnpuoverlay model-path=yolo26n.dxnn keep-ratio=true device-id=0 ! \
+    dxvnpuoverlay model-path=yolo26-n_640x640.dxnn keep-ratio=true device-id=0 ! \
     fakesink sync=false
 ```
 

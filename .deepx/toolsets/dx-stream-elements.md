@@ -75,14 +75,14 @@ model file. Attaches DXTensorMeta to the output buffer.
 **Usage Example:**
 ```bash
 # Inline properties
-dxinfer preprocess-id=1 inference-id=1 model-path=/abs/path/to/YoloV8N.dxnn
+dxinfer preprocess-id=1 inference-id=1 model-path=/abs/path/to/yolov8-n_640x640.dxnn
 
 # Config file mode
 dxinfer config-file-path=/path/to/inference_config.json
 
 # Secondary mode
 dxinfer preprocess-id=2 inference-id=2 secondary-mode=true \
-    model-path=/abs/path/to/EfficientNet_Lite0.dxnn
+    model-path=/abs/path/to/efficientnet-lite0_256x256.dxnn
 ```
 
 **Common Pitfalls:**

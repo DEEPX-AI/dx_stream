@@ -95,7 +95,7 @@ GST_END_TEST;
 GST_START_TEST(CE_infer_secondary_no_push_thread) {
     DXTEST_SKIP_IF(!dxtest::npu_available(), "NPU not available");
 
-    std::string model = dxtest::resolve_model_path("YoloV5S_PPU.dxnn");
+    std::string model = dxtest::resolve_model_path("yolov5-s_640x640_ppu.dxnn");
     DXTEST_SKIP_IF(model.empty(), "model not found");
 
     GstElement *e = gst_element_factory_make("dxinfer", nullptr);

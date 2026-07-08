@@ -12,7 +12,7 @@
 
 using namespace dxtest;
 
-static const char *MODEL = "YoloV5S_PPU.dxnn";
+static const char *MODEL = "yolov5-s_640x640_ppu.dxnn";
 static std::string POSTLIB_PATH() {
     return dxtest::resolve_lib_path("libpostprocess_ppu.so");
 }

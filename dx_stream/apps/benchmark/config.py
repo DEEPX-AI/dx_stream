@@ -27,7 +27,7 @@ STABLE_CAPACITY_RULE = "status_ok_and_all_runs_success_and_avg_per_channel_fps_g
 
 # ── Task definitions ──────────────────────────────────────────────────────
 # model suffix → task name mapping
-# Object detection models have no suffix (yolo26n.dxnn) → mapped as "od"
+# Object detection models have no suffix (yolo26-n_640x640.dxnn) → mapped as "od"
 TASK_MAP = {
     "od": "object_detection",
     "pose": "pose_estimation",

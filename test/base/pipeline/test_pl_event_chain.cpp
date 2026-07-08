@@ -118,7 +118,7 @@ GST_END_TEST;
 
 GST_START_TEST(PL_event_chain_infer_pipeline) {
     DXTEST_SKIP_IF(!npu_available(), "NPU not available");
-    std::string model = resolve_model_path("YoloV5S_PPU.dxnn");
+    std::string model = resolve_model_path("yolov5-s_640x640_ppu.dxnn");
     DXTEST_SKIP_IF(model.empty(), "model not found");
     std::string pp = dxtest::resolve_lib_path("libpostprocess_ppu.so");
     DXTEST_SKIP_IF(!path_exists(pp), "postprocess lib not found");

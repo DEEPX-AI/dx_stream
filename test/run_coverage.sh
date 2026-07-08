@@ -27,7 +27,12 @@ if ! find "$BUILD_DIR" -name '*.gcno' -print -quit | grep -q .; then
 fi
 
 SRC_DIR="$PROJECT_ROOT/gst-dxstream-plugin"
-OBJ_DIR="$BUILD_DIR/src/libgstdxstream.so.3.0.1.p"
+# resolve the versioned .p dir at runtime instead of hardcoding the .so version (breaks on every version bump)
+OBJ_DIR="$(find "$BUILD_DIR/src" -maxdepth 1 -type d -name 'libgstdxstream.so.*.p' -print -quit)"
+if [ -z "$OBJ_DIR" ]; then
+    echo "[FATAL] No libgstdxstream.so.*.p directory under $BUILD_DIR/src."
+    exit 1
+fi
 
 # Create symlinks so geninfo can find metadata sources (../metadata/) when running gcov
 for subdir in metadata general src; do
@@ -60,10 +65,12 @@ done
 rm -f "$OBJ_DIR"/dd_metadata_*
 
 # Exclude external headers (keep source directory)
+# separate output path avoids lcov re-reading the file it's still writing (harmless but noisy "cannot read file" errors)
 lcov --rc lcov_branch_coverage=1 \
      --remove "$OUT/lcov.info" \
      '/usr/*' '*/test/*' '*/test_new/*' \
-     -o "$OUT/lcov.info" >/dev/null
+     -o "$OUT/lcov.info.tmp" >/dev/null
+mv "$OUT/lcov.info.tmp" "$OUT/lcov.info"
 
 lcov --rc lcov_branch_coverage=1 --list "$OUT/lcov.info" | tee "$OUT/summary.txt"
 echo

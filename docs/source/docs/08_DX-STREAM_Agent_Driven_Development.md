@@ -464,6 +464,6 @@ Rules:
 | Inference produces no detections | `preprocess-id` mismatch between `DxPreprocess` and `DxInfer` | Ensure both elements share the same `preprocess-id` value |
 | Pipeline deadlocks or stalls | Missing `queue` elements between processing stages | Add a `queue` element between every pair of processing elements |
 | RTSP stream drops frames | No frame rate limiting after source | Insert `DxRate` immediately after the RTSP source element |
-| `model-path` not found at runtime | Relative path used for `model-path` property | Use an absolute path (e.g., `/opt/deepx/models/yolo26n.dxnn`) |
+| `model-path` not found at runtime | Relative path used for `model-path` property | Use an absolute path (e.g., `/opt/deepx/models/yolo26-n_640x640.dxnn`) |
 | `DxInfer` plugin not registered | Plugin not installed or `GST_PLUGIN_PATH` not set | Run `gst-inspect-1.0 dxinfer` to verify; check `GST_PLUGIN_PATH` |
 | Broker pipeline sends empty messages | `DxMsgConv` missing before `DxMsgBroker` | Add `DxMsgConv` to serialize metadata before the broker element |

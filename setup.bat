@@ -4,7 +4,7 @@ REM  DX-Stream Windows Setup Script
 REM  Downloads sample models and videos for running examples.
 REM  Usage:
 REM    setup.bat                       -> download all models + videos
-REM    setup.bat --model=YoloV5S.dxnn  -> download single model only
+REM    setup.bat --model=yolov5-s_640x640.dxnn  -> download single model only
 REM    setup.bat --force               -> re-download even if exists
 REM ============================================================
 

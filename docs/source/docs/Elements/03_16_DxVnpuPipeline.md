@@ -63,7 +63,7 @@ Single-channel inference pipeline:
 
 ```bash
 gst-launch-1.0 \
-  dxvnpupipeline name=vp model-path=yolo26n.dxnn inference-id=0 device-id=0 \
+  dxvnpupipeline name=vp model-path=yolo26-n_640x640.dxnn inference-id=0 device-id=0 \
   filesrc location=input.mp4 ! parsebin ! vp.sink_0 \
   vp.src_0 ! dxpostprocess inference-id=0 \
     library-file-path=libpostprocess_yolo26od.so function-name=PostProcess ! \
@@ -74,16 +74,16 @@ Multi-channel with HDMI output and overlay:
 
 ```bash
 gst-launch-1.0 \
-  dxvnpupipeline name=vp model-path=yolo26n.dxnn inference-id=0 \
+  dxvnpupipeline name=vp model-path=yolo26-n_640x640.dxnn inference-id=0 \
     device-id=0 use-vnpu-hdmi=true \
   filesrc location=ch0.mp4 ! parsebin ! vp.sink_0 \
   filesrc location=ch1.mp4 ! parsebin ! vp.sink_1 \
   vp.src_0 ! queue ! dxpostprocess inference-id=0 \
     library-file-path=libpostprocess_yolo26od.so function-name=PostProcess ! \
-    dxvnpuoverlay model-path=yolo26n.dxnn device-id=0 ! fakesink \
+    dxvnpuoverlay model-path=yolo26-n_640x640.dxnn device-id=0 ! fakesink \
   vp.src_1 ! queue ! dxpostprocess inference-id=0 \
     library-file-path=libpostprocess_yolo26od.so function-name=PostProcess ! \
-    dxvnpuoverlay model-path=yolo26n.dxnn device-id=0 ! fakesink
+    dxvnpuoverlay model-path=yolo26-n_640x640.dxnn device-id=0 ! fakesink
 ```
 
 !!! note "NOTE"

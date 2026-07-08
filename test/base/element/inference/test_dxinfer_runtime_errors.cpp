@@ -17,7 +17,7 @@
 using namespace dxtest;
 
 static std::string find_model() {
-    std::string p = resolve_model_path("YoloV5S_PPU.dxnn");
+    std::string p = resolve_model_path("yolov5-s_640x640_ppu.dxnn");
     if (p.empty()) p = resolve_model_path("YOLOV5S_1.dxnn");
     return p;
 }

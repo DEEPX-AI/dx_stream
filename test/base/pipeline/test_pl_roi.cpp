@@ -24,7 +24,7 @@ static bool can_run_roi() {
 
 static bool can_run_roi_secondary() {
     if (!can_run_roi()) return false;
-    std::string face_model = resolve_model_path("SCRFD500M.dxnn");
+    std::string face_model = resolve_model_path("scrfd-500m_640x640.dxnn");
     std::string pp_face = dxtest::resolve_lib_path("libpostprocess_scrfd500m.so");
     return !face_model.empty() && path_exists(pp_face);
 }
@@ -152,8 +152,8 @@ GST_START_TEST(PL_A5_secondary_roi_faces_inside) {
                    "yolo26n + SCRFD500M model/NPU/postprocess not available");
 
     std::string image = resolve_resource_path("images/test.jpg");
-    std::string primary_model = resolve_model_path("yolo26n.dxnn");
-    std::string face_model = resolve_model_path("SCRFD500M.dxnn");
+    std::string primary_model = resolve_model_path("yolo26-n_640x640.dxnn");
+    std::string face_model = resolve_model_path("scrfd-500m_640x640.dxnn");
     std::string pp_primary = dxtest::resolve_lib_path("libpostprocess_yolo26od.so");
     std::string pp_face = dxtest::resolve_lib_path("libpostprocess_scrfd500m.so");
 
