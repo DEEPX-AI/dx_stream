@@ -20,11 +20,15 @@ build_libyuv_from_source() {
     if [ ! -d "libyuv" ]; then
         print_message "info" "Cloning libyuv repository..."
         git clone -b main https://chromium.googlesource.com/libyuv/libyuv libyuv
+        cd libyuv
+        git checkout 3bdb3b94caaf12487af7c5f91f830ef0064be250
+        cd ..
     else
         print_message "info" "libyuv repository already exists, updating..."
         cd libyuv
         git fetch origin
         git reset --hard origin/main
+        git checkout 3bdb3b94caaf12487af7c5f91f830ef0064be250
         cd ..
     fi
     

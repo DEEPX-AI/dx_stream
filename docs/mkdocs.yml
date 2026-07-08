@@ -38,7 +38,8 @@ nav:
   - DXNN SDK Overview: docs/01_DXNN_Streamer_Overview.md
   - DX-STREAM Installation: docs/02_DX-STREAM_Installation.md
   - Elements:
-      - DxPreprocess: docs/Elements/03_01_DxPreprocess.md      
+      - Multi-Stream Domain: docs/Elements/03_00_Multi_Stream_Domain.md
+      - DxPreprocess: docs/Elements/03_01_DxPreprocess.md
       - DxInfer: docs/Elements/03_02_DxInfer.md
       - DxPostprocess: docs/Elements/03_03_DxPostprocess.md
       - DxTracker: docs/Elements/03_04_DxTracker.md
@@ -59,12 +60,14 @@ nav:
       - MsgBroker Pipeline: docs/Pipeline_Example/05_04_MsgBroker.md
   - Troubleshooting and FAQ: docs/06_Troubleshooting_and_FAQ.md
   - Debugging Guide: docs/07_Debugging_Guide.md
+  - Agent-Driven Development: docs/08_DX-STREAM_Agent_Driven_Development.md
   - Appendix:
       - User Metadata Guide: docs/Appendix_User_Metadata_Guide.md
       - Build on OrangePi5Plus: docs/Appendix_Build_on_OrangePi5Plus.md
+      - Build on Windows: docs/Appendix_Build_on_Windows.md
       - Performance Evaluation With GsgShark: docs/Appendix_Performance_Evaluation_with_GstShark.md
       - Third-Party Sample Model Licenses: docs/Appendix_Third_Party_Model_Licenses.md
-  - Change Log: docs/Appendix_Change_Log.md
+  - Change Log: docs/RELEASE_NOTES.md
 
 plugins:
   - search
@@ -74,7 +77,7 @@ plugins:
       #
       #cover: false
       cover_title: DXNN Streamer (DX-STREAM) User Manual
-      cover_subtitle: 2026/04/21 (v3.0.1)
+      cover_subtitle: 2026/07/08 (v3.1.0)
       cover_logo: img/deepx.png
       custom_template_path: docs/stylesheets
       #back_cover: true
@@ -100,7 +103,7 @@ plugins:
       #render_js: true
       #headless_chrome_path: headless-chromium
       #
-      output_path: ../DEEPX_DX-STREAM_UM_v3.0.1_APR_2026.pdf
+      output_path: ../DEEPX_DX-STREAM_UM_v3.1.0_JUL_2026.pdf
       #enabled_if_env: ENABLE_PDF_EXPORT
       #
       #debug_html: true

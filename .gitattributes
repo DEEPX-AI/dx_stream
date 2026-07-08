@@ -4,3 +4,5 @@
 .bumpversion.cfg
 .cliff.toml
 .pre-commit-config.yaml
+*.bat text eol=crlf
+*.ps1 text eol=crlf

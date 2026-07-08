@@ -7,27 +7,58 @@
 #include <algorithm>
 #include <cstring>
 
-#define GST_CAT_DEFAULT dxt_libyuv_debug
-GST_DEBUG_CATEGORY_STATIC(dxt_libyuv_debug);
+#define GST_CAT_DEFAULT transform_kernel_cat
+GST_DEBUG_CATEGORY_EXTERN(transform_kernel_cat);
 
 namespace dxt {
+
+// ---------------------------------------------------------------------------
+// libyuv RAW/RGB24 naming probe
+//
+// libyuv's "RAW" and "RGB24" have swapped meanings across versions:
+//   New convention (v1772+): RAW = R,G,B  /  RGB24 = B,G,R
+//   Old convention:          RAW = B,G,R  /  RGB24 = R,G,B
+//
+// We probe once at startup: feed [R=255,G=0,B=0] into RAWToI420 and
+// check the resulting Y value.  Y≈81 means RAW=RGB, Y≈29 means RAW=BGR.
+//
+// raw_is_rgb == true  → RAW=RGB  (use RAW* for GStreamer RGB)
+// raw_is_rgb == false → RAW=BGR  (use RGB24* for GStreamer RGB)
+// ---------------------------------------------------------------------------
+
+static bool detect_raw_is_rgb() {
+    uint8_t rgb[3] = {255, 0, 0};  // R=255, G=0, B=0
+    uint8_t y[1] = {0}, u[1] = {0}, v[1] = {0};
+    int ret = libyuv::RAWToI420(rgb, 3, y, 1, u, 1, v, 1, 1, 1);
+    if (ret != 0) {
+        GST_WARNING("RAW/RGB24 probe failed, assuming RAW=RGB");
+        return true;
+    }
+    // BT.601: Y(R=255) ≈ 82, Y(B=255) ≈ 29
+    return y[0] > 50;  // true = RAW means RGB
+}
+
+static bool libyuv_raw_is_rgb() {
+    static bool cached = detect_raw_is_rgb();
+    return cached;
+}
 
 // ---------------------------------------------------------------------------
 // capabilities
 // ---------------------------------------------------------------------------
 
 BackendCaps LibyuvTransformKernel::capabilities() const {
-    return BackendCaps{
-        .name             = "libyuv",
-        .hw_accelerated   = false,
-        .supports_dma_buf = false,
-        .max_width        = 16384,
-        .max_height       = 16384,
-        .src_formats      = { VideoFormat::I420, VideoFormat::NV12,
-                              VideoFormat::RGB, VideoFormat::BGR },
-        .dst_formats      = { VideoFormat::I420, VideoFormat::NV12,
-                              VideoFormat::RGB, VideoFormat::BGR },
-    };
+    BackendCaps caps;
+    caps.name             = "libyuv";
+    caps.hw_accelerated   = false;
+    caps.supports_dma_buf = false;
+    caps.max_width        = 16384;
+    caps.max_height       = 16384;
+    caps.src_formats      = { VideoFormat::I420, VideoFormat::NV12,
+                              VideoFormat::RGB, VideoFormat::BGR };
+    caps.dst_formats      = { VideoFormat::I420, VideoFormat::NV12,
+                              VideoFormat::RGB, VideoFormat::BGR };
+    return caps;
 }
 
 // ---------------------------------------------------------------------------
@@ -36,13 +67,6 @@ BackendCaps LibyuvTransformKernel::capabilities() const {
 
 bool LibyuvTransformKernel::init(const FrameDesc& dst_template,
                                   const TransformOps& ops) {
-    static gsize debug_once = 0;
-    if (g_once_init_enter(&debug_once)) {
-        GST_DEBUG_CATEGORY_INIT(dxt_libyuv_debug, "dxt_libyuv", 0,
-                                "DXT libyuv transform kernel");
-        g_once_init_leave(&debug_once, 1);
-    }
-
     if (!TransformKernelBase::init(dst_template, ops)) {
         return false;
     }
@@ -153,18 +177,25 @@ bool LibyuvTransformKernel::convert_color(
 {
     int ret = -1;
 
+    // Resolve libyuv function names based on runtime probe.
+    // When raw_is_rgb==true  (new libyuv): RAW=RGB, RGB24=BGR
+    // When raw_is_rgb==false (old libyuv): RAW=BGR, RGB24=RGB
+    const bool raw_is_rgb = libyuv_raw_is_rgb();
+
     // ---- Source: I420 ----
     if (src_fmt == VideoFormat::I420) {
         if (dst_fmt == VideoFormat::RGB) {
-            ret = libyuv::I420ToRAW(src_y, src_stride_y,
-                                    src_u, src_stride_u,
-                                    src_v, src_stride_v,
-                                    dst_0, dst_stride_0, src_w, src_h);
+            ret = raw_is_rgb
+                ? libyuv::I420ToRAW(src_y, src_stride_y, src_u, src_stride_u,
+                                    src_v, src_stride_v, dst_0, dst_stride_0, src_w, src_h)
+                : libyuv::I420ToRGB24(src_y, src_stride_y, src_u, src_stride_u,
+                                      src_v, src_stride_v, dst_0, dst_stride_0, src_w, src_h);
         } else if (dst_fmt == VideoFormat::BGR) {
-            ret = libyuv::I420ToRGB24(src_y, src_stride_y,
-                                      src_u, src_stride_u,
-                                      src_v, src_stride_v,
-                                      dst_0, dst_stride_0, src_w, src_h);
+            ret = raw_is_rgb
+                ? libyuv::I420ToRGB24(src_y, src_stride_y, src_u, src_stride_u,
+                                      src_v, src_stride_v, dst_0, dst_stride_0, src_w, src_h)
+                : libyuv::I420ToRAW(src_y, src_stride_y, src_u, src_stride_u,
+                                    src_v, src_stride_v, dst_0, dst_stride_0, src_w, src_h);
         } else if (dst_fmt == VideoFormat::NV12) {
             ret = libyuv::I420ToNV12(src_y, src_stride_y,
                                      src_u, src_stride_u,
@@ -177,13 +208,17 @@ bool LibyuvTransformKernel::convert_color(
     // ---- Source: NV12 ----
     else if (src_fmt == VideoFormat::NV12) {
         if (dst_fmt == VideoFormat::RGB) {
-            ret = libyuv::NV12ToRAW(src_y, src_stride_y,
-                                    src_uv, src_stride_u,
-                                    dst_0, dst_stride_0, src_w, src_h);
-        } else if (dst_fmt == VideoFormat::BGR) {
-            ret = libyuv::NV12ToRGB24(src_y, src_stride_y,
-                                      src_uv, src_stride_u,
+            ret = raw_is_rgb
+                ? libyuv::NV12ToRAW(src_y, src_stride_y, src_uv, src_stride_u,
+                                    dst_0, dst_stride_0, src_w, src_h)
+                : libyuv::NV12ToRGB24(src_y, src_stride_y, src_uv, src_stride_u,
                                       dst_0, dst_stride_0, src_w, src_h);
+        } else if (dst_fmt == VideoFormat::BGR) {
+            ret = raw_is_rgb
+                ? libyuv::NV12ToRGB24(src_y, src_stride_y, src_uv, src_stride_u,
+                                      dst_0, dst_stride_0, src_w, src_h)
+                : libyuv::NV12ToRAW(src_y, src_stride_y, src_uv, src_stride_u,
+                                    dst_0, dst_stride_0, src_w, src_h);
         } else if (dst_fmt == VideoFormat::I420) {
             ret = libyuv::NV12ToI420(src_y, src_stride_y,
                                      src_uv, src_stride_u,
@@ -193,7 +228,7 @@ bool LibyuvTransformKernel::convert_color(
                                      src_w, src_h);
         }
     }
-    // ---- Source: RGB (libyuv RAW) ----
+    // ---- Source: RGB ----
     else if (src_fmt == VideoFormat::RGB) {
         if (dst_fmt == VideoFormat::RGB) {
             for (int r = 0; r < src_h; ++r)
@@ -202,14 +237,15 @@ bool LibyuvTransformKernel::convert_color(
                        src_w * 3);
             ret = 0;
         } else if (dst_fmt == VideoFormat::BGR) {
+            // RGB↔BGR swap — RAWToRGB24 always swaps bytes 0 and 2, works either way
             ret = libyuv::RAWToRGB24(src_y, src_stride_y,
                                      dst_0, dst_stride_0, src_w, src_h);
         } else if (dst_fmt == VideoFormat::I420) {
-            ret = libyuv::RAWToI420(src_y, src_stride_y,
-                                    dst_0, dst_stride_0,
-                                    dst_1, dst_stride_1,
-                                    dst_2, dst_stride_2,
-                                    src_w, src_h);
+            ret = raw_is_rgb
+                ? libyuv::RAWToI420(src_y, src_stride_y, dst_0, dst_stride_0,
+                                    dst_1, dst_stride_1, dst_2, dst_stride_2, src_w, src_h)
+                : libyuv::RGB24ToI420(src_y, src_stride_y, dst_0, dst_stride_0,
+                                      dst_1, dst_stride_1, dst_2, dst_stride_2, src_w, src_h);
         } else if (dst_fmt == VideoFormat::NV12) {
             // Two-step: RGB → I420 (scratch) → NV12
             int y_stride = src_w;
@@ -219,9 +255,11 @@ bool LibyuvTransformKernel::convert_color(
             uint8_t* t_y = tmp.data();
             uint8_t* t_u = t_y + src_w * src_h;
             uint8_t* t_v = t_u + (src_w / 2) * (src_h / 2);
-            ret = libyuv::RAWToI420(src_y, src_stride_y,
-                                    t_y, y_stride, t_u, u_stride, t_v, v_stride,
-                                    src_w, src_h);
+            ret = raw_is_rgb
+                ? libyuv::RAWToI420(src_y, src_stride_y, t_y, y_stride,
+                                    t_u, u_stride, t_v, v_stride, src_w, src_h)
+                : libyuv::RGB24ToI420(src_y, src_stride_y, t_y, y_stride,
+                                      t_u, u_stride, t_v, v_stride, src_w, src_h);
             if (ret == 0) {
                 ret = libyuv::I420ToNV12(t_y, y_stride, t_u, u_stride, t_v, v_stride,
                                          dst_0, dst_stride_0,
@@ -230,7 +268,7 @@ bool LibyuvTransformKernel::convert_color(
             }
         }
     }
-    // ---- Source: BGR (libyuv RGB24) ----
+    // ---- Source: BGR ----
     else if (src_fmt == VideoFormat::BGR) {
         if (dst_fmt == VideoFormat::BGR) {
             for (int r = 0; r < src_h; ++r)
@@ -239,15 +277,15 @@ bool LibyuvTransformKernel::convert_color(
                        src_w * 3);
             ret = 0;
         } else if (dst_fmt == VideoFormat::RGB) {
-            // BGR→RGB is same as RAWToRGB24 (swaps R and B)
+            // BGR↔RGB swap — same byte-swap function
             ret = libyuv::RAWToRGB24(src_y, src_stride_y,
                                      dst_0, dst_stride_0, src_w, src_h);
         } else if (dst_fmt == VideoFormat::I420) {
-            ret = libyuv::RGB24ToI420(src_y, src_stride_y,
-                                      dst_0, dst_stride_0,
-                                      dst_1, dst_stride_1,
-                                      dst_2, dst_stride_2,
-                                      src_w, src_h);
+            ret = raw_is_rgb
+                ? libyuv::RGB24ToI420(src_y, src_stride_y, dst_0, dst_stride_0,
+                                      dst_1, dst_stride_1, dst_2, dst_stride_2, src_w, src_h)
+                : libyuv::RAWToI420(src_y, src_stride_y, dst_0, dst_stride_0,
+                                    dst_1, dst_stride_1, dst_2, dst_stride_2, src_w, src_h);
         } else if (dst_fmt == VideoFormat::NV12) {
             // Two-step: BGR → I420 (scratch) → NV12
             int y_stride = src_w;
@@ -257,9 +295,11 @@ bool LibyuvTransformKernel::convert_color(
             uint8_t* t_y = tmp.data();
             uint8_t* t_u = t_y + src_w * src_h;
             uint8_t* t_v = t_u + (src_w / 2) * (src_h / 2);
-            ret = libyuv::RGB24ToI420(src_y, src_stride_y,
-                                      t_y, y_stride, t_u, u_stride, t_v, v_stride,
-                                      src_w, src_h);
+            ret = raw_is_rgb
+                ? libyuv::RGB24ToI420(src_y, src_stride_y, t_y, y_stride,
+                                      t_u, u_stride, t_v, v_stride, src_w, src_h)
+                : libyuv::RAWToI420(src_y, src_stride_y, t_y, y_stride,
+                                    t_u, u_stride, t_v, v_stride, src_w, src_h);
             if (ret == 0) {
                 ret = libyuv::I420ToNV12(t_y, y_stride, t_u, u_stride, t_v, v_stride,
                                          dst_0, dst_stride_0,

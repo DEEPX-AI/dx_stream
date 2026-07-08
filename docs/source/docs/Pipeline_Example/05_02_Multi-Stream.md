@@ -32,6 +32,10 @@ The pipeline in the figure is defined in
 
 - Depending on the model size, using a multi sub-pipeline structure may put a burden on memory resources
 - While sub-pipeline structures can offer advantages in processing speed, the performance gain may be negligible compared to selector-based pipelines depending on the environment.
-- **DxScale** and **DxConvert** must be placed **before** DxInputSelector or **after** DxOutputSelector (i.e., per-stream). These elements require stable caps and cannot handle the interleaved multi-stream output of DxInputSelector where caps change on every buffer.
+- **Multi-stream domain placement constraints.** The chain between `DxInputSelector` and `DxOutputSelector` uses `application/x-dxvideoraw` caps and carries per-stream identity in `DXFrameMeta`. Several elements cannot operate inside this domain and must be placed *per stream upstream of `DxInputSelector`* or *per output downstream of `DxOutputSelector`*:
+    - **DxScale** and **DxConvert** — they require a single stable caps for buffer pool allocation and kernel setup. Inside the domain they would see interleaved buffers with different resolutions/formats and cannot reinitialize per buffer.
+    - **DxGather** — designed to merge branches that share a single source (split by `tee`); it has no concept of `stream_id` and cannot demultiplex the merged domain stream.
+
+    For the full element placement matrix, see [Multi-Stream Domain](./../Elements/03_00_Multi_Stream_Domain.md).
 
 ---

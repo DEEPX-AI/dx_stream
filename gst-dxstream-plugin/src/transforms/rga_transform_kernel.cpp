@@ -12,8 +12,8 @@
 #include <cstring>
 #include <mutex>
 
-#define GST_CAT_DEFAULT dxt_rga_debug
-GST_DEBUG_CATEGORY_STATIC(dxt_rga_debug);
+#define GST_CAT_DEFAULT transform_kernel_cat
+GST_DEBUG_CATEGORY_EXTERN(transform_kernel_cat);
 
 namespace dxt {
 
@@ -40,17 +40,17 @@ static bool is_yuv_format(VideoFormat fmt) {
 // ---------------------------------------------------------------------------
 
 BackendCaps RgaTransformKernel::capabilities() const {
-    return BackendCaps{
-        .name             = "rga",
-        .hw_accelerated   = true,
-        .supports_dma_buf = true,
-        .max_width        = 8176,
-        .max_height       = 8176,
-        .src_formats      = { VideoFormat::NV12,
-                              VideoFormat::RGB,  VideoFormat::BGR },
-        .dst_formats      = { VideoFormat::NV12,
-                              VideoFormat::RGB,  VideoFormat::BGR },
-    };
+    BackendCaps caps;
+    caps.name             = "rga";
+    caps.hw_accelerated   = true;
+    caps.supports_dma_buf = true;
+    caps.max_width        = 8176;
+    caps.max_height       = 8176;
+    caps.src_formats      = { VideoFormat::NV12,
+                              VideoFormat::RGB,  VideoFormat::BGR };
+    caps.dst_formats      = { VideoFormat::NV12,
+                              VideoFormat::RGB,  VideoFormat::BGR };
+    return caps;
 }
 
 // ---------------------------------------------------------------------------
@@ -59,12 +59,6 @@ BackendCaps RgaTransformKernel::capabilities() const {
 
 bool RgaTransformKernel::init(const FrameDesc& dst_template,
                                const TransformOps& ops) {
-    static gsize debug_once = 0;
-    if (g_once_init_enter(&debug_once)) {
-        GST_DEBUG_CATEGORY_INIT(dxt_rga_debug, "dxt_rga", 0, "DXT RGA transform kernel");
-        g_once_init_leave(&debug_once, 1);
-    }
-
     // Only formats safe with RGA's single-pointer wrapbuffer model.
     // I420 (3-plane) is excluded: RGA internally computes U/V offsets from
     // wstride×hstride, which may not match GStreamer's plane layout.
@@ -84,15 +78,7 @@ bool RgaTransformKernel::init(const FrameDesc& dst_template,
         return false;
     }
 
-    // Prepare internal libyuv fallback (always succeeds for any format pair)
-    libyuv_fallback_ = std::make_unique<LibyuvTransformKernel>();
-    if (!libyuv_fallback_->init(dst_template, ops)) {
-        GST_ERROR("RgaTransformKernel: libyuv fallback init failed (unexpected)");
-        return false;
-    }
-
-    GST_DEBUG("RgaTransformKernel: init OK  dst=%dx%d  fmt=%s  keep_ratio=%d  "
-              "(libyuv fallback ready)",
+    GST_DEBUG("RgaTransformKernel: init OK  dst=%dx%d  fmt=%s  keep_ratio=%d",
               dst_template_.width, dst_template_.height,
               video_format_to_string(dst_template_.format),
               ops_.keep_aspect_ratio);
@@ -287,7 +273,7 @@ TransformResult RgaTransformKernel::rga_execute(const FrameDesc& src,
     if (src.format == VideoFormat::RGB || src.format == VideoFormat::BGR) {
         if (src_wstride % 3 != 0) {
             GST_WARNING("RgaTransformKernel: src RGB/BGR byte stride %d "
-                        "not divisible by 3 → falling back to libyuv",
+                        "not divisible by 3",
                         src_wstride);
             return result;
         }
@@ -331,7 +317,7 @@ TransformResult RgaTransformKernel::rga_execute(const FrameDesc& src,
     if (dst_template_.format == VideoFormat::RGB || dst_template_.format == VideoFormat::BGR) {
         if (dst.planes[0].stride % 3 != 0) {
             GST_WARNING("RgaTransformKernel: dst RGB/BGR byte stride %d "
-                        "not divisible by 3 → falling back to libyuv",
+                        "not divisible by 3",
                         dst.planes[0].stride);
             return result;
         }
@@ -371,7 +357,7 @@ TransformResult RgaTransformKernel::rga_execute(const FrameDesc& src,
     if (src_rect.width < 68 || src_rect.height < 2 ||
         src_rect.width > 8176 || src_rect.height > 8176) {
         GST_WARNING("RgaTransformKernel: src resolution %dx%d out of range "
-                    "[68x2 ~ 8176x8176] → libyuv fallback",
+                    "[68x2 ~ 8176x8176]",
                     src_rect.width, src_rect.height);
         return result;
     }
@@ -379,7 +365,7 @@ TransformResult RgaTransformKernel::rga_execute(const FrameDesc& src,
     if (dst_rect.width < 68 || dst_rect.height < 2 ||
         dst_rect.width > 8128 || dst_rect.height > 8128) {
         GST_WARNING("RgaTransformKernel: dst resolution %dx%d out of range "
-                    "[68x2 ~ 8128x8128] → libyuv fallback",
+                    "[68x2 ~ 8128x8128]",
                     dst_rect.width, dst_rect.height);
         return result;
     }
@@ -389,7 +375,7 @@ TransformResult RgaTransformKernel::rga_execute(const FrameDesc& src,
     if (w_scale < 0.125f || w_scale > 8.0f ||
         h_scale < 0.125f || h_scale > 8.0f) {
         GST_WARNING("RgaTransformKernel: scale ratio (%.3f, %.3f) exceeds "
-                    "[1/8 ~ 8] → libyuv fallback", w_scale, h_scale);
+                    "[1/8 ~ 8]", w_scale, h_scale);
         return result;
     }
 
@@ -412,7 +398,7 @@ TransformResult RgaTransformKernel::rga_execute(const FrameDesc& src,
     int check = imcheck(src_img, dst_img, src_rect, dst_rect);
     if (check != IM_STATUS_NOERROR) {
         GST_WARNING("RgaTransformKernel: imcheck rejected %s(%dx%d)→%s(%dx%d): %s  "
-                    "→ libyuv fallback for this frame",
+                    "→ falling back",
                     video_format_to_string(src.format), src_rect.width, src_rect.height,
                     video_format_to_string(dst_template_.format),
                     dst_rect.width, dst_rect.height,
@@ -433,7 +419,7 @@ TransformResult RgaTransformKernel::rga_execute(const FrameDesc& src,
                         0, nullptr, &opt, IM_SYNC);
     if (ret != IM_STATUS_SUCCESS) {
         GST_WARNING("RgaTransformKernel: improcess failed: %d - %s  "
-                    "→ libyuv fallback for this frame",
+                    "→ falling back",
                     ret, imStrError(static_cast<IM_STATUS>(ret)));
         return result;
     }
@@ -494,13 +480,6 @@ TransformResult RgaTransformKernel::transform(const FrameDesc&  src,
     // Attempt RGA execution
     // ------------------------------------------------------------------
     result = rga_execute(src, dst, crop, dst_x, dst_y, dst_w, dst_h);
-
-    // If rga_execute failed (resolution/scale/imcheck/improcess),
-    // delegate this frame to libyuv — no frame drop.
-    // (libyuv handles its own padding internally, so the double fill is harmless)
-    if (!result.success) {
-        return libyuv_fallback_->transform(src, dst, slot_id, dynamic);
-    }
 
     return result;
 }

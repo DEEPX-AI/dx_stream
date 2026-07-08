@@ -1,124 +1,90 @@
 #!/usr/bin/env python
 #
-# pip install paho-mqtt
+# pip install paho-mqtt opencv-python
 
 import json
-
 import argparse
+import base64
+
 import paho.mqtt.client as mqtt
-import time
+
+try:
+    import cv2
+    import numpy as np
+    HAS_CV2 = True
+except ImportError:
+    HAS_CV2 = False
 
 
-'''
-/*
- * Sample JSON Output Format:
- * {
- *   "streamId": 0,
- *   "seqId": 123,
- *   "width": 1920,
- *   "height": 1080,
- *   "objects": [
- *     {
- *       "object": {
- *         "label_id": 1,
- *         "track_id": 42,
- *         "confidence": 0.87,
- *         "name": "person",
- *         "box": {
- *           "startX": 300.0,
- *           "startY": 400.0,
- *           "endX": 500.0,
- *           "endY": 600.0
- *         },
- *         "body_feature": [0.321, 0.654, 0.987],
- *         "segment": {
- *           "height": 200,
- *           "width": 200,
- *           "format": "roi-binary-mask",
- *           "background_value": 0,
- *           "foreground_value": 255,
- *           "box": {
- *             "startX": 300.0,
- *             "startY": 400.0,
- *             "endX": 500.0,
- *             "endY": 600.0
- *           },
- *           "data": 140712345678912
- *         },
- *         "pose": {
- *           "keypoints": [
- *             {"kx": 100.5, "ky": 200.3, "ks": 0.8},
- *             {"kx": 105.2, "ky": 205.7, "ks": 0.9}
- *           ]
- *         },
- *         "face": {
- *           "landmark": [
- *             {"x": 150.2, "y": 180.5},
- *             {"x": 155.8, "y": 185.3}
- *           ],
- *           "box": {
- *             "startX": 100.0,
- *             "startY": 150.0,
- *             "endX": 200.0,
- *             "endY": 250.0
- *           },
- *           "confidence": 0.95,
- *           "face_feature": [0.123, 0.456, 0.789]
- *         }
- *       }
- *     }
- *   ]
- * }
- */
-'''
+def display_frame(base64_str):
+    if not HAS_CV2:
+        print("  -> opencv-python not installed, skipping frame display")
+        return
+
+    decoded = base64.b64decode(base64_str)
+    nparr = np.frombuffer(decoded, np.uint8)
+    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    if img is None:
+        print("  -> Failed to decode JPEG from frameData")
+        return
+
+    cv2.imshow("frameData", img)
+    cv2.waitKey(1)
 
 
-# The callback for when the client receives a CONNACK response from the server.
 def on_connect(client, userdata, flags, rc):
-    print("Connected with result code " + str(rc))
-    # Subscribing to the topic
+    print(f"on_connect: {rc}")
     client.subscribe(userdata['topic'])
 
-# The callback for when a PUBLISH message is received from the server.
+
 def on_message(client, userdata, msg):
     try:
-        # Decode the message payload and parse it as JSON
-        message = json.loads(msg.payload.decode())
-        ###print("Received message: ", message)
-
-        sub_ts = int(round(time.time() * 1000))
-        seq_id = message['seqId'] if 'seqId' in message else None
-
-        if seq_id is None:
-            return
-
-        if seq_id==1:
-            userdata['sub_ts_old']=sub_ts
-
-        print(f"|dSub: {(sub_ts - userdata['sub_ts_old']):3d}| payload => seqId: {seq_id:3d}, ...")
-
-        userdata['sub_ts_old']=sub_ts
-
+        data = json.loads(msg.payload.decode())
     except json.JSONDecodeError:
-        print("Received non-JSON message: ", msg.payload.decode())
-   
+        print(f"Unable to parse JSON: {msg.payload.decode()[:100]}")
+        return
+
+    seq_id = data.get('seqId', -1)
+    objects = data.get('objects', [])
+    frame_data = data.get('frameData', '')
+    has_frame = len(frame_data) > 0 if frame_data else False
+
+    print(f"Received payload {len(msg.payload)} bytes | seqId: {seq_id} | "
+          f"objects: {len(objects)} | frameData: {'yes' if has_frame else 'no'}")
+
+    if userdata.get('print_all'):
+        display = dict(data)
+        if has_frame:
+            display['frameData'] = '<base64 omitted>'
+        print(json.dumps(display, indent=2))
+
+    if has_frame and userdata.get('display'):
+        display_frame(frame_data)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='MQTT Subscriber')
-    parser.add_argument('-n', '--hostname', type=str, required=True, help='MQTT broker hostname')
-    parser.add_argument('-t', '--topic', type=str, required=True, help='MQTT topic to subscribe to')
-    parser.add_argument('-p', '--port', type=int, default=1883, help='MQTT broker port number (default: 1883)')
-    
+    parser.add_argument('-n', '--hostname', type=str, required=True,
+                        help='MQTT broker hostname')
+    parser.add_argument('-t', '--topic', type=str, required=True,
+                        help='MQTT topic to subscribe to')
+    parser.add_argument('-p', '--port', type=int, default=1883,
+                        help='MQTT broker port (default: 1883)')
+    parser.add_argument('-a', '--all', action='store_true',
+                        help='Print all JSON fields')
+    parser.add_argument('-d', '--display', action='store_true',
+                        help='Display decoded JPEG frames in a window')
+
     args = parser.parse_args()
-    
-    # old publish/subscribe timestamp
-    sub_ts_old=0
-    
+
     client = mqtt.Client()
-    client.user_data_set({'topic': args.topic, 'sub_ts_old': sub_ts_old})
+    client.user_data_set({
+        'topic': args.topic,
+        'print_all': args.all,
+        'display': args.display,
+    })
     client.on_connect = on_connect
     client.on_message = on_message
-    
+
     client.connect(args.hostname, args.port, 60)
-    
     client.loop_forever()

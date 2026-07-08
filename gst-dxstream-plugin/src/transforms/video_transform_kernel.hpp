@@ -150,6 +150,7 @@ struct BackendCaps {
     const char* name            = nullptr;
     bool        hw_accelerated  = false;
     bool        supports_dma_buf = false;
+    bool        supports_dynamic_input_size = true;  // false for fixed-size HW (e.g. dxvnpu VP)
     int         max_width       = 0;
     int         max_height      = 0;
     std::vector<VideoFormat> src_formats;

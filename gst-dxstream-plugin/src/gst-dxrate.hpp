@@ -12,21 +12,19 @@ G_DECLARE_FINAL_TYPE(GstDxRate, gst_dxrate, GST, DXRATE, GstBaseTransform)
 struct _GstDxRate {
     GstBaseTransform _parent_instance;
 
-    GstBuffer *_prevbuf;      /**< previous buffer */
-    GstSegment _segment;      /**< current segment */
-    guint64 _out_frame_count; /**< number of frames output */
+    /** Per-stream rate state map (opaque to header — placement-new in init,
+     *  delete in finalize). Keyed by DXFrameMeta._stream_id (or 0 in
+     *  NORMAL_MODE). Each entry holds prevbuf/segment/out_frame_count/
+     *  base_ts/prev_ts/next_ts/last_ts. */
+    gpointer _streams;
+
+    /** Element-global monotonic output offset (BUFFER_OFFSET). */
+    guint64 _out;
 
     guint _framerate; /**< framerate numerator (To) */
 
-    /** Timestamp */
-    guint64 _base_ts; /**< used in next_ts calculation */
-    guint64 _prev_ts; /**< Previous buffer timestamp */
-    guint64 _next_ts; /**< Timestamp of next buffer to output */
-    guint64 _last_ts; /**< Timestamp of last input buffer */
-
     /** Properties */
-    guint64 _out;
-    gboolean _throttle; /**< throttle property */
+    gboolean _throttle;
 };
 
 G_END_DECLS

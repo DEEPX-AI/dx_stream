@@ -9,6 +9,7 @@ DX-Stream is a GStreamer-based Vision AI application development tool that allow
 [**2. Installation**](./docs/source/docs/02_DX-STREAM_Installation.md)
 
 **3. Elements**
+- [Multi-Stream Domain](./docs/source/docs/Elements/03_00_Multi_Stream_Domain.md)
 - [DxPreprocess](./docs/source/docs/Elements/03_01_DxPreprocess.md)
 - [DxInfer](./docs/source/docs/Elements/03_02_DxInfer.md)
 - [DxPostprocess](./docs/source/docs/Elements/03_03_DxPostprocess.md)
@@ -35,12 +36,17 @@ DX-Stream is a GStreamer-based Vision AI application development tool that allow
 
 [**7. Debugging Guide**](./docs/source/docs/07_Debugging_Guide.md)
 
+[**8. Agent-Driven Development**](./docs/source/docs/08_DX-STREAM_Agent_Driven_Development.md)
+
 **Appendix**
 - [User Metadata Guide](./docs/source/docs/Appendix_User_Metadata_Guide.md)
 - [Build on Orange Pi 5 Plus](./docs/source/docs/Appendix_Build_on_OrangePi5Plus.md)
+- [Build on Windows](./docs/source/docs/Appendix_Build_on_Windows.md)
 - [Performance Evaluation With GstShark](./docs/source/docs/Appendix_Performance_Evaluation_with_GstShark.md)
-- [Change Log](./docs/source/docs/Appendix_Change_Log.md)
 - [Third-Party Sample Model Licenses](./docs/source/docs/Appendix_Third_Party_Model_Licenses.md)
+
+**Change Log**
+- [Change Log](./docs/source/docs/Appendix_Change_Log.md)
 
 ## Third-Party Model License Notice
 

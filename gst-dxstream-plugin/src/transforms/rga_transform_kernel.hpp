@@ -3,7 +3,6 @@
 #ifdef HAVE_LIBRGA
 
 #include "transform_kernel_base.hpp"
-#include "libyuv_transform_kernel.hpp"   // internal fallback
 
 #include <memory>
 
@@ -25,8 +24,7 @@ namespace dxt {
 // Per-frame validation strategy:
 //   init()       — accepts any supported format pair. Only dst_template is stored.
 //   every frame  — resolution range + scale ratio check, then imcheck().
-//                  If HW rejects → transparently falls back to internal libyuv
-//                  for that frame only. Next frame retries RGA.
+//                  If HW rejects → returns failure (pool-level libyuv fallback).
 //
 // No hardcoded alignment tables.
 // RGA3 cores are explicitly pinned (RGA2-Enhance has 32-bit IOMMU,
@@ -63,9 +61,6 @@ private:
     TransformResult rga_execute(const FrameDesc& src, FrameDesc& dst,
                                 const CropRect& crop,
                                 int dst_x, int dst_y, int dst_w, int dst_h);
-
-    // Internal libyuv fallback — created once in init(), used if RGA rejects
-    std::unique_ptr<LibyuvTransformKernel> libyuv_fallback_;
 };
 
 }  // namespace dxt

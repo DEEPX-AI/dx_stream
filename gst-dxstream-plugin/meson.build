@@ -16,6 +16,8 @@ else
 endif
 
 arch = host_machine.cpu_family()
+host_sys = host_machine.system()
+is_windows = host_sys == 'windows'
 cc = meson.get_compiler('cpp')
 
 extra_deps = []
@@ -30,12 +32,26 @@ gstreamer_dep = dependency(
 extra_deps += gstreamer_dep
 extra_deps += dependency('eigen3', required: true)
 extra_deps += dependency('gstreamer-video-1.0', version : '>=1.16')
+extra_deps += dependency('gstreamer-base-1.0', version : '>=1.16')
 extra_deps += dependency('json-glib-1.0', version : '>= 1.0')
-extra_deps += cc.find_library('dl', required : true)
+
+# dl: POSIX-only. Windows uses LoadLibrary via dx_dlfcn.h shim.
+if not is_windows
+  extra_deps += cc.find_library('dl', required : true)
+endif
+
 extra_deps += dependency('zlib', required: true)
 extra_deps += dependency('opencv4', required: true)
-extra_deps += cc.find_library('yuv')
-extra_deps += cc.find_library('dxrt')
+extra_deps += cc.find_library(is_windows ? 'libyuv' : 'yuv')
+
+# DEEPX internal libraries — cc.find_library (no .pc files)
+dxrt_flag = false
+dxrt_dep_maybe = cc.find_library('dxrt', required: false)
+if dxrt_dep_maybe.found()
+  message('Found dxrt library, adding to dependencies.')
+  extra_deps += dxrt_dep_maybe
+  dxrt_flag = true
+endif
 
 if v3_flag == true
   message('Building in V3 mode (with dxdsp)')
@@ -57,13 +73,27 @@ if librga_dep_maybe.found()
     librga_flag = true
 endif
 
+dxvnpu_flag = false
+if get_option('dxvnpu_flag') == true
+    dxvnpu_dep = dependency('dxvnpu', required: true)
+    message('DXVNPU mode enabled, adding VNPU elements.')
+    extra_deps += dxvnpu_dep
+    extra_deps += dependency('threads')
+    dxvnpu_flag = true
+endif
+
+if not dxrt_flag and not dxvnpu_flag
+  error('At least one inference backend (dxrt or dxvnpu) is required')
+endif
+
 include_dirs = [
     include_directories('general'),
     include_directories('metadata'),
     include_directories('src/tracker/common/include'),
     include_directories('src/tracker/OC_SORT/include'),
     include_directories('src/transforms'),
-    include_directories('src/preprocessors')
+    include_directories('src/preprocessors'),
+    include_directories('src/infer_backend')
 ]
 
 if v3_flag == false

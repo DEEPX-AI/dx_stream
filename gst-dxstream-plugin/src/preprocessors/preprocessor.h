@@ -2,7 +2,7 @@
 
 #include <opencv2/opencv.hpp>
 #include <gst/gst.h>
-#include "../transforms/video_transform_kernel.hpp"
+#include "../transforms/transform_kernel_pool.hpp"
 #include <memory>
 
 // Forward declarations to avoid circular includes
@@ -18,7 +18,7 @@ using DXObjectMeta = struct _DXObjectMeta;
 class Preprocessor {
 public:
     explicit Preprocessor(GstDxPreprocess *elem,
-                          std::unique_ptr<dxt::IVideoTransformKernel> kernel);
+                          std::unique_ptr<dxt::TransformKernelPool> kernel_pool);
     virtual ~Preprocessor() = default;
 
     bool preprocess(GstBuffer* buf, DXFrameMeta *frame_meta,
@@ -41,5 +41,5 @@ protected:
 
 private:
     GstDxPreprocess *element;
-    std::unique_ptr<dxt::IVideoTransformKernel> kernel_;
+    std::unique_ptr<dxt::TransformKernelPool> kernel_pool_;
 };

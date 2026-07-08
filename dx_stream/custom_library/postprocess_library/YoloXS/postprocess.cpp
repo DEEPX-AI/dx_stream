@@ -248,7 +248,7 @@ std::vector<BoundingBox> parse_single_output(const dxs::DXTensor& output,
  * 
  * The function then applies NMS and scales coordinates to original image space.
  */
-extern "C" void PostProcess(GstBuffer* buf,
+DX_CUSTOM_EXPORT void PostProcess(GstBuffer* buf,
                             std::vector<dxs::DXTensor> network_output,
                             DXFrameMeta* frame_meta,
                             DXObjectMeta* object_meta) {

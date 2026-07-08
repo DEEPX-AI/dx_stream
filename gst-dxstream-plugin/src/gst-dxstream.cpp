@@ -16,15 +16,24 @@
 #include "gst-dxmsgconv.hpp"
 #endif
 
-GST_DEBUG_CATEGORY(dxframemeta_cat);
-GST_DEBUG_CATEGORY(dxobjectmeta_cat);
-GST_DEBUG_CATEGORY(dxusermeta_cat);
+#ifdef HAVE_DXVNPU
+#include "gst-dxvnpudec.hpp"
+#include "gst-dxvnpuenc.hpp"
+#include "gst-dxvnpupipeline.hpp"
+#include "gst-dxvnpuoverlay.hpp"
+#endif
+
+GST_DEBUG_CATEGORY(dxmeta_cat);
+GST_DEBUG_CATEGORY(transform_kernel_cat);
+GST_DEBUG_CATEGORY(inference_backend_cat);
 
 static gboolean plugin_init(GstPlugin *plugin) {
     // debug category
-    GST_DEBUG_CATEGORY_INIT(dxframemeta_cat, "dxframemeta", 0, "DX Frame Meta");
-    GST_DEBUG_CATEGORY_INIT(dxobjectmeta_cat, "dxobjectmeta", 0, "DX Object Meta");
-    GST_DEBUG_CATEGORY_INIT(dxusermeta_cat, "dxusermeta", 0, "DX User Meta");
+    GST_DEBUG_CATEGORY_INIT(dxmeta_cat, "dxmeta", 0, "DX Metadata");
+    GST_DEBUG_CATEGORY_INIT(transform_kernel_cat, "transform_kernel", 0,
+                            "DX Transform Kernel");
+    GST_DEBUG_CATEGORY_INIT(inference_backend_cat, "inference_backend", 0,
+                            "DX Inference Backend");
 
     // Pipeline Design Elements
     if (!gst_element_register(plugin, "dxoutputselector", GST_RANK_NONE,
@@ -82,6 +91,29 @@ static gboolean plugin_init(GstPlugin *plugin) {
                               GST_TYPE_DXPREPROCESS)) {
         return FALSE;
     }
+    // VNPU Hardware Codec Elements
+#ifdef HAVE_DXVNPU
+    GstRank vnpu_codec_rank = GST_RANK_NONE;
+    if (dxvnpu::GetDeviceCount() > 0) {
+        vnpu_codec_rank = static_cast<GstRank>(GST_RANK_PRIMARY + 1);
+    }
+    if (!gst_element_register(plugin, "dxvnpudec", vnpu_codec_rank,
+                              GST_TYPE_DXVNPUDEC)) {
+        return FALSE;
+    }
+    if (!gst_element_register(plugin, "dxvnpuenc", vnpu_codec_rank,
+                              GST_TYPE_DXVNPUENC)) {
+        return FALSE;
+    }
+    if (!gst_element_register(plugin, "dxvnpupipeline", GST_RANK_NONE,
+                              GST_TYPE_DXVNPUPIPELINE)) {
+        return FALSE;
+    }
+    if (!gst_element_register(plugin, "dxvnpuoverlay", GST_RANK_NONE,
+                              GST_TYPE_DXVNPUOVERLAY)) {
+        return FALSE;
+    }
+#endif
     return TRUE;
 }
 

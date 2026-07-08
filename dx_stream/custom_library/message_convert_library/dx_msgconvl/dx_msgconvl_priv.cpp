@@ -219,6 +219,11 @@ gchar *dxpayload_convert_to_json(DxMsgContext *context,
     json_object_set_int_member(jobj_root, "width", frame_meta->_width);
     json_object_set_int_member(jobj_root, "height", frame_meta->_height);
 
+    if (meta_info->_frame_base64) {
+        json_object_set_string_member(jobj_root, "frameData",
+                                      meta_info->_frame_base64);
+    }
+
     JsonArray *jarray_objects = json_array_new();
     json_object_set_array_member(jobj_root, "objects", jarray_objects);
 

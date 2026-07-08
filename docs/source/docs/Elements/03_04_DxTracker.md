@@ -52,6 +52,20 @@ GObject
                          +----GstDxTracker
 ```
 
+### **Pad Templates**
+
+**Sink (input)**
+
+| **Property** | **Value** |
+|---|---|
+| Format | `video/x-raw; application/x-dxvideoraw` |
+
+**Src (output)**
+
+| **Property** | **Value** |
+|---|---|
+| Format | `video/x-raw; application/x-dxvideoraw` |
+
 ### **Properties**
 
 | **Name**            | **Description**                                                                                      | **Type**  | **Default Value** |
@@ -60,6 +74,12 @@ GObject
 | `config-file-path`  | Path to the JSON config file containing the tracking algorithm and parameters.                       | String    | `null`             |
 | `tracker-name`      | Specifies the name of the tracking algorithm to use.                                                | String    | `"OC_SORT"`        |
 
+### **Domain Mode Behavior**
+
+`dxtracker` is a dual-mode element (see [Multi-Stream Domain](./03_00_Multi_Stream_Domain.md)).
+
+- **Normal mode** (sink caps = `video/x-raw`): a single OC-SORT instance tracks objects across the single stream. All track IDs come from one shared ID space.
+- **Domain mode** (sink caps = `application/x-dxvideoraw`): `dxtracker` keeps a **separate OC-SORT instance per `_stream_id`**. Track IDs are allocated independently inside each stream, so the same numeric track ID may appear in two different streams referring to two unrelated objects. Tracks never cross stream boundaries.
 
 !!! note "NOTE" 
 

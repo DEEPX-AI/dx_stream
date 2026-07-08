@@ -8,8 +8,8 @@
 #include <algorithm>
 #include <cstring>
 
-#define GST_CAT_DEFAULT dxt_v3dsp_debug
-GST_DEBUG_CATEGORY_STATIC(dxt_v3dsp_debug);
+#define GST_CAT_DEFAULT transform_kernel_cat
+GST_DEBUG_CATEGORY_EXTERN(transform_kernel_cat);
 
 namespace dxt {
 
@@ -35,15 +35,15 @@ V3DspTransformKernel::~V3DspTransformKernel() {
 // ---------------------------------------------------------------------------
 
 BackendCaps V3DspTransformKernel::capabilities() const {
-    return BackendCaps{
-        .name             = "v3dsp",
-        .hw_accelerated   = true,
-        .supports_dma_buf = false,
-        .max_width        = 8192,
-        .max_height       = 8192,
-        .src_formats      = { VideoFormat::I420, VideoFormat::RGB, VideoFormat::BGR },
-        .dst_formats      = { VideoFormat::RGB, VideoFormat::BGR },
-    };
+    BackendCaps caps;
+    caps.name             = "v3dsp";
+    caps.hw_accelerated   = true;
+    caps.supports_dma_buf = false;
+    caps.max_width        = 8192;
+    caps.max_height       = 8192;
+    caps.src_formats      = { VideoFormat::I420, VideoFormat::RGB, VideoFormat::BGR };
+    caps.dst_formats      = { VideoFormat::RGB, VideoFormat::BGR };
+    return caps;
 }
 
 // ---------------------------------------------------------------------------
@@ -52,13 +52,6 @@ BackendCaps V3DspTransformKernel::capabilities() const {
 
 bool V3DspTransformKernel::init(const FrameDesc& dst_template,
                                  const TransformOps& ops) {
-    static gsize debug_once = 0;
-    if (g_once_init_enter(&debug_once)) {
-        GST_DEBUG_CATEGORY_INIT(dxt_v3dsp_debug, "dxt_v3dsp", 0,
-                                "DXT V3 DSP transform kernel");
-        g_once_init_leave(&debug_once, 1);
-    }
-
     // Allocate DSP double buffer
     dsp_buffer_0_ = dxcvext::allocDspBuffer();
     if (!dsp_buffer_0_) {

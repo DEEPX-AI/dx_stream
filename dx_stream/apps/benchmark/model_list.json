@@ -1,0 +1,30 @@
+{
+    "version": "2_3_0",
+    "models": [
+        "yolo26n.dxnn",
+        "yolo26n-pose.dxnn",
+        "yolo26n-seg.dxnn",
+        "yolo26n-obb.dxnn",
+        "yolo26n-cls.dxnn",
+        "yolo26s.dxnn",
+        "yolo26s-pose.dxnn",
+        "yolo26s-seg.dxnn",
+        "yolo26s-obb.dxnn",
+        "yolo26s-cls.dxnn",
+        "yolo26m.dxnn",
+        "yolo26m-pose.dxnn",
+        "yolo26m-seg.dxnn",
+        "yolo26m-obb.dxnn",
+        "yolo26m-cls.dxnn",
+        "yolo26l.dxnn",
+        "yolo26l-pose.dxnn",
+        "yolo26l-seg.dxnn",
+        "yolo26l-obb.dxnn",
+        "yolo26l-cls.dxnn",
+        "yolo26x.dxnn",
+        "yolo26x-pose.dxnn",
+        "yolo26x-seg.dxnn",
+        "yolo26x-obb.dxnn",
+        "yolo26x-cls.dxnn"
+    ]
+}

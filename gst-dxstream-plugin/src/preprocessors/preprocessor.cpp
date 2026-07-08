@@ -5,29 +5,31 @@
 #include "../transforms/gst_frame_desc.hpp"
 #include <algorithm>
 
+#define GST_CAT_DEFAULT transform_kernel_cat
+GST_DEBUG_CATEGORY_EXTERN(transform_kernel_cat);
+
 // ---------------------------------------------------------------------------
 // Constructor
 // ---------------------------------------------------------------------------
 
 Preprocessor::Preprocessor(GstDxPreprocess* elem,
-                            std::unique_ptr<dxt::IVideoTransformKernel> kernel)
-    : element(elem), kernel_(std::move(kernel)) {}
+                            std::unique_ptr<dxt::TransformKernelPool> kernel_pool)
+    : element(elem), kernel_pool_(std::move(kernel_pool)) {
+}
 
 // ---------------------------------------------------------------------------
 // preprocess — unified pixel transform bridge (replaces per-backend subclasses)
 //
-// Routing:
-//   supports_dma_buf == true  →  make_nv12_frame_desc() path  (RGA)
-//   supports_dma_buf == false →  gst_buffer_map() + format switch  (libyuv / v3dsp)
-// Format support is validated against kernel capabilities before proceeding.
+// Uses GstSrcFrame RAII wrapper to handle all format branching, DMA-buf
+// detection, vmeta/vinfo/heuristic stride resolution, and buffer mapping.
 // ---------------------------------------------------------------------------
 
 bool Preprocessor::preprocess(GstBuffer*   buf,
                                DXFrameMeta* frame_meta,
                                uint8_t*     output,
                                cv::Rect*    roi) {
-    if (!kernel_) {
-        GST_ERROR_OBJECT(element, "Preprocessor: kernel not initialised");
+    if (!kernel_pool_) {
+        GST_ERROR_OBJECT(element, "Preprocessor: kernel pool not initialised");
         return false;
     }
     if (!output) {
@@ -38,160 +40,34 @@ bool Preprocessor::preprocess(GstBuffer*   buf,
     dxt::VideoFormat src_fmt =
         dxt::video_format_from_string(frame_meta->_format.c_str());
 
-    // Validate that the kernel accepts the incoming pixel format
-    const auto& caps      = kernel_->capabilities();
-    const auto& supported = caps.src_formats;
-    if (std::find(supported.begin(), supported.end(), src_fmt) == supported.end()) {
-        GST_ERROR_OBJECT(element,
-                         "Preprocessor: format '%s' not supported by backend '%s'",
-                         frame_meta->_format.c_str(), caps.name);
-        return false;
+    dxt::InputConfig input_cfg{src_fmt, frame_meta->_width, frame_meta->_height};
+
+    // ------------------------------------------------------------------
+    // Build src FrameDesc via GstSrcFrame RAII wrapper
+    // ------------------------------------------------------------------
+    const GstVideoInfo* vinfo_ptr = nullptr;
+    {
+        auto it = element->_stream.info.find(frame_meta->_stream_id);
+        if (it != element->_stream.info.end())
+            vinfo_ptr = &it->second;
     }
 
-    // ------------------------------------------------------------------
-    // Build src FrameDesc
-    // ------------------------------------------------------------------
-    dxt::FrameDesc src;
-    GstMapInfo     map    = GST_MAP_INFO_INIT;
-    bool           mapped = false;
-
-    if (caps.supports_dma_buf) {
-        // RGA path — pass vinfo as fallback so make_nv12_frame_desc
-        // uses vmeta > vinfo > heuristic (not just vmeta > heuristic).
-        const GstVideoInfo* vinfo_ptr = nullptr;
-        {
-            auto it = element->_stream.info.find(frame_meta->_stream_id);
-            if (it != element->_stream.info.end()) {
-                vinfo_ptr = &it->second;
-            }
-        }
-        src = dxt::make_nv12_frame_desc(buf, frame_meta->_width, frame_meta->_height,
-                                        vinfo_ptr);
-        // if (src.memory_type == dxt::MemoryType::CPU_VIRTUAL) {
-        //     if (!gst_buffer_map(buf, &map, GST_MAP_READ)) {
-        //         GST_ERROR_OBJECT(element, "Preprocessor: failed to map GstBuffer");
-        //         return false;
-        //     }
-        //     mapped = true;
-        //     src.planes[0].data = map.data + src.planes[0].offset;
-        //     src.planes[1].data = map.data + src.planes[1].offset;
-        // }
-        if (!gst_buffer_map(buf, &map, GST_MAP_READ)) {
-            GST_ERROR_OBJECT(element, "Preprocessor: failed to map GstBuffer");
-            return false;
-        }
-        mapped = true;
-        src.planes[0].data = map.data + src.planes[0].offset;
-        src.planes[1].data = map.data + src.planes[1].offset;
-    } else {
-        // CPU-virtual path (libyuv / v3dsp)
-        src.width       = frame_meta->_width;
-        src.height      = frame_meta->_height;
-        src.format      = src_fmt;
-        src.memory_type = dxt::MemoryType::CPU_VIRTUAL;
-
-        if (!gst_buffer_map(buf, &map, GST_MAP_READ)) {
-            GST_ERROR_OBJECT(element, "Preprocessor: failed to map GstBuffer");
-            return false;
-        }
-        mapped = true;
-
-        // Prefer GstVideoMeta for actual buffer layout; fall back to
-        // stream-negotiated GstVideoInfo, then tight-packed defaults.
-        GstVideoMeta *vmeta = gst_buffer_get_video_meta(buf);
-        const GstVideoInfo* vinfo = nullptr;
-        if (!vmeta) {
-            auto it = element->_stream.info.find(frame_meta->_stream_id);
-            if (it != element->_stream.info.end()) {
-                vinfo = &it->second;
-            }
-        }
-
-        switch (src_fmt) {
-            case dxt::VideoFormat::I420: {
-                src.num_planes = 3;
-                if (vmeta) {
-                    src.planes[0] = { map.data + vmeta->offset[0], vmeta->stride[0],
-                                      frame_meta->_height,
-                                      static_cast<size_t>(vmeta->offset[0]) };
-                    src.planes[1] = { map.data + vmeta->offset[1], vmeta->stride[1],
-                                      frame_meta->_height / 2,
-                                      static_cast<size_t>(vmeta->offset[1]) };
-                    src.planes[2] = { map.data + vmeta->offset[2], vmeta->stride[2],
-                                      frame_meta->_height / 2,
-                                      static_cast<size_t>(vmeta->offset[2]) };
-                } else if (vinfo) {
-                    src.planes[0] = { map.data + vinfo->offset[0], vinfo->stride[0],
-                                      frame_meta->_height,
-                                      static_cast<size_t>(vinfo->offset[0]) };
-                    src.planes[1] = { map.data + vinfo->offset[1], vinfo->stride[1],
-                                      frame_meta->_height / 2,
-                                      static_cast<size_t>(vinfo->offset[1]) };
-                    src.planes[2] = { map.data + vinfo->offset[2], vinfo->stride[2],
-                                      frame_meta->_height / 2,
-                                      static_cast<size_t>(vinfo->offset[2]) };
-                } else {
-                    int w = frame_meta->_width, h = frame_meta->_height;
-                    src.planes[0] = { map.data, w, h, 0 };
-                    src.planes[1] = { map.data + w * h, w / 2, h / 2,
-                                      static_cast<size_t>(w * h) };
-                    src.planes[2] = { map.data + w * h + (w / 2) * (h / 2), w / 2, h / 2,
-                                      static_cast<size_t>(w * h + (w / 2) * (h / 2)) };
-                }
-                break;
-            }
-            case dxt::VideoFormat::NV12: {
-                src.num_planes = 2;
-                if (vmeta) {
-                    src.planes[0] = { map.data + vmeta->offset[0], vmeta->stride[0],
-                                      frame_meta->_height,
-                                      static_cast<size_t>(vmeta->offset[0]) };
-                    src.planes[1] = { map.data + vmeta->offset[1], vmeta->stride[1],
-                                      frame_meta->_height / 2,
-                                      static_cast<size_t>(vmeta->offset[1]) };
-                } else if (vinfo) {
-                    src.planes[0] = { map.data + vinfo->offset[0], vinfo->stride[0],
-                                      frame_meta->_height,
-                                      static_cast<size_t>(vinfo->offset[0]) };
-                    src.planes[1] = { map.data + vinfo->offset[1], vinfo->stride[1],
-                                      frame_meta->_height / 2,
-                                      static_cast<size_t>(vinfo->offset[1]) };
-                } else {
-                    int w = frame_meta->_width, h = frame_meta->_height;
-                    src.planes[0] = { map.data, w, h, 0 };
-                    src.planes[1] = { map.data + w * h, w, h / 2,
-                                      static_cast<size_t>(w * h) };
-                }
-                break;
-            }
-            case dxt::VideoFormat::RGB:
-            case dxt::VideoFormat::BGR: {
-                src.num_planes = 1;
-                if (vmeta) {
-                    src.planes[0] = { map.data + vmeta->offset[0], vmeta->stride[0],
-                                      frame_meta->_height,
-                                      static_cast<size_t>(vmeta->offset[0]) };
-                } else if (vinfo) {
-                    src.planes[0] = { map.data + vinfo->offset[0], vinfo->stride[0],
-                                      frame_meta->_height,
-                                      static_cast<size_t>(vinfo->offset[0]) };
-                } else {
-                    src.planes[0] = { map.data, frame_meta->_width * 3,
-                                      frame_meta->_height, 0 };
-                }
-                break;
-            }
-        }
+    dxt::GstSrcFrame src(buf, frame_meta->_width, frame_meta->_height,
+                          src_fmt, vinfo_ptr);
+    if (!src.ok()) {
+        GST_ERROR_OBJECT(element, "Preprocessor: failed to map GstBuffer");
+        return false;
     }
 
     // ------------------------------------------------------------------
     // Build dst FrameDesc
     // ------------------------------------------------------------------
-    dxt::FrameDesc dst = dxt::make_packed_frame_desc(
+    auto dst_fmt = dxt::video_format_from_string(element->_preprocess.color_format);
+    auto dst = dxt::make_output_frame_desc(
         output,
         element->_preprocess.width,
         element->_preprocess.height,
-        dxt::video_format_from_string(element->_preprocess.color_format));
+        dst_fmt);
 
     // ------------------------------------------------------------------
     // Dynamic ops: per-call ROI override (secondary mode)
@@ -204,16 +80,13 @@ bool Preprocessor::preprocess(GstBuffer*   buf,
     }
 
     // ------------------------------------------------------------------
-    // Execute transform
+    // Execute transform (pool handles fallback if primary kernel fails)
     // ------------------------------------------------------------------
-    dxt::TransformResult result = kernel_->transform(
-        src, dst,
+    dxt::TransformResult result = kernel_pool_->transform(
+        input_cfg, src.desc(), dst,
         frame_meta->_stream_id,
         dyn.crop_override ? &dyn : nullptr);
 
-    if (mapped) {
-        gst_buffer_unmap(buf, &map);
-    }
     return result.success;
 }
 
@@ -369,7 +242,15 @@ bool Preprocessor::process_object(GstBuffer *buf, DXFrameMeta *frame_meta, DXObj
     cleanup_temp_buffers(frame_meta->_stream_id);
 
     if (element->_plugin.process_function) {
-        ret = element->_plugin.process_function(buf, frame_meta, object_meta, static_cast<uint8_t*>(input_tensors.data_ptr()));
+        try {
+            ret = element->_plugin.process_function(buf, frame_meta, object_meta, static_cast<uint8_t*>(input_tensors.data_ptr()));
+        } catch (const std::exception &e) {
+            GST_ERROR_OBJECT(element, "Preprocess custom function threw exception: %s", e.what());
+            ret = false;
+        } catch (...) {
+            GST_ERROR_OBJECT(element, "Preprocess custom function threw unknown exception");
+            ret = false;
+        }
     } else {
         ret = preprocess(buf, frame_meta, static_cast<uint8_t*>(input_tensors.data_ptr()), &roi);
     }
@@ -466,7 +347,15 @@ bool Preprocessor::primary_process(GstBuffer *buf) {
     }
 
     if (element->_plugin.process_function != nullptr) {
-        if (!element->_plugin.process_function(buf, frame_meta, nullptr, input_tensor)) {
+        try {
+            if (!element->_plugin.process_function(buf, frame_meta, nullptr, input_tensor)) {
+                ret = false;
+            }
+        } catch (const std::exception &e) {
+            GST_ERROR_OBJECT(element, "Preprocess custom function threw exception: %s", e.what());
+            ret = false;
+        } catch (...) {
+            GST_ERROR_OBJECT(element, "Preprocess custom function threw unknown exception");
             ret = false;
         }
     } else {

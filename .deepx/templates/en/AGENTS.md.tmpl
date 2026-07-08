@@ -1,0 +1,179 @@
+# dx_stream — AI Coding Agents Entry Point
+
+> Self-contained entry point for dx_stream GStreamer pipeline development.
+
+{{FRAGMENT:response-language}}
+
+
+{{FRAGMENT:recommended-model}}
+
+{{FRAGMENT:skill-router-mandatory}}
+
+
+## Shared Knowledge
+
+All skills, instructions, toolsets, and memory live in `.deepx/`.
+Read `.deepx/README.md` for the complete index.
+
+## Quick Reference
+
+```bash
+./install.sh                        # Install GStreamer plugin bindings
+./setup.sh                          # Download sample models and videos
+dxrt-cli -s                         # Verify NPU availability
+gst-inspect-1.0 dxinfer             # Verify DxInfer plugin is registered
+pytest test/                        # Run unit tests
+```
+
+## Skills
+
+| Command | Description |
+|---------|-------------|
+| /dx-agent-stream-build-pipeline | Build GStreamer pipeline app (6 categories: single-model, multi-model, cascaded, tiled, parallel, broker) |
+| /dx-agent-stream-build-mqtt-kafka | Build MQTT/Kafka message broker pipeline app |
+| /dx-agent-stream-model-management | Download and configure .dxnn models for pipelines |
+| /dx-agent-stream-validate | Run pipeline validation checks |
+| /dx-agent-runtime-validate | Full feedback loop: validate, collect, approve, apply, verify |
+| /dx-swe-brainstorm | Brainstorm, propose 2-3 approaches, spec self-review, then plan |
+| /dx-swe-tdd | Validation-driven development with optional Red-Green-Refactor for unit tests |
+| /dx-swe-verify | Process: verify before claiming completion — evidence before assertions |
+| /dx-swe-writing-plans | Write implementation plans with bite-sized tasks |
+| /dx-swe-executing-plans | Execute plans with review checkpoints |
+| /dx-swe-subagent-dev | Execute plans via fresh subagent per task with two-stage review |
+| /dx-swe-debugging | Systematic debugging — 4-phase root cause investigation before proposing fixes |
+| /dx-swe-receiving-review | Evaluate code review feedback with technical rigor |
+| /dx-swe-requesting-review | Request code review after completing features |
+| /dx-skill-router | Skill discovery and invocation — check skills before any action |
+| /dx-harness-writing-skills | Create and edit skill files |
+| /dx-swe-parallel-agents | Dispatch parallel subagents for independent tasks |
+
+## Interactive Workflow (MUST FOLLOW)
+
+**Always walk through key decisions with the user before building.** This is a HARD GATE.
+
+### Before ANY code generation:
+1. **Brainstorm**: Ask 2-3 clarifying questions — variant, task type, model. Present a build plan and get approval.
+2. **Build with TDD**: Validate each file immediately after creation.
+3. **Verify**: Evidence before claims — run validation scripts before declaring success.
+
+### Output Isolation
+All AI-generated code goes to `dx-agent-dev/<session_id>/` by default.
+Only write to `src/` when explicitly requested by the user.
+
+**Session ID format**: `YYYYMMDD-HHMMSS_<agent>_<coding_model>_<target_model>_<task>` — the timestamp MUST use the
+**system local timezone** (NOT UTC). Use `$(date +%Y%m%d-%H%M%S)` in Bash or
+`datetime.now().strftime('%Y%m%d-%H%M%S')` in Python. Do NOT use `date -u`,
+`datetime.utcnow()`, or `datetime.now(timezone.utc)`.
+- **`<agent>`**: the coding agent identifier — use `claude`, `codex`, `copilot`, `cursor`, or `opencode`.
+- **`<coding_model>`**: shortened coding model name — e.g., `sonnet46`, `opus46`, `gpt53codex`, `gpt55`.
+
+## Critical Conventions
+
+1. **preprocess-id matching**: Every `DxPreprocess` / `DxInfer` pair must share the same `preprocess-id` value
+2. **Queue elements**: Place `queue` between every GStreamer processing stage
+3. **DxRate for RTSP**: Always insert `DxRate rate=<fps>` after RTSP sources to limit frame ingestion
+4. **Absolute model-path**: `DxInfer` `model-path` property must be an absolute filesystem path
+5. **DxMsgConv before DxMsgBroker**: Always serialize metadata with `DxMsgConv` before `DxMsgBroker`
+6. **Logging**: `logging.getLogger(__name__)` — no bare `print()`
+7. **Skill doc is sufficient**: Do NOT read source code unless skill is insufficient
+8. **No hardcoded model paths**: Use variables or config for model path resolution
+9. **Model list**: Query `model_list.json` for model download URLs and expected paths
+10. **PPU model auto-detection**: Auto-detect PPU models by checking model name `_ppu` suffix, `model_list.json` postprocess library, or compiler session context. PPU pipelines omit `DxPostprocess` or use a pass-through library — no separate NMS needed.
+11. **Existing pipeline search**: Before generating a new pipeline, search `pipelines/` and `run_*.sh` scripts for existing examples. If found, ask user: (a) explain existing only, or (b) create new pipeline based on existing. Never silently skip or overwrite.
+12. **PPU pipeline generation is MANDATORY**: If the compiled .dxnn model is PPU, the agent MUST generate a working pipeline example.
+13. **Mandatory output artifacts**: Every pipeline build session MUST produce: `pipeline.py`, `run_<app>.sh`, `session.json`, `README.md`, `setup.sh`, `run.sh`, `session.log`. The `session.log` must contain actual command output (never a hand-written summary). Run self-verification before presenting the final report.
+14. **x264enc universal rule**: Every `x264enc` in ANY context (shell, Python, pipeline strings) MUST include `bitrate=4000 speed-preset=ultrafast tune=zerolatency` — bare `x264enc` causes deadlocks (pitfall #14)
+
+## Context Routing Table
+
+| Task mentions... | Read these files |
+|---|---|
+| **Pipeline, detection, classification** | `.deepx/skills/dx-agent-stream-build-pipeline.md`, `.deepx/toolsets/dx-stream-elements.md` |
+| **MQTT, Kafka, message broker** | `.deepx/skills/dx-agent-stream-build-mqtt-kafka.md`, `.deepx/toolsets/dx-stream-elements.md` |
+| **Multi-model, cascaded, tiled** | `.deepx/skills/dx-agent-stream-build-pipeline.md`, `.deepx/toolsets/dx-stream-metadata.md` |
+| **Model, download** | `.deepx/skills/dx-agent-stream-model-management.md` |
+| **Validation, testing** | `.deepx/skills/dx-agent-stream-validate.md`, `.deepx/instructions/testing-patterns.md` |
+| **Validation, feedback, fix** | `.deepx/skills/dx-agent-stream-validate.md`, parent `dx-runtime/.deepx/skills/dx-agent-runtime-validate.md` |
+| **Brainstorm, plan, design** | `.deepx/skills/dx-swe-brainstorm.md` |
+| **TDD, validation, incremental** | `.deepx/skills/dx-swe-tdd.md` |
+| **Completion, verify, evidence** | `.deepx/skills/dx-swe-verify.md` |
+| **Debug, root cause, investigate** | `.deepx/skills/dx-swe-debugging/SKILL.md` |
+| **Plan, execute, subagent** | `.deepx/skills/dx-swe-writing-plans/SKILL.md`, `.deepx/skills/dx-swe-executing-plans/SKILL.md` |
+| **Code review, feedback** | `.deepx/skills/dx-swe-receiving-review/SKILL.md`, `.deepx/skills/dx-swe-requesting-review/SKILL.md` |
+| **ALWAYS read (every task)** | `.deepx/memory/common_pitfalls.md`, `.deepx/instructions/coding-standards.md` |
+
+## 13 GStreamer Elements
+
+| Element | Purpose |
+|---------|---------|
+| `DxPreprocess` | Resize, normalize, color-convert input frames for NPU inference |
+| `DxInfer` | Run .dxnn model inference on the NPU |
+| `DxPostprocess` | Decode raw inference tensors into detections/classifications |
+| `DxOsd` | Draw bounding boxes, labels, and overlays on frames |
+| `DxRate` | Drop excess frames to match target inference FPS |
+| `DxScale` | Resize frames to required input dimensions |
+| `DxTracker` | Multi-object tracking (assign persistent IDs) |
+| `DxMsgConv` | Serialize inference results into wire format (JSON/protobuf) |
+| `DxMsgBroker` | Publish serialized messages to MQTT or Kafka |
+| `DxInputSelector` | Select one stream from multiple inputs (N:1) for shared inference |
+| `DxOutputSelector` | Route inference results back to multiple output streams (1:N) |
+
+## 6 Pipeline Categories
+
+| Category | Description | Key Pattern |
+|----------|-------------|-------------|
+| **Single-model** | One model, one stream | `src ! DxPreprocess ! DxInfer ! DxPostprocess ! DxOsd ! sink` |
+| **Multi-model** | Multiple models, sequential | Chain multiple DxInfer stages with distinct preprocess-ids |
+| **Cascaded** | Primary detection feeds secondary classification | `DxInfer ! DxPostprocess ! DxTracker ! tee ! DxPreprocess(secondary-mode=true) ! DxInfer(secondary-mode=true) ! DxGather` |
+| **Parallel** | Multiple streams through shared inference | `DxInputSelector ! DxInfer ! DxOutputSelector` or independent sub-pipelines |
+| **Broker** | Publish results to MQTT/Kafka | `DxInfer ! DxMsgConv ! DxMsgBroker` |
+
+## Pipeline Template
+
+```
+source ! queue ! DxPreprocess preprocess-id=0 ! queue ! DxInfer preprocess-id=0 model-path=/path/to/model.dxnn ! queue ! DxPostprocess ! queue ! DxOsd ! queue ! sink
+```
+
+{{FRAGMENT:no-placeholder-code}}
+
+
+{{FRAGMENT:experimental-features-prohibited}}
+
+
+{{FRAGMENT:brainstorming-spec-before-plan}}
+{{FRAGMENT:mandatory-process-skill-sequence}}
+
+
+{{FRAGMENT:autopilot-mode-guard}}
+
+
+## Hardware
+
+| Architecture | Value |
+|---|---|
+| DX-M1 | `dx_m1` |
+
+## Memory
+
+Persistent knowledge in `.deepx/memory/`. Read at task start, update when learning.
+
+{{FRAGMENT:rule-conflict-resolution}}
+
+
+{{FRAGMENT:git-operations-user-handles}}
+
+
+{{FRAGMENT:git-safety-superpowers}}
+
+
+{{FRAGMENT:session-sentinels}}
+
+
+{{FRAGMENT:plan-output}}
+
+
+
+---
+
+{{FRAGMENT:instruction-verification-loop}}
+
