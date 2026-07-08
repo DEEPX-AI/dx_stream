@@ -28,7 +28,7 @@ fi
 check_dxrt_available() {
     if [ -n "${DXRT_AVAILABLE:-}" ]; then return; fi
     export DXRT_AVAILABLE=0
-    local model="${PROJECT_ROOT}/dx_stream/samples/models/YoloV5S_PPU.dxnn"
+    local model="${PROJECT_ROOT}/dx_stream/samples/models/yolov5-s_640x640_ppu.dxnn"
     if command -v run_model >/dev/null 2>&1 && [ -f "$model" ]; then
         echo "  [CHECK] Verifying dx-rt runtime ..."
         local exit_code run_output

@@ -71,7 +71,7 @@ bash run_orchestrated.sh
 
 ```
 Phase 1: 2 categories (multi_stream + broker)
-Phase 2: Download YoloV5S_PPU.dxnn
+Phase 2: Download yolov5-s_640x640_ppu.dxnn
 Phase 3: Compose multi-stream pipeline with compositor
 Phase 4: Add DxMsgConv + DxMsgBroker branch via tee
 Phase 5: Validate combined pipeline

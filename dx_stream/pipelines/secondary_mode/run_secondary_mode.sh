@@ -18,7 +18,7 @@ download_model_if_missing() {
     fi
 }
 
-for model in "YoloV5S_PPU.dxnn" "EfficientNet_Lite0.dxnn" "SCRFD500M.dxnn"; do
+for model in "yolov5-s_640x640_ppu.dxnn" "efficientnet-lite0_256x256.dxnn" "scrfd-500m_640x640.dxnn"; do
     download_model_if_missing "$model"
 done
 
@@ -71,7 +71,7 @@ for INPUT_VIDEO_PATH in "${INPUT_VIDEO_PATH_LIST[@]}"; do
                         preprocess-id=2 \
                         inference-id=2 \
                         secondary-mode=true \
-                        model-path=$SRC_DIR/samples/models/EfficientNet_Lite0.dxnn ! \
+                        model-path=$SRC_DIR/samples/models/efficientnet-lite0_256x256.dxnn ! \
                     queue max-size-buffers=1 ! \
                     dxpostprocess \
                         inference-id=2 \
@@ -97,7 +97,7 @@ for INPUT_VIDEO_PATH in "${INPUT_VIDEO_PATH_LIST[@]}"; do
                         preprocess-id=3 \
                         inference-id=3 \
                         secondary-mode=true \
-                        model-path=$SRC_DIR/samples/models/SCRFD500M.dxnn ! \
+                        model-path=$SRC_DIR/samples/models/scrfd-500m_640x640.dxnn ! \
                     queue max-size-buffers=1 ! \
                     dxpostprocess \
                         inference-id=3 \

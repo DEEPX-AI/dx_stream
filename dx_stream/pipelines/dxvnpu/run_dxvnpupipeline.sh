@@ -16,7 +16,7 @@ INFER_ID=0
 DEVICE_ID=0
 
 # Model auto-download logic
-MODEL_NAME="yolo26n.dxnn"
+MODEL_NAME="yolo26-n_640x640.dxnn"
 MODEL_PATH="${SRC_DIR}/samples/models/${MODEL_NAME}"
 if [ ! -f "$MODEL_PATH" ]; then
     echo "[INFO] ${MODEL_NAME} not found in samples/models. Downloading..."

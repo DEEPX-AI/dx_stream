@@ -13,7 +13,7 @@ set "VIDEO_DIR=%BASE_FWD%/dx_stream/samples/videos"
 set "LIB_DIR=%BASE_FWD%/install/share/gstdxstream/lib"
 set "CONFIG_DIR=%BASE_FWD%/dx_stream/configs"
 
-set "MODEL=%MODEL_DIR%/YoloV5S_PPU.dxnn"
+set "MODEL=%MODEL_DIR%/yolov5-s_640x640_ppu.dxnn"
 set "LIB=%LIB_DIR%/postprocess_ppu.dll"
 set "TRACKER_CONFIG=%CONFIG_DIR%/tracker_config.json"
 set "VIDEO=%VIDEO_DIR%/blackbox-city-road.mp4"

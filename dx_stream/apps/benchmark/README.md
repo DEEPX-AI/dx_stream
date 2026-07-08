@@ -279,7 +279,7 @@ Each model × ORT combination follows these steps sequentially.
 This ordering ensures the NPU warms up naturally from cold state.
 
 ```
-── [1/N] yolo26n.dxnn  ORT=ON  (object_detection) ──
+── [1/N] yolo26-n_640x640.dxnn  ORT=ON  (object_detection) ──
 
   ① Cooldown → Rejects start above 60°C. Wait until ≤ min(idle + Δ10°C, 55°C) (when family=model is included)
   ② Latency  → Single-core sync mode (-l 300 loops), profiler-based NPU/CPU ms

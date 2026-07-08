@@ -18,7 +18,7 @@ OUTPUT_WIDTH=1280
 OUTPUT_HEIGHT=720
 
 # Model auto-download logic
-MODEL_NAME="YoloV5S_PPU.dxnn"
+MODEL_NAME="yolov5-s_640x640_ppu.dxnn"
 MODEL_PATH="${SRC_DIR}/samples/models/${MODEL_NAME}"
 if [ ! -f "$MODEL_PATH" ]; then
     echo "[INFO] ${MODEL_NAME} not found in samples/models. Downloading..."

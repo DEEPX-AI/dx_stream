@@ -149,7 +149,7 @@ SRC_DIR="$DX_STREAM_ROOT/dx_stream"
 
 # Test: Verify pipeline runs without errors
 echo "=== Test: Single Network Object Detection ==="
-MODEL_PATH="$SRC_DIR/samples/models/yolo26n.dxnn"
+MODEL_PATH="$SRC_DIR/samples/models/yolo26-n_640x640.dxnn"
 
 if [ ! -f "$MODEL_PATH" ]; then
     echo "SKIP: Model not downloaded"

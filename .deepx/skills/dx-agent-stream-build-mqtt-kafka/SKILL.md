@@ -90,7 +90,7 @@ DX_STREAM_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 SRC_DIR="$DX_STREAM_ROOT/dx_stream"
 
 # Model auto-download
-MODEL_NAME="YoloV5S_PPU.dxnn"
+MODEL_NAME="yolov5-s_640x640_ppu.dxnn"
 MODEL_PATH="$SRC_DIR/samples/models/$MODEL_NAME"
 if [ ! -f "$MODEL_PATH" ]; then
     echo "[INFO] $MODEL_NAME not found. Downloading..."
@@ -195,7 +195,7 @@ DX_STREAM_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 SRC_DIR="$DX_STREAM_ROOT/dx_stream"
 
 # Model auto-download
-MODEL_NAME="YoloV5S_PPU.dxnn"
+MODEL_NAME="yolov5-s_640x640_ppu.dxnn"
 MODEL_PATH="$SRC_DIR/samples/models/$MODEL_NAME"
 if [ ! -f "$MODEL_PATH" ]; then
     echo "[INFO] $MODEL_NAME not found. Downloading..."

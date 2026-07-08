@@ -412,7 +412,7 @@ Postprocessing is essential for interpreting and converting the model’s output
 To check the structure of the output tensor, use the following command. This prints the tensor shape for each output.  
 
 ```
-$ parse_model -m YOLOv7.dxnn
+$ parse_model -m yolov7_640x640.dxnn
 
 Example output:
 

@@ -14,7 +14,7 @@ set "VIDEO_DIR=%BASE_FWD%/dx_stream/samples/videos"
 set "LIB_DIR=%BASE_FWD%/install/share/gstdxstream/lib"
 set "CONFIG_DIR=%BASE_FWD%/dx_stream/configs"
 
-set "MODEL=%MODEL_DIR%/YoloV5S_PPU.dxnn"
+set "MODEL=%MODEL_DIR%/yolov5-s_640x640_ppu.dxnn"
 set "LIB=%LIB_DIR%/postprocess_ppu.dll"
 set "MSGCONV_LIB=%LIB_DIR%/dx_msgconvl.dll"
 set "BROKER_CONFIG=%CONFIG_DIR%/broker_kafka.cfg"

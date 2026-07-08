@@ -28,27 +28,27 @@ Located at the dx_stream root:
 
 ```json
 {
-    "version": "2_3_0",
+    "version": "2_4_0",
     "models": [
-        "EfficientNet_Lite0.dxnn",
-        "SCRFD500M.dxnn",
-        "YoloV5S_PPU.dxnn",
-        "YOLOv5s_Face.dxnn",
-        "yolo26n.dxnn",
-        "yolo26n-pose.dxnn",
-        "yolo26n-seg.dxnn",
-        "YoloV5S.dxnn",
-        "YoloV7.dxnn",
-        "YoloV8N.dxnn",
-        "YoloV9S.dxnn",
-        "YoloXS.dxnn",
-        "YOLOV11N.dxnn",
-        "yolov8m_pose.dxnn"
+        "efficientnet-lite0_256x256.dxnn",
+        "scrfd-500m_640x640.dxnn",
+        "yolov5-s_640x640_ppu.dxnn",
+        "yolov5-s-face_640x640.dxnn",
+        "yolo26-n_640x640.dxnn",
+        "yolo26-n-pose_640x640.dxnn",
+        "yolo26-n-seg_640x640.dxnn",
+        "yolov5-s_640x640.dxnn",
+        "yolov7_640x640.dxnn",
+        "yolov8-n_640x640.dxnn",
+        "yolov9-s_640x640.dxnn",
+        "yolox-s_640x640.dxnn",
+        "yolo11-n_640x640.dxnn",
+        "yolov8-m-pose_640x640.dxnn"
     ]
 }
 ```
 
-**Version:** Matches dx_stream release version (2.3.0 → "2_3_0")
+**Version:** Matches dx_stream release version (2.3.0 → "2_4_0")
 **Models:** Array of .dxnn filenames (14 models total)
 
 ## 14 Supported Models
@@ -117,7 +117,7 @@ print(f'Found: {match}' if match else f'Not found: {name}')
 
 ```bash
 # Download specific model
-./setup.sh --model="YoloV8N.dxnn"
+./setup.sh --model="yolov8-n_640x640.dxnn"
 
 # Download all models
 ./setup.sh
@@ -130,7 +130,7 @@ print(f'Found: {match}' if match else f'Not found: {name}')
 
 ```bash
 # 1. Check model file exists
-ls -la dx_stream/samples/models/YoloV8N.dxnn
+ls -la dx_stream/samples/models/yolov8-n_640x640.dxnn
 
 # 2. Check matching postprocess library
 ls -la /usr/local/share/gstdxstream/lib/libpostprocess_yolov8n.so
@@ -142,7 +142,7 @@ nm -D /usr/local/share/gstdxstream/lib/libpostprocess_yolov8n.so | grep PostProc
 gst-launch-1.0 videotestsrc num-buffers=5 ! video/x-raw,width=640,height=640 ! \
     dxpreprocess preprocess-id=1 resize-width=640 resize-height=640 ! queue ! \
     dxinfer preprocess-id=1 inference-id=1 \
-        model-path=$(pwd)/dx_stream/samples/models/YoloV8N.dxnn ! queue ! \
+        model-path=$(pwd)/dx_stream/samples/models/yolov8-n_640x640.dxnn ! queue ! \
     dxpostprocess inference-id=1 \
         library-file-path=/usr/local/share/gstdxstream/lib/libpostprocess_yolov8n.so \
         function-name=PostProcess ! queue ! \

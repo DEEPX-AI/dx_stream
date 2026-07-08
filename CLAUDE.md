@@ -449,7 +449,7 @@ When the user is absent — autopilot mode, `--yolo` flag, or system auto-respon
      Never yield the turn expecting to be re-invoked.
    - **Mandatory artifacts are compilation-independent** — `setup.sh`, `run.sh`,
      `verify.py`, factory, and app code do NOT require the `.dxnn` file to exist.
-     Generate them using the known model name (e.g., `yolo26n.dxnn`) as a
+     Generate them using the known model name (e.g., `yolo26-n_640x640.dxnn`) as a
      placeholder path. Only execution verification requires the actual `.dxnn`.
 7. **Minimize file-reading tool calls** — Do NOT re-read instruction files,
    agent docs, or skill docs that are already loaded in your context. Each

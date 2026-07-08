@@ -20,7 +20,7 @@ static std::string PP_LIB_PATH() {
 }
 
 static std::string infer_pipe_desc() {
-    std::string model = resolve_model_path("YoloV5S_PPU.dxnn");
+    std::string model = resolve_model_path("yolov5-s_640x640_ppu.dxnn");
     std::string image = resolve_resource_path("images/test.jpg");
     if (model.empty() || image.empty()) return "";
     if (!path_exists(PP_LIB_PATH())) return "";
@@ -135,7 +135,7 @@ GST_START_TEST(PL_A_infer_detection_fields) {
 GST_END_TEST;
 
 static std::string infer_pipe_noapp() {
-    std::string model = resolve_model_path("YoloV5S_PPU.dxnn");
+    std::string model = resolve_model_path("yolov5-s_640x640_ppu.dxnn");
     std::string image = resolve_resource_path("images/test.jpg");
     if (model.empty() || image.empty()) return "";
     if (!path_exists(PP_LIB_PATH().c_str())) return "";

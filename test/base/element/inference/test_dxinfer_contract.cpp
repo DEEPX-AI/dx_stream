@@ -21,7 +21,7 @@
 using namespace dxtest;
 
 static std::string resolve_test_model() {
-    return resolve_model_path("YoloV5S_PPU.dxnn");
+    return resolve_model_path("yolov5-s_640x640_ppu.dxnn");
 }
 
 static gboolean model_available(void) {
