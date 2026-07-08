@@ -455,7 +455,7 @@ BoundingBox scale_box(const BoundingBox& box, int orig_width, int orig_height,
  * @param frame_meta Frame metadata containing image dimensions and ROI
  * @param object_meta Object metadata (output parameter)
  */
-extern "C" void PostProcess(GstBuffer* buf,
+DX_CUSTOM_EXPORT void PostProcess(GstBuffer* buf,
                             std::vector<dxs::DXTensor> network_output,
                             DXFrameMeta* frame_meta,
                             DXObjectMeta* object_meta) {

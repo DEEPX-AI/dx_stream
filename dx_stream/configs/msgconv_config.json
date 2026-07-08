@@ -1,6 +1,7 @@
 {
     "library_file_path": "/usr/local/share/gstdxstream/lib/libdx_msgconvl.so",
-    "message_interval": 1
+    "message_interval": 1,
+    "include_frame": true
 }
 
 

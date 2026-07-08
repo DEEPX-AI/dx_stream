@@ -2,8 +2,8 @@
 #include "gst-dxusermeta.hpp"
 #include <zlib.h>
 
-GST_DEBUG_CATEGORY_STATIC(dxobjectmeta_cat);
-#define GST_CAT_DEFAULT dxobjectmeta_cat
+GST_DEBUG_CATEGORY_EXTERN(dxmeta_cat);
+#define GST_CAT_DEFAULT dxmeta_cat
 
 #define GST_CAT_DEBUG_SAFE(cat, ...) \
     G_STMT_START { \
@@ -39,10 +39,10 @@ static gint generate_meta_id_uuid() {
 }
 
 DXObjectMeta* dx_acquire_obj_meta_from_pool(void) {
-    GST_CAT_DEBUG_SAFE(dxobjectmeta_cat, "Initializing DXObjectMeta from pool");
+    GST_CAT_DEBUG_SAFE(dxmeta_cat, "Initializing DXObjectMeta from pool");
     auto *obj_meta = g_new0(DXObjectMeta, 1);
     if (!obj_meta) {
-        GST_CAT_ERROR_SAFE(dxobjectmeta_cat, "Failed to allocate memory for DXObjectMeta");
+        GST_CAT_ERROR_SAFE(dxmeta_cat, "Failed to allocate memory for DXObjectMeta");
         return nullptr;
     }
 
@@ -86,7 +86,7 @@ DXObjectMeta* dx_acquire_obj_meta_from_pool(void) {
 }
 
 void dx_release_obj_meta(DXObjectMeta *obj_meta) {
-    GST_CAT_DEBUG_SAFE(dxobjectmeta_cat, "Releasing DXObjectMeta");
+    GST_CAT_DEBUG_SAFE(dxmeta_cat, "Releasing DXObjectMeta");
     if (!obj_meta) return;
 
     // Release user metadata
@@ -120,7 +120,7 @@ void dx_release_obj_meta(DXObjectMeta *obj_meta) {
 }
 
 void dx_copy_obj_meta(DXObjectMeta *src_meta, DXObjectMeta *dst_meta) {
-    GST_CAT_DEBUG_SAFE(dxobjectmeta_cat, "Copying DXObjectMeta");
+    GST_CAT_DEBUG_SAFE(dxmeta_cat, "Copying DXObjectMeta");
     if (!src_meta || !dst_meta) return;
 
     dst_meta->_meta_id = src_meta->_meta_id;
@@ -161,7 +161,7 @@ void dx_copy_obj_meta(DXObjectMeta *src_meta, DXObjectMeta *dst_meta) {
         auto *dst_user_meta = dx_acquire_user_meta_from_pool();
         
         if (!src_user_meta->copy_func || !src_user_meta->release_func) {
-            GST_CAT_WARNING_SAFE(dxobjectmeta_cat, "UserMeta missing required copy_func or release_func - skipping copy");
+            GST_CAT_WARNING_SAFE(dxmeta_cat, "UserMeta missing required copy_func or release_func - skipping copy");
             dx_release_user_meta(dst_user_meta);
             continue;
         }

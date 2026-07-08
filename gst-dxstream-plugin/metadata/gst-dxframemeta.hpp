@@ -47,15 +47,15 @@ struct _DXFrameMeta {
     std::map<int, dxs::DXTensors> _output_tensors;   // infer_id -> output tensors
 };
 
-GType dx_frame_meta_api_get_type(void);
-const GstMetaInfo *dx_frame_meta_get_info(void);
-void dx_frame_meta_copy(GstBuffer *src_buffer, DXFrameMeta *src_frame_meta,
+DX_API GType dx_frame_meta_api_get_type(void);
+DX_API const GstMetaInfo *dx_frame_meta_get_info(void);
+DX_API void dx_frame_meta_copy(GstBuffer *src_buffer, DXFrameMeta *src_frame_meta,
                         GstBuffer *dst_buffer, DXFrameMeta *dst_frame_meta);
 
-GstBuffer* dx_create_frame_meta(GstBuffer *buffer);
-DXFrameMeta *dx_get_frame_meta(GstBuffer *buffer);
-gboolean dx_add_obj_meta_to_frame(DXFrameMeta *frame_meta, DXObjectMeta *obj_meta);
-gboolean dx_remove_obj_meta_from_frame(DXFrameMeta *frame_meta, DXObjectMeta *obj_meta);
+DX_API GstBuffer* dx_create_frame_meta(GstBuffer *buffer);
+DX_API DXFrameMeta *dx_get_frame_meta(GstBuffer *buffer);
+DX_API gboolean dx_add_obj_meta_to_frame(DXFrameMeta *frame_meta, DXObjectMeta *obj_meta);
+DX_API gboolean dx_remove_obj_meta_from_frame(DXFrameMeta *frame_meta, DXObjectMeta *obj_meta);
 
 G_END_DECLS
 

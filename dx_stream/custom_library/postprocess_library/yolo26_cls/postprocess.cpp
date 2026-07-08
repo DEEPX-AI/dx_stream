@@ -43,17 +43,17 @@ void Classification(const std::vector<dxs::DXTensor>& outputs, DXFrameMeta* fram
     }
 }
 
-extern "C" void PostProcess(GstBuffer* buf,
+DX_CUSTOM_EXPORT void PostProcess(GstBuffer* buf,
                             std::vector<dxs::DXTensor> network_output,
                             DXFrameMeta* frame_meta,
                             DXObjectMeta* object_meta) {
     std::ignore = buf;
     std::ignore = object_meta;
 
-    classificationParams params = {
-        .needArgmax = true,
-        .numClasses = 1000,
-        .classNames = {"tench",
+    classificationParams params;
+    params.needArgmax = true;
+    params.numClasses = 1000;
+    params.classNames = {"tench",
                        "goldfish",
                        "great white shark",
                        "tiger shark",
@@ -1052,7 +1052,7 @@ extern "C" void PostProcess(GstBuffer* buf,
                        "hen-of-the-woods",
                        "bolete",
                        "ear of corn",
-                       "toilet paper"}};
+                       "toilet paper"};
 
     Classification(network_output, frame_meta, params);
 }

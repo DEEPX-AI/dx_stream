@@ -1,11 +1,12 @@
 #include "gst-dxpreprocess.hpp"
 #include "preprocessors/preprocessor_factory.h"
+#include "utils.hpp"
 #include <chrono>
-#include <dlfcn.h>
+#include <new>
+#include "dx_dlfcn.h"
 #include <gst/video/video.h>
 #include <iostream>
 #include <json-glib/json-glib.h>
-#include <libyuv.h>
 
 enum class PropertyID {
     PROP_0,
@@ -39,21 +40,31 @@ static gboolean gst_dxpreprocess_src_event(GstBaseTransform *trans,
                                            GstEvent *event);
 static gboolean gst_dxpreprocess_sink_event(GstBaseTransform *trans,
                                             GstEvent *event);
+static gboolean gst_dxpreprocess_propose_allocation(GstBaseTransform *trans,
+                                                    GstQuery *decide_query,
+                                                    GstQuery *query);
+static gboolean gst_dxpreprocess_query(GstBaseTransform *trans,
+                                       GstPadDirection direction,
+                                       GstQuery *query);
 
 G_DEFINE_TYPE(GstDxPreprocess, gst_dxpreprocess, GST_TYPE_BASE_TRANSFORM);
 
 static GstElementClass *parent_class = nullptr;  // NOSONAR - GStreamer standard pattern with G_DEFINE_TYPE macro
 
+static gboolean string_is_empty(const gchar *value) {
+    return value == nullptr || value[0] == '\0';
+}
+
 static gboolean validate_roi(JsonArray *roi_array, gint *out_roi) {
     if (!roi_array || json_array_get_length(roi_array) != 4) {
-        g_printerr("Error: ROI must have exactly 4 integer values.\n");
+        GST_ERROR("ROI must have exactly 4 integer values.");
         return FALSE;
     }
     for (guint i = 0; i < 4; i++) {
         JsonNode *node = json_array_get_element(roi_array, i);
         if (!JSON_NODE_HOLDS_VALUE(node) ||
             json_node_get_value_type(node) != G_TYPE_INT) {
-            g_printerr("Error: ROI array must contain only integer values.\n");
+            GST_ERROR("ROI array must contain only integer values.");
             return FALSE;
         }
         out_roi[i] = static_cast<gint>(json_node_get_int(node));
@@ -62,9 +73,13 @@ static gboolean validate_roi(JsonArray *roi_array, gint *out_roi) {
 }
 
 static void parse_config(GstDxPreprocess *self) {
+    if (string_is_empty(self->_config.file_path)) {
+        return;
+    }
+
     if (!g_file_test(self->_config.file_path, G_FILE_TEST_EXISTS)) {
-        g_error("[dxpreprocess] Config file does not exist: %s\n",
-                self->_config.file_path);
+        GST_ERROR_OBJECT(self, "[dxpreprocess] Config file does not exist: %s",
+                         self->_config.file_path);
         return;
     }
 
@@ -72,8 +87,9 @@ static void parse_config(GstDxPreprocess *self) {
     JsonParser *parser = json_parser_new();
     GError *error = nullptr;
     if (!json_parser_load_from_file(parser, self->_config.file_path, &error)) {
-        g_error("[dxpreprocess] Failed to load config file: %s",
-                error->message);
+        GST_ERROR_OBJECT(self, "[dxpreprocess] Failed to load config file: %s",
+                         error->message);
+        g_error_free(error);
         g_object_unref(parser);
         return;
     }
@@ -94,8 +110,9 @@ static void parse_config(GstDxPreprocess *self) {
             return;
         gint64 val = json_object_get_int_member(object, json_key);
         if (val < 0) {
-            g_error("[dxpreprocess] Member %s has a negative value (%ld).",
-                    err_name, val);
+            GST_ERROR_OBJECT(self, "[dxpreprocess] Member %s has a negative value (%ld), ignoring.",
+                             err_name, val);
+            return;
         }
         target = static_cast<guint>(val);
     };
@@ -125,16 +142,17 @@ static void parse_config(GstDxPreprocess *self) {
             g_free(self->_preprocess.color_format);
             self->_preprocess.color_format = g_strdup(fmt);
         } else {
-            g_warning("Invalid color mode: %s. Use RGB or BGR", fmt);
+            GST_WARNING_OBJECT(self, "Invalid color mode: %s. Use RGB or BGR", fmt);
         }
     }
 
     if (json_object_has_member(object, "target_class_id")) {
         gint64 val = json_object_get_int_member(object, "target_class_id");
         if (val < G_MININT || val > G_MAXINT) {
-            g_error("[dxpreprocess] target_class_id value out of range");
+            GST_ERROR_OBJECT(self, "[dxpreprocess] target_class_id value out of range, ignoring.");
+        } else {
+            self->_object_filter.target_class_id = static_cast<gint>(val);
         }
-        self->_object_filter.target_class_id = static_cast<gint>(val);
     }
 
     if (json_object_has_member(object, "roi")) {
@@ -190,7 +208,7 @@ static void dxpreprocess_set_property(GObject *object, guint property_id,
         } else if (color_value == 1) {
             self->_preprocess.color_format = g_strdup("BGR");
         } else {
-            g_warning("Invalid color mode: %d. Use RGB or BGR.", color_value);
+            GST_WARNING_OBJECT(self, "Invalid color mode: %d. Use RGB or BGR.", color_value);
         }
         break;
     }
@@ -242,8 +260,8 @@ static void dxpreprocess_set_property(GObject *object, guint property_id,
                                &roi_values[1], &roi_values[2], &roi_values[3]);
 
             if (count != 4) {
-                g_error("Invalid ROI format. Expected format: "
-                        "roi=\"x1,y1,x2,y2\"\n");
+                GST_ERROR_OBJECT(self, "Invalid ROI format. Expected format: "
+                                 "'x1,y1,x2,y2' (e.g. '10,20,300,400'). Ignoring.");
                 return;
             }
 
@@ -287,8 +305,8 @@ static void dxpreprocess_get_property(GObject *object, guint property_id,
         } else if (g_strcmp0(self->_preprocess.color_format, "BGR") == 0) {
             g_value_set_uint(value, 1);
         } else {
-            g_warning("Invalid color mode: %s. Use RGB or BGR.",
-                      self->_preprocess.color_format);
+            GST_WARNING_OBJECT(self, "Invalid color mode: %s. Use RGB or BGR.",
+                             self->_preprocess.color_format);
         }
         break;
 
@@ -351,7 +369,8 @@ static void dxpreprocess_get_property(GObject *object, guint property_id,
 static GstStateChangeReturn
 dxpreprocess_change_state(GstElement *element, GstStateChange transition) {
     GstDxPreprocess *self = GST_DXPREPROCESS(element);
-    GST_INFO_OBJECT(self, "Attempting to change state");
+    GST_DEBUG_OBJECT(self, "State change: %s",
+                     gst_state_change_get_name(transition));
     switch (transition) {
     case GST_STATE_CHANGE_PAUSED_TO_READY:
         self->_stream.info.clear();
@@ -361,7 +380,8 @@ dxpreprocess_change_state(GstElement *element, GstStateChange transition) {
     }
     GstStateChangeReturn result =
         GST_ELEMENT_CLASS(parent_class)->change_state(element, transition);
-    GST_INFO_OBJECT(self, "State change return: %d", result);
+    GST_DEBUG_OBJECT(self, "State change result: %s",
+                     gst_element_state_change_return_get_name(result));
     return result;
 }
 
@@ -383,25 +403,26 @@ static void dxpreprocess_dispose(GObject *object) {
         dlclose(self->_plugin.library_handle);
         self->_plugin.library_handle = nullptr;
     }
-    g_free(self->_preprocess.color_format);
+    if (self->_preprocess.color_format) {
+        g_free(self->_preprocess.color_format);
+        self->_preprocess.color_format = nullptr;
+    }
 
-    // Clean up preprocessor pointer (now automatically managed by unique_ptr)
     self->_plugin.preprocessor.reset();
-
-    // _transpose_data is now std::vector, automatically cleaned up
-    self->_preprocess.transpose_data.clear();
-
-    self->_frame_ctrl.track_cnt.clear();
-
-    // Frame buffers are now std::vector, automatically cleaned up
-    self->_buffers.crop.clear();
-    self->_buffers.convert.clear();
-    self->_buffers.resized.clear();
 
     G_OBJECT_CLASS(parent_class)->dispose(object);
 }
 
 static void dxpreprocess_finalize(GObject *object) {
+    GstDxPreprocess *self = GST_DXPREPROCESS(object);
+    self->_plugin.preprocessor.~shared_ptr();
+    self->_preprocess.transpose_data.~vector();
+    self->_frame_ctrl.cnt.~map();
+    self->_frame_ctrl.track_cnt.~map();
+    self->_stream.info.~map();
+    self->_buffers.crop.~map();
+    self->_buffers.convert.~map();
+    self->_buffers.resized.~map();
     G_OBJECT_CLASS(parent_class)->finalize(object);
 }
 
@@ -425,16 +446,19 @@ static GstCaps *gst_dxpreprocess_transform_caps(GstBaseTransform *trans,
 
 static gboolean gst_dxpreprocess_set_caps(GstBaseTransform *trans,
                                           GstCaps *incaps, GstCaps *outcaps) {
-    
-    std::ignore = trans;
+
     std::ignore = outcaps;
-    std::ignore = incaps;
-    
+
+    // Domain mode: dxvideoraw caps carries no format; per-buffer DXFrameMeta supplies it.
+    if (dx_caps_is_videoraw(incaps)) {
+        return TRUE;
+    }
+
     const GstStructure *structure = gst_caps_get_structure(incaps, 0);
     const gchar *format = gst_structure_get_string(structure, "format");
 
     if (!format) {
-        g_warning("No format found in sink caps!");
+        GST_WARNING_OBJECT(trans, "No format found in sink caps!");
         return FALSE;
     }
     return TRUE;
@@ -457,9 +481,11 @@ void set_input_info(GstDxPreprocess *self, GstEvent *event, int stream_id) {
 static gboolean gst_dxpreprocess_sink_event(GstBaseTransform *trans,
                                             GstEvent *event) {
     GstDxPreprocess *self = GST_DXPREPROCESS(trans);
-    GstPad *src_pad = GST_BASE_TRANSFORM_SRC_PAD(trans);
-    GST_INFO_OBJECT(self, "Received event [%s] ", GST_EVENT_TYPE_NAME(event));
+    GST_DEBUG_OBJECT(self, "Received event [%s] ", GST_EVENT_TYPE_NAME(event));
     switch (GST_EVENT_TYPE(event)) {
+    case GST_EVENT_FLUSH_STOP:
+        self->_stream.info.clear();
+        break;
     case GST_EVENT_CUSTOM_DOWNSTREAM: {
         // for inputselector event
         const GstStructure *s_check = gst_event_get_structure(event);
@@ -477,13 +503,17 @@ static gboolean gst_dxpreprocess_sink_event(GstBaseTransform *trans,
         }
     } break;
     case GST_EVENT_CAPS: {
-        // for single stream
-        set_input_info(self, event, 0);
+        // for single stream (non-domain). Domain L1A caps carries no per-stream info.
+        GstCaps *incaps = nullptr;
+        gst_event_parse_caps(event, &incaps);
+        if (incaps && !dx_caps_is_videoraw(incaps)) {
+            set_input_info(self, event, 0);
+        }
     } break;
     default:
         break;
     }
-    return gst_pad_push_event(src_pad, event);
+    return GST_BASE_TRANSFORM_CLASS(parent_class)->sink_event(trans, event);
 }
 
 static void gst_dxpreprocess_class_init(GstDxPreprocessClass *klass) {
@@ -531,7 +561,7 @@ static void gst_dxpreprocess_class_init(GstDxPreprocessClass *klass) {
         10000, 0, G_PARAM_READWRITE);
 
     obj_properties[static_cast<guint>(PropertyID::PROP_RESIZE_HEIGHT)] = g_param_spec_uint(
-        "resize-height", "Resize Height", "Specifies the width for resizing.",
+        "resize-height", "Resize Height", "Specifies the height for resizing.",
         0, 10000, 0, G_PARAM_READWRITE);
 
     obj_properties[static_cast<guint>(PropertyID::PROP_KEEP_RATIO)] = g_param_spec_boolean(
@@ -591,6 +621,7 @@ static void gst_dxpreprocess_class_init(GstDxPreprocessClass *klass) {
         gst_pad_template_new(
             "sink", GST_PAD_SINK, GST_PAD_ALWAYS,
             gst_caps_from_string(
+                DX_VIDEORAW_CAPS_STR "; "
                 "video/x-raw, format=(string){ RGB, I420, NV12 }")));
 
     gst_element_class_add_pad_template(
@@ -598,11 +629,12 @@ static void gst_dxpreprocess_class_init(GstDxPreprocessClass *klass) {
         gst_pad_template_new(
             "src", GST_PAD_SRC, GST_PAD_ALWAYS,
             gst_caps_from_string(
+                DX_VIDEORAW_CAPS_STR "; "
                 "video/x-raw, format=(string){ RGB, I420, NV12 }")));
 
     gst_element_class_set_static_metadata(
         element_class, "DXPreprocess", "Generic", "Preprocesses network input",
-        "Jo Sangil <sijo@deepx.ai>");
+        "Sangil Jo <sijo@deepx.ai>");
 
     base_transform_class->src_event =
         GST_DEBUG_FUNCPTR(gst_dxpreprocess_src_event);
@@ -617,12 +649,17 @@ static void gst_dxpreprocess_class_init(GstDxPreprocessClass *klass) {
         GST_DEBUG_FUNCPTR(gst_dxpreprocess_transform_caps);
     base_transform_class->set_caps =
         GST_DEBUG_FUNCPTR(gst_dxpreprocess_set_caps);
+    base_transform_class->propose_allocation =
+        GST_DEBUG_FUNCPTR(gst_dxpreprocess_propose_allocation);
+    base_transform_class->query = GST_DEBUG_FUNCPTR(gst_dxpreprocess_query);
     parent_class = GST_ELEMENT_CLASS(g_type_class_peek_parent(klass));
     element_class->change_state = dxpreprocess_change_state;
 }
 
 static void gst_dxpreprocess_init(GstDxPreprocess *self) {
     self->_config.file_path = nullptr;
+    self->_config.library_path = nullptr;
+    self->_config.function_name = nullptr;
     self->_preprocess.id = 0;
     self->_preprocess.color_format = g_strdup("RGB");
     self->_preprocess.width = 0;
@@ -636,9 +673,17 @@ static void gst_dxpreprocess_init(GstDxPreprocess *self) {
     self->_object_filter.min_height = 0;
     self->_frame_ctrl.interval = 0;
     self->_preprocess.transpose = FALSE;
-    self->_preprocess.transpose_data.clear();
 
-    self->_frame_ctrl.cnt.clear();
+    // GObject zero-fills instance memory but does not call C++ constructors.
+    // MSVC std::map requires proper construction (sentinel node allocation).
+    new (&self->_preprocess.transpose_data) std::vector<uint8_t>();
+    new (&self->_frame_ctrl.cnt) std::map<int, guint>();
+    new (&self->_frame_ctrl.track_cnt) std::map<int, std::map<int, int>>();
+    new (&self->_stream.info) std::map<int, GstVideoInfo>();
+    new (&self->_plugin.preprocessor) std::shared_ptr<Preprocessor>();
+    new (&self->_buffers.crop) std::map<int, std::vector<uint8_t>>();
+    new (&self->_buffers.convert) std::map<int, std::vector<uint8_t>>();
+    new (&self->_buffers.resized) std::map<int, std::vector<uint8_t>>();
 
     self->_frame_ctrl.acc_fps = 0;
     self->_frame_ctrl.frame_count = 0;
@@ -647,35 +692,43 @@ static void gst_dxpreprocess_init(GstDxPreprocess *self) {
     self->_object_filter.roi[1] = -1;
     self->_object_filter.roi[2] = -1;
     self->_object_filter.roi[3] = -1;
-    self->_frame_ctrl.track_cnt.clear();
 
     self->_stream.last_id = 0;
-    self->_stream.info.clear();
 
     self->_qos.timestamp = 0;
     self->_qos.timediff = 0;
     self->_qos.throttling_delay = 0;
 
-    self->_plugin.preprocessor = nullptr;
-
-    self->_buffers.crop.clear();
-    self->_buffers.convert.clear();
-    self->_buffers.resized.clear();
+    self->_plugin.library_handle = nullptr;
+    self->_plugin.process_function = nullptr;
 }
 
 static gboolean gst_dxpreprocess_start(GstBaseTransform *trans) {
     GST_DEBUG_OBJECT(trans, "start");
     GstDxPreprocess *self = GST_DXPREPROCESS(trans);
-    if (!self->_plugin.library_handle && self->_config.library_path &&
-        self->_config.function_name) {
+    const gboolean has_library_path = !string_is_empty(self->_config.library_path);
+    const gboolean has_function_name = !string_is_empty(self->_config.function_name);
+
+    if (has_library_path != has_function_name) {
+        GST_ELEMENT_ERROR(self, RESOURCE, SETTINGS,
+                          ("[dxpreprocess] library-file-path and function-name must be set together."),
+                          (NULL));
+        return FALSE;
+    }
+
+    if (!self->_plugin.library_handle && has_library_path && has_function_name) {
         self->_plugin.library_handle = dlopen(self->_config.library_path, RTLD_LAZY);
         if (!self->_plugin.library_handle) {
-            g_print("Error opening library: %s\n", dlerror());
+            GST_ELEMENT_ERROR(self, RESOURCE, NOT_FOUND,
+                              ("Failed to open custom library '%s': %s", self->_config.library_path, dlerror()),
+                              (NULL));
             return FALSE;
         }
         void *func_ptr = dlsym(self->_plugin.library_handle, self->_config.function_name);
         if (!func_ptr) {
-            g_print("Error finding function: %s\n", dlerror());
+            GST_ELEMENT_ERROR(self, RESOURCE, NOT_FOUND,
+                              ("Function '%s' not found in '%s': %s", self->_config.function_name, self->_config.library_path, dlerror()),
+                              (NULL));
             if (self->_plugin.library_handle) {
                 dlclose(self->_plugin.library_handle);
                 self->_plugin.library_handle = nullptr;
@@ -686,7 +739,9 @@ static gboolean gst_dxpreprocess_start(GstBaseTransform *trans) {
         self->_plugin.process_function =
             (bool (*)(GstBuffer *, DXFrameMeta *, DXObjectMeta *, void *))func_ptr;
         if (!self->_plugin.process_function) {
-            g_print("Error: Process function is nullptr\n");
+            GST_ELEMENT_ERROR(self, RESOURCE, FAILED,
+                              ("Process function is null after loading from '%s'", self->_config.library_path),
+                              (NULL));
             return FALSE;
         }
     }
@@ -697,20 +752,27 @@ static gboolean gst_dxpreprocess_start(GstBaseTransform *trans) {
                 size_t size = self->_preprocess.height * self->_preprocess.width * self->_preprocess.channel;
                 self->_preprocess.transpose_data.resize(size);
             } catch (const std::bad_alloc& e) {
-                g_error("Failed to allocate memory for transpose data: %s", e.what());
+                GST_ELEMENT_ERROR(self, RESOURCE, NO_SPACE_LEFT,
+                                  ("[dxpreprocess] Failed to allocate memory for transpose data: %s", e.what()),
+                                  (NULL));
                 return FALSE;
             }
         }
     } else {
-        g_error("Invalid input size %d x %d", self->_preprocess.width,
-                self->_preprocess.height);
+        GST_ELEMENT_ERROR(self, RESOURCE, SETTINGS,
+                          ("[dxpreprocess] resize-width and resize-height must be set "
+                           "to non-zero values. "
+                           "Example: dxpreprocess resize-width=640 resize-height=640"),
+                          (NULL));
         return FALSE;
     }
 
     if (!self->_plugin.preprocessor) {
         self->_plugin.preprocessor = PreprocessorFactory::create_preprocessor(self);
         if (!self->_plugin.preprocessor) {
-            GST_ERROR_OBJECT(self, "Failed to create preprocessor instance");
+            GST_ELEMENT_ERROR(self, LIBRARY, INIT,
+                              ("Failed to create preprocessor instance"),
+                              (NULL));
             return FALSE;
         }
         GST_INFO_OBJECT(self, "Preprocessor instance created successfully");
@@ -789,7 +851,7 @@ static GstFlowReturn gst_dxpreprocess_transform_ip(GstBaseTransform *trans,
                                                    GstBuffer *buf) {
     GstDxPreprocess *self = GST_DXPREPROCESS(trans);
 
-    GST_DEBUG_OBJECT(self, "Processing buffer: pts=%" GST_TIME_FORMAT,
+    GST_LOG_OBJECT(self, "Processing buffer: pts=%" GST_TIME_FORMAT,
                      GST_TIME_ARGS(GST_BUFFER_PTS(buf)));
 
     if (gst_dxpreprocess_qos_process(self, buf)) {
@@ -797,15 +859,20 @@ static GstFlowReturn gst_dxpreprocess_transform_ip(GstBaseTransform *trans,
     }
 
     buf = self->_plugin.preprocessor->check_frame_meta(buf);
+    if (!buf) {
+        GST_ELEMENT_ERROR(self, STREAM, FAILED,
+                          ("Failed to prepare frame metadata"), (NULL));
+        return GST_FLOW_ERROR;
+    }
 
     if (self->_object_filter.secondary_mode) {
-        GST_DEBUG_OBJECT(self, "Processing in secondary mode");
+        GST_LOG_OBJECT(self, "Processing in secondary mode");
         if (!self->_plugin.preprocessor->secondary_process(buf)) {
             GST_ERROR_OBJECT(self, "Secondary preprocessing failed");
             return GST_FLOW_ERROR;
         }
     } else {
-        GST_DEBUG_OBJECT(self, "Processing in primary mode");
+        GST_LOG_OBJECT(self, "Processing in primary mode");
         if (!self->_plugin.preprocessor->primary_process(buf)) {
             GST_ERROR_OBJECT(self, "Primary preprocessing failed");
             return GST_FLOW_ERROR;
@@ -813,4 +880,38 @@ static GstFlowReturn gst_dxpreprocess_transform_ip(GstBaseTransform *trans,
     }
 
     return GST_FLOW_OK;
+}
+
+static gboolean gst_dxpreprocess_propose_allocation(GstBaseTransform *trans,
+                                                    GstQuery *decide_query,
+                                                    GstQuery *query) {
+    GstBaseTransformClass *base_class =
+        GST_BASE_TRANSFORM_CLASS(parent_class);
+    gboolean ret = TRUE;
+    if (base_class && base_class->propose_allocation)
+        ret = base_class->propose_allocation(trans, decide_query, query);
+    GstCaps *qcaps = nullptr;
+    gst_query_parse_allocation(query, &qcaps, nullptr);
+    if (qcaps && dx_caps_is_videoraw(qcaps))
+        gst_query_add_allocation_meta(query, DX_FRAME_META_API_TYPE, NULL);
+    return ret;
+}
+
+static gboolean gst_dxpreprocess_query(GstBaseTransform *trans,
+                                       GstPadDirection direction,
+                                       GstQuery *query) {
+    if (direction == GST_PAD_SRC && GST_QUERY_TYPE(query) == GST_QUERY_LATENCY) {
+        if (!GST_BASE_TRANSFORM_CLASS(parent_class)->query(trans, direction, query))
+            return FALSE;
+        gboolean live;
+        GstClockTime min_lat, max_lat;
+        gst_query_parse_latency(query, &live, &min_lat, &max_lat);
+        const GstClockTime self_lat = 1 * GST_USECOND;
+        min_lat += self_lat;
+        if (max_lat != GST_CLOCK_TIME_NONE)
+            max_lat += self_lat;
+        gst_query_set_latency(query, live, min_lat, max_lat);
+        return TRUE;
+    }
+    return GST_BASE_TRANSFORM_CLASS(parent_class)->query(trans, direction, query);
 }

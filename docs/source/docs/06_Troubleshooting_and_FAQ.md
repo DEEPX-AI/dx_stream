@@ -284,6 +284,17 @@ Solutions focus on optimizing both the PC environment and the GStreamer pipeline
   mosquitto_pub -h localhost -p 1883 -t test -m "hello"
   ```
 
+- Remote Connection Refused
+
+  By default, Mosquitto only accepts connections from `localhost`. To allow remote access, add the following to `/etc/mosquitto/mosquitto.conf`:
+
+  ```
+  listener 1883 0.0.0.0
+  allow_anonymous true
+  ```
+
+  Then restart the service: `sudo systemctl restart mosquitto`
+
 **SSL Certificate Issues**
 
 - Verify Chain
@@ -365,9 +376,9 @@ This error usually means the Kafka broker is not running. To resolve this, verif
     $ mkdir utils && cd utils
     $ sudo apt update
     $ sudo apt-get install default-jdk
-    $ wget https://downloads.apache.org/kafka/3.9.0/kafka_2.13-3.9.0.tgz
-    $ tar -xzf kafka_2.13-3.9.0.tgz
-    $ cd kafka_2.13-3.9.0
+    $ wget https://downloads.apache.org/kafka/3.9.2/kafka_2.13-3.9.2.tgz
+    $ tar -xzf kafka_2.13-3.9.2.tgz
+    $ cd kafka_2.13-3.9.2
     ```
 
     Start Zookeeper (terminal 1): Kafka requires Zookeeper to be running first
@@ -382,9 +393,19 @@ This error usually means the Kafka broker is not running. To resolve this, verif
     $ bin/kafka-server-start.sh config/server.properties
     ```
 
-!!! note "NOTE" 
-  
+!!! note "NOTE"
+
     Keep both terminal sessions running while the DX-STREAM pipeline is active to ensure proper operation.
+
+!!! note "Remote Access"
+
+    If the consumer runs on a different machine from the broker, set `advertised.listeners` in `config/server.properties` to the broker's IP:
+
+    ```
+    advertised.listeners=PLAINTEXT://<broker_ip>:9092
+    ```
+
+    Then restart the Kafka server. Without this, remote consumers will fail to resolve the broker's internal hostname.
 
 ---
 
@@ -490,3 +511,50 @@ $ python3 -c "import mesonbuild, os; print(os.path.dirname(os.path.dirname(meson
 
 # Both should share the same installation prefix (~/.local/ in this example)
 ```
+
+---
+
+## Multi-Stream Domain Issues
+
+#### **Problem: `could not link element` between `DxInputSelector` and a downstream element**
+
+A pipeline like this fails to start:
+
+```
+gst-launch-1.0 ... ! dxinputselector ! videoconvert ! ...
+WARNING: erroneous pipeline: could not link dxinputselector0 to videoconvert0
+```
+
+#### **Cause: Domain caps mismatch**
+
+`DxInputSelector` outputs `application/x-dxvideoraw`, not `video/x-raw`. Standard GStreamer elements (`videoconvert`, `videoscale`, `compositor`, `videorate`, …) only accept `video/x-raw`, so caps negotiation fails immediately at pipeline construction.
+
+#### **Solution**
+
+Either place the standard element **upstream of `DxInputSelector`** (per stream, while caps are still `video/x-raw`), or use a DX-STREAM element that accepts `application/x-dxvideoraw` inside the domain (`DxPreprocess`, `DxInfer`, `DxPostprocess`, `DxTracker`, `DxOsd`, `DxRate`, `DxMsgConv`, `DxMsgBroker`). After `DxOutputSelector`, caps revert to `video/x-raw` and standard elements work again.
+
+See the **Multi-Stream Domain** chapter for the full element placement matrix.
+
+---
+
+#### **Problem: Missing `DXFrameMeta` inside the multi-stream domain**
+
+A warning or error such as the following appears at runtime:
+
+```
+WARN  dxosd ... DXFrameMeta is missing on input buffer
+```
+
+or a dual-mode element falls back to `stream_id=0` for every buffer.
+
+#### **Cause: Buffer entered the domain without `DXFrameMeta`**
+
+`DXFrameMeta` is normally attached by `DxInputSelector` (or, in single-stream pipelines, by upstream DX-STREAM elements via the allocation query). If a buffer is injected into the domain through some other path — for example a custom `appsrc` placed after `DxInputSelector`, or a test element that does not propose the meta — dual-mode elements have no `_stream_id` to dispatch on.
+
+#### **Solution**
+
+- Make sure every buffer entering the domain originates from a sink pad of `DxInputSelector`, which guarantees `DXFrameMeta` is present.
+- If you generate buffers yourself, attach `DXFrameMeta` with `dx_create_frame_meta()` and set `_stream_id` before pushing them.
+- During `ALLOCATION`, dual-mode elements add a request for the `DXFrameMeta` API meta; respect that request in any custom upstream that implements a buffer pool.
+
+---

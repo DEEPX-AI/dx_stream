@@ -511,6 +511,41 @@ Specify the library path and function name in the JSON configuration file for `d
 
 ---
 
+### **Error Reporting from Custom Libraries**
+
+Custom pre-process, post-process, and message-convert libraries are loaded via `dlopen` and called from inside the host element (`dxpreprocess` / `dxpostprocess` / `dxmsgconv`). The host wraps every call in `try { ... } catch (std::exception&) catch (...)` and converts any thrown exception into `GST_ELEMENT_ERROR(LIBRARY, FAILED, ...)`, which is delivered on the GStreamer bus so that the application can shut the pipeline down cleanly.
+
+To preserve this contract, custom libraries **must** follow these rules:
+
+- **Do not use `g_error()`, `g_assert()`, `abort()`, or `exit()`.** `g_error()` calls `G_BREAKPOINT() → abort()`, which terminates the process via `SIGABRT`. C++ stack unwinding is skipped, so the host `try/catch` cannot intercept it; bus error messages are never delivered; and `dlclose()`, push-thread join, and other resource cleanup never run. The result is a core dump instead of a clean EOS / NULL-state transition.
+- **Per-frame recoverable errors** (missing input tensor, shape mismatch on a single frame, optional metadata absent, etc.) → use `g_warning()` and return early (`false` for pre-/post-process, `nullptr` for message convert). The host element skips that frame and the pipeline continues.
+- **Permanent errors** (config does not match the loaded model, required resource missing, invariant violated) → `throw std::runtime_error("descriptive message")`. The host element catches it, reports `GST_ELEMENT_ERROR`, and the application gets a normal bus error from which it can transition to `NULL`.
+
+Example (post-process library):
+
+```cpp
+extern "C" void PostProcess(GstBuffer *buf,
+                            std::vector<dxs::DXTensor> network_output,
+                            DXFrameMeta *frame_meta,
+                            DXObjectMeta *object_meta) {
+    // Recoverable: skip this frame, keep pipeline running.
+    if (network_output.empty()) {
+        g_warning("PostProcess: no output tensors for this frame, skipping");
+        return;
+    }
+
+    // Permanent: model/config mismatch — let the host element report it.
+    if (network_output[0]._shape.size() != 3) {
+        throw std::runtime_error("PostProcess: unexpected tensor rank, "
+                                 "check that model matches the configured library");
+    }
+
+    // ... normal processing ...
+}
+```
+
+---
+
 ## Custom Message Convert Library  
 
 Custom message conversion in **DX-STREAM** requires implementing a user-defined library that converts inference metadata into the desired message format (typically JSON).
@@ -584,7 +619,18 @@ gchar *dxpayload_convert_to_json(DxMsgContext *context, GstDxMsgMetaInfo *meta_i
 ```
 
 The `dxpayload_convert_to_json` function processes the metadata and generates the final JSON string using json-glib library functions. The returned JSON data is automatically freed by the DxMsgConv element after transmission.
+
+When `include-frame` is enabled on DxMsgConv, `meta_info->_frame_base64` contains the base64-encoded JPEG frame data. Custom libraries can include this in payloads:
+
+```cpp
+if (meta_info->_frame_base64) {
+    json_object_set_string_member(root, "frameData", meta_info->_frame_base64);
+}
 ```
+
+!!! note "NOTE"
+
+    Even when `include-frame` is set to `true`, `_frame_base64` may be `nullptr` if frame encoding fails (e.g., unsupported format, transform error). Always check for `nullptr` before using `_frame_base64`.
 
 #### **JSON Output Example**
 

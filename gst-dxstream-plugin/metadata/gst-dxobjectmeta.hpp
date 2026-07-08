@@ -50,9 +50,9 @@ struct _DXObjectMeta {
 
 using DXObjectMeta = _DXObjectMeta;
 
-DXObjectMeta* dx_acquire_obj_meta_from_pool(void);
-void dx_release_obj_meta(DXObjectMeta *obj_meta);
-void dx_copy_obj_meta(DXObjectMeta *src_meta, DXObjectMeta *dst_meta);
+DX_API DXObjectMeta* dx_acquire_obj_meta_from_pool(void);
+DX_API void dx_release_obj_meta(DXObjectMeta *obj_meta);
+DX_API void dx_copy_obj_meta(DXObjectMeta *src_meta, DXObjectMeta *dst_meta);
 
 G_END_DECLS
 

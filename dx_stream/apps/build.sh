@@ -2,6 +2,21 @@
 SCRIPT_DIR=$(realpath "$(dirname "$0")")
 PROJECT_ROOT=$(realpath -s "${SCRIPT_DIR}/../..")
 
+# Fix builddir ownership if it contains root-owned files (left over from previous sudo build)
+fix_builddir_ownership() {
+    local dir="$1"
+    if [ -d "$dir" ] && [ "$(id -u)" -ne 0 ] && [ -n "$(find "$dir" -maxdepth 1 -user root 2>/dev/null | head -1)" ]; then
+        echo "⚠ Warning: '$dir' contains root-owned files (from a previous sudo build)."
+        echo "  Fixing ownership automatically..."
+        sudo chown -R "$(id -u):$(id -g)" "$dir"
+        if [ $? -ne 0 ]; then
+            echo "❌ Error: Failed to fix ownership of '$dir'."
+            exit 1
+        fi
+        echo "✓ Ownership fixed."
+    fi
+}
+
 BUILD_TYPE="release"
 SONAR_MODE_ARG=""
 NATIVE_FILE_ARG=""
@@ -36,7 +51,8 @@ uninstall() {
     for subdir in "$TARGET_DIR"/*/; do
         cd "$subdir" || exit 1
         if [ -d "${BUILD_DIR}" ]; then
-            rm -rf "${BUILD_DIR}"
+            # sudo required: meson install runs as root and creates root-owned files in builddir
+            sudo rm -rf "${BUILD_DIR}"
         else
             echo "Warn: ${BUILD_DIR} not found in $subdir. So, skip uninstall."
         fi
@@ -105,8 +121,11 @@ build_and_install() {
 
         if [ "$CLEAN_MODE" == "--clean" ]; then
             echo "Cleaning build directory in $subdir"
-            rm -rf "${BUILD_DIR}"
+            # sudo required: meson install runs as root and creates root-owned files in builddir
+            sudo rm -rf "${BUILD_DIR}"
         fi
+
+        fix_builddir_ownership "${BUILD_DIR}"
 
         # Setup meson with cache handling
         if [ -d "${BUILD_DIR}" ]; then

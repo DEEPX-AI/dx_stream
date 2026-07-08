@@ -1,0 +1,651 @@
+{
+  "timestamp": "2026-04-09T07:53:31.470324+00:00",
+  "host": {
+    "hostname": "BIOSTAR",
+    "os": "Ubuntu 22.04.5 LTS",
+    "kernel": "6.8.0-106-generic",
+    "arch": "x86_64",
+    "cpu": "AMD Ryzen 5 9600X 6-Core Processor",
+    "cpu_count": 12,
+    "ram_gb": 30.5
+  },
+  "npu": {
+    "sku": "H1",
+    "rt_version": "v3.2.0",
+    "driver": "v2.1.0",
+    "pcie_driver": "v2.0.1",
+    "firmware": "v2.5.0",
+    "memory": "LPDDR5x 6000 Mbps, 3.92GiB",
+    "board": "H1, Rev 0.0",
+    "pcie": "Gen3 X4 [04:00:00]",
+    "cores": [
+      "NPU 0: voltage 750 mV, clock 1000 MHz, temperature 40'C",
+      "NPU 1: voltage 750 mV, clock 1000 MHz, temperature 39'C",
+      "NPU 2: voltage 750 mV, clock 1000 MHz, temperature 39'C",
+      "NPU 0: voltage 750 mV, clock 1000 MHz, temperature 41'C",
+      "NPU 1: voltage 750 mV, clock 1000 MHz, temperature 40'C",
+      "NPU 2: voltage 750 mV, clock 1000 MHz, temperature 41'C",
+      "NPU 0: voltage 750 mV, clock 1000 MHz, temperature 40'C",
+      "NPU 1: voltage 750 mV, clock 1000 MHz, temperature 40'C",
+      "NPU 2: voltage 750 mV, clock 1000 MHz, temperature 39'C",
+      "NPU 0: voltage 750 mV, clock 1000 MHz, temperature 37'C",
+      "NPU 1: voltage 750 mV, clock 1000 MHz, temperature 37'C",
+      "NPU 2: voltage 750 mV, clock 1000 MHz, temperature 37'C"
+    ],
+    "raw": "DXRT v3.2.0\n=======================================================\n * Device 0: M1, Accelerator type\n---------------------   Version   ---------------------\n * RT Driver version   : v2.1.0\n * PCIe Driver version : v2.0.1\n-------------------------------------------------------\n * FW version          : v2.5.0\n--------------------- Device Info ---------------------\n * Memory : LPDDR5x 6000 Mbps, 3.92GiB\n * Board  : H1, Rev 0.0\n * Chip Offset : 0\n * PCIe   : Gen3 X4 [01:00:00]\n\nNPU 0: voltage 750 mV, clock 1000 MHz, temperature 40'C\nNPU 1: voltage 750 mV, clock 1000 MHz, temperature 39'C\nNPU 2: voltage 750 mV, clock 1000 MHz, temperature 39'C\n=======================================================\n=======================================================\n * Device 1: M1, Accelerator type\n---------------------   Version   ---------------------\n * RT Driver version   : v2.1.0\n * PCIe Driver version : v2.0.1\n-------------------------------------------------------\n * FW version          : v2.5.0\n--------------------- Device Info ---------------------\n * Memory : LPDDR5x 6000 Mbps, 3.92GiB\n * Board  : H1, Rev 0.0\n * Chip Offset : 1\n * PCIe   : Gen3 X4 [02:00:00]\n\nNPU 0: voltage 750 mV, clock 1000 MHz, temperature 41'C\nNPU 1: voltage 750 mV, clock 1000 MHz, temperature 40'C\nNPU 2: voltage 750 mV, clock 1000 MHz, temperature 41'C\n=======================================================\n=======================================================\n * Device 2: M1, Accelerator type\n---------------------   Version   ---------------------\n * RT Driver version   : v2.1.0\n * PCIe Driver version : v2.0.1\n-------------------------------------------------------\n * FW version          : v2.5.0\n--------------------- Device Info ---------------------\n * Memory : LPDDR5x 6000 Mbps, 3.92GiB\n * Board  : H1, Rev 0.0\n * Chip Offset : 2\n * PCIe   : Gen3 X4 [03:00:00]\n\nNPU 0: voltage 750 mV, clock 1000 MHz, temperature 40'C\nNPU 1: voltage 750 mV, clock 1000 MHz, temperature 40'C\nNPU 2: voltage 750 mV, clock 1000 MHz, temperature 39'C\n=======================================================\n=======================================================\n * Device 3: M1, Accelerator type\n---------------------   Version   ---------------------\n * RT Driver version   : v2.1.0\n * PCIe Driver version : v2.0.1\n-------------------------------------------------------\n * FW version          : v2.5.0\n--------------------- Device Info ---------------------\n * Memory : LPDDR5x 6000 Mbps, 3.92GiB\n * Board  : H1, Rev 0.0\n * Chip Offset : 3\n * PCIe   : Gen3 X4 [04:00:00]\n\nNPU 0: voltage 750 mV, clock 1000 MHz, temperature 37'C\nNPU 1: voltage 750 mV, clock 1000 MHz, temperature 37'C\nNPU 2: voltage 750 mV, clock 1000 MHz, temperature 37'C\n=======================================================",
+    "device_count": 4,
+    "clock_mhz": 1000
+  },
+  "software": {
+    "dx_stream": "3.0.0"
+  },
+  "tools": {
+    "run_model": {
+      "path": "/usr/local/bin/run_model",
+      "version": "DXRT v3.2.0 run_model",
+      "available": true
+    },
+    "gst-launch-1.0": {
+      "path": "/usr/bin/gst-launch-1.0",
+      "version": "gst-launch-1.0 version 1.20.3",
+      "available": true
+    },
+    "gst-inspect-1.0": {
+      "path": "/usr/bin/gst-inspect-1.0",
+      "version": "gst-inspect-1.0 version 1.20.3",
+      "available": true
+    },
+    "dxtop": {
+      "path": "/usr/local/bin/dxtop",
+      "version": "DX-TOP 1.0.1",
+      "available": true
+    },
+    "ffprobe": {
+      "path": "/usr/bin/ffprobe",
+      "version": "ffprobe version 4.4.2-0ubuntu0.22.04.1 Copyright (c) 2007-2021 the FFmpeg developers",
+      "available": true
+    }
+  },
+  "missing_required": [],
+  "video_infos": {
+    "cls": {
+      "path": "/home/deepx/work/DEEPX-AI/dx-all-suite/dx-runtime/dx_stream/dx_stream/samples/videos/856056-hd_1920_1080_30fps_4loop.mp4",
+      "filename": "856056-hd_1920_1080_30fps_4loop.mp4",
+      "codec": "h264",
+      "width": 1920,
+      "height": 1080,
+      "pix_fmt": "yuv420p",
+      "fps": 30.0,
+      "nb_frames": 3455,
+      "duration_sec": 115.281833,
+      "format": "QuickTime / MOV",
+      "bitrate_mbps": 4.47
+    },
+    "od_pose_seg": {
+      "path": "/home/deepx/work/DEEPX-AI/dx-all-suite/dx-runtime/dx_stream/dx_stream/samples/videos/856056-hd_1920_1080_30fps_4loop.mp4",
+      "filename": "856056-hd_1920_1080_30fps_4loop.mp4",
+      "codec": "h264",
+      "width": 1920,
+      "height": 1080,
+      "pix_fmt": "yuv420p",
+      "fps": 30.0,
+      "nb_frames": 3455,
+      "duration_sec": 115.281833,
+      "format": "QuickTime / MOV",
+      "bitrate_mbps": 4.47
+    },
+    "obb": {
+      "path": "/home/deepx/work/DEEPX-AI/dx-all-suite/dx-runtime/dx_stream/dx_stream/samples/videos/obb_test_video_6loop.mp4",
+      "filename": "obb_test_video_6loop.mp4",
+      "codec": "h264",
+      "width": 1920,
+      "height": 1080,
+      "pix_fmt": "yuv420p",
+      "fps": 30.0,
+      "nb_frames": 2640,
+      "duration_sec": 88.0,
+      "format": "QuickTime / MOV",
+      "bitrate_mbps": 4.87
+    }
+  },
+  "benchmark_params": {
+    "model_time_sec": 30,
+    "model_latency_loops": 300,
+    "model_warmup": 1,
+    "model_latency_runs": 1,
+    "model_throughput_runs": 3,
+    "e2e_runs": 3,
+    "fps_threshold": 30.0,
+    "families": [
+      "all"
+    ],
+    "ort_modes": [
+      "ON",
+      "OFF"
+    ],
+    "retry_failed": false
+  },
+  "protocol": {
+    "version": "v2",
+    "thermal_mode": "steady",
+    "model_time_sec": 30,
+    "model_latency_loops": 300,
+    "model_warmup_runs": 1,
+    "model_latency_runs": 1,
+    "model_throughput_runs": 3,
+    "e2e_runs": 3,
+    "fps_threshold": 30.0,
+    "multi_stream_search": "single-stream-estimate-linear-boundary",
+    "stable_capacity_rule": "status_ok_and_all_runs_success_and_avg_per_channel_fps_ge_threshold",
+    "ort_modes": [
+      "ON",
+      "OFF"
+    ],
+    "thermal_cooldown_target_delta_c": 10.0,
+    "thermal_cooldown_max_sec": 300.0,
+    "npu_warmup_sec": 1.0,
+    "npu_drain_sec": 0.5
+  },
+  "benchmarked_models": [
+    {
+      "name": "yolo26n-1.dxnn",
+      "task": "object_detection",
+      "size": "n",
+      "input_size": [
+        640,
+        640
+      ],
+      "format_version": "v8",
+      "dxcom_version": "v2.2.0-rc.1",
+      "total_memory_mb": 102.49,
+      "input_tensor_shape": [
+        1,
+        640,
+        640,
+        3
+      ],
+      "input_tensor_dtype": "UINT8"
+    },
+    {
+      "name": "yolo26s-1.dxnn",
+      "task": "object_detection",
+      "size": "s",
+      "input_size": [
+        640,
+        640
+      ],
+      "format_version": "v8",
+      "dxcom_version": "v2.2.0-rc.1",
+      "total_memory_mb": 118.95,
+      "input_tensor_shape": [
+        1,
+        640,
+        640,
+        3
+      ],
+      "input_tensor_dtype": "UINT8"
+    },
+    {
+      "name": "yolo26m-1.dxnn",
+      "task": "object_detection",
+      "size": "m",
+      "input_size": [
+        640,
+        640
+      ],
+      "format_version": "v8",
+      "dxcom_version": "v2.2.0-rc.1",
+      "total_memory_mb": 148.36,
+      "input_tensor_shape": [
+        1,
+        640,
+        640,
+        3
+      ],
+      "input_tensor_dtype": "UINT8"
+    },
+    {
+      "name": "yolo26l-1.dxnn",
+      "task": "object_detection",
+      "size": "l",
+      "input_size": [
+        640,
+        640
+      ],
+      "format_version": "v8",
+      "dxcom_version": "v2.2.0-rc.1",
+      "total_memory_mb": 162.51,
+      "input_tensor_shape": [
+        1,
+        640,
+        640,
+        3
+      ],
+      "input_tensor_dtype": "UINT8"
+    },
+    {
+      "name": "yolo26x-1.dxnn",
+      "task": "object_detection",
+      "size": "x",
+      "input_size": [
+        640,
+        640
+      ],
+      "format_version": "v8",
+      "dxcom_version": "v2.2.0-rc.1",
+      "total_memory_mb": 266.41,
+      "input_tensor_shape": [
+        1,
+        640,
+        640,
+        3
+      ],
+      "input_tensor_dtype": "UINT8"
+    },
+    {
+      "name": "yolo26n-pose.dxnn",
+      "task": "pose_estimation",
+      "size": "n",
+      "input_size": [
+        640,
+        640
+      ],
+      "format_version": "v8",
+      "dxcom_version": "v2.2.0-rc.2",
+      "total_memory_mb": 127.88,
+      "input_tensor_shape": [
+        1,
+        640,
+        640,
+        3
+      ],
+      "input_tensor_dtype": "UINT8"
+    },
+    {
+      "name": "yolo26s-pose.dxnn",
+      "task": "pose_estimation",
+      "size": "s",
+      "input_size": [
+        640,
+        640
+      ],
+      "format_version": "v8",
+      "dxcom_version": "v2.2.0-rc.2",
+      "total_memory_mb": 158.76,
+      "input_tensor_shape": [
+        1,
+        640,
+        640,
+        3
+      ],
+      "input_tensor_dtype": "UINT8"
+    },
+    {
+      "name": "yolo26m-pose.dxnn",
+      "task": "pose_estimation",
+      "size": "m",
+      "input_size": [
+        640,
+        640
+      ],
+      "format_version": "v8",
+      "dxcom_version": "v2.2.0-rc.2",
+      "total_memory_mb": 254.1,
+      "input_tensor_shape": [
+        1,
+        640,
+        640,
+        3
+      ],
+      "input_tensor_dtype": "UINT8"
+    },
+    {
+      "name": "yolo26l-pose.dxnn",
+      "task": "pose_estimation",
+      "size": "l",
+      "input_size": [
+        640,
+        640
+      ],
+      "format_version": "v8",
+      "dxcom_version": "v2.2.0-rc.2",
+      "total_memory_mb": 305.69,
+      "input_tensor_shape": [
+        1,
+        640,
+        640,
+        3
+      ],
+      "input_tensor_dtype": "UINT8"
+    },
+    {
+      "name": "yolo26x-pose.dxnn",
+      "task": "pose_estimation",
+      "size": "x",
+      "input_size": [
+        640,
+        640
+      ],
+      "format_version": "v8",
+      "dxcom_version": "v2.2.0-rc.2",
+      "total_memory_mb": 516.62,
+      "input_tensor_shape": [
+        1,
+        640,
+        640,
+        3
+      ],
+      "input_tensor_dtype": "UINT8"
+    },
+    {
+      "name": "yolo26n-seg.dxnn",
+      "task": "segmentation",
+      "size": "n",
+      "input_size": [
+        640,
+        640
+      ],
+      "format_version": "v8",
+      "dxcom_version": "v2.2.0-rc.2",
+      "total_memory_mb": 148.24,
+      "input_tensor_shape": [
+        1,
+        640,
+        640,
+        3
+      ],
+      "input_tensor_dtype": "UINT8"
+    },
+    {
+      "name": "yolo26s-seg.dxnn",
+      "task": "segmentation",
+      "size": "s",
+      "input_size": [
+        640,
+        640
+      ],
+      "format_version": "v8",
+      "dxcom_version": "v2.2.0-rc.2",
+      "total_memory_mb": 172.91,
+      "input_tensor_shape": [
+        1,
+        640,
+        640,
+        3
+      ],
+      "input_tensor_dtype": "UINT8"
+    },
+    {
+      "name": "yolo26m-seg.dxnn",
+      "task": "segmentation",
+      "size": "m",
+      "input_size": [
+        640,
+        640
+      ],
+      "format_version": "v8",
+      "dxcom_version": "v2.2.0-rc.2",
+      "total_memory_mb": 265.55,
+      "input_tensor_shape": [
+        1,
+        640,
+        640,
+        3
+      ],
+      "input_tensor_dtype": "UINT8"
+    },
+    {
+      "name": "yolo26l-seg.dxnn",
+      "task": "segmentation",
+      "size": "l",
+      "input_size": [
+        640,
+        640
+      ],
+      "format_version": "v8",
+      "dxcom_version": "v2.2.0-rc.2",
+      "total_memory_mb": 317.14,
+      "input_tensor_shape": [
+        1,
+        640,
+        640,
+        3
+      ],
+      "input_tensor_dtype": "UINT8"
+    },
+    {
+      "name": "yolo26x-seg.dxnn",
+      "task": "segmentation",
+      "size": "x",
+      "input_size": [
+        640,
+        640
+      ],
+      "format_version": "v8",
+      "dxcom_version": "v2.2.0-rc.2",
+      "total_memory_mb": 550.37,
+      "input_tensor_shape": [
+        1,
+        640,
+        640,
+        3
+      ],
+      "input_tensor_dtype": "UINT8"
+    },
+    {
+      "name": "yolo26n-obb.dxnn",
+      "task": "oriented_bbox",
+      "size": "n",
+      "input_size": [
+        1024,
+        1024
+      ],
+      "format_version": "v8",
+      "dxcom_version": "v2.2.0-rc.2",
+      "total_memory_mb": 336.67,
+      "input_tensor_shape": [
+        1,
+        1024,
+        1024,
+        3
+      ],
+      "input_tensor_dtype": "UINT8"
+    },
+    {
+      "name": "yolo26s-obb.dxnn",
+      "task": "oriented_bbox",
+      "size": "s",
+      "input_size": [
+        1024,
+        1024
+      ],
+      "format_version": "v8",
+      "dxcom_version": "v2.2.0-rc.2",
+      "total_memory_mb": 496.03,
+      "input_tensor_shape": [
+        1,
+        1024,
+        1024,
+        3
+      ],
+      "input_tensor_dtype": "UINT8"
+    },
+    {
+      "name": "yolo26m-obb.dxnn",
+      "task": "oriented_bbox",
+      "size": "m",
+      "input_size": [
+        1024,
+        1024
+      ],
+      "format_version": "v8",
+      "dxcom_version": "v2.2.0-rc.2",
+      "total_memory_mb": 645.41,
+      "input_tensor_shape": [
+        1,
+        1024,
+        1024,
+        3
+      ],
+      "input_tensor_dtype": "UINT8"
+    },
+    {
+      "name": "yolo26l-obb.dxnn",
+      "task": "oriented_bbox",
+      "size": "l",
+      "input_size": [
+        1024,
+        1024
+      ],
+      "format_version": "v8",
+      "dxcom_version": "v2.2.0-rc.2",
+      "total_memory_mb": 790.24,
+      "input_tensor_shape": [
+        1,
+        1024,
+        1024,
+        3
+      ],
+      "input_tensor_dtype": "UINT8"
+    },
+    {
+      "name": "yolo26x-obb.dxnn",
+      "task": "oriented_bbox",
+      "size": "x",
+      "input_size": [
+        1024,
+        1024
+      ],
+      "format_version": "v8",
+      "dxcom_version": "v2.2.0-rc.2",
+      "total_memory_mb": 1316.78,
+      "input_tensor_shape": [
+        1,
+        1024,
+        1024,
+        3
+      ],
+      "input_tensor_dtype": "UINT8"
+    },
+    {
+      "name": "yolo26n-cls.dxnn",
+      "task": "classification",
+      "size": "n",
+      "input_size": [
+        224,
+        224
+      ],
+      "format_version": "v8",
+      "dxcom_version": "v2.2.0-rc.2",
+      "total_memory_mb": 4.54,
+      "input_tensor_shape": [
+        1,
+        224,
+        224,
+        3
+      ],
+      "input_tensor_dtype": "UINT8"
+    },
+    {
+      "name": "yolo26s-cls.dxnn",
+      "task": "classification",
+      "size": "s",
+      "input_size": [
+        224,
+        224
+      ],
+      "format_version": "v8",
+      "dxcom_version": "v2.2.0-rc.2",
+      "total_memory_mb": 8.98,
+      "input_tensor_shape": [
+        1,
+        224,
+        224,
+        3
+      ],
+      "input_tensor_dtype": "UINT8"
+    },
+    {
+      "name": "yolo26m-cls.dxnn",
+      "task": "classification",
+      "size": "m",
+      "input_size": [
+        224,
+        224
+      ],
+      "format_version": "v8",
+      "dxcom_version": "v2.2.0-rc.2",
+      "total_memory_mb": 13.72,
+      "input_tensor_shape": [
+        1,
+        224,
+        224,
+        3
+      ],
+      "input_tensor_dtype": "UINT8"
+    },
+    {
+      "name": "yolo26l-cls.dxnn",
+      "task": "classification",
+      "size": "l",
+      "input_size": [
+        224,
+        224
+      ],
+      "format_version": "v8",
+      "dxcom_version": "v2.2.0-rc.2",
+      "total_memory_mb": 19.6,
+      "input_tensor_shape": [
+        1,
+        224,
+        224,
+        3
+      ],
+      "input_tensor_dtype": "UINT8"
+    },
+    {
+      "name": "yolo26x-cls.dxnn",
+      "task": "classification",
+      "size": "x",
+      "input_size": [
+        224,
+        224
+      ],
+      "format_version": "v8",
+      "dxcom_version": "v2.2.0-rc.2",
+      "total_memory_mb": 48.71,
+      "input_tensor_shape": [
+        1,
+        224,
+        224,
+        3
+      ],
+      "input_tensor_dtype": "UINT8"
+    }
+  ],
+  "timing": {
+    "start": "2026-04-09 16:53:31",
+    "end": "2026-04-10 11:05:01",
+    "duration_sec": 65490.5
+  },
+  "timing_history": [
+    {
+      "mode": "run",
+      "start": "2026-04-09 16:53:31",
+      "end": "2026-04-10 11:05:01",
+      "duration_sec": 65490.0,
+      "families": [
+        "all"
+      ],
+      "task": "all",
+      "sizes": [
+        "n",
+        "s",
+        "m",
+        "l",
+        "x"
+      ],
+      "retry_failed": false
+    }
+  ]
+}

@@ -67,6 +67,25 @@ GObject
                          +----GstDxMsgConv
 ```
 
+### **Pad Templates**
+
+**Sink (input)**
+
+| **Property** | **Value** |
+|---|---|
+| Format | `video/x-raw; application/x-dxvideoraw` |
+
+**Src (output)**
+
+| **Property** | **Value** |
+|---|---|
+| Format | `video/x-raw; application/x-dxvideoraw` |
+
+`DxMsgConv` is essentially **caps-agnostic** — it does not inspect raw video pixels. It accepts either `video/x-raw` or `application/x-dxvideoraw` solely so it can be placed anywhere in the chain; processing operates on the buffer's `DXFrameMeta` / `DXObjectMeta` only.
+
+### **Custom Library Error Reporting**
+
+Custom message-converter libraries must follow the error reporting contract described in **Chapter. Writing Your Own Application "Error Reporting from Custom Libraries"** — no `g_error()` / `abort()`; use `g_warning()` + `return nullptr` for per-frame skips, and `throw std::runtime_error` for permanent errors.
 ### **Properties**
 
 | **Name**            | **Description**                                                      | **Type**  | **Default Value** |
@@ -74,6 +93,11 @@ GObject
 | `config-file-path`  | Path to the configuration file. (optional).| String    | `null`     |
 | `library-file-path` | Path to the custom message converter library. **Required**.       | String    | `null`           |
 | `message-interval` | Frame interval at which message is converted.                      | Integer    | `1`             |
+| `include-frame`  | Flag whether to include frame data as base64 JPEG in the message. (optional). | Boolean   | `false`          |
+
+!!! warning "Limitation"
+
+    **DxMsgConv** must not be placed after an `input-selector` element. Caps are configured once via `set_caps` callback and are not re-negotiated during stream switching. Placing **DxMsgConv** downstream of `input-selector` may result in caps mismatch when streams are switched at runtime.
 
 ---
 

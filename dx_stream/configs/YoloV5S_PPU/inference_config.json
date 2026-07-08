@@ -2,5 +2,5 @@
     "preprocess_id": 1,
     "inference_id": 1,
     "model_path" : "./dx_stream/samples/models/YoloV5S_PPU.dxnn",
-    "use-ort": false
+    "use_ort": false
 }

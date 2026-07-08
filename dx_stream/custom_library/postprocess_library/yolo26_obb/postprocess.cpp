@@ -175,7 +175,7 @@ static std::vector<ObbBox> parse_single_output(const std::vector<dxs::DXTensor>&
     return detections;
 }
 
-extern "C" void PostProcess(GstBuffer* buf,
+DX_CUSTOM_EXPORT void PostProcess(GstBuffer* buf,
                             std::vector<dxs::DXTensor> network_output,
                             DXFrameMeta* frame_meta,
                             DXObjectMeta* object_meta) {

@@ -53,6 +53,8 @@ struct _GstDxMsgBroker {
 
     /*debug purpose*/
     guint64 _msgbroker_count;
+
+    guint _consecutive_failures;
 };
 
 G_END_DECLS

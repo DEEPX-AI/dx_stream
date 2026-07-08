@@ -5,7 +5,6 @@
 #include "dxcommon.hpp"
 #include <gst/base/gstbasetransform.h>
 #include <gst/gst.h>
-#include <opencv2/opencv.hpp>
 
 G_BEGIN_DECLS
 

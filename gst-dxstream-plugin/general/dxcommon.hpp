@@ -7,6 +7,18 @@
 #include <string>
 #include <vector>
 
+#ifdef _WIN32
+  #ifdef DX_BUILDING
+    #define DX_API __declspec(dllexport)
+  #else
+    #define DX_API __declspec(dllimport)
+  #endif
+  #define DX_CUSTOM_EXPORT extern "C" __declspec(dllexport)
+#else
+  #define DX_API
+  #define DX_CUSTOM_EXPORT extern "C"
+#endif
+
 namespace dxs {
 
 enum DataType {

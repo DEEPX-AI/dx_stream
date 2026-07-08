@@ -3,7 +3,8 @@ common_args = [
   '-DPACKAGE="gst-dxstream"',
   '-DGST_LICENSE="LGPL"',
   '-DGST_PACKAGE_NAME="GStreamer DEEPX DX-Stream Plugins"',
-  '-DGST_PACKAGE_ORIGIN="https://github.com/DEEPX-AI/dx_stream"'
+  '-DGST_PACKAGE_ORIGIN="https://github.com/DEEPX-AI/dx_stream"',
+  '-DDX_BUILDING'
 ]
 
 # Add feature flags
@@ -12,9 +13,15 @@ if librga_flag
 endif
 
 if v3_flag
-  common_args += [
-    '-DDEEPX_V3'
-  ]
+  common_args += '-DDEEPX_V3'
+endif
+
+if dxvnpu_flag
+  common_args += '-DHAVE_DXVNPU'
+endif
+
+if dxrt_flag
+  common_args += '-DHAVE_DXRT'
 endif
 
 sources = [
@@ -50,8 +57,14 @@ sources = [
     'transforms/libyuv_transform_kernel.cpp',
 
     'gst-dxscale.cpp',
-    'gst-dxconvert.cpp'
+    'gst-dxconvert.cpp',
+
+    'infer_backend/infer_backend_factory.cpp',
 ]
+
+if dxrt_flag
+  sources += ['infer_backend/dxrt_backend.cpp']
+endif
 
 if v3_flag
   sources += [
@@ -74,22 +87,43 @@ if v3_flag == false
   ]
 endif
 
+if dxvnpu_flag
+  sources += [
+    'gst-dxvnpudec.cpp',
+    'gst-dxvnpuenc.cpp',
+    'gst-dxvnpupipeline.cpp',
+    'gst-dxvnpuoverlay.cpp',
+    'transforms/vnpu_transform_kernel.cpp',
+    'infer_backend/dxvnpu_backend.cpp',
+  ]
+endif
+
 # Install to GStreamer plugin directory under libdir
 gst_plugin_dir = get_option('libdir') / 'gstreamer-1.0'
 
 message('GStreamer plugin will be installed to: ' + get_option('prefix') / gst_plugin_dir)
 
 # Build and install the shared library
-gstdxstream = shared_library('gstdxstream',
+gstdxstream_kwargs = {
+    'cpp_args': common_args,
+    'include_directories': include_dirs,
+    'dependencies': extra_deps,
+    'install': true,
+    'install_dir': gst_plugin_dir,
+}
+if host_machine.system() == 'windows'
+  gstdxstream = shared_library('gstdxstream',
     sources,
-    cpp_args: common_args,
-    include_directories: include_dirs,
-    dependencies : extra_deps,
-    install : true,
-    install_dir : gst_plugin_dir,
+    kwargs: gstdxstream_kwargs,
+  )
+else
+  gstdxstream = shared_library('gstdxstream',
+    sources,
     version: project_version,
-    soversion: '0'
-)
+    soversion: '0',
+    kwargs: gstdxstream_kwargs,
+  )
+endif
 
 # Generate pkg-config file
 pkg = import('pkgconfig')

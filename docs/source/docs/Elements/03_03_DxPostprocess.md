@@ -37,6 +37,23 @@ GObject
                          +----GstDxPostprocess
 ```
 
+### **Pad Templates**
+
+**Sink (input)**
+
+| **Property** | **Value** |
+|---|---|
+| Format | `video/x-raw; application/x-dxvideoraw` |
+
+**Src (output)**
+
+| **Property** | **Value** |
+|---|---|
+| Format | `video/x-raw; application/x-dxvideoraw` |
+
+### **Domain Mode Behavior**
+
+`dxpostprocess` is a dual-mode, stateless element (see [Multi-Stream Domain](./03_00_Multi_Stream_Domain.md)). Behavior is identical whether the sink caps are `video/x-raw` (single stream) or `application/x-dxvideoraw` (domain) — the element reads per-buffer information from `DXFrameMeta`/`DXObjectMeta` either way.
 ### **Properties**  
 
 | **Name**             | **Description**                                                                                      | **Type**             | **Default Value**       |
@@ -61,6 +78,6 @@ GObject
 !!! note "NOTE" 
 
     - All properties can also be configured using a JSON file for enhanced usability and flexibility.  
-    - For implementing custom preprocess logic, refer to **Chapter. Writing Your Own Application `“Custom Post-Process Library Documentation”`**.  
+    - For implementing custom postprocess logic, refer to **Chapter. Writing Your Own Application `“Custom Post-Process Library Documentation”`**. Custom libraries must follow the error reporting contract described there (no `g_error()` / `abort()`; use `g_warning()` for per-frame skips and `throw std::runtime_error` for permanent errors).
 
 ---

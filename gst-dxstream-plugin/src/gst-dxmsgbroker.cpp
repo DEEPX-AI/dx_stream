@@ -1,6 +1,6 @@
 #include "gst-dxmsgbroker.hpp"
 #include "gst-dxmsgmeta.hpp"
-#include <fstream>
+#include "utils.hpp"
 
 #include "dx_msgbrokerl_kafka.hpp"
 #include "dx_msgbrokerl_mqtt.hpp"
@@ -30,6 +30,10 @@ static gboolean gst_dxmsgbroker_event(GstBaseSink *sink, GstEvent *event);
 
 constexpr char DXMSG_BAL_BROKER_NAME_MQTT[] = "mqtt";
 constexpr char DXMSG_BAL_BROKER_NAME_KAFKA[] = "kafka";
+
+static gboolean string_is_empty(const gchar *value) {
+    return value == nullptr || value[0] == '\0';
+}
 
 /////////////////////////////////////////////////////////////////////////
 
@@ -77,7 +81,8 @@ static void gst_dxmsgbroker_class_init(GstDxMsgBrokerClass *klass) {
     gst_element_class_add_pad_template(
         GST_ELEMENT_CLASS(klass),
         gst_pad_template_new("sink", GST_PAD_SINK, GST_PAD_ALWAYS,
-                             GST_CAPS_ANY));
+                             gst_caps_from_string(DX_VIDEORAW_CAPS_STR
+                                                  "; video/x-raw")));
 
     /* GstElementClass method */
     element_class->change_state = gst_dxmsgbroker_change_state;
@@ -90,30 +95,30 @@ static void gst_dxmsgbroker_class_init(GstDxMsgBrokerClass *klass) {
 
     gst_element_class_set_details_simple(element_class, "DXMsgBroker",
                                          "Generic", "DX Message Broker",
-                                         "JB Lim <jblim@dxsolution.kr>");
+                                         "Sangil Jo <sijo@deepx.ai>");
 }
 
 static void gst_dxmsgbroker_init(GstDxMsgBroker *self) {
-    GST_TRACE_OBJECT(self, "|JCP|");
-
     self->_conn_info = nullptr;
     self->_config = nullptr;
     self->_topic = nullptr;
     self->_msgbroker_count = 0;
+    self->_consecutive_failures = 0;
 
     self->_handle = nullptr;
     self->_broker_name = g_strdup(DXMSG_BAL_BROKER_NAME_MQTT);
     self->_connect_function = nullptr;
     self->_send_function = nullptr;
     self->_disconnect_function = nullptr;
+
+    gst_base_sink_set_sync(GST_BASE_SINK(self), FALSE);
+    gst_base_sink_set_async_enabled(GST_BASE_SINK(self), FALSE);
 }
 
 static void gst_dxmsgbroker_set_property(GObject *object, guint prop_id,
                                          const GValue *value,
                                          GParamSpec *pspec) {
     GstDxMsgBroker *self = GST_DXMSGBROKER(object);
-
-    GST_TRACE_OBJECT(self, "|JCP|");
 
     switch (static_cast<PropertyID>(prop_id)) {
     case PropertyID::PROP_BROKER_NAME:
@@ -148,8 +153,6 @@ static void gst_dxmsgbroker_get_property(GObject *object, guint prop_id,
                                          GValue *value, GParamSpec *pspec) {
     GstDxMsgBroker *self = GST_DXMSGBROKER(object);
 
-    GST_TRACE_OBJECT(self, "|JCP|");
-
     switch (static_cast<PropertyID>(prop_id)) {
     case PropertyID::PROP_BROKER_NAME:
         g_value_set_string(value, self->_broker_name);
@@ -172,8 +175,6 @@ static void gst_dxmsgbroker_get_property(GObject *object, guint prop_id,
 static void gst_dxmsgbroker_finalize(GObject *object) {
     GstDxMsgBroker *self = GST_DXMSGBROKER(object);
 
-    GST_TRACE_OBJECT(self, "|JCP|");
-
     if (self->_broker_name) {
         g_free(self->_broker_name);
         self->_broker_name = nullptr;
@@ -194,61 +195,12 @@ static void gst_dxmsgbroker_finalize(GObject *object) {
 
 static GstStateChangeReturn
 gst_dxmsgbroker_change_state(GstElement *element, GstStateChange transition) {
-    GstStateChangeReturn ret = GST_STATE_CHANGE_SUCCESS;
-    GstDxMsgBroker *self = GST_DXMSGBROKER(element);
-
-    GST_TRACE_OBJECT(self, "|JCP|");
-
-    switch (transition) {
-    case GST_STATE_CHANGE_NULL_TO_READY:
-        GST_DEBUG_OBJECT(self, "GST_STATE_CHANGE_NULL_TO_READY");
-        break;
-    case GST_STATE_CHANGE_READY_TO_PAUSED:
-        GST_DEBUG_OBJECT(self, "GST_STATE_CHANGE_READY_TO_PAUSED");
-        break;
-    case GST_STATE_CHANGE_PAUSED_TO_PLAYING:
-        GST_DEBUG_OBJECT(self, "GST_STATE_CHANGE_PAUSED_TO_PLAYING");
-        break;
-    case GST_STATE_CHANGE_PLAYING_TO_PAUSED:
-        GST_DEBUG_OBJECT(self, "GST_STATE_CHANGE_PLAYING_TO_PAUSED");
-        break;
-    case GST_STATE_CHANGE_PAUSED_TO_READY:
-        GST_DEBUG_OBJECT(self, "GST_STATE_CHANGE_PAUSED_TO_READY");
-        break;
-    case GST_STATE_CHANGE_READY_TO_NULL:
-        GST_DEBUG_OBJECT(self, "GST_STATE_CHANGE_READY_TO_NULL");
-        break;
-    default:
-        break;
-    }
-
-    ret = GST_ELEMENT_CLASS(gst_dxmsgbroker_parent_class)
+    return GST_ELEMENT_CLASS(gst_dxmsgbroker_parent_class)
               ->change_state(element, transition);
-
-    switch (transition) {
-    case GST_STATE_CHANGE_NULL_TO_READY:
-        break;
-    case GST_STATE_CHANGE_READY_TO_PAUSED:
-        break;
-    case GST_STATE_CHANGE_PAUSED_TO_PLAYING:
-        break;
-    case GST_STATE_CHANGE_PLAYING_TO_PAUSED:
-        break;
-    case GST_STATE_CHANGE_PAUSED_TO_READY:
-        break;
-    case GST_STATE_CHANGE_READY_TO_NULL:
-        break;
-    default:
-        break;
-    }
-
-    return ret;
 }
 
 static gboolean gst_dxmsgbroker_start(GstBaseSink *sink) {
     GstDxMsgBroker *self = GST_DXMSGBROKER(sink);
-
-    GST_TRACE_OBJECT(self, "|JCP|");
 
     if (g_strcmp0(self->_broker_name, DXMSG_BAL_BROKER_NAME_MQTT) == 0) {
         self->_connect_function = dxmsg_bal_connect_mqtt;
@@ -260,14 +212,32 @@ static gboolean gst_dxmsgbroker_start(GstBaseSink *sink) {
         self->_send_function = dxmsg_bal_send_kafka;
         self->_disconnect_function = dxmsg_bal_disconnect_kafka;
     } else {
-        GST_ERROR_OBJECT(self, "Invalid broker type %s\n", self->_broker_name);
+        GST_ELEMENT_ERROR(self, RESOURCE, SETTINGS,
+                          ("Invalid broker type: %s", self->_broker_name),
+                          (NULL));
+        return FALSE;
+    }
+
+    if (string_is_empty(self->_conn_info)) {
+        GST_ELEMENT_ERROR(self, RESOURCE, SETTINGS,
+                          ("conn-info property is required but not set"),
+                          (NULL));
+        return FALSE;
+    }
+
+    if (string_is_empty(self->_topic)) {
+        GST_ELEMENT_ERROR(self, RESOURCE, SETTINGS,
+                          ("topic property is required but not set"),
+                          (NULL));
         return FALSE;
     }
 
     GST_INFO_OBJECT(self, "Connecting to %s broker", self->_broker_name);
     self->_handle = self->_connect_function(self->_conn_info, self->_config);
     if (self->_handle == nullptr) {
-        GST_ERROR_OBJECT(self, "Failed to connect to broker\n");
+        GST_ELEMENT_ERROR(self, RESOURCE, OPEN_READ_WRITE,
+                          ("Failed to connect to %s broker", self->_broker_name),
+                          (NULL));
         return FALSE;
     }
     GST_INFO_OBJECT(self, "Successfully connected to broker");
@@ -278,66 +248,73 @@ static gboolean gst_dxmsgbroker_start(GstBaseSink *sink) {
 
 static gboolean gst_dxmsgbroker_stop(GstBaseSink *sink) {
     GstDxMsgBroker *self = GST_DXMSGBROKER(sink);
-    DxMsg_Bal_Error_t error;
 
-    GST_TRACE_OBJECT(self, "|JCP|");
-
-    GST_INFO_OBJECT(self, "Disconnecting from broker");
-    error = self->_disconnect_function(self->_handle);
-    if (error != DxMsg_Bal_Error::DXMSG_BAL_OK) {
-        GST_ERROR_OBJECT(self, "Failed to disconnect from broker\n");
-        return FALSE;
+    if (self->_handle && self->_disconnect_function) {
+        GST_INFO_OBJECT(self, "Disconnecting from broker");
+        DxMsg_Bal_Error_t error = self->_disconnect_function(self->_handle);
+        if (error != DxMsg_Bal_Error::DXMSG_BAL_OK) {
+            GST_WARNING_OBJECT(self, "Failed to disconnect from broker");
+        }
+        self->_handle = nullptr;
     }
-    GST_INFO_OBJECT(self, "Successfully disconnected from broker");
-    self->_handle = nullptr;
 
     return TRUE;
 }
 
 static GstFlowReturn gst_dxmsgbroker_render(GstBaseSink *sink,
                                             GstBuffer *buffer) {
-    GstDxMsgMeta *meta;
     GstDxMsgBroker *self = GST_DXMSGBROKER(sink);
 
+    GST_LOG_OBJECT(self, "Render: msg #%" G_GUINT64_FORMAT, self->_msgbroker_count);
     self->_msgbroker_count++;
-#if 0
-    /*if (self->_msgbroker_count % 100000 == 0)*/ {
-        g_print("dxmsgbroker: _msgbroker_count [%lu].\n", self->_msgbroker_count);
-    }
-#endif
 
-    /* Retrieve the custom meta */
-    meta = (GstDxMsgMeta *)gst_buffer_get_meta(buffer, GST_DXMSG_META_API_TYPE);
+    static const guint MAX_CONSECUTIVE_FAILURES = 10;
+
+    if (!self->_handle) {
+        self->_consecutive_failures++;
+        GST_WARNING_OBJECT(self,
+            "Broker not connected, dropping message (%u/%u consecutive failures)",
+            self->_consecutive_failures, MAX_CONSECUTIVE_FAILURES);
+        if (self->_consecutive_failures >= MAX_CONSECUTIVE_FAILURES) {
+            GST_ELEMENT_ERROR(self, RESOURCE, WRITE,
+                ("Broker not connected for %u consecutive renders",
+                 self->_consecutive_failures), (NULL));
+            return GST_FLOW_ERROR;
+        }
+        return GST_FLOW_OK;
+    }
+
+    GstDxMsgMeta *meta =
+        (GstDxMsgMeta *)gst_buffer_get_meta(buffer, GST_DXMSG_META_API_TYPE);
 
     if (meta) {
-        DxMsg_Bal_Error_t error;
-        const char *topic = self->_topic ? self->_topic : "test_topic";
+        const char *topic = self->_topic;
         const auto *payload = (DxMsgPayload *)meta->_payload;
 
-        GST_DEBUG_OBJECT(self, "Publishing message (%u bytes) to topic: %s",
+        GST_LOG_OBJECT(self, "Publishing message (%u bytes) to topic: %s",
                          payload->_size, topic);
-        error = self->_send_function(self->_handle, topic,
+        DxMsg_Bal_Error_t error = self->_send_function(self->_handle, topic,
                                      payload->_data, payload->_size);
         if (error != DxMsg_Bal_Error::DXMSG_BAL_OK) {
-            GST_ERROR_OBJECT(self, "Failed to publish message\n");
-            return GST_FLOW_ERROR;
+            self->_consecutive_failures++;
+            GST_WARNING_OBJECT(self,
+                "Failed to publish message (%u/%u consecutive failures)",
+                self->_consecutive_failures, MAX_CONSECUTIVE_FAILURES);
+            if (self->_consecutive_failures >= MAX_CONSECUTIVE_FAILURES) {
+                GST_ELEMENT_ERROR(self, RESOURCE, WRITE,
+                    ("Broker publish failed %u consecutive times",
+                     self->_consecutive_failures), (NULL));
+                return GST_FLOW_ERROR;
+            }
+            return GST_FLOW_OK;
         }
     }
 
+    self->_consecutive_failures = 0;
     return GST_FLOW_OK;
 }
 
 static gboolean gst_dxmsgbroker_event(GstBaseSink *sink, GstEvent *event) {
-    GstDxMsgBroker *self = GST_DXMSGBROKER(sink);
-
-    if (GST_EVENT_TYPE(event) == GST_EVENT_SEGMENT) {
-        GST_DEBUG_OBJECT(self, "Received GST_EVENT_SEGMENT");
-        // Store the segment information
-        GstSegment segment;
-        gst_event_copy_segment(event, &segment);
-    }
-
-    // Pass the event to the parent class's event handler
     return GST_BASE_SINK_CLASS(gst_dxmsgbroker_parent_class)
         ->event(sink, event);
 }
