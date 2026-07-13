@@ -2,18 +2,18 @@
 
 This guide provides comprehensive information on using the DX-STREAM User Metadata system for storing custom data alongside inference results.
 
-## Overview
+## Core Concepts & Architecture
 
 The DX-STREAM User Metadata system allows developers to attach custom data to frames and objects throughout the pipeline. This enables storing additional analytics results, custom features, tracking information, or any application-specific data.
 
-### Key Features
+**Key Features**  
 
 - **Simplified Type System**: Two main categories - Frame and Object metadata
 - **Memory Safety**: Required copy and release functions ensure proper memory management
 - **Lifecycle Management**: Automatic cleanup when metadata is no longer needed
 - **Pipeline Integration**: Seamless integration with existing DX-STREAM elements
 
-## User Metadata Types
+**User Metadata Types**  
 
 ```cpp
 enum class DXUserMetaType {
@@ -22,23 +22,31 @@ enum class DXUserMetaType {
 };
 ```
 
-**When to use Frame-level metadata:**  
+When to use Frame-level metadata:  
 
 - Scene-level analytics (crowd count, scene classification)  
 - Frame-wide processing results  
 - Pipeline statistics or timing information  
 - Global configuration or state data  
 
-**When to use Object-level metadata:**  
+When to use Object-level metadata:  
 
 - Per-object features or analytics  
 - Object-specific tracking data  
 - Custom object attributes or classifications  
 - Object relationship information  
 
-## Basic Usage Pattern
+---
 
-### 1. Define Your Data Structure
+## Workflow Implementation
+
+### Critical Development Sequence
+
+Custom metadata integration must follow these three sequential steps precisely. Skipping or reordering any stage will break compilation or cause critical memory runtime issues.  
+
+**Step 1. Define Your Data Structure**  
+
+First, create your custom structures. If your data structure contains pointers, ensure you handle deep copying in the next step.  
 
 ```cpp
 // Example: Custom analytics data for frames
@@ -58,9 +66,9 @@ typedef struct {
 } CustomObjectFeature;
 ```
 
-### 2. Implement Required Functions
+**Step 2. Implement Required Functions**  
 
-**Copy Function** (Deep copy your data):
+Copy Function (Deep copy your data):
 ```cpp
 static gpointer scene_analytics_copy(gconstpointer src) {
     const SceneAnalytics *src_data = (const SceneAnalytics *)src;
@@ -92,7 +100,7 @@ static gpointer custom_feature_copy(gconstpointer src) {
 }
 ```
 
-**Release Function** (Clean up your data):
+Release Function (Clean up your data):
 ```cpp
 static void scene_analytics_free(gpointer data) {
     SceneAnalytics *analytics = (SceneAnalytics *)data;
@@ -108,9 +116,9 @@ static void custom_feature_free(gpointer data) {
 }
 ```
 
-### 3. Create and Attach Metadata
+**Step 3. Create and Attach Metadata**  
 
-**Frame Metadata Example:**
+Frame Metadata Example
 ```cpp
 void add_scene_analytics_to_frame(DXFrameMeta *frame_meta, 
                                  gint object_count, 
@@ -143,7 +151,7 @@ void add_scene_analytics_to_frame(DXFrameMeta *frame_meta,
 }
 ```
 
-**Object Metadata Example:**
+Object Metadata Example
 ```cpp
 void add_custom_feature_to_object(DXObjectMeta *obj_meta, 
                                  const gchar *algorithm_name,
@@ -178,53 +186,7 @@ void add_custom_feature_to_object(DXObjectMeta *obj_meta,
 }
 ```
 
-### 4. Retrieve and Use Metadata
-
-**Reading Frame Metadata:**
-```cpp
-void process_frame_metadata(DXFrameMeta *frame_meta) {
-    auto user_metas = dx_get_frame_user_metas(frame_meta);
-    
-    for (auto user_meta : *user_metas) {
-        // Check if this is frame-type metadata
-        if (user_meta->user_meta_type == DXUserMetaType::DX_USER_META_FRAME) {
-            SceneAnalytics *analytics = (SceneAnalytics *)user_meta->user_meta_data;
-            
-            g_print("Scene Analysis Results:\n");
-            g_print("  Objects: %d\n", analytics->total_objects);
-            g_print("  Scene: %s (confidence: %.2f)\n", 
-                   analytics->scene_type, analytics->scene_confidence);
-            g_print("  Processing time: %lu μs\n", analytics->processing_time_us);
-        }
-    }
-}
-```
-
-**Reading Object Metadata:**
-```cpp
-void process_object_metadata(DXObjectMeta *obj_meta) {
-    auto user_metas = dx_get_object_user_metas(obj_meta);
-    
-    for (auto user_meta : *user_metas) {
-        // Check if this is object-type metadata
-        if (user_meta->user_meta_type == DXUserMetaType::DX_USER_META_OBJECT) {
-            CustomObjectFeature *feature = (CustomObjectFeature *)user_meta->user_meta_data;
-            
-            g_print("Custom Feature for Object %d:\n", obj_meta->_meta_id);
-            g_print("  Algorithm: %s\n", feature->algorithm_name);
-            g_print("  Score: %.3f\n", feature->custom_score);
-            g_print("  Feature dimensions: %d\n", feature->feature_dim);
-            
-            // Access feature vector
-            for (gint i = 0; i < feature->feature_dim && i < 5; i++) {
-                g_print("  Feature[%d]: %.3f\n", i, feature->feature_vector[i]);
-            }
-        }
-    }
-}
-```
-
-## Complete Example: Custom Analytics Element
+### Complete Example: Custom Analytics Element
 
 Here's a complete example of a custom element that adds analytics metadata:
 
@@ -254,67 +216,121 @@ extern "C" void custom_analytics_postprocess(GstBuffer *buf,
 }
 ```
 
-## Best Practices
+---
 
-### Memory Management
+## Operations & Reliability Guide
+
+### Retrieve and Use Metadata
+
+Reading Frame Metadata
+```cpp
+void process_frame_metadata(DXFrameMeta *frame_meta) {
+    auto user_metas = dx_get_frame_user_metas(frame_meta);
+    
+    for (auto user_meta : *user_metas) {
+        // Check if this is frame-type metadata
+        if (user_meta->user_meta_type == DXUserMetaType::DX_USER_META_FRAME) {
+            SceneAnalytics *analytics = (SceneAnalytics *)user_meta->user_meta_data;
+            
+            g_print("Scene Analysis Results:\n");
+            g_print("  Objects: %d\n", analytics->total_objects);
+            g_print("  Scene: %s (confidence: %.2f)\n", 
+                   analytics->scene_type, analytics->scene_confidence);
+            g_print("  Processing time: %lu μs\n", analytics->processing_time_us);
+        }
+    }
+}
+```
+
+Reading Object Metadata
+```cpp
+void process_object_metadata(DXObjectMeta *obj_meta) {
+    auto user_metas = dx_get_object_user_metas(obj_meta);
+    
+    for (auto user_meta : *user_metas) {
+        // Check if this is object-type metadata
+        if (user_meta->user_meta_type == DXUserMetaType::DX_USER_META_OBJECT) {
+            CustomObjectFeature *feature = (CustomObjectFeature *)user_meta->user_meta_data;
+            
+            g_print("Custom Feature for Object %d:\n", obj_meta->_meta_id);
+            g_print("  Algorithm: %s\n", feature->algorithm_name);
+            g_print("  Score: %.3f\n", feature->custom_score);
+            g_print("  Feature dimensions: %d\n", feature->feature_dim);
+            
+            // Access feature vector
+            for (gint i = 0; i < feature->feature_dim && i < 5; i++) {
+                g_print("  Feature[%d]: %.3f\n", i, feature->feature_vector[i]);
+            }
+        }
+    }
+}
+```
+
+### Best Practices
+
+**Memory Management**  
+
 - **Always provide both copy and release functions**: The system requires both for proper memory management
 - **Deep copy all allocated memory**: Your copy function must properly duplicate all heap-allocated data
 - **Clean up completely**: Your release function must free all memory allocated by your data structure
 
-### Performance Considerations
+**Performance Considerations**  
+
 - **Pool allocation**: Use `dx_acquire_user_meta_from_pool()` for efficient memory allocation
 - **Minimal data size**: Keep metadata structures compact for better performance
 - **Lazy evaluation**: Only compute expensive metadata when actually needed
 
-### Error Handling
+**Error Handling**  
+
 - **Check return values**: Always verify that `dx_user_meta_set_data()` succeeds
 - **Graceful degradation**: Handle metadata failures without breaking the pipeline
 - **Logging**: Use appropriate log levels for debugging metadata issues
 
-### Integration Tips
+**Integration Tips**  
+
 - **Type verification**: Always check `user_meta_type` before casting metadata
 - **Iterator safety**: Handle the case where metadata lists might be empty
 - **Thread safety**: Be aware that metadata may be accessed from multiple threads
 
-## Troubleshooting
+### Troubleshooting
 
-### Common Issues
+**Common Issues**  
 
-**Segmentation faults when accessing metadata:**  
+Segmentation faults when accessing metadata:  
 
 - Verify that copy and release functions are properly implemented  
 - Check that you're not accessing freed memory  
 - Ensure deep copying of all pointer data  
 
-**Memory leaks:**  
+Memory leaks:  
 
 - Verify that your release function frees all allocated memory  
 - Check that you're not creating circular references  
 - Use valgrind to identify leak sources  
 
-**Metadata not found:**  
+Metadata not found:  
 
 - Verify that metadata type matches when retrieving  
 - Check that metadata was successfully attached  
 - Ensure you're checking the correct metadata list  
 
-### Debug Tips
+**Debug Tips**  
 
-**Enable debug logging:**
+Enable debug logging:  
 ```cpp
 // Add debug prints in your functions
 g_print("Setting user metadata: type=%u, size=%zu\n", 
         meta_type, size);
 ```
 
-**Validate data structures:**
+Validate data structures:  
 ```cpp
 // Add validation in your copy function
 g_return_val_if_fail(src != nullptr, nullptr);
 g_return_val_if_fail(((MyData*)src)->magic == MY_DATA_MAGIC, nullptr);
 ```
 
-**Memory tracking:**
+Memory tracking:  
 ```cpp
 // Track allocations for debugging
 static gint allocation_count = 0;

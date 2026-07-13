@@ -1,4 +1,4 @@
-# Multi-Stream Domain (`application/x-dxvideoraw`)
+# Multi-Stream Domain (application/x-dxvideoraw)
 
 DX-STREAM uses a dedicated caps domain — **`application/x-dxvideoraw`** — to merge multiple `video/x-raw` streams into a single processing chain while preserving each stream's identity, lifecycle, and per-frame metadata. This chapter is a single reference for how that domain works; element-specific pages link back here.
 

@@ -4,7 +4,6 @@ This guide covers building the DX-Stream GStreamer plugin on Windows (MSVC x64).
 
 The Windows build produces `gstdxstream.dll`, the same GStreamer plugin that Linux builds as `libgstdxstream.so`.
 
-
 ## Quick Start
 
 ```cmd
@@ -23,16 +22,18 @@ dx_stream\apps\build.bat                 :: Build example apps (mqtt, kafka, use
 
 These require the main plugin to be built first (`build.bat`).
 
+---
 
-## Prerequisites
+## Prerequisites and System Setup
 
 ### Hardware Requirements
+
 - x86_64 Windows 10/11 PC
 - DEEPX DX-M1 or compatible NPU (for runtime inference)
 
 ### Software Requirements
 
-The following must be installed manually before running `install.bat`:
+The following must be installed manually before running `install.bat`.  
 
 | # | Software | Purpose | Download |
 |---|----------|---------|----------|
@@ -42,19 +43,19 @@ The following must be installed manually before running `install.bat`:
 | 4 | GStreamer MSVC x86_64 | Multimedia framework | [gstreamer.freedesktop.org](https://gstreamer.freedesktop.org/download/) |
 | 5 | DEEPX SDK | NPU runtime (dxrt) | DEEPX SDK installer |
 
-#### Visual Studio 2022
+**Visual Studio 2022**  
 
 Run the installer and select the **"Desktop development with C++"** workload.
 
-#### Git for Windows
+**Git for Windows**  
 
 Install with default options. Ensure `git` is in your PATH.
 
-#### Python
+**Python**  
 
 Download the official installer. Check **"Add Python to PATH"** during installation.
 
-#### GStreamer
+**GStreamer**  
 
 Download and install **both** packages from the official site:
 - **Runtime** (MSVC 64-bit)
@@ -62,17 +63,17 @@ Download and install **both** packages from the official site:
 
 Default install path: `C:\Program Files\gstreamer\1.0\msvc_x86_64`
 
-> **Important**: The Development package is required for headers and `.pc` files.
+!!! warning "IMPORTANT"
 
-#### DEEPX SDK
+    The Development package is required for headers and `.pc` files.
 
-Install the DEEPX SDK using the official installer (`DX_SDK_*.exe`).
-The installer registers `DEEPX_SDK_DIR` as a system environment variable automatically —
-no manual path configuration is needed.
+**DEEPX SDK**  
 
-Default install path: `C:\Program Files\DEEPX\DX_SDK_<version>`
+Install the DEEPX SDK using the official installer (`DX_SDK_*.exe`). The installer registers `DEEPX_SDK_DIR` as a system environment variable automatically — no manual path configuration is needed.  
 
-Expected directory structure (set up by the installer):
+Default install path: `C:\Program Files\DEEPX\DX_SDK_<version>`  
+
+Expected directory structure (set up by the installer)  
 ```
 %DEEPX_SDK_DIR%\
     include\
@@ -80,24 +81,22 @@ Expected directory structure (set up by the installer):
     bin\dxrt.dll
 ```
 
-
-## Environment Variables
+### Environment Variables Configuration
 
 Most environment variables are configured automatically — no manual `set` commands are needed.
 
-### DEEPX_SDK_DIR (auto-configured by DEEPX SDK installer)
+**DEEPX_SDK_DIR (auto-configured by DEEPX SDK installer)**  
 
-The DEEPX SDK installer sets `DEEPX_SDK_DIR` as a system environment variable.
-All build scripts read this variable automatically to locate the NPU runtime headers and libraries.
+The DEEPX SDK installer sets `DEEPX_SDK_DIR` as a system environment variable. All build scripts read this variable automatically to locate the NPU runtime headers and libraries.  
 
-If for any reason the variable is missing, set it manually:
+If for any reason the variable is missing, set it manually.  
 ```cmd
 set DEEPX_SDK_DIR=C:\Program Files\DEEPX\DX_SDK_<version>
 ```
 
-### DXVNPU_DIR (Optional)
+**DXVNPU_DIR (Optional)**  
 
-Required only when building with `--dxvnpu` flag:
+Required only when building with `--dxvnpu` flag 
 ```
 %DXVNPU_DIR%\
     include\
@@ -105,26 +104,29 @@ Required only when building with `--dxvnpu` flag:
     bin\dxvnpu.dll
 ```
 
+---
 
-## Installing Dependencies
+## Installation and Dependency Provisioning
 
-After the prerequisites and environment variables are set:
+### Standard Installation (install.bat)
 
+After the prerequisites and environment variables are set. 
 ```cmd
 install.bat
 ```
 
-This automatically:
-1. Verifies all prerequisites are present
-2. Installs `meson` and `ninja` via pip
-3. Clones and bootstraps vcpkg (if not present)
-4. Installs C++ libraries via vcpkg: eigen3, opencv4, libyuv, mosquitto, librdkafka
-5. Generates `opencv4.pc` (required for meson to find OpenCV)
-6. Validates DEEPX_SDK_DIR path
+This automatically:  
+
+- Step 1. Verifies all prerequisites are present  
+- Step 2. Installs `meson` and `ninja` via pip  
+- Step 3. Clones and bootstraps vcpkg (if not present)  
+- Step 4. Installs C++ libraries via vcpkg: eigen3, opencv4, libyuv, mosquitto, librdkafka  
+- Step 5. Generates `opencv4.pc` (required for meson to find OpenCV)  
+- Step 6. Validates DEEPX_SDK_DIR path  
 
 ### Air-Gapped Network (No Internet)
 
-On an internet-connected machine:
+On an internet-connected machine. 
 ```cmd
 C:\vcpkg\vcpkg install eigen3:x64-windows opencv4:x64-windows libyuv:x64-windows ^
                        mosquitto:x64-windows librdkafka:x64-windows
@@ -139,10 +141,13 @@ dx_stream\vcpkg_installed\x64-windows\
 
 Then run `build.bat` directly (vcpkg_installed already present).
 
+---
 
-## Building
+## Compilation and Ecosystem Building
 
-### Basic Build
+### Core Framework Plugin Compilation (build.bat) 
+
+**Basic Build**  
 
 ```cmd
 build.bat
@@ -150,7 +155,7 @@ build.bat
 
 Output: `gst-dxstream-plugin\builddir\src\gstdxstream.dll`
 
-### Build Options
+**Build Options**  
 
 ```cmd
 build.bat --clean              :: Remove builddir and rebuild from scratch
@@ -159,12 +164,11 @@ build.bat --type=debug         :: Debug build (symbols, no optimization)
 build.bat --clean --dxvnpu     :: Combine options
 ```
 
-
-## Building Custom Libraries & Apps
+### Building Custom Libraries and Example Applications
 
 Custom libraries (postprocess, message_convert) and example apps have their own build scripts, separate from the main plugin build.
 
-### Custom Libraries
+**Custom Libraries**  
 
 ```cmd
 dx_stream\custom_library\build.bat              :: Build all
@@ -176,7 +180,7 @@ Builds every subdirectory under `postprocess_library/` and `message_convert_libr
 
 Output DLLs are in each subdirectory's `builddir/`.
 
-### Example Apps
+**Example Apps**  
 
 ```cmd
 dx_stream\apps\build.bat              :: Build all
@@ -187,22 +191,29 @@ Builds `mqtt_sub_example`, `kafka_consume_example`, `usermeta_app`.
 
 Output executables are in each subdirectory's `builddir/`.
 
-> Both scripts require the main plugin to be built first — they resolve `dependency('gstdxstream')` via the auto-generated `gstdxstream-uninstalled.pc` in the plugin builddir.
 
+Demo Assets (Models & Videos)
 
-## Demo Assets (Models & Videos)
+!!! note "NOTE"
+
+    Both scripts require the main plugin to be built first — they resolve `dependency('gstdxstream')` via the auto-generated `gstdxstream-uninstalled.pc` in the plugin builddir.  
+    
+---
+
+## Asset Provisioning and Demo Execution
+
+### Fetching Demo Assets (setup.bat)
 
 ```cmd
 setup.bat
 ```
 
 Downloads sample AI models and test videos required by the demo pipelines.
-Assets are saved to `dx_stream\samples\`.
+Assets are saved to `dx_stream\samples\`.  
 
-For air-gapped environments, manually place model files (`.dxnn`) in `dx_stream\samples\models\` and video files in `dx_stream\samples\videos\`.
+For air-gapped environments, manually place model files (`.dxnn`) in `dx_stream\samples\models\` and video files in `dx_stream\samples\videos\`.  
 
-
-## Running Demos
+### Running Interactive Demos (run_demo.bat)
 
 ```cmd
 run_demo.bat                    :: Interactive demo menu
@@ -233,7 +244,7 @@ dx_stream\pipelines\windows\object_detection_yolo26n.bat
 dx_stream\pipelines\windows\rtsp.bat --internal-rtsp
 ```
 
-### Full Build + Demo Workflow
+**Full Build + Demo Workflow**  
 
 ```cmd
 build.bat --clean
@@ -241,16 +252,18 @@ setup.bat                              :: Download models & videos (first time o
 run_demo.bat
 ```
 
+---
 
-## Deployment (Target Machine)
+## Production Target Deployment
 
-### Prerequisites
+### Target Machine Prerequisites
 
-The target machine must have:
-1. **GStreamer Runtime** (MSVC 64-bit) installed — provides core GStreamer DLLs
-2. **VC++ Redistributable 2015-2022** (x64) — provides MSVCP140.dll, VCRUNTIME140.dll
+The target machine must have:  
 
-### Source Build Deployment
+- **GStreamer Runtime** (MSVC 64-bit) installed — provides core GStreamer DLLs  
+- **VC++ Redistributable 2015-2022** (x64) — provides MSVCP140.dll, VCRUNTIME140.dll  
+
+### Source Build Deployment Routine
 
 DX-Stream on Windows uses source-build distribution. Clone the repository, build, and run on the target machine:
 
@@ -263,17 +276,19 @@ setup.bat
 run_demo.bat
 ```
 
-> **Note**: `DEEPX_SDK_DIR` is set automatically by the DEEPX SDK installer.
-> Install the DEEPX SDK before running `build.bat`.
+!!! note "NOTE"
 
-`build.bat` automatically:
-- Builds the plugin, custom libraries, and apps
-- Collects all DLLs into `install\bin\`
-- Registers `GST_PLUGIN_PATH` and user `Path` entries
+    `DEEPX_SDK_DIR` is set automatically by the DEEPX SDK installer. Install the DEEPX SDK before running `build.bat`  
 
-### Required Environment Variables
+`build.bat` automatically:  
 
-The following are set automatically by `build.bat`:
+- Builds the plugin, custom libraries, and apps  
+- Collects all DLLs into `install\bin\`  
+- Registers `GST_PLUGIN_PATH` and user `Path` entries  
+
+### Required Environment Variables & Verification
+
+The following are set automatically by `build.bat`:  
 
 ```cmd
 set GST_PLUGIN_PATH=%PROJECT_ROOT%\install\lib\gstreamer-1.0
@@ -285,27 +300,30 @@ set PATH=%PROJECT_ROOT%\install\bin;%PROJECT_ROOT%\install\share\gstdxstream\lib
 | `GST_PLUGIN_PATH` | Tells GStreamer where to find `gstdxstream.dll` |
 | `PATH` | Makes dependency DLLs (opencv, dxrt, etc.) discoverable at runtime |
 
-### Verification
+**Verification**  
 
 After building, open a new `cmd.exe` and run:
+
 ```cmd
 gst-inspect-1.0 dxpreprocess
 ```
 
-If this prints element details, DX-Stream is correctly installed.
+If this prints element details, DX-Stream is correctly installed.  
 
-### DLL Naming (Important)
+### Critical DLL Naming Constraints 
 
-The plugin DLL **must** be named `gstdxstream.dll` (no version suffix). GStreamer derives
-the plugin entry point symbol from the filename:
-- `gstdxstream.dll` → looks for `gst_plugin_dxstream_get_desc` ✓
-- `gstdxstream-0.dll` → looks for `gst_plugin_dxstream_0_get_desc` ✗ (symbol not found)
+The plugin DLL **must** be named `gstdxstream.dll` (no version suffix). GStreamer derives the plugin entry point symbol from the filename:  
 
-The build system already handles this — `soversion` is only applied on Linux where symlinks
-resolve the naming. Do not rename the DLL after building.
+- `gstdxstream.dll` → looks for `gst_plugin_dxstream_get_desc` ✓  
+- `gstdxstream-0.dll` → looks for `gst_plugin_dxstream_0_get_desc` ✗ (symbol not found)  
 
+The build system already handles this — `soversion` is only applied on Linux where symlinks resolve the naming. Do not rename the DLL after building.
 
-## Dependency Summary
+---
+
+## Technical Reference and Troubleshooting
+
+### Dependency Mapping Summary Matrix 
 
 | Dependency | Source | Method |
 |---|---|---|
@@ -316,8 +334,7 @@ resolve the naming. Do not rename the DLL after building.
 | dxrt, dxvnpu, dxdsp | DEEPX internal | `cc.find_library()` |
 | dl (POSIX dynamic linking) | Linux only | Skipped on Windows (`dx_dlfcn.h` shim) |
 
-
-## Differences from Linux Build
+### Platform Comparisons: Windows vs. Linux Build
 
 | Aspect | Linux | Windows |
 |--------|-------|---------|
@@ -333,10 +350,9 @@ resolve the naming. Do not rename the DLL after building.
 | Apps / custom_library | `build.sh` (meson install) | `build.bat` (meson compile only) |
 | Python bindings (pydxs) | Built | Not included |
 
+### Troubleshooting and Diagnostics 
 
-## Troubleshooting
-
-### GStreamer Registry Cache
+**GStreamer Registry Cache**  
 
 GStreamer caches plugin scan results in:
 ```
@@ -348,7 +364,7 @@ If the plugin was previously blacklisted (e.g., environment not set up correctly
 del "%LOCALAPPDATA%\Microsoft\Windows\INetCache\gstreamer-1.0\registry.x86_64-msvc.bin"
 ```
 
-### DEEPX_SDK_DIR not set
+**DEEPX_SDK_DIR not set**  
 
 ```
 [ERROR] DEEPX_SDK_DIR environment variable is not set.
@@ -361,26 +377,29 @@ As a last resort, set it manually:
 set DEEPX_SDK_DIR=C:\Program Files\DEEPX\DX_SDK_<version>
 ```
 
-### install.bat fails: prerequisites missing
+**install.bat fails: prerequisites missing**  
 
 Install the listed software and re-run. `install.bat` will not proceed until all prerequisites are satisfied.
 
-### meson setup fails: dependency not found
+**meson setup fails: dependency not found**  
 
 Run `install.bat` first. If already run, check that `vcpkg_installed\x64-windows\lib\pkgconfig\` contains the expected `.pc` files.
 
-### Link error: unresolved external symbol
+**Link error: unresolved external symbol**  
 
 Verify `vcpkg_installed\x64-windows\lib` contains the required `.lib` files.
 
-### MSVC not found
+**MSVC not found**  
 
 Run from a regular `cmd.exe` prompt (not PowerShell). `build.bat` calls `vcvarsall.bat` internally.
 
-### gst-inspect-1.0 dxpreprocess: No such element
+**gst-inspect-1.0 dxpreprocess: No such element**  
 
-Check in order:
-1. `GST_PLUGIN_PATH` points to the folder containing `gstdxstream.dll`
-2. `PATH` includes `install\bin` for dependency DLLs
-3. Delete registry cache: `del "%LOCALAPPDATA%\Microsoft\Windows\INetCache\gstreamer-1.0\registry.x86_64-msvc.bin"`
-4. Verify DLL is named `gstdxstream.dll` (not `gstdxstream-0.dll`)
+Check in order:  
+
+- Step 1. `GST_PLUGIN_PATH` points to the folder containing `gstdxstream.dll`  
+- Step 2. `PATH` includes `install\bin` for dependency DLLs  
+- Step 3. Delete registry cache: `del "%LOCALAPPDATA%\Microsoft\Windows\INetCache\gstreamer-1.0\registry.x86_64-msvc.bin"`  
+- Step 4. Verify DLL is named `gstdxstream.dll` (not `gstdxstream-0.dll`)  
+
+---

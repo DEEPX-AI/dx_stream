@@ -10,8 +10,8 @@ theme:
     #text: Noto Serif
     #code: Noto Sans 
     code: Roboto Mono 
-  logo: ./img/deepx.png
-  favicon: ./img/favicon.png
+  logo: img/deepx.png
+  #favicon: img/favicon.png
   palette:
     # Palette toggle for light mode
     - scheme: default
@@ -63,9 +63,9 @@ nav:
   - Agent-Driven Development: docs/08_DX-STREAM_Agent_Driven_Development.md
   - Appendix:
       - User Metadata Guide: docs/Appendix_User_Metadata_Guide.md
-      - Build on OrangePi5Plus: docs/Appendix_Build_on_OrangePi5Plus.md
+      - Performance Evaluation with GstShark: docs/Appendix_Performance_Evaluation_with_GstShark.md
+      - Build on Orange Pi 5 Plus: docs/Appendix_Build_on_OrangePi5Plus.md
       - Build on Windows: docs/Appendix_Build_on_Windows.md
-      - Performance Evaluation With GsgShark: docs/Appendix_Performance_Evaluation_with_GstShark.md
       - Third-Party Sample Model Licenses: docs/Appendix_Third_Party_Model_Licenses.md
   - Change Log: docs/RELEASE_NOTES.md
 
@@ -79,7 +79,7 @@ plugins:
       cover_title: DXNN Streamer (DX-STREAM) User Manual
       cover_subtitle: 2026/07/08 (v3.1.0)
       cover_logo: img/deepx.png
-      custom_template_path: docs/stylesheets
+      custom_template_path: source/stylesheets
       #back_cover: true
       #
       #toc_title: TOC TITLE TEXT
@@ -155,7 +155,5 @@ markdown_extensions:
   - attr_list
   - md_in_html
 extra_javascript:
-  - javascripts/mathjax.js
-  - https://polyfill.io/v3/polyfill.min.js?features=es6
-  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+#  - https://polyfill.io/v3/polyfill.min.js?features=es6
 copyright: ⓒ Copyright 2026 <a href="http://deepx.ai">DEEPX</a>. All Rights Reserved.
