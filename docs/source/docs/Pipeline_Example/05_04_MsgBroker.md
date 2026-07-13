@@ -34,7 +34,7 @@ The pipeline in the figure is defined in
 
 This section demonstrates how to run a basic message broker pipeline demo using MQTT or Kafka.
 
-#### **MQTT Demo**
+#### MQTT Demo  
 
 **1. Server Setup (Processing Server with Message Broker)**
 ```bash
@@ -84,7 +84,7 @@ python3 /usr/local/share/gstdxstream/bin/mqtt_sub_example.py -n <server_ip> -p 1
 mqtt_sub_example -n <server_ip> -t test -p 1883
 ```
 
-#### **Kafka Demo**
+#### Kafka Demo  
 
 **1. Server Setup (Processing Server with Message Broker)**
 ```bash
@@ -137,7 +137,7 @@ python3 /usr/local/share/gstdxstream/bin/kafka_consume_example.py -n <server_ip>
 kafka_consume_example -n <server_ip> -p 9092 -t test
 ```
 
-#### **Windows**
+#### Windows  
 
 On Windows, pre-built batch scripts are provided at `dx_stream/pipelines/windows/`:
 
@@ -168,16 +168,17 @@ Or start as a Windows service via Services panel (`services.msc`).
 
 Kafka 4.3.0+ uses **KRaft mode** (no Zookeeper required).
 
-1. Download JDK from [adoptium.net](https://adoptium.net/) (MSI installer recommended) and install.
-2. Download Kafka binary from [kafka.apache.org/downloads](https://kafka.apache.org/downloads) and extract to a **short path** (e.g., `C:\kafka`).
+- (1) Download JDK from [adoptium.net](https://adoptium.net/) (MSI installer recommended) and install.  
+
+- (2) Download Kafka binary from [kafka.apache.org/downloads](https://kafka.apache.org/downloads) and extract to a **short path** (e.g., `C:\kafka`).
 
 !!! warning "Use a short path for Kafka"
 
-    Extracting Kafka under a long path (e.g., inside a user's git repo folder) causes
-    `입력 줄이 너무 깁니다` (input line too long) errors in the batch scripts.
-    Always extract to a short path like `C:\kafka`.
+    Extracting Kafka under a long path (e.g., inside a user's git repo folder) causes ("The input line is too long") errors in the batch scripts.  
+    
+    Always extract to a short path like `C:\kafka`.  
 
-3. Initialize and start (run once from `C:\kafka`):
+- (3) Initialize and start (run once from `C:\kafka`):  
 
 ```cmd
 cd C:\kafka
@@ -245,7 +246,7 @@ install\share\gstdxstream\bin\kafka_consume_example.exe -n localhost -p 9092 -t 
 python install\share\gstdxstream\bin\kafka_consume_example.py -n localhost -p 9092 -t test
 ```
 
-#### **Network Architecture**
+#### Network Architecture  
 
 **Processing Server:**  
 
@@ -272,7 +273,7 @@ python install\share\gstdxstream\bin\kafka_consume_example.py -n localhost -p 90
 
     Replace `<server_ip>` with the actual IP address of your processing server. For local testing, use `localhost`.
 
-#### **Pipeline Properties**
+#### Pipeline Properties  
 
 The broker pipelines use the following key properties:
 
@@ -296,14 +297,13 @@ The broker pipelines use the following key properties:
 
 ---
 
-
 ## Advanced MsgBroker Configuration 
 
 This section describes the detailed steps required to set up secure communication for the MQTT and Kafka message brokers, including SSL/TLS encryption and client authentication
 
 ### **MQTT Security Configuration**
 
-#### **SSL/TLS Encryption Setup**
+#### SSL/TLS Encryption Setup  
 
 **1. Generate CA Certificate and Server Keys**  
 
@@ -432,7 +432,7 @@ tls_keyfile = /etc/mosquitto/certs/client.key
 
 ### **Kafka Security Configuration**
 
-#### **SSL/TLS Setup for Kafka**
+#### SSL/TLS Setup for Kafka  
 
 **1. Generate Certificates for Kafka**  
 

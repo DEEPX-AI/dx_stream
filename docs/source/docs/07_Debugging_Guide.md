@@ -538,7 +538,7 @@ $ GST_DEBUG=dx*:4 ./your_app 2>&1 | grep -oP 'pts=\K[0-9:]+'
 - **DX-STREAM Troubleshooting:** See Chapter 06 - Troubleshooting and FAQ
 - **Element-Specific Documentation:** See Chapter 03 - DX-STREAM Elements
 
-!!! tip "Pro Tip"
+!!! note "Pro Tip"
 
     When reporting issues, always include relevant debug logs with `GST_DEBUG=dx*:4` to help diagnose problems quickly.
 

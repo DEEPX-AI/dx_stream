@@ -13,7 +13,6 @@ The overall construction and validation process is broken down into four sequent
 - Step 3: Build DX-Stream
 - Step 4: Running Demo Applications
 
-
 ## Prerequisites
 
 This section outlines the essential hardware and software components required for building and running DX-Stream on the Orange Pi 5 Plus with the DEEPX DX-M1 NPU. Ensuring these requirements is crucial for a successful installation.
@@ -29,27 +28,22 @@ This section outlines the essential hardware and software components required fo
 - 7-Zip or similar extraction utility
 - SD card flashing tool or `dd` command access
 
+---
 
-## Building Process
-
-### Step 1: SD Card Setup
+## [Step 1] SD Card Setup
 
 Prepare the base Ubuntu OS environment.
 
-#### Step 1.1 Download Ubuntu Image
+### [Step 1.1] Download & Extract Ubuntu Image
 
 Download the official Orange Pi 5 Plus Ubuntu 22.04 image:
 
-- **Download Link**: [Orange Pi 5 Plus Ubuntu 22.04 Image](https://drive.google.com/file/d/1l72cF6dsTzwU5NloY3FEKTuKA9KbhX80/view?usp=drive_link)
+- **Download Link**: [Orange Pi 5 Plus Ubuntu 22.04 Image](https://drive.google.com/file/d/1l72cF6dsTzwU5NloY3FEKTuKA9KbhX80/view?usp=drive_link)  
+- **Image Version**: Ubuntu 22.04 Jammy Desktop XFCE with Linux kernel 6.1.43  
+- **File Size**: Approximately 4GB (compressed)  
 
-- **Image Version**: Ubuntu 22.04 Jammy Desktop XFCE with Linux kernel 6.1.43
-
-- **File Size**: Approximately 4GB (compressed)
-
-#### Step 1.2 Extract Image
 
 Extract the downloaded 7z archive:
-
 ```bash
 7z x Orangepi5plus_1.2.0_ubuntu_jammy_desktop_xfce_linux6.1.43.7z
 ```
@@ -65,7 +59,7 @@ Extract the downloaded 7z archive:
     sudo yum install p7zip
     ```
 
-#### Step 1.3 Flash Image to SD Card
+### [Step 1.2] Flashing the SD Card
 
 !!! warning "WARNING" 
 
@@ -79,30 +73,30 @@ sudo dd if=./Orangepi5plus_1.2.0_ubuntu_jammy_desktop_xfce_linux6.1.43.img of=/d
 sync
 ```
 
-**Alternative Methods**:  
+**Alternative Methods**  
 
 - **Raspberry Pi Imager**: Cross-platform GUI tool  
 - **Balena Etcher**: User-friendly flashing utility  
 - **Win32DiskImager**: Windows-specific tool  
 
-#### Step 1.4 Initial Boot
+### [Step 1.3] Initial Boot & Credentials
 
   - (1) Insert the SD card into the Orange Pi 5 Plus  
   - (2) Connect power supply and peripherals  
   - (3) Power on the device  
 
-**Default Credentials** (if applicable):  
+**Default Credentials** (if applicable)  
 
 - Username: `orangepi`  
 - Password: `orangepi`  
 
-### Step 2: DX-RT NPU Driver Installation
+## [Step 2] DX-RT NPU Driver & Runtime Installation 
 
 Install the necessary drivers and runtime for the DEEPX NPU accelerator.
 
 All following steps should be performed on the Orange Pi 5 Plus itself after successful boot.
 
-#### Step 2.1 Update Linux Kernel Headers
+### [Step 2.1] Updating Linux Kernel Headers
 
 Install the required kernel headers for driver compilation:
 
@@ -115,7 +109,7 @@ sudo apt install ./linux-headers-current-rockchip-rk3588_1.2.0_arm64.deb
 
     The kernel headers package should be pre-installed in the Orange Pi image. If missing, contact DEEPX support.
 
-#### Step 2.2 Configure Git (Optional)
+**(Optional) Configure Git**
 
 If you encounter SSL certificate issues with GitHub:
 
@@ -127,7 +121,7 @@ git config --global http.sslVerify false
 
     This disables SSL verification globally. For production use, consider configuring proper certificates instead.
 
-#### Step 2.3 Build and Install NPU Linux Driver
+### [Step 2.2] Compiling NPU Linux Driver
 
 ```bash
 cd ~
@@ -146,7 +140,7 @@ sudo ./build.sh -c install
 
 - Installs the driver modules and creates device nodes
 
-#### Step 2.4 Build and Install DX-RT Runtime
+### [Step 2.3] Installing DX-RT Runtime
 
 ```bash
 cd ~/dxnn
@@ -162,7 +156,7 @@ cd dx_rt
 
 - Alternative: `./install.sh --minimal` for runtime-only installation
 
-#### Step 2.5 Verify DX-RT Installation
+### [Step 2.4] Verifying Installation (dxrt-cli)
 
 Test the NPU driver and runtime installation:
 
@@ -193,19 +187,25 @@ dvfs Disabled
 =======================================================
 ```
 
-**Troubleshooting**:
+**Quick Diagnostics** (If Device is Not Detected)  
 
-- If no device is detected, check M.2 module connection
+If the `dxrt-cli -s` command fails to detect the hardware, execute the following diagnostic checks sequentially.  
 
-- Verify driver installation with `lsmod | grep dx`
+```bash
+# 1. Verify if the DEEPX NPU kernel driver module is loaded into the system
+lsmod | grep dx
 
-- Check system logs with `dmesg | grep -i deepx`
+# 2. Inspect kernel system logs for any DEEPX driver initialization or PCIe handshake errors
+dmesg | grep -i deepx
+```
 
-### Step 3: Build DX-Stream
+---
+
+## [Step 3] Building DX-Stream Framework
 
 Compile and install the DX-Stream GStreamer framework and plugins.
 
-#### Step 3.1 Install Build Dependencies
+### [Step 3.1] Installing Build Dependencies
 
 The Orange Pi 5 Plus Ubuntu image includes pre-configured GStreamer packages with Rockchip hardware acceleration support. Install the additional required packages:
 
@@ -216,7 +216,7 @@ sudo pip install meson
 sudo apt-get install -y libeigen3-dev libjson-glib-dev librdkafka-dev libmosquitto-dev libyuv-dev
 ```
 
-**Package Descriptions**:  
+**Package Descriptions**  
 
 - `python3-pip`, `ninja-build`, `meson`: Build system components  
 - `libeigen3-dev`: Linear algebra library for computer vision  
@@ -225,7 +225,7 @@ sudo apt-get install -y libeigen3-dev libjson-glib-dev librdkafka-dev libmosquit
 - `libmosquitto-dev`: MQTT broker client library  
 - `libyuv-dev`: YUV color space conversion library  
 
-#### Step 3.2 Clone and Build DX-Stream
+### [Step 3.2] Cloning & Compiling DX-Stream
 
 ```bash
 cd ~/dxnn
@@ -243,7 +243,7 @@ cd dx_stream
 
 **Build Time**: Approximately 10-15 minutes on Orange Pi 5 Plus
 
-#### Step 3.3 Verify Installation
+### [Step 3.3] Verifying GStreamer Plugins
 
 Check if DX-Stream plugins are properly installed:
 
@@ -264,18 +264,20 @@ dxstream:  dxpreprocess: DX Pre-process
 ...
 ```
 
-### Step 4: Running Demo Applications
+---
+
+## [Step 4] Running Demo Applications
 
 Verify the complete system functionality and NPU acceleration.
 
-#### Step 4.1 Setup Sample Models and Videos
+### [Step 4.1] Setting up Model & Video Assets
 
 ```bash
 cd ~/dxnn/dx_stream
 ./setup.sh
 ```
 
-#### Step 4.2 Run Demo Pipeline
+### [Step 4.2] Executing Demo Pipeline
 
 ```bash
 ./run_demo.sh
@@ -300,25 +302,27 @@ For detailed demo instructions, refer to the [**Installation Guide**](./02_DX-ST
 
     For maximum performance, ensure your pipelines utilize these specific hardware accelerators.
 
+---
 
-## Troubleshooting
+## Troubleshooting & Diagnostics
 
 This section provides guidance for resolving common issues encountered during the DX-Stream installation or runtime.
 
-### Common Issues
+### Hardware & Plugin Issues (NPU, GStreamer Cache)
 
-**1. NPU Not Detected**
+**NPU Not Detected**  
 
 Verify the NPU module is correctly recognized and the driver is loaded.
 
 ```bash
 # Check PCIe connection
 lspci | grep -i deepx
+
 # Verify driver loading
 dmesg | grep -i dx_rt
 ```
 
-**2. GStreamer Plugin Not Found**
+**GStreamer Plugin Not Found**  
 
 If DX-Stream plugins are not registered, manually refresh the plugin cache.
 
@@ -327,7 +331,9 @@ If DX-Stream plugins are not registered, manually refresh the plugin cache.
 gst-inspect-1.0 --plugin-path=/usr/local/lib/gstreamer-1.0
 ```
 
-**3. Build Failures**
+### Build & Performance Issues
+
+**Build Failures**  
 
 If the build process fails, clean the environment and rebuild.
 
@@ -336,28 +342,26 @@ If the build process fails, clean the environment and rebuild.
 ./build.sh
 ```
 
-**4. Performance Issues**
+**Performance Issues**  
 
-Monitor hardware status if performance is slower than expected.
+Monitor hardware status if performance is slower than expected.  
 
 - Verify NPU Status
-
-    ```
-    dxrt-cli -s
-    ```
+```
+dxrt-cli -s
+```
 
 - Monitor CPU usage 
+```
+htop
+```
 
-    ```
-    htop
-    ```
+!!! note "NOTE"
 
-!!! note "NOTE" 
-    
     Next Steps. fter successful installation:  
 
     - Explore the [**Pipeline Examples**](./Pipeline_Example/05_01_Single-Stream.md)  
     - Learn about [**Writing Custom Applications**](./04_Writing_Your_Own_Application.md)  
     - Review [**Element Documentation**](./Elements/03_01_DxPreprocess.md) for advanced usage  
-    
+
 ---
