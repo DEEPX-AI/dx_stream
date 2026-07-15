@@ -525,6 +525,13 @@ install_pydxs() {
     echo "→ Python version: ${python_version}"
     echo "→ Build type: ${BUILD_TYPE}"
     echo ""
+    echo "ℹ️  Using system Python (/usr/bin/python3, ${python_version}) with --system-site-packages."
+    echo "   Reason: pydxs itself builds fine on any Python, but python3-gi (PyGObject/gi) is an"
+    echo "   ABI-tagged .so bound to ONE specific interpreter — the system default. pydxs and gi"
+    echo "   must be imported from the same interpreter at runtime, so this venv inherits it."
+    echo "   If your GStreamer/python3-gi was source-built against a different Python, rebuild"
+    echo "   pydxs against THAT interpreter instead of /usr/bin/python3."
+    echo ""
     
     # Create/activate virtual environment
     if [ ! -d "${VENV_PATH}" ]; then
