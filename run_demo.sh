@@ -71,7 +71,7 @@ echo "2: Face Detection (YOLOv5s_Face)"
 echo "3: Face Detection (SCRFD500M with PPU)"
 echo "4: Pose Estimation (YOLOv26n_Pose)"
 echo "5: Pose Estimation (YOLOV5Pose with PPU)"
-echo "6: Semantic Segmentation (YOLOv26n_Seg)"
+echo "6: Instance Segmentation (YOLOv26n_Seg)"
 echo "7: Multi-Object Tracking"
 echo "8: Multi-Channel Object Detection"
 echo "9: Multi-Channel Object Detection (RTSP)"
@@ -86,7 +86,7 @@ case $select in
     3)$WRC/dx_stream/pipelines/single_network/face_detection/run_SCRFD500M_PPU.sh;;
     4)$WRC/dx_stream/pipelines/single_network/pose_estimation/run_yolo26n-pose.sh;;
     5)$WRC/dx_stream/pipelines/single_network/pose_estimation/run_YOLOV5Pose_PPU.sh;;
-    6)$WRC/dx_stream/pipelines/single_network/semantic_segmentation/run_yolo26n-seg.sh;;
+    6)$WRC/dx_stream/pipelines/single_network/instance_segmentation/run_yolo26n-seg.sh;;
     7)$WRC/dx_stream/pipelines/tracking/run_multi_object_tracker.sh;;
     8)$WRC/dx_stream/pipelines/multi_stream/run_multi_stream.sh;;
     9)$WRC/dx_stream/pipelines/rtsp/run_RTSP.sh $INTERNAL_RTSP_ARG;;

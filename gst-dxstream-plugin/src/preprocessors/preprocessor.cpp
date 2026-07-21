@@ -48,8 +48,25 @@ bool Preprocessor::preprocess(GstBuffer*   buf,
     const GstVideoInfo* vinfo_ptr = nullptr;
     {
         auto it = element->_stream.info.find(frame_meta->_stream_id);
-        if (it != element->_stream.info.end())
-            vinfo_ptr = &it->second;
+        if (it != element->_stream.info.end()) {
+            const GstVideoInfo& vinfo = it->second;
+            // Guard against stale announce: if a later wrapped CAPS event
+            // registered different dimensions than the buffer actually
+            // carries, vinfo's stride no longer matches this buffer's real
+            // layout. Fall back to tight-packed stride derived from
+            // frame_meta instead of reading past the real allocation.
+            if (GST_VIDEO_INFO_WIDTH(&vinfo) == frame_meta->_width &&
+                GST_VIDEO_INFO_HEIGHT(&vinfo) == frame_meta->_height) {
+                vinfo_ptr = &vinfo;
+            } else {
+                GST_WARNING_OBJECT(element,
+                    "Preprocessor: stream %d CAPS %dx%d != buffer %dx%d, "
+                    "ignoring stale stream info",
+                    frame_meta->_stream_id,
+                    GST_VIDEO_INFO_WIDTH(&vinfo), GST_VIDEO_INFO_HEIGHT(&vinfo),
+                    frame_meta->_width, frame_meta->_height);
+            }
+        }
     }
 
     dxt::GstSrcFrame src(buf, frame_meta->_width, frame_meta->_height,

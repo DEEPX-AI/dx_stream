@@ -25,7 +25,20 @@ while IFS= read -r src; do
         if [ -s "$SCRIPT_DIR/_logs/$name.log" ]; then
             grep '\[DIAG\]\|\[INFO\]' "$SCRIPT_DIR/_logs/$name.log" | sed 's/^/    /' || true
         fi
-        PASS=$((PASS+1))
+        # Known heap-safety regression (stream-info stride/size mismatch OOB
+        # read): the plain run above doesn't reliably SIGSEGV — it depends on
+        # heap layout/ASLR — so also require a clean valgrind pass here.
+        if [ "$name" = "test_dxpreprocess_wrapped_caps" ]; then
+            if VALGRIND=1 "$SCRIPT_DIR/run_test.sh" "$rel" > /dev/null 2>&1; then
+                PASS=$((PASS+1))
+            else
+                echo "  [FAIL] $name (valgrind detected invalid memory access)"
+                sed 's/^/    /' "$SCRIPT_DIR/_logs/$name.log" | tail -50
+                FAIL=$((FAIL+1))
+            fi
+        else
+            PASS=$((PASS+1))
+        fi
     else
         echo "  [FAIL] $name"
         for log in "$SCRIPT_DIR/_logs/$name.log.build" "$SCRIPT_DIR/_logs/$name.log"; do
