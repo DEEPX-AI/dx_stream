@@ -74,6 +74,22 @@ if ! g++ $CFLAGS "$SRC" $LIBS -o "$BIN" 2> "$LOG.build"; then
     exit 1
 fi
 
+# VALGRIND=1: run under valgrind instead of directly. Needed for bugs where a
+# heap OOB read/write doesn't reliably SIGSEGV (heap layout/ASLR dependent) —
+# valgrind still flags the invalid access deterministically.
+if [ "${VALGRIND:-0}" = "1" ]; then
+    if ! command -v valgrind >/dev/null 2>&1; then
+        echo "[SKIP] valgrind not installed"
+        exit 0
+    fi
+    # CK_FORK=no: keep check's whole suite in one process so valgrind sees it all.
+    if CK_FORK=no valgrind --error-exitcode=99 --quiet "$BIN" > "$LOG" 2>&1; then
+        exit 0
+    else
+        exit 1
+    fi
+fi
+
 if "$BIN" > "$LOG" 2>&1; then
     exit 0
 else

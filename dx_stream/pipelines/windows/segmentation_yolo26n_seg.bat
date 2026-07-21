@@ -1,6 +1,6 @@
 @echo off
 setlocal
-title DX-Stream Semantic Segmentation (YOLOv26n-Seg)
+title DX-Stream Instance Segmentation (YOLOv26n-Seg)
 
 if not defined DXSTREAM_ROOT (
     echo [ERROR] DXSTREAM_ROOT not set. Run run_demo.bat or set DXSTREAM_ROOT manually.
@@ -19,7 +19,7 @@ set "VIDEO=%VIDEO_DIR%/blackbox-city-road.mp4"
 if not "%~1"=="" set "VIDEO=%~1"
 
 echo ============================================================
-echo  DX-Stream Semantic Segmentation (YOLOv26n-Seg)
+echo  DX-Stream Instance Segmentation (YOLOv26n-Seg)
 echo ============================================================
 echo  Model : %MODEL%
 echo  Video : %VIDEO%

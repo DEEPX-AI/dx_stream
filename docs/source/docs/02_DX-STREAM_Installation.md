@@ -309,23 +309,23 @@ $ ./run_demo.sh
 
 When the script is executed, you'll be prompted to select a demo from the following options.
 ```
-0: Object Detection (YOLOv5s)
+0: Object Detection (YOLOv26n)
 1: Object Detection (YOLOv5s with PPU)
-2: Face Detection (YOLOV5S_Face)
+2: Face Detection (YOLOv5s_Face)
 3: Face Detection (SCRFD500M with PPU)
-4: Pose Estimation (YOLOV5Pose)
+4: Pose Estimation (YOLOv26n_Pose)
 5: Pose Estimation (YOLOV5Pose with PPU)
-6: Multi-Object Tracking
-7: Semantic Segmentation
+6: Instance Segmentation (YOLOv26n_Seg)
+7: Multi-Object Tracking
 8: Multi-Channel Object Detection
-9: Multi-Channel RTSP
+9: Multi-Channel Object Detection (RTSP)
 -: secondary mode
 which AI demo do you want to run:(timeout:10s, default:0)
 ```
 
 Enter the number corresponding to the desired demo to run it.  
 
-If **no** input is provided within 10 seconds, the default option (`0: Object Detection (YOLOv5s)`) will be executed automatically.
+If **no** input is provided within 10 seconds, the default option (`0: Object Detection (YOLOv26n)`) will be executed automatically.
 
 !!! note "NOTE" 
 

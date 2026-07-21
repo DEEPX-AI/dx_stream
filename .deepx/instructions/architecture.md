@@ -52,7 +52,7 @@ One model, one input stream. Sub-categories by vision task:
 - `object_detection/` — YOLO family detectors
 - `face_detection/` — SCRFD500M, YOLOv5s_Face
 - `pose_estimation/` — yolo26n-pose, yolov8m_pose
-- `semantic_segmentation/` — yolo26n-seg
+- `instance_segmentation/` — yolo26n-seg
 
 ### 2. Multi-Stream (`pipelines/multi_stream/`)
 Multiple input sources processed independently, displayed in a compositor grid.
