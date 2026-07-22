@@ -533,6 +533,14 @@ install_pydxs() {
     echo "   pydxs against THAT interpreter instead of /usr/bin/python3."
     echo ""
     
+    if [ -d "${VENV_PATH}" ]; then
+        local venv_version=$("${VENV_PATH}/bin/python3" -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")' 2>/dev/null)
+        if [ "$venv_version" != "$python_version" ]; then
+            echo "⚠ Existing venv Python (${venv_version:-unknown}) differs from system Python (${python_version}). Recreating venv..."
+            rm -rf "${VENV_PATH}"
+        fi
+    fi
+
     # Create/activate virtual environment
     if [ ! -d "${VENV_PATH}" ]; then
         echo "→ Creating virtual environment: ${VENV_PATH}"
@@ -546,6 +554,9 @@ install_pydxs() {
     local py_minor=$(echo $python_version | cut -d. -f2)
     local pip_flags="-q"
     [ "$py_minor" -ge 11 ] && pip_flags="--break-system-packages -q"
+
+    export LDSHARED="${CXX:-${CC:-cc}} -shared"
+    export LDCXXSHARED="${CXX:-${CC:-c++}} -shared"
 
     # Install build dependencies
     echo "→ Installing dependencies..."
@@ -568,7 +579,7 @@ install_pydxs() {
     fix_builddir_ownership "${PROJECT_ROOT}/bindings/python/pydxs/build"
     
     export PROJECT_ROOT="${PROJECT_ROOT}"
-    
+
     if python3 -m pip install $pip_flags .; then
         echo "✓ pydxs installed successfully"
         python3 -c "import pydxs" 2>/dev/null && echo "✓ Import verified" || { echo "✗ Import failed"; cd "${PROJECT_ROOT}"; deactivate; exit 1; }
