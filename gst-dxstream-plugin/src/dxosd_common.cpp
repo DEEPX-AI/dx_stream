@@ -39,8 +39,11 @@ void draw_semantic_segmentation(cv::Mat &img, const DXFrameMeta *meta) {
 }
 
 static cv::Scalar get_instance_color_bgr(const DXObjectMeta *meta) {
-    int label = (meta->_label >= 0) ? meta->_label : 0;
-    return COLORS[label % COLORS.size()];
+    int id = meta->_track_id;
+    if (id >= 0) {
+        return COLORS[id % COLORS.size()];
+    }
+    return COLORS[static_cast<unsigned int>(meta->_meta_id) % COLORS.size()];
 }
 
 static bool get_instance_mask_roi(const DXObjectMeta *meta,

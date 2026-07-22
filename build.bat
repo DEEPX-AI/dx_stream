@@ -342,6 +342,17 @@ if !errorlevel! neq 0 (
 )
 
 set "VENV_PATH=%PROJECT_ROOT%\venv-dx_stream"
+
+for /f "usebackq tokens=*" %%V in (`python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"`) do set "PYTHON_VERSION=%%V"
+
+set "VENV_PYTHON_VERSION="
+if exist "!VENV_PATH!\Scripts\python.exe" for /f "usebackq tokens=*" %%V in (`"!VENV_PATH!\Scripts\python.exe" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2^>nul`) do set "VENV_PYTHON_VERSION=%%V"
+
+if exist "!VENV_PATH!\Scripts\python.exe" if not "!VENV_PYTHON_VERSION!"=="!PYTHON_VERSION!" (
+    echo [WARN] Existing venv Python !VENV_PYTHON_VERSION! differs from system Python !PYTHON_VERSION!. Recreating venv...
+    rmdir /S /Q "!VENV_PATH!"
+)
+
 if not exist "!VENV_PATH!\Scripts\activate.bat" (
     echo [INFO] Creating virtual environment: !VENV_PATH!
     python -m venv --system-site-packages "!VENV_PATH!"

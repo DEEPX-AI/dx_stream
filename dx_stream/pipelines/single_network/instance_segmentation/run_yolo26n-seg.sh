@@ -59,6 +59,8 @@ for INPUT_VIDEO_PATH in "${INPUT_VIDEO_PATH_LIST[@]}"; do
                         library-file-path=/usr/local/share/gstdxstream/lib/libpostprocess_yolo26seg.so \
                         function-name=PostProcess ! \
                     queue max-size-buffers=1 ! \
+                    dxtracker ! \
+                    queue max-size-buffers=1 ! \
                     dxosd ! \
                     $VIDEOCONVERT_PIPELINE ! fpsdisplaysink sync=false $VIDEO_SINK_ARGS
 done
