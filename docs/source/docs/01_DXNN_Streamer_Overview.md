@@ -50,10 +50,6 @@ Elements
 - DxMsgBroker – Sends messages to external systems or networks.
 - DxScale – Scales video frames to a specified resolution.
 - DxConvert – Converts video frame color formats.
-- DxVnpuDec – Decodes H.264/H.265 bitstreams using VNPU hardware decoder.
-- DxVnpuEnc – Encodes raw video frames using VNPU hardware encoder.
-- DxVnpuPipeline – All-in-one VNPU pipeline element (decode → process → inference) with multi-channel support.
-- DxVnpuOverlay – Sends bounding-box overlay data to VNPU device HDMI output.
 
 **Inference Workflow**
 

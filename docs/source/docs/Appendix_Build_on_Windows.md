@@ -94,16 +94,6 @@ If for any reason the variable is missing, set it manually.
 set DEEPX_SDK_DIR=C:\Program Files\DEEPX\DX_SDK_<version>
 ```
 
-**DXVNPU_DIR (Optional)**  
-
-Required only when building with `--dxvnpu` flag 
-```
-%DXVNPU_DIR%\
-    include\
-    lib\dxvnpu.lib
-    bin\dxvnpu.dll
-```
-
 ---
 
 ## Installation and Dependency Provisioning
@@ -159,9 +149,8 @@ Output: `gst-dxstream-plugin\builddir\src\gstdxstream.dll`
 
 ```cmd
 build.bat --clean              :: Remove builddir and rebuild from scratch
-build.bat --dxvnpu             :: Enable DXVNPU elements (requires DXVNPU_DIR)
 build.bat --type=debug         :: Debug build (symbols, no optimization)
-build.bat --clean --dxvnpu     :: Combine options
+build.bat --clean --type=debug :: Combine options
 ```
 
 ### Building Custom Libraries and Example Applications
@@ -331,7 +320,7 @@ The build system already handles this — `soversion` is only applied on Linux w
 | eigen3, opencv4 | vcpkg | `dependency()` (pkg-config) |
 | libyuv | vcpkg | `cc.find_library()` |
 | libmosquitto, rdkafka | vcpkg | `dependency()` (pkg-config) |
-| dxrt, dxvnpu, dxdsp | DEEPX internal | `cc.find_library()` |
+| dxrt, dxdsp | DEEPX internal | `cc.find_library()` |
 | dl (POSIX dynamic linking) | Linux only | Skipped on Windows (`dx_dlfcn.h` shim) |
 
 ### Platform Comparisons: Windows vs. Linux Build

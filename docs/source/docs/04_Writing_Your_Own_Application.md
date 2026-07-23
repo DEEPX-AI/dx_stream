@@ -186,7 +186,7 @@ The **DX-STREAM** inference pipeline is composed of the following elements:
 
 - Performs inference using **DX-RT** backend
 - Receives input tensors from `dxpreprocess` and generates output tensors
-- Supports multiple inference backends (dxrt/dxvnpu) via backend property
+- Supports the `dxrt` inference backend via the `backend` property
 
 **DxPostprocess**
 

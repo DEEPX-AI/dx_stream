@@ -104,12 +104,8 @@ $ ./build.sh --clean
 # Build for DEEPX V3 Standalone Device
 $ ./build.sh --v3
 
-# Build with DXVNPU support (VNPU decoder, encoder, pipeline, overlay)
-$ ./build.sh --dxvnpu
-
 # Combine flags
-$ ./build.sh --dxvnpu --type=debug
-$ ./build.sh --v3 --dxvnpu
+$ ./build.sh --v3 --type=debug
 
 # Uninstall DX-STREAM
 $ ./build.sh --uninstall
