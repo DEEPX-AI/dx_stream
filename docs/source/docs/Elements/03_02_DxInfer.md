@@ -3,7 +3,7 @@
 - **Input tensors:** **DxInfer** receives preprocessed input tensors from **DxPreprocess** and performs inference using a specified AI model.  
 - **Output tensors:** Each output tensor is assigned an ID using the `inference-id` property, allowing downstream elements such as **DxPostprocess** to retrieve the correct output.  
 - **Model configuration:** The AI model used for inference must be specified using the `model-path` property, which points to a compiled `.dxnn` file.
-- **Multiple backends:** **DxInfer** supports multiple inference backends (`dxrt` and `dxvnpu`), selectable via the `backend` property.
+- **Backend:** **DxInfer** performs inference using the `dxrt` backend, selectable via the `backend` property.
 
 ### **Key Features**
 
@@ -23,12 +23,11 @@ If the downstream sink element has `sync=true`, input buffers may be dropped bas
 **Throttle QoS Events**  
 When **DxRate** sends a Throttle QoS Event, **DxInfer** drops incoming frames until the accumulated time between frames exceeds the `throttling_delay` value. This avoids unnecessary NPU computation in low-framerate pipelines and promotes smooth and consistent streaming. 
 
-**Multiple Backend Support**  
-DxInfer supports multiple inference backends, selectable via the `backend` property:
+**Backend Selection**  
+DxInfer selects the inference backend via the `backend` property:
 
-- **auto** (default): Automatically selects the best available backend (priority: `dxrt` > `dxvnpu`).
+- **auto** (default): Automatically selects the available backend (`dxrt`).
 - **dxrt**: Uses the DEEPX Runtime (DX-RT) backend.
-- **dxvnpu**: Uses the DEEPX VNPU backend (requires `--dxvnpu` build flag).
 
 **JSON Configuration**  
 All properties can be configured through a JSON file using the `config-file-path` property. This enables reusable, clean, and scalable configuration of inference behavior. 
@@ -78,7 +77,7 @@ GObject
 | `inference-id`     | Key under which inference output tensors are stored in `DXFrameMeta`/`DXObjectMeta` (the downstream **DxPostprocess** retrieves them by this ID).     | Unsigned Integer | `0`                |
 | `secondary-mode`   | Determines whether to operate in primary mode or secondary mode.                                     | Boolean   | `false`            |
 | `use-ort`          | Determines whether to use ONNX Runtime (ORT) for inference.                                          | Boolean   | `true`             |
-| `backend`          | Selects the inference backend: `auto`, `dxrt`, or `dxvnpu`.                                          | Enum      | `auto`             |
+| `backend`          | Selects the inference backend: `auto` or `dxrt`.                                                     | Enum      | `auto`             |
 
 
 ### **Example JSON Configuration**

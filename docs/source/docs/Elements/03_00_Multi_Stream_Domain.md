@@ -47,7 +47,6 @@ Caps fields are intentionally *ranges* and `format` is omitted to accept any pix
 | `dxscale`, `dxconvert` | NOT allowed | OK | Need stable single caps; multi-stream multi-resolution unsupported |
 | `dxgather` | NOT allowed | OK | Merges branches that share a single source — does not support multiple stream IDs |
 | `dxinputselector`, `dxoutputselector` | boundary only | NOT used | Domain entry / exit |
-| `dxvnpudec`, `dxvnpuenc`, `dxvnpupipeline`, `dxvnpuoverlay` | NOT used | OK | Hardware-specific; use `dxvnpudec` per stream upstream of `dxinputselector` |
 
 `dxscale` and `dxconvert` must be placed **per stream upstream of `dxinputselector`** or **per output downstream of `dxoutputselector`**:
 

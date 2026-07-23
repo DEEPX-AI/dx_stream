@@ -325,7 +325,7 @@ DX-STREAM internal subsystems (shared across multiple elements) use dedicated de
 
 **Debug Category:** `transform_kernel`
 
-Covers: libyuv, RGA, VNPU VideoProcessor, V3 DSP kernels, TransformKernelPool, PreprocessorFactory
+Covers: libyuv, RGA, V3 DSP kernels, TransformKernelPool, PreprocessorFactory
 
 **Key Log Messages:**
 
@@ -348,12 +348,11 @@ $ GST_DEBUG=transform_kernel:6 ./your_app
 
 **Debug Category:** `inference_backend`
 
-Covers: DXRT runtime, DXVNPU runtime, InferBackendFactory
+Covers: DXRT runtime, InferBackendFactory
 
 **Key Log Messages:**
 
 - `DxrtBackend: initialized (DXRT <version>, <N> devices)` - DXRT init
-- `DxvnpuBackend: initialized <N> device(s)` - VNPU init
 - `Put req_id=<id> (pending=<N>)` - Inference request submitted (TRACE level)
 - `Got req_id=<id> (pending=<N>)` - Inference result received (TRACE level)
 - `Get SKIP: seq=<N>, device[<idx>]` - Inference timeout
