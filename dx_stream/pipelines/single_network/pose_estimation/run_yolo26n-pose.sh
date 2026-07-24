@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SRC_DIR=$(dirname "$(dirname "$(dirname "$SCRIPT_DIR")")")
 
 # Model auto-download logic
-MODEL_NAME="yolo26n-pose.dxnn"
+MODEL_NAME="yolo26-n-pose_640x640.dxnn"
 MODEL_PATH="$SRC_DIR/samples/models/$MODEL_NAME"
 if [ ! -f "$MODEL_PATH" ]; then
     echo "[INFO] $MODEL_NAME not found in samples/models. Downloading..."

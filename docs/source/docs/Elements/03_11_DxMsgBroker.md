@@ -29,6 +29,16 @@ GObject
                          +----GstDxMsgBroker
 ```
 
+### **Pad Templates**
+
+**Sink (input)**
+
+| **Property** | **Value** |
+|---|---|
+| Format | `video/x-raw; application/x-dxvideoraw` |
+
+`DxMsgBroker` is caps-agnostic — it only reads message payloads from buffer metadata produced by `DxMsgConv`, so it accepts both single-stream `video/x-raw` and the multi-stream `application/x-dxvideoraw` domain caps.
+
 ### **Properties**
 
 | **Name**         | **Description**                                                      | **Type**  | **Default Value** |
@@ -47,5 +57,9 @@ GObject
     - An optional configuration file can provide advanced settings, such as `SSL/TLS` encryption and authentication details.  
     - Ensure the `libmosquitto-dev` (for MQTT) and `librdkafka-dev` (for Kafka) libraries are installed for proper broker support.  
     - The element uses a **Broker Abstraction Layer (BAL)** that provides a unified interface for different broker types, making it easy to switch between MQTT and Kafka without changing the pipeline structure.  
+
+!!! warning "Property validation"
+
+    `conn-info` and `topic` are documented as **required**, but the element does **not** validate them in code. If they are omitted, the element does not fail at construction time — the error surfaces only when the broker tries to connect or publish (e.g., broker connection refused, or messages published to a fallback topic name). Always set both explicitly.
 
 ---

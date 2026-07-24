@@ -237,7 +237,14 @@ install_meson() {
         print_message "error" "Python 3.9+ not available after installation attempts"
         return 1
     fi
-    
+
+    # Pin to absolute path: sudo resets PATH via secure_path, so a bare
+    # command name (e.g. "python3") can resolve to a different interpreter
+    # under sudo than the one just verified above (e.g. pyenv shim vs
+    # system /usr/bin/python3). Resolving here keeps sudo using the exact
+    # same interpreter for the rest of this function.
+    python_cmd="$(command -v "$python_cmd")"
+
     # Install pip for the Python version if needed
     local pip_cmd="${python_cmd} -m pip"
     if ! $python_cmd -m pip --version >/dev/null 2>&1; then

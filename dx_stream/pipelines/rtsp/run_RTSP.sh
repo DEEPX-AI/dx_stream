@@ -12,7 +12,7 @@ INFER_CONFIG="${SRC_DIR}/configs/YoloV5S_PPU/inference_config.json"
 POSTPROCESS_CONFIG="${SRC_DIR}/configs/YoloV5S_PPU/postprocess_config.json"
 
 # Model auto-download logic
-MODEL_NAME="YoloV5S_PPU.dxnn"
+MODEL_NAME="yolov5-s_640x640_ppu.dxnn"
 MODEL_PATH="$SRC_DIR/samples/models/$MODEL_NAME"
 if [ ! -f "$MODEL_PATH" ]; then
     echo "[INFO] $MODEL_NAME not found in samples/models. Downloading..."
@@ -99,7 +99,7 @@ inference_pipe="dxinputselector name=in ! \
                 dxosd ! \
                 dxoutputselector name=out"
 
-launch_cmd="gst-launch-1.0 -e ${src_pipe} ${inference_pipe} ${compositor_pipe} compositor name=comp ${compositor_props} ! $VIDEOCONVERT_PIPELINE ! fpsdisplaysink $VIDEO_SINK_ARGS"
+launch_cmd="gst-launch-1.0 ${src_pipe} ${inference_pipe} ${compositor_pipe} compositor name=comp ${compositor_props} ! $VIDEOCONVERT_PIPELINE ! fpsdisplaysink $VIDEO_SINK_ARGS"
 echo "--------------------------------------------------"
 echo "Generated gst-launch-1.0 command:"
 echo "${launch_cmd}"

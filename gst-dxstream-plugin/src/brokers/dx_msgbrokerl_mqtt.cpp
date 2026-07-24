@@ -163,20 +163,20 @@ static bool setup_tls_settings(MqttClientInfo_t *pClient) {
 
     int rc = mosquitto_tls_set(pClient->_mosq, cafile, capath, certfile, keyfile, nullptr);
     if (rc != MOSQ_ERR_SUCCESS) {
-        GST_ERROR("Error, Failed to set TLS: %s\n", mosquitto_strerror(rc));
+        GST_ERROR("Error, Failed to set TLS: %s", mosquitto_strerror(rc));
         return false;
     }
 
     if (pClient->_tls_insecure) {
         rc = mosquitto_tls_insecure_set(pClient->_mosq, true);
         if (rc != MOSQ_ERR_SUCCESS) {
-            GST_ERROR("Error, Failed to set TLS insecure mode: %s\n", mosquitto_strerror(rc));
+            GST_ERROR("Error, Failed to set TLS insecure mode: %s", mosquitto_strerror(rc));
             return false;
         }
         GST_DEBUG("TLS insecure mode enabled for self-signed certificates");
     }
 
-    GST_DEBUG("Set TLS: %s, %s, %s, %s\n", cafile ? cafile : "(null)",
+    GST_DEBUG("Set TLS: %s, %s, %s, %s", cafile ? cafile : "(null)",
               capath ? capath : "(null)", certfile ? certfile : "(null)",
               keyfile ? keyfile : "(null)");
     return true;
@@ -191,11 +191,11 @@ static bool setup_authentication(MqttClientInfo_t *pClient) {
     int rc = mosquitto_username_pw_set(pClient->_mosq, pClient->_username.c_str(),
                                    pClient->_password.c_str());
     if (rc != MOSQ_ERR_SUCCESS) {
-        GST_ERROR("Error, Failed to set username and password: %s\n",
+        GST_ERROR("Error, Failed to set username and password: %s",
                   mosquitto_strerror(rc));
         return false;
     }
-    GST_DEBUG("Set username and password: %s\n", pClient->_username.c_str());
+    GST_DEBUG("Set username and password: %s", pClient->_username.c_str());
     return true;
 }
 
@@ -203,7 +203,7 @@ static bool setup_authentication(MqttClientInfo_t *pClient) {
 static bool initialize_mosquitto_client(MqttClientInfo_t *pClient) {
     int rc = mosquitto_lib_init();
     if (rc != MOSQ_ERR_SUCCESS) {
-        GST_ERROR("Error, mosquitto_lib_init() failed: %s\n", mosquitto_strerror(rc));
+        GST_ERROR("Error, mosquitto_lib_init() failed: %s", mosquitto_strerror(rc));
         return false;
     }
 
@@ -212,7 +212,7 @@ static bool initialize_mosquitto_client(MqttClientInfo_t *pClient) {
                          : mosquitto_new(nullptr, true, nullptr);
 
     if (pClient->_mosq == nullptr) {
-        GST_ERROR("Error, mosquitto_new() failed\n");
+        GST_ERROR("Error, mosquitto_new() failed");
         mosquitto_lib_cleanup();
         return false;
     }
@@ -232,7 +232,7 @@ static bool wait_for_connection(const MqttClientInfo_t *pClient) {
     }
 
     if (!pClient->_connected) {
-        GST_ERROR("Error, Connection timeout after %d ms\n", max_wait_ms);
+        GST_ERROR("Error, Connection timeout after %d ms", max_wait_ms);
         return false;
     }
 
@@ -247,7 +247,7 @@ DxMsg_Bal_Handle_t dxmsg_bal_connect_mqtt(char *conn_info, char *cfg_path) {
 
     GST_DEBUG_CATEGORY_INIT(broker, "broker", 0,
                             "broker category for dxmsgbroker element");
-    GST_TRACE("|JCP|\n");
+    GST_TRACE("|JCP|");
 
     // Initialize connection state
     pClient->_connected = false;
@@ -255,7 +255,7 @@ DxMsg_Bal_Handle_t dxmsg_bal_connect_mqtt(char *conn_info, char *cfg_path) {
     pClient->_connection_timeout = 5000;
 
     if (!dxmsg_bal_is_valid_connInfo_mqtt(conn_info, host, &port)) {
-        GST_ERROR("Error, Invalid connection info: %s\n", conn_info);
+        GST_ERROR("Error, Invalid connection info: %s", conn_info);
         cleanup_mqtt(pClient, false, false);
         return nullptr;
     }
@@ -263,7 +263,7 @@ DxMsg_Bal_Handle_t dxmsg_bal_connect_mqtt(char *conn_info, char *cfg_path) {
     if (cfg_path != nullptr &&
         dxmsg_bal_read_config_mqtt((DxMsg_Bal_Handle_t)pClient, cfg_path) !=
             DxMsg_Bal_Error::DXMSG_BAL_OK) {
-        GST_ERROR("Error, Failed to read config file: %s\n", cfg_path);
+        GST_ERROR("Error, Failed to read config file: %s", cfg_path);
         cleanup_mqtt(pClient, false, false);
         return nullptr;
     }
@@ -289,7 +289,7 @@ DxMsg_Bal_Handle_t dxmsg_bal_connect_mqtt(char *conn_info, char *cfg_path) {
 
     int rc = mosquitto_connect_async(pClient->_mosq, host.c_str(), port, 60);
     if (rc != MOSQ_ERR_SUCCESS) {
-        GST_ERROR("Error, Failed to connect to MQTT broker: %s\n",
+        GST_ERROR("Error, Failed to connect to MQTT broker: %s",
                   mosquitto_strerror(rc));
         cleanup_mqtt(pClient, true, true);
         return nullptr;
@@ -297,7 +297,7 @@ DxMsg_Bal_Handle_t dxmsg_bal_connect_mqtt(char *conn_info, char *cfg_path) {
 
     rc = mosquitto_loop_start(pClient->_mosq);
     if (rc != MOSQ_ERR_SUCCESS) {
-        GST_ERROR("Error, Failed to start Mosquitto loop: %s\n",
+        GST_ERROR("Error, Failed to start Mosquitto loop: %s",
                   mosquitto_strerror(rc));
         cleanup_mqtt(pClient, true, true);
         return nullptr;
@@ -317,28 +317,28 @@ DxMsg_Bal_Error_t dxmsg_bal_send_mqtt(DxMsg_Bal_Handle_t handle, const char *top
     DxMsg_Bal_Error_t balError = DxMsg_Bal_Error::DXMSG_BAL_OK;
     int rc;
 
-    GST_TRACE("|JCP|\n");
+    GST_TRACE("|JCP|");
 
     if (pClient == nullptr || topic == nullptr || payload == nullptr ||
         payload_len <= 0) {
-        GST_ERROR("Error, Failed to publish message: %s\n", "Invalid argument");
+        GST_ERROR("Error, Failed to publish message: %s", "Invalid argument");
         return DxMsg_Bal_Error::DXMSG_BAL_ERR_INVALID;
     }
 
     // Check connection status
     if (!pClient->_connected) {
-        GST_ERROR("Error, Failed to publish message: %s\n", "The client is not currently connected");
+        GST_ERROR("Error, Failed to publish message: %s", "The client is not currently connected");
         return DxMsg_Bal_Error::DXMSG_BAL_ERR_BROKER;
     }
 
     rc = mosquitto_publish(pClient->_mosq, nullptr, topic, payload_len, payload,
                            0, false);
     if (rc != MOSQ_ERR_SUCCESS) {
-        GST_ERROR("Error, Failed to publish message: %s\n",
+        GST_ERROR("Error, Failed to publish message: %s",
                   mosquitto_strerror(rc));
         balError = DxMsg_Bal_Error::DXMSG_BAL_ERR_BROKER;
     } else {
-        GST_INFO("Publish message (%d bytes)\n", payload_len);
+        GST_INFO("Publish message (%d bytes)", payload_len);
     }
 
     return balError;
@@ -349,27 +349,27 @@ DxMsg_Bal_Error_t dxmsg_bal_disconnect_mqtt(DxMsg_Bal_Handle_t handle) {
     DxMsg_Bal_Error_t balError = DxMsg_Bal_Error::DXMSG_BAL_OK;
     int rc;
 
-    GST_TRACE("|JCP|\n");
+    GST_TRACE("|JCP|");
     if (pClient == nullptr) {
-        GST_ERROR("Error, Failed to disconnect: %s\n", "Invalid argument");
+        GST_ERROR("Error, Failed to disconnect: %s", "Invalid argument");
         return DxMsg_Bal_Error::DXMSG_BAL_ERR_INVALID;
     }
 
     rc = mosquitto_disconnect(pClient->_mosq);
     if (rc != MOSQ_ERR_SUCCESS) {
-        GST_ERROR("Error, Failed to disconnect: %s\n", mosquitto_strerror(rc));
+        GST_ERROR("Error, Failed to disconnect: %s", mosquitto_strerror(rc));
         balError = DxMsg_Bal_Error::DXMSG_BAL_ERR_BROKER;
     }
 
     rc = mosquitto_loop(pClient->_mosq, 0, 1);
     if (rc != MOSQ_ERR_SUCCESS) {
-        GST_ERROR("Error, Failed to loop Mosquitto: %s\n",
+        GST_ERROR("Error, Failed to loop Mosquitto: %s",
                   mosquitto_strerror(rc));
         balError = DxMsg_Bal_Error::DXMSG_BAL_ERR_BROKER;
     }
     rc = mosquitto_loop_stop(pClient->_mosq, false);
     if (rc != MOSQ_ERR_SUCCESS) {
-        GST_ERROR("Error, Failed to stop Mosquitto loop: %s\n",
+        GST_ERROR("Error, Failed to stop Mosquitto loop: %s",
                   mosquitto_strerror(rc));
         balError = DxMsg_Bal_Error::DXMSG_BAL_ERR_BROKER;
     }

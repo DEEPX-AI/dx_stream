@@ -1,5 +1,5 @@
 **DxConvert** is an element that converts video frames between different color formats.  
-**DxConvert** uses the `VideoTransformFactory` to automatically select the best available hardware-accelerated backend (RGA on RK3588) or falls back to the libyuv software backend.  
+**DxConvert** uses the `VideoTransformFactory` to automatically select the best available hardware-accelerated backend. The selection priority is: V3 DSP > RGA > libyuv (software fallback).  
 
 ### **Key Features**
 
@@ -14,8 +14,10 @@
 
 **Automatic Backend Selection**  
 
-- On RK3588 platforms with RGA hardware: attempts RGA-accelerated conversion first (currently supports NV12→RGB and NV12→BGR).  
-- Falls back to libyuv software conversion if the hardware backend does not support the source format or format combination.  
+- The `VideoTransformFactory` selects the best available backend automatically:
+  1. **V3 DSP** – DEEPX V3 device DSP (when built with `--v3`)
+  2. **RGA** – Rockchip Raster Graphic Accelerator (auto-detected)
+  3. **libyuv** – Software fallback (always available)  
 
 ### **Hierarchy**
 
@@ -87,7 +89,7 @@ gst-launch-1.0 \
 
     - `dxconvert` does **not** perform scaling. Input and output resolutions must match.
     - For video scaling, use **DxScale**.
-    - On RK3588, RGA hardware acceleration is available for NV12→RGB and NV12→BGR conversions. Other combinations use the libyuv software backend.
+    - Hardware acceleration is available for NV12→RGB and NV12→BGR on RGA. Other combinations use the libyuv software backend.
 
 !!! warning "DxInputSelector Placement"
 

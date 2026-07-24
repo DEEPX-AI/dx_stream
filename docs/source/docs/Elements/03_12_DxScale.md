@@ -1,5 +1,5 @@
 **DxScale** is an element that scales video frames to a specified target resolution.  
-**DxScale** uses the `VideoTransformFactory` to automatically select the best available hardware-accelerated backend (RGA on RK3588) or falls back to the libyuv software backend.  
+**DxScale** uses the `VideoTransformFactory` to automatically select the best available hardware-accelerated backend. The selection priority is: V3 DSP > RGA > libyuv (software fallback).  
 
 ### **Key Features**
 
@@ -14,8 +14,10 @@
 
 **Automatic Backend Selection**  
 
-- On RK3588 platforms with RGA hardware: attempts RGA-accelerated scaling first.  
-- Falls back to libyuv software scaling if the hardware backend does not support the source format.  
+- The `VideoTransformFactory` selects the best available backend automatically:
+  1. **V3 DSP** – DEEPX V3 device DSP (when built with `--v3`)
+  2. **RGA** – Rockchip Raster Graphic Accelerator (auto-detected)
+  3. **libyuv** – Software fallback (always available)  
 
 ### **Hierarchy**
 
@@ -74,7 +76,7 @@ gst-launch-1.0 \
 
     - `dxscale` does **not** perform color conversion. Input and output must be the same format.
     - For color conversion, use **DxConvert**.
-    - Both `width` and `height` must be set together. Setting only one is not supported.
+    - Setting both `width` and `height` together is strongly recommended. If only one is set (the other left at `0`), the element does **not** raise an error — it silently falls back to passthrough behavior, which may not match user intent. Set both explicitly when scaling is required.
 
 !!! warning "DxInputSelector Placement"
 

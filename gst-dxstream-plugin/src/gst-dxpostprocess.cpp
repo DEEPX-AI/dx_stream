@@ -1,7 +1,8 @@
 #include "gst-dxpostprocess.hpp"
 #include "./../metadata/gst-dxframemeta.hpp"
 #include "./../metadata/gst-dxobjectmeta.hpp"
-#include <dlfcn.h>
+#include "utils.hpp"
+#include "dx_dlfcn.h"
 #include <json-glib/json-glib.h>
 
 enum class PropertyID {
@@ -19,10 +20,12 @@ GST_DEBUG_CATEGORY_STATIC(gst_dxpostprocess_debug_category);
 
 // NOSONAR - GStreamer API requires non-const GstStaticPadTemplate* for gst_static_pad_template_get()
 static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE(
-    "sink", GST_PAD_SINK, GST_PAD_ALWAYS, GST_STATIC_CAPS_ANY);
+    "sink", GST_PAD_SINK, GST_PAD_ALWAYS,
+    GST_STATIC_CAPS(DX_VIDEORAW_CAPS_STR "; video/x-raw"));
 
 static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE(
-    "src", GST_PAD_SRC, GST_PAD_ALWAYS, GST_STATIC_CAPS_ANY);
+    "src", GST_PAD_SRC, GST_PAD_ALWAYS,
+    GST_STATIC_CAPS(DX_VIDEORAW_CAPS_STR "; video/x-raw"));
 
 static GstFlowReturn gst_dxpostprocess_transform_ip(GstBaseTransform *trans,
                                                     GstBuffer *buf);
@@ -30,23 +33,39 @@ static gboolean gst_dxpostprocess_start(GstBaseTransform *trans);
 static gboolean gst_dxpostprocess_stop(GstBaseTransform *trans);
 static gboolean gst_dxpostprocess_sink_event(GstBaseTransform *trans,
                                              GstEvent *event);
+static gboolean gst_dxpostprocess_propose_allocation(GstBaseTransform *trans,
+                                                     GstQuery *decide_query,
+                                                     GstQuery *query);
+static gboolean gst_dxpostprocess_query(GstBaseTransform *trans,
+                                        GstPadDirection direction,
+                                        GstQuery *query);
 
 G_DEFINE_TYPE(GstDxPostprocess, gst_dxpostprocess, GST_TYPE_BASE_TRANSFORM);
 
 static GstElementClass *parent_class = nullptr;  // NOSONAR - GStreamer standard pattern with G_DEFINE_TYPE macro
 
+static gboolean string_is_empty(const gchar *value) {
+    return value == nullptr || value[0] == '\0';
+}
+
 static void parse_config(GstDxPostprocess *self) {
-    if (!g_file_test(self->_config_file_path, G_FILE_TEST_EXISTS)) {
-        g_print("Config file does not exist: %s\n", self->_config_file_path);
+    if (string_is_empty(self->_config_file_path)) {
         return;
     }
 
+    if (!g_file_test(self->_config_file_path, G_FILE_TEST_EXISTS)) {
+        GST_ERROR_OBJECT(self, "Config file does not exist: %s", self->_config_file_path);
+        return;
+    }
+
+    GST_INFO_OBJECT(self, "Loading postprocess config file: %s", self->_config_file_path);
     JsonParser *parser = json_parser_new();
     GError *error = nullptr;
 
     if (!json_parser_load_from_file(parser, self->_config_file_path, &error)) {
-        g_error("[dxpostprocess] Failed to load config file: %s",
-                error->message);
+        GST_ERROR_OBJECT(self, "[dxpostprocess] Failed to load config file: %s",
+                         error->message);
+        g_error_free(error);
         g_object_unref(parser);
         return;
     }
@@ -67,11 +86,11 @@ static void parse_config(GstDxPostprocess *self) {
     if (json_object_has_member(object, "inference_id")) {
         gint64 val = json_object_get_int_member(object, "inference_id");
         if (val < 0) {
-            g_error("[dxpostprocess] Member inference_id has a negative value "
-                    "(%ld) and cannot be converted to unsigned.",
-                    val);
+            GST_ERROR_OBJECT(self, "[dxpostprocess] Member inference_id has a negative value "
+                             "(%ld), ignoring.", val);
+        } else {
+            self->_infer_id = static_cast<guint>(val);
         }
-        self->_infer_id = static_cast<guint>(val);
     }
 
     if (json_object_has_member(object, "secondary_mode")) {
@@ -157,21 +176,42 @@ static void dxpostprocess_get_property(GObject *object, guint property_id,
 static GstStateChangeReturn
 dxpostprocess_change_state(GstElement *element, GstStateChange transition) {
     GstDxPostprocess *self = GST_DXPOSTPROCESS(element);
-    GST_INFO_OBJECT(self, "Attempting to change state");
+    GST_DEBUG_OBJECT(self, "State change: %s",
+                     gst_state_change_get_name(transition));
 
     switch (transition) {
     case GST_STATE_CHANGE_NULL_TO_READY: {
-        if (!self->_library_handle && self->_library_file_path &&
-            self->_function_name) {
+        const gboolean has_library_path = !string_is_empty(self->_library_file_path);
+        const gboolean has_function_name = !string_is_empty(self->_function_name);
+
+        if (has_library_path != has_function_name) {
+            GST_ELEMENT_ERROR(self, RESOURCE, SETTINGS,
+                              ("[dxpostprocess] library-file-path and function-name must be set together."),
+                              (NULL));
+            return GST_STATE_CHANGE_FAILURE;
+        }
+
+        if (!self->_library_handle && has_library_path && has_function_name) {
             self->_library_handle = dlopen(self->_library_file_path, RTLD_LAZY);
             if (!self->_library_handle) {
-                g_error("Error opening library: %s\n", dlerror());
+                GST_ELEMENT_ERROR(self, RESOURCE, NOT_FOUND,
+                                  ("Error opening library '%s': %s",
+                                   self->_library_file_path, dlerror()),
+                                  (NULL));
+                return GST_STATE_CHANGE_FAILURE;
             }
             void *func_ptr = dlsym(self->_library_handle, self->_function_name);
             if (!func_ptr) {
-                g_error("Error finding function: %s\n", dlerror());
+                GST_ELEMENT_ERROR(self, RESOURCE, NOT_FOUND,
+                                  ("Function '%s' not found in '%s': %s",
+                                   self->_function_name,
+                                   self->_library_file_path, dlerror()),
+                                  ("Hint: Run 'nm -D %s | grep %s' to list available functions.",
+                                   self->_library_file_path,
+                                   self->_function_name));
                 dlclose(self->_library_handle);
                 self->_library_handle = nullptr;
+                return GST_STATE_CHANGE_FAILURE;
             }
             self->_postproc_function =
                 (void (*)(GstBuffer *, std::vector<dxs::DXTensor>, DXFrameMeta *,
@@ -188,6 +228,11 @@ dxpostprocess_change_state(GstElement *element, GstStateChange transition) {
     case GST_STATE_CHANGE_PAUSED_TO_READY:
         break;
     case GST_STATE_CHANGE_READY_TO_NULL:
+        if (self->_library_handle) {
+            dlclose(self->_library_handle);
+            self->_library_handle = nullptr;
+            self->_postproc_function = nullptr;
+        }
         break;
     default:
         break;
@@ -195,7 +240,8 @@ dxpostprocess_change_state(GstElement *element, GstStateChange transition) {
 
     GstStateChangeReturn result =
         GST_ELEMENT_CLASS(parent_class)->change_state(element, transition);
-    GST_DEBUG_OBJECT(self, "State change completed: %d", result);
+    GST_DEBUG_OBJECT(self, "State change completed: %s",
+                     gst_element_state_change_return_get_name(result));
     return result;
 }
 
@@ -261,7 +307,7 @@ static void gst_dxpostprocess_class_init(GstDxPostprocessClass *klass) {
     auto *element_class = GST_ELEMENT_CLASS(klass);
     gst_element_class_set_static_metadata(
         element_class, "DXPostprocess", "Generic",
-        "Postprocesses inference results", "Jo Sangil <sijo@deepx.ai>");
+        "Postprocesses inference results", "Sangil Jo <sijo@deepx.ai>");
 
     gst_element_class_add_pad_template(
         element_class, gst_static_pad_template_get(&sink_template));
@@ -273,6 +319,9 @@ static void gst_dxpostprocess_class_init(GstDxPostprocessClass *klass) {
     base_transform_class->sink_event = GST_DEBUG_FUNCPTR(gst_dxpostprocess_sink_event);
     base_transform_class->transform_ip =
         GST_DEBUG_FUNCPTR(gst_dxpostprocess_transform_ip);
+    base_transform_class->propose_allocation =
+        GST_DEBUG_FUNCPTR(gst_dxpostprocess_propose_allocation);
+    base_transform_class->query = GST_DEBUG_FUNCPTR(gst_dxpostprocess_query);
     parent_class = GST_ELEMENT_CLASS(g_type_class_peek_parent(klass));
     element_class->change_state = dxpostprocess_change_state;
 }
@@ -303,59 +352,119 @@ static gboolean gst_dxpostprocess_stop(GstBaseTransform *trans) {
 static gboolean gst_dxpostprocess_sink_event(GstBaseTransform *trans,
                                              GstEvent *event) {
     GstDxPostprocess *self = GST_DXPOSTPROCESS(trans);
-    GstPad *src_pad = GST_BASE_TRANSFORM_SRC_PAD(trans);
-    
+
     if (GST_EVENT_TYPE(event) == GST_EVENT_EOS) {
-        GST_INFO_OBJECT(self, "Received EOS event");
+        GST_DEBUG_OBJECT(self, "Received EOS event");
     }
 
-    gboolean res = gst_pad_push_event(src_pad, event);
-    
-    if (!res) {
-        GST_WARNING_OBJECT(self, "Failed to push event %s to src pad", GST_EVENT_TYPE_NAME(event));
-    }
-    
-    return res;
+    return GST_BASE_TRANSFORM_CLASS(parent_class)->sink_event(trans, event);
 }
 
-static void process_secondary_mode(GstBuffer *buf,
-                                   DXFrameMeta *frame_meta,
-                                   const GstDxPostprocess *self) {
+static gboolean process_secondary_mode(GstBuffer *buf,
+                                       DXFrameMeta *frame_meta,
+                                       const GstDxPostprocess *self) {
+    gboolean had_error = FALSE;
     size_t objects_size = frame_meta->_object_meta_list.size();
     for (size_t o = 0; o < objects_size; o++) {
         DXObjectMeta *object_meta = frame_meta->_object_meta_list[o];
         auto iter = object_meta->_output_tensors.find(self->_infer_id);
         if (iter == object_meta->_output_tensors.end())
-            return;
+            continue;
 
         if (iter->second._tensors.empty())
-            return;
+            continue;
 
-        self->_postproc_function(buf, iter->second._tensors, frame_meta, object_meta);
+        try {
+            self->_postproc_function(buf, iter->second._tensors, frame_meta, object_meta);
+        } catch (const std::exception &e) {
+            GST_ERROR_OBJECT(self, "Postprocess function threw exception in secondary mode: %s", e.what());
+            had_error = TRUE;
+        } catch (...) {
+            GST_ERROR_OBJECT(self, "Postprocess function threw unknown exception in secondary mode");
+            had_error = TRUE;
+        }
     }
+    return !had_error;
 }
 
 static GstFlowReturn gst_dxpostprocess_transform_ip(GstBaseTransform *trans,
                                                     GstBuffer *buf) {
     GstDxPostprocess *self = GST_DXPOSTPROCESS(trans);
-    GST_INFO_OBJECT(self, "DXPostprocess Transform IP called");
+    GST_LOG_OBJECT(self, "DXPostprocess Transform IP called");
+
+    if (G_UNLIKELY(!self->_postproc_function)) {
+        GST_ELEMENT_ERROR(self, LIBRARY, INIT,
+            ("Postprocess function not loaded"), (NULL));
+        return GST_FLOW_ERROR;
+    }
 
     auto *frame_meta = dx_get_frame_meta(buf);
     if (!frame_meta) {
-        GST_WARNING_OBJECT(self, "No DXFrameMeta in GstBuffer \n");
+        GST_LOG_OBJECT(self, "No DXFrameMeta, passing through");
         return GST_FLOW_OK;
     }
 
     if (self->_secondary_mode) {
-        GST_INFO_OBJECT(self, "Processing in secondary mode");
-        process_secondary_mode(buf, frame_meta, self);
+        GST_LOG_OBJECT(self, "Processing in secondary mode");
+        if (!process_secondary_mode(buf, frame_meta, self)) {
+            GST_ELEMENT_ERROR(self, LIBRARY, FAILED,
+                              ("Postprocess function '%s' failed in secondary mode",
+                               self->_function_name),
+                              (NULL));
+            return GST_FLOW_ERROR;
+        }
     } else {
-        GST_INFO_OBJECT(self, "Processing in primary mode");
+        GST_LOG_OBJECT(self, "Processing in primary mode");
         auto iter = frame_meta->_output_tensors.find(self->_infer_id);
         if (iter != frame_meta->_output_tensors.end()) {
-            self->_postproc_function(buf, iter->second._tensors, frame_meta, nullptr);
+            try {
+                self->_postproc_function(buf, iter->second._tensors, frame_meta, nullptr);
+            } catch (const std::exception &e) {
+                GST_ELEMENT_ERROR(self, LIBRARY, FAILED,
+                                  ("Postprocess function '%s' threw exception: %s",
+                                   self->_function_name, e.what()),
+                                  (NULL));
+                return GST_FLOW_ERROR;
+            } catch (...) {
+                GST_ELEMENT_ERROR(self, LIBRARY, FAILED,
+                                  ("Postprocess function '%s' threw unknown exception",
+                                   self->_function_name),
+                                  (NULL));
+                return GST_FLOW_ERROR;
+            }
         }
     }
 
     return GST_FLOW_OK;
+}
+
+static gboolean gst_dxpostprocess_propose_allocation(GstBaseTransform *trans,
+                                                     GstQuery *decide_query,
+                                                     GstQuery *query) {
+    GstBaseTransformClass *base_class =
+        GST_BASE_TRANSFORM_CLASS(parent_class);
+    gboolean ret = TRUE;
+    if (base_class && base_class->propose_allocation)
+        ret = base_class->propose_allocation(trans, decide_query, query);
+    gst_query_add_allocation_meta(query, DX_FRAME_META_API_TYPE, NULL);
+    return ret;
+}
+
+static gboolean gst_dxpostprocess_query(GstBaseTransform *trans,
+                                        GstPadDirection direction,
+                                        GstQuery *query) {
+    if (direction == GST_PAD_SRC && GST_QUERY_TYPE(query) == GST_QUERY_LATENCY) {
+        if (!GST_BASE_TRANSFORM_CLASS(parent_class)->query(trans, direction, query))
+            return FALSE;
+        gboolean live;
+        GstClockTime min_lat, max_lat;
+        gst_query_parse_latency(query, &live, &min_lat, &max_lat);
+        const GstClockTime self_lat = 1 * GST_USECOND;
+        min_lat += self_lat;
+        if (max_lat != GST_CLOCK_TIME_NONE)
+            max_lat += self_lat;
+        gst_query_set_latency(query, live, min_lat, max_lat);
+        return TRUE;
+    }
+    return GST_BASE_TRANSFORM_CLASS(parent_class)->query(trans, direction, query);
 }

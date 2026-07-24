@@ -1,9 +1,11 @@
 #include "gst-dxconvert.hpp"
-#include "gst_frame_desc.hpp"
-#include "video_transform_factory.hpp"
+#include "transforms/gst_frame_desc.hpp"
+#include "transforms/transform_kernel_pool.hpp"
+#include "../metadata/gst-dxframemeta.hpp"
 #include <gst/video/video.h>
 #include <algorithm>
 #include <cstring>
+#include <new>
 
 GST_DEBUG_CATEGORY_STATIC(gst_dxconvert_debug_category);
 #define GST_CAT_DEFAULT gst_dxconvert_debug_category
@@ -22,6 +24,7 @@ GST_DEBUG_CATEGORY_STATIC(gst_dxconvert_debug_category);
 static void gst_dxconvert_finalize(GObject *object);
 static gboolean gst_dxconvert_start(GstBaseTransform *trans);
 static gboolean gst_dxconvert_stop(GstBaseTransform *trans);
+static gboolean gst_dxconvert_sink_event(GstBaseTransform *trans, GstEvent *event);
 static gboolean gst_dxconvert_set_caps(GstBaseTransform *trans,
                                        GstCaps *incaps, GstCaps *outcaps);
 static GstCaps *gst_dxconvert_transform_caps(GstBaseTransform *trans,
@@ -33,6 +36,12 @@ static gboolean gst_dxconvert_transform_size(GstBaseTransform *trans,
                                              GstCaps *othercaps, gsize *othersize);
 static GstFlowReturn gst_dxconvert_transform(GstBaseTransform *trans,
                                              GstBuffer *inbuf, GstBuffer *outbuf);
+static gboolean gst_dxconvert_propose_allocation(GstBaseTransform *trans,
+                                                 GstQuery *decide_query,
+                                                 GstQuery *query);
+static gboolean gst_dxconvert_query(GstBaseTransform *trans,
+                                    GstPadDirection direction,
+                                    GstQuery *query);
 
 // ---------------------------------------------------------------------------
 // GObject / GstElement boilerplate
@@ -42,16 +51,6 @@ G_DEFINE_TYPE_WITH_CODE(
     GST_DEBUG_CATEGORY_INIT(gst_dxconvert_debug_category, "dxconvert", 0,
                             "debug category for dxconvert element"))
 
-// GstVideoFormat → dxt::VideoFormat
-static dxt::VideoFormat gst_to_dxt_format(GstVideoFormat fmt) {
-    switch (fmt) {
-        case GST_VIDEO_FORMAT_I420: return dxt::VideoFormat::I420;
-        case GST_VIDEO_FORMAT_NV12: return dxt::VideoFormat::NV12;
-        case GST_VIDEO_FORMAT_RGB:  return dxt::VideoFormat::RGB;
-        case GST_VIDEO_FORMAT_BGR:  return dxt::VideoFormat::BGR;
-        default: return dxt::VideoFormat::RGB;
-    }
-}
 
 // ---------------------------------------------------------------------------
 // class_init
@@ -77,7 +76,7 @@ static void gst_dxconvert_class_init(GstDxConvertClass *klass) {
     gst_element_class_set_static_metadata(
         element_class, "DXConvert", "Filter/Converter/Video",
         "Hardware-accelerated video color converter using VideoTransformKernel",
-        "DeepX AI <support@deepx.ai>");
+        "Sangil Jo <sijo@deepx.ai>");
 
     base_transform_class->start =
         GST_DEBUG_FUNCPTR(gst_dxconvert_start);
@@ -91,22 +90,28 @@ static void gst_dxconvert_class_init(GstDxConvertClass *klass) {
         GST_DEBUG_FUNCPTR(gst_dxconvert_transform_size);
     base_transform_class->transform =
         GST_DEBUG_FUNCPTR(gst_dxconvert_transform);
+    base_transform_class->sink_event =
+        GST_DEBUG_FUNCPTR(gst_dxconvert_sink_event);
+    base_transform_class->propose_allocation =
+        GST_DEBUG_FUNCPTR(gst_dxconvert_propose_allocation);
+    base_transform_class->query = GST_DEBUG_FUNCPTR(gst_dxconvert_query);
 }
 
 // ---------------------------------------------------------------------------
 // init / finalize
 // ---------------------------------------------------------------------------
 static void gst_dxconvert_init(GstDxConvert *self) {
-    self->_kernel     = nullptr;
     self->_negotiated = FALSE;
     gst_video_info_init(&self->_input_info);
     gst_video_info_init(&self->_output_info);
+    // GObject zero-fills instance memory but does not call C++ constructors.
+    // MSVC std::unique_ptr requires proper construction.
+    new (&self->_kernel_pool) std::unique_ptr<dxt::TransformKernelPool>();
 }
 
 static void gst_dxconvert_finalize(GObject *object) {
     auto *self = GST_DXCONVERT(object);
-    delete self->_kernel;
-    self->_kernel = nullptr;
+    self->_kernel_pool.~unique_ptr();
     G_OBJECT_CLASS(gst_dxconvert_parent_class)->finalize(object);
 }
 
@@ -121,10 +126,17 @@ static gboolean gst_dxconvert_start(GstBaseTransform *trans) {
 
 static gboolean gst_dxconvert_stop(GstBaseTransform *trans) {
     auto *self = GST_DXCONVERT(trans);
+    GST_DEBUG_OBJECT(self, "stop");
     self->_negotiated = FALSE;
-    delete self->_kernel;
-    self->_kernel = nullptr;
+    self->_kernel_pool.reset();
     return TRUE;
+}
+
+static gboolean gst_dxconvert_sink_event(GstBaseTransform *trans, GstEvent *event) {
+    if (GST_EVENT_TYPE(event) == GST_EVENT_EOS) {
+        GST_DEBUG_OBJECT(trans, "EOS event received on sink pad");
+    }
+    return GST_BASE_TRANSFORM_CLASS(gst_dxconvert_parent_class)->sink_event(trans, event);
 }
 
 // ---------------------------------------------------------------------------
@@ -195,88 +207,35 @@ static gboolean gst_dxconvert_set_caps(GstBaseTransform *trans,
     gint width  = GST_VIDEO_INFO_WIDTH(&self->_input_info);
     gint height = GST_VIDEO_INFO_HEIGHT(&self->_input_info);
 
-    // Destroy existing kernel on renegotiation
-    delete self->_kernel;
-    self->_kernel = nullptr;
+    // Destroy existing kernel pool on renegotiation
+    self->_kernel_pool.reset();
 
     // Same format → passthrough, no kernel needed
     if (in_fmt == out_fmt) {
         GST_INFO_OBJECT(self, "Same format %s — passthrough",
                         gst_video_format_to_string(in_fmt));
-        gst_base_transform_set_in_place(trans, TRUE);
+        gst_base_transform_set_passthrough(trans, TRUE);
         self->_negotiated = TRUE;
         return TRUE;
     }
 
+    gst_base_transform_set_passthrough(trans, FALSE);
     gst_base_transform_set_in_place(trans, FALSE);
 
     // Build dst template for factory
-    dxt::VideoFormat dst_fmt = gst_to_dxt_format(out_fmt);
-
-    dxt::FrameDesc dst_template;
-    dst_template.width       = width;
-    dst_template.height      = height;
-    dst_template.format      = dst_fmt;
-    dst_template.memory_type = dxt::MemoryType::CPU_VIRTUAL;
-    dst_template.num_planes  = dxt::num_planes_for_format(dst_fmt);
-
-    if (dst_fmt == dxt::VideoFormat::I420) {
-        dst_template.planes[0].stride = width;
-        dst_template.planes[0].height = height;
-        dst_template.planes[1].stride = width / 2;
-        dst_template.planes[1].height = height / 2;
-        dst_template.planes[2].stride = width / 2;
-        dst_template.planes[2].height = height / 2;
-    } else if (dst_fmt == dxt::VideoFormat::NV12) {
-        dst_template.planes[0].stride = width;
-        dst_template.planes[0].height = height;
-        dst_template.planes[1].stride = width;
-        dst_template.planes[1].height = height / 2;
-    } else {
-        dst_template.planes[0].stride = width * dxt::bytes_per_pixel(dst_fmt);
-        dst_template.planes[0].height = height;
-    }
+    dxt::VideoFormat dst_fmt = dxt::video_format_from_gst(out_fmt);
+    auto dst_template = dxt::make_dst_template(width, height, dst_fmt);
 
     // Conversion only, no crop/scale/padding
     dxt::TransformOps ops;
 
-    dxt::VideoFormat src_fmt_dxt = gst_to_dxt_format(in_fmt);
+    self->_kernel_pool = std::make_unique<dxt::TransformKernelPool>(dst_template, ops);
 
-    auto kernel = dxt::VideoTransformFactory::create(dst_template, ops);
-
-    // Verify the auto-selected backend supports our source format.
-    // E.g. RGA accepts dst=RGB in init() but only handles NV12 input.
-    if (kernel) {
-        auto caps = kernel->capabilities();
-        bool src_ok = false;
-        for (auto &f : caps.src_formats) {
-            if (f == src_fmt_dxt) { src_ok = true; break; }
-        }
-        if (!src_ok) {
-            GST_INFO_OBJECT(self,
-                "Backend '%s' cannot take %s as source, falling back to libyuv",
-                kernel->backend_name(),
-                gst_video_format_to_string(in_fmt));
-            kernel = dxt::VideoTransformFactory::create_backend(
-                "libyuv", dst_template, ops);
-        }
-    }
-
-    if (!kernel) {
-        GST_ERROR_OBJECT(self,
-            "No transform backend available for %s -> %s %dx%d",
-            gst_video_format_to_string(in_fmt),
-            gst_video_format_to_string(out_fmt), width, height);
-        return FALSE;
-    }
-
-    GST_INFO_OBJECT(self, "Convert %dx%d [%s -> %s] via %s",
+    GST_INFO_OBJECT(self, "Convert %dx%d [%s -> %s] kernel pool created",
                     width, height,
                     gst_video_format_to_string(in_fmt),
-                    gst_video_format_to_string(out_fmt),
-                    kernel->backend_name());
+                    gst_video_format_to_string(out_fmt));
 
-    self->_kernel     = kernel.release();
     self->_negotiated = TRUE;
     return TRUE;
 }
@@ -310,164 +269,74 @@ static GstFlowReturn gst_dxconvert_transform(GstBaseTransform *trans,
                                              GstBuffer *outbuf) {
     auto *self = GST_DXCONVERT(trans);
 
+    GST_LOG_OBJECT(self, "Processing buffer: pts=%" GST_TIME_FORMAT,
+                   GST_TIME_ARGS(GST_BUFFER_PTS(inbuf)));
+
     if (!self->_negotiated) {
         GST_ERROR_OBJECT(self, "Caps not negotiated");
         return GST_FLOW_NOT_NEGOTIATED;
     }
 
-    // Same format passthrough (kernel is null)
-    // For YUV formats, copy plane-by-plane to handle stride/offset
-    // differences between padded HW decoder buffers and output buffers.
-    if (!self->_kernel) {
-        GstMapInfo pin = GST_MAP_INFO_INIT, pout = GST_MAP_INFO_INIT;
-        if (!gst_buffer_map(inbuf, &pin, GST_MAP_READ)) {
-            GST_ERROR_OBJECT(self, "Failed to map input buffer");
-            return GST_FLOW_ERROR;
-        }
-        if (!gst_buffer_map(outbuf, &pout, GST_MAP_WRITE)) {
-            gst_buffer_unmap(inbuf, &pin);
-            GST_ERROR_OBJECT(self, "Failed to map output buffer");
-            return GST_FLOW_ERROR;
-        }
-        GstVideoFormat pt_fmt = GST_VIDEO_INFO_FORMAT(&self->_input_info);
-        if (pt_fmt == GST_VIDEO_FORMAT_NV12 || pt_fmt == GST_VIDEO_FORMAT_I420) {
-            GstVideoMeta *vmeta = gst_buffer_get_video_meta(inbuf);
-            gint width  = GST_VIDEO_INFO_WIDTH(&self->_input_info);
-            gint height = GST_VIDEO_INFO_HEIGHT(&self->_input_info);
-            int n_planes = (pt_fmt == GST_VIDEO_FORMAT_NV12) ? 2 : 3;
-            for (int p = 0; p < n_planes; ++p) {
-                int src_stride = vmeta ? static_cast<int>(vmeta->stride[p])
-                                       : GST_VIDEO_INFO_PLANE_STRIDE(&self->_input_info, p);
-                size_t src_off = vmeta ? vmeta->offset[p]
-                                       : GST_VIDEO_INFO_PLANE_OFFSET(&self->_input_info, p);
-                int dst_stride = GST_VIDEO_INFO_PLANE_STRIDE(&self->_output_info, p);
-                size_t dst_off = GST_VIDEO_INFO_PLANE_OFFSET(&self->_output_info, p);
-                int plane_h = (p == 0) ? height : height / 2;
-                int row_bytes = (pt_fmt == GST_VIDEO_FORMAT_NV12)
-                    ? width
-                    : ((p == 0) ? width : (width + 1) / 2);
-                for (int row = 0; row < plane_h; ++row) {
-                    memcpy(pout.data + dst_off + row * dst_stride,
-                           pin.data  + src_off + row * src_stride,
-                           row_bytes);
-                }
-            }
-        } else {
-            memcpy(pout.data, pin.data, std::min(pin.size, pout.size));
-        }
-        gst_buffer_unmap(outbuf, &pout);
-        gst_buffer_unmap(inbuf, &pin);
-        gst_buffer_copy_into(outbuf, inbuf, GST_BUFFER_COPY_METADATA, 0, -1);
+    // Passthrough mode — kernel pool is null, transform() won't be called
+    if (!self->_kernel_pool)
         return GST_FLOW_OK;
-    }
 
-    GstMapInfo in_map  = GST_MAP_INFO_INIT;
-    GstMapInfo out_map = GST_MAP_INFO_INIT;
-    bool in_mapped  = false;
-
-    // Defer input mapping — DMA-buf NV12 can be passed to RGA via fd
-    if (!gst_buffer_map(outbuf, &out_map, GST_MAP_WRITE)) {
-        GST_ERROR_OBJECT(self, "Failed to map output buffer");
+    dxt::GstSrcFrame src(inbuf, self->_input_info);
+    dxt::GstDstFrame dst(outbuf, self->_output_info);
+    if (!src.ok() || !dst.ok()) {
+        GST_ERROR_OBJECT(self, "Failed to map buffers");
         return GST_FLOW_ERROR;
     }
 
-    GstFlowReturn ret = GST_FLOW_OK;
-
-    gint width  = GST_VIDEO_INFO_WIDTH(&self->_input_info);
-    gint height = GST_VIDEO_INFO_HEIGHT(&self->_input_info);
-    GstVideoFormat in_gst_fmt  = GST_VIDEO_INFO_FORMAT(&self->_input_info);
-    GstVideoFormat out_gst_fmt = GST_VIDEO_INFO_FORMAT(&self->_output_info);
-
-    {
-        dxt::FrameDesc src_desc;
-        dxt::FrameDesc dst_desc;
-
-        // Build src descriptor
-        if (in_gst_fmt == GST_VIDEO_FORMAT_NV12) {
-            // make_nv12_frame_desc: DMA-buf detection + vmeta > vinfo > heuristic
-            src_desc = dxt::make_nv12_frame_desc(inbuf, width, height, &self->_input_info);
-
-            // If the kernel doesn't support DMA-buf (e.g. libyuv fallback),
-            // force CPU mapping even when the buffer is a DMA-buf.
-            bool need_cpu_map = (src_desc.memory_type == dxt::MemoryType::CPU_VIRTUAL);
-            if (src_desc.memory_type == dxt::MemoryType::DMA_BUF &&
-                !self->_kernel->capabilities().supports_dma_buf) {
-                need_cpu_map = true;
-                src_desc.memory_type = dxt::MemoryType::CPU_VIRTUAL;
-                src_desc.dma_fd = -1;
-            }
-
-            if (need_cpu_map) {
-                if (!gst_buffer_map(inbuf, &in_map, GST_MAP_READ)) {
-                    gst_buffer_unmap(outbuf, &out_map);
-                    GST_ERROR_OBJECT(self, "Failed to map input buffer");
-                    return GST_FLOW_ERROR;
-                }
-                in_mapped = true;
-                src_desc.planes[0].data = in_map.data + src_desc.planes[0].offset;
-                src_desc.planes[1].data = in_map.data + src_desc.planes[1].offset;
-            }
-        } else if (in_gst_fmt == GST_VIDEO_FORMAT_I420) {
-            if (!gst_buffer_map(inbuf, &in_map, GST_MAP_READ)) {
-                gst_buffer_unmap(outbuf, &out_map);
-                GST_ERROR_OBJECT(self, "Failed to map input buffer");
-                return GST_FLOW_ERROR;
-            }
-            in_mapped = true;
-            src_desc = dxt::make_i420_frame_desc(self->_input_info);
-            for (int i = 0; i < src_desc.num_planes; ++i)
-                src_desc.planes[i].data = in_map.data + src_desc.planes[i].offset;
-        } else {
-            if (!gst_buffer_map(inbuf, &in_map, GST_MAP_READ)) {
-                gst_buffer_unmap(outbuf, &out_map);
-                GST_ERROR_OBJECT(self, "Failed to map input buffer");
-                return GST_FLOW_ERROR;
-            }
-            in_mapped = true;
-            dxt::VideoFormat fmt = gst_to_dxt_format(in_gst_fmt);
-            src_desc = dxt::make_packed_frame_desc(in_map.data, width, height, fmt);
-            src_desc.planes[0].stride = GST_VIDEO_INFO_PLANE_STRIDE(&self->_input_info, 0);
-        }
-
-        // Build dst descriptor
-        if (out_gst_fmt == GST_VIDEO_FORMAT_I420) {
-            dst_desc = dxt::make_i420_frame_desc(self->_output_info);
-            for (int i = 0; i < dst_desc.num_planes; ++i)
-                dst_desc.planes[i].data = out_map.data + dst_desc.planes[i].offset;
-        } else if (out_gst_fmt == GST_VIDEO_FORMAT_NV12) {
-            // NV12 output: 2 planes (Y + interleaved UV)
-            dst_desc.width       = width;
-            dst_desc.height      = height;
-            dst_desc.format      = dxt::VideoFormat::NV12;
-            dst_desc.memory_type = dxt::MemoryType::CPU_VIRTUAL;
-            dst_desc.num_planes  = 2;
-            dst_desc.dma_fd      = -1;
-            int y_stride = GST_VIDEO_INFO_PLANE_STRIDE(&self->_output_info, 0);
-            dst_desc.planes[0].data   = out_map.data + GST_VIDEO_INFO_PLANE_OFFSET(&self->_output_info, 0);
-            dst_desc.planes[0].stride = y_stride;
-            dst_desc.planes[0].height = height;
-            dst_desc.planes[1].data   = out_map.data + GST_VIDEO_INFO_PLANE_OFFSET(&self->_output_info, 1);
-            dst_desc.planes[1].stride = GST_VIDEO_INFO_PLANE_STRIDE(&self->_output_info, 1);
-            dst_desc.planes[1].height = height / 2;
-        } else {
-            dxt::VideoFormat fmt = gst_to_dxt_format(out_gst_fmt);
-            dst_desc = dxt::make_packed_frame_desc(out_map.data, width, height, fmt);
-            dst_desc.planes[0].stride = GST_VIDEO_INFO_PLANE_STRIDE(&self->_output_info, 0);
-        }
-
-        auto result = self->_kernel->transform(src_desc, dst_desc);
-        if (!result.success) {
-            GST_ERROR_OBJECT(self, "Kernel color conversion failed (%s -> %s)",
-                             gst_video_format_to_string(in_gst_fmt),
-                             gst_video_format_to_string(out_gst_fmt));
-            ret = GST_FLOW_ERROR;
-        } else {
-            gst_buffer_copy_into(outbuf, inbuf, GST_BUFFER_COPY_METADATA, 0, -1);
-        }
+    dxt::InputConfig input_cfg{src.desc().format, src.desc().width, src.desc().height};
+    auto result = self->_kernel_pool->transform(input_cfg, src.desc(), dst.desc());
+    if (!result.success) {
+        GST_ELEMENT_ERROR(self, STREAM, FAILED,
+            ("Kernel color conversion failed (%s -> %s)",
+             gst_video_format_to_string(GST_VIDEO_INFO_FORMAT(&self->_input_info)),
+             gst_video_format_to_string(GST_VIDEO_INFO_FORMAT(&self->_output_info))),
+            (NULL));
+        return GST_FLOW_ERROR;
     }
 
-    if (in_mapped)
-        gst_buffer_unmap(inbuf, &in_map);
-    gst_buffer_unmap(outbuf, &out_map);
+    gst_buffer_copy_into(outbuf, inbuf, static_cast<GstBufferCopyFlags>(GST_BUFFER_COPY_FLAGS | GST_BUFFER_COPY_TIMESTAMPS), 0, -1);
+    auto* src_meta = dx_get_frame_meta(inbuf);
+    if (src_meta) {
+        dx_create_frame_meta(outbuf);
+        auto* dst_meta = dx_get_frame_meta(outbuf);
+        dx_frame_meta_copy(inbuf, src_meta, outbuf, dst_meta);
+        dst_meta->_format = gst_video_format_to_string(GST_VIDEO_INFO_FORMAT(&self->_output_info));
+    }
+    return GST_FLOW_OK;
+}
+
+static gboolean gst_dxconvert_propose_allocation(GstBaseTransform *trans,
+                                                 GstQuery *decide_query,
+                                                 GstQuery *query) {
+    GstBaseTransformClass *base_class =
+        GST_BASE_TRANSFORM_CLASS(gst_dxconvert_parent_class);
+    gboolean ret = TRUE;
+    if (base_class && base_class->propose_allocation)
+        ret = base_class->propose_allocation(trans, decide_query, query);
+    gst_query_add_allocation_meta(query, DX_FRAME_META_API_TYPE, NULL);
     return ret;
+}
+
+static gboolean gst_dxconvert_query(GstBaseTransform *trans,
+                                    GstPadDirection direction,
+                                    GstQuery *query) {
+    if (direction == GST_PAD_SRC && GST_QUERY_TYPE(query) == GST_QUERY_LATENCY) {
+        if (!GST_BASE_TRANSFORM_CLASS(gst_dxconvert_parent_class)->query(trans, direction, query))
+            return FALSE;
+        gboolean live;
+        GstClockTime min_lat, max_lat;
+        gst_query_parse_latency(query, &live, &min_lat, &max_lat);
+        const GstClockTime self_lat = 1 * GST_USECOND;
+        min_lat += self_lat;
+        if (max_lat != GST_CLOCK_TIME_NONE)
+            max_lat += self_lat;
+        gst_query_set_latency(query, live, min_lat, max_lat);
+        return TRUE;
+    }
+    return GST_BASE_TRANSFORM_CLASS(gst_dxconvert_parent_class)->query(trans, direction, query);
 }

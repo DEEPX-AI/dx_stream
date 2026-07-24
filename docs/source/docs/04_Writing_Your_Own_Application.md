@@ -1,33 +1,40 @@
-This chapter  describes how to integrate a custom AI model and implement user-defined logic within the **DX-STREAM** pipeline. It assumes that your model has already been **Differences in Post-Processing Logic Based on Inference Mode**  
 
-**Primary Mode**  
+This chapter describes how to integrate a custom AI model and implement user-defined logic within the **DX-STREAM** pipeline. It assumes that your model has already been compiled to `.dxnn` format using **DX-COM**. For details on model compilation, refer to **DX-COM User Manual**.
 
-- Inference is performed on the entire frame.  
-- Postprocessing is responsible for creating new objects (`DXObjectMeta`) based on the model's output.  
-- Use `dx_acquire_obj_meta_from_pool()` to create new objects and `dx_add_obj_meta_to_frame()` to add them to the frame.
-- These new objects are then added to the associated `DXFrameMeta`.  
+This guide focuses on how to configure and integrate custom logic into the **DX-STREAM** pipeline using modular elements such as **DxPreprocess**, **DxInfer**, and **DxPostprocess**.
 
-**Secondary Mode**  
+## API Migration Notes (v3.1.0)
 
-- Inference is performed per object, based on existing `DXObjectMeta` in buffer.  
-- Postprocessing is applied to modify or enrich existing object metadata.  
-- The `DxObjectMeta` structure contains the input object information, which is passed to the postprocess function for update or enhancement.  
+The following changes were introduced in DX-STREAM v3.1.0 to improve metadata handling and eliminate circular references:
 
-**API Migration Notes:**  
+**Metadata API Changes:**
 
-- The `frame_meta->_buf` member has been removed to eliminate circular references.
-- All functions now receive `GstBuffer *buf` as the first parameter for direct buffer access.
-- Object creation has changed from `dx_create_object_meta(buf)` to `dx_acquire_obj_meta_from_pool()`.
-- Use `dx_add_obj_meta_to_frame()` to add objects to frame metadata.
-- Custom libraries must be updated to use the new function signatures.to `.dxnn` format using **DX-COM**. For details on model compilation, refer to **DX-COM User Manual**.  
+- The `frame_meta->_buf` member has been removed to eliminate circular references
+- All custom library functions now receive `GstBuffer *buf` as the first parameter for direct buffer access
+- Object creation has changed from `dx_create_object_meta(buf)` to `dx_acquire_obj_meta_from_pool()`
+- Use `dx_add_obj_meta_to_frame()` to add objects to frame metadata
+- Custom libraries must be updated to use the new function signatures
 
-This guide focuses on how to configure and integrate custom logic into the **DX-STREAM** pipeline using modular elements such as **DxPreprocess, DxInfer,** and **DxPostprocess**.
+**Inference Mode Differences:**
+
+*Primary Mode*
+
+- Inference is performed on the entire frame
+- Postprocessing is responsible for creating new objects (`DXObjectMeta`) based on the model's output
+- Use `dx_acquire_obj_meta_from_pool()` to create new objects and `dx_add_obj_meta_to_frame()` to add them to the frame
+- These new objects are then added to the associated `DXFrameMeta`
+
+*Secondary Mode*
+
+- Inference is performed per object, based on existing `DXObjectMeta` in buffer
+- Postprocessing is applied to modify or enrich existing object metadata
+- The `DXObjectMeta` structure contains the input object information, which is passed to the postprocess function for update or enhancement
 
 ## DX-STREAM Metadata System Overview
 
 DX-STREAM provides a comprehensive metadata framework for handling inference results and custom data throughout the pipeline. The system is designed with a hierarchical structure that enables efficient data organization and access.
 
-### **Metadata Architecture**
+### Metadata Architecture
 
 DX-STREAM uses a hierarchical metadata structure that follows this organization:
 
@@ -38,7 +45,7 @@ DX-STREAM uses a hierarchical metadata structure that follows this organization:
 - **DXObjectMeta**: Object-level metadata (detection results, features)
 - **DXUserMeta**: User-defined custom metadata attached to frames or objects
 
-### **Core Metadata Types**
+### Core Metadata Types
 
 **DXFrameMeta Structure:**
 ```cpp
@@ -118,7 +125,7 @@ struct _DXObjectMeta {
 - `DXObjectMeta._seg_data`, `_seg_width`, and `_seg_height` store an ROI-local binary mask aligned to `_box`.
 - Legacy `SegClsMap` is no longer used for object metadata.
 
-### **Metadata API Functions**
+### Metadata API Functions
 
 **Frame Metadata Operations:**
 ```cpp
@@ -162,43 +169,213 @@ std::vector<DXUserMeta*>* dx_get_frame_user_metas(DXFrameMeta *frame_meta);
 std::vector<DXUserMeta*>* dx_get_object_user_metas(DXObjectMeta *obj_meta);
 ```
 
-## Custom Library for Model Inference  
+## Custom Library for Model Inference
 
 ![](./../resources/04_01_writing_your_own_application.png)
 
-The **DX-STREAM** inference pipeline is composed of the following elements.  
+The **DX-STREAM** inference pipeline is composed of the following elements:
 
-**DxPreprocess**  
+**DxPreprocess**
 
-- Allocates `DXFrameMeta` based on the `GstBuffer` received from upstream.  
-- Performs the preprocessing algorithm as defined by elements properties.  
-- For custom preprocessing algorithms, a **Custom Pre-Process Library** can be built and integrated.  
-- See the **dxpreprocess** section in the Elements documentation for details.  
+- Allocates `DXFrameMeta` based on the `GstBuffer` received from upstream
+- Performs the preprocessing algorithm as defined by element properties
+- For custom preprocessing algorithms, a **Custom Pre-Process Library** can be built and integrated
+- See the **dxpreprocess** section in the Elements documentation for details
 
-**DxPostprocess**  
+**DxInfer**
 
-- Receives the input tensor created by `dxpreprocess`.  
-- Performs inference using the `dxinfer` element (**DX-RT**).  
-- Access the output tensor from `dxinfer` and executes the custom postprocessing algorithm defined in a custom library.  
-- A custom postprocessing implementation is required for each model.  
-- Example libraries for common vision tasks can be found in `dx_stream/custom_library/postprocess_library`.  
+- Performs inference using **DX-RT** backend
+- Receives input tensors from `dxpreprocess` and generates output tensors
+- Supports the `dxrt` inference backend via the `backend` property
 
-### **DX-STREAM Metadata Architecture**
+**DxPostprocess**
 
-DX-STREAM uses a hierarchical metadata structure that follows this organization:
+- Receives the output tensor from `dxinfer`
+- Executes the custom postprocessing algorithm defined in a custom library
+- A custom postprocessing implementation is required for each model
+- Example libraries for common vision tasks can be found in `dx_stream/custom_library/postprocess_library`
 
-**Buffer → Frame → Object → User Meta**
+### Writing Custom Pre-Process Function
 
-- **GstBuffer**: Contains video frame data and top-level frame metadata
-- **DXFrameMeta**: Frame-level metadata (dimensions, stream info, object list)
-- **DXObjectMeta**: Object-level metadata (detection results, features)
-- **DXUserMeta**: User-defined custom metadata attached to frames or objects
+For models requiring additional preprocessing beyond the default functionality, you can implement a **Custom Pre-Process Function** using a user-defined library.
 
-#### **Using User Meta System**
+**Implementation Example**
+
+```cpp
+extern "C" bool CustomPreprocessFunc(GstBuffer *buf,
+                                   DXFrameMeta *frame_meta,
+                                   DXObjectMeta *object_meta,
+                                   void* input_tensor) 
+{
+    // Preprocessing logic
+    return true;
+}
+```
+
+**Function Parameters:**
+
+**GstBuffer**
+
+- Direct access to the GStreamer buffer containing the frame data
+- Replaces the previous indirect access through `frame_meta->_buf`
+
+**DXFrameMeta**
+
+- Contains frame-level metadata such as dimensions, format, and stream information
+- No longer contains the `_buf` member - buffer access is provided through the first parameter
+
+**DXObjectMeta**
+
+- In **Secondary Mode**, metadata for each object is passed to the function
+- In **Primary Mode**, no object metadata is available (`nullptr`)
+
+**input_tensor**
+
+- The address of the input tensor generated through user-defined preprocessing
+- It is pre-allocated based on the input tensor size specified by the `dxpreprocess` property and passed to the user
+- Users **must not** free or reallocate this memory
+
+**Library Integration**
+
+To build the custom preprocess library, use a `meson.build` file and compile as follows:
+
+```meson
+gst_dep = dependency('gstreamer-1.0', version : '>=1.16.3',
+    required : true, fallback : ['gstreamer', 'gst_dep'])
+
+dx_stream_dep = dependency('gstdxstream')
+
+libcustompreproc = shared_library('custompreproc', 
+    'preprocess.cpp',
+    dependencies: [gst_dep, dx_stream_dep],
+    install: true,
+    install_dir: plugins_install_dir + '/lib'
+)
+```
+
+Specify the library path and function name in the JSON configuration file for `dxpreprocess` as follows:
+
+```json
+{
+    "library_file_path": "./install/gstreamer-1.0/lib/libcustompreproc.so",
+    "function_name": "CustomPreprocessFunc"
+}
+```
+
+### Writing Custom Post-Process Function
+
+Postprocessing is essential for interpreting and converting the model's output tensor into meaningful results. To do this, a custom post-process library **must** be implemented to match your model's architecture and output format.
+
+**Output Tensor Parsing**
+
+To check the structure of the output tensor, use the following command. This prints the tensor shape for each output:  
+
+```
+$ parse_model -m yolov7_640x640.dxnn
+
+Example output:
+
+outputs:
+  onnx::Reshape_491, FLOAT, [1, 80, 80, 256]
+  onnx::Reshape_525, FLOAT, [1, 40, 40, 256]
+  onnx::Reshape_559, FLOAT, [1, 20, 20, 256]
+```
+
+The example shows three blobs with NHWC dimensions. Use this information to implement the custom postprocessing logic.
+
+**Implementation Example**  
+
+```cpp
+extern "C" void YOLOV7(GstBuffer *buf,
+                       std::vector<dxs::DXTensor> network_output,
+                       DXFrameMeta *frame_meta,
+                       DXObjectMeta *object_meta)
+{
+    // Access tensor data using struct members
+    float *output_data = (float *)network_output[0]._data;
+    auto shape = network_output[0]._shape;
+    int batch = shape[0];
+    int height = shape[1];
+    int width = shape[2];
+    int channels = shape[3];
+    
+    // Convert output tensor to bounding box information
+    
+    // Example of creating new object metadata:
+    DXObjectMeta *obj_meta = dx_acquire_obj_meta_from_pool();
+    // ... populate object metadata ...
+    
+    // Add object to frame
+    dx_add_obj_meta_to_frame(frame_meta, obj_meta);
+}
+```
+
+**Function Parameters:**
+
+- **GstBuffer \*buf**: Direct access to the GStreamer buffer containing frame data  
+- **std::vector\<dxs::DXTensor\> network_output**: Output tensors from the inference engine (defined in `dxcommon.hpp`)  
+- **DXFrameMeta \*frame_meta**: Frame-level metadata (dimensions, format, etc.)  
+- **DXObjectMeta \*object_meta**: Object-level metadata (in Secondary Mode) or nullptr (in Primary Mode)  
+
+**Tensor Access Members:**  
+
+- `network_output[i]._data`: Get pointer to tensor data (void*)  
+- `network_output[i]._shape`: Get tensor shape as std::vector<int64_t>  
+- `network_output[i]._type`: Get tensor data type (dxs::DataType)  
+- `network_output[i]._elemSize`: Get size of each element
+- `network_output[i]._name`: Get tensor name
+
+**Library Integration**
+
+Build the custom library using a `meson.build` script:
+
+```
+project('postprocess_yolov5s', 'cpp', version : '1.0.0', license : 'LGPL', default_options: ['cpp_std=c++14'])
+
+gst_dep = dependency('gstreamer-1.0', version : '>=1.16.3',
+    required : true, fallback : ['gstreamer', 'gst_dep'])
+
+dx_stream_dep = dependency('gstdxstream')
+opencv_dep = dependency('opencv4', required: true)
+
+yolo_postprocess_lib = shared_library('postprocess_yolo',
+    'postprocess.cpp',
+    dependencies: [opencv_dep, gst_dep, dx_stream_dep],
+    install: true,
+    install_dir: get_option('datadir') / 'gstdxstream' / 'lib'
+)
+```
+
+Specify the library path and function name in the JSON configuration file for `dxpostprocess` as follows.  
+
+```
+{
+    "library_file_path": "./install/gstreamer-1.0/lib/libyolo_postprocess.so",
+    "function_name": "yolo_post_process"
+}
+```
+
+**Differences in Post-Processing Logic Based on Inference Mode**
+
+*Primary Mode*
+
+- Inference is performed on the entire frame
+- Postprocessing is responsible for creating new objects (`DXObjectMeta`) based on the model's output
+- Use `dx_acquire_obj_meta_from_pool()` to create new objects and `dx_add_obj_meta_to_frame()` to add them to the frame
+- These new objects are then added to the associated `DXFrameMeta`
+
+*Secondary Mode*
+
+- Inference is performed per object, based on existing `DXObjectMeta` in buffer
+- Postprocessing is applied to modify or enrich existing object metadata
+- The `DXObjectMeta` structure contains the input object information, which is passed to the postprocess function for update or enhancement
+
+### Using User Metadata in Custom Libraries
 
 The DX-STREAM framework provides a simplified user metadata system for storing custom data. The system supports two main categories of user metadata:
 
 **User Meta Types:**
+
 ```cpp
 enum class DXUserMetaType {
     DX_USER_META_FRAME = 0x1000,   // Frame-level user metadata
@@ -207,6 +384,7 @@ enum class DXUserMetaType {
 ```
 
 **DXUserMeta Structure:**
+
 ```cpp
 struct _DXUserMeta {
     gpointer user_meta_data;        // Pointer to user data
@@ -219,6 +397,7 @@ struct _DXUserMeta {
 ```
 
 **Adding Custom Metadata to Frame:**
+
 ```cpp
 // Define custom data structure
 typedef struct {
@@ -264,56 +443,8 @@ dx_user_meta_set_data(user_meta,
 dx_add_user_meta_to_frame(frame_meta, user_meta);
 ```
 
-**Adding Custom Metadata to Object:**
-```cpp
-// Define object-specific data
-typedef struct {
-    gint feature_count;
-    gfloat *features;
-    gchar *feature_name;
-} MyObjectFeature;
-
-// Copy function for object data
-static gpointer my_object_feature_copy(gconstpointer src) {
-    const MyObjectFeature *src_data = (const MyObjectFeature *)src;
-    MyObjectFeature *dst_data = g_new0(MyObjectFeature, 1);
-    dst_data->feature_count = src_data->feature_count;
-    dst_data->features = g_new(gfloat, src_data->feature_count);
-    memcpy(dst_data->features, src_data->features, 
-           src_data->feature_count * sizeof(gfloat));
-    dst_data->feature_name = g_strdup(src_data->feature_name);
-    return dst_data;
-}
-
-// Cleanup function for object data
-static void my_object_feature_free(gpointer data) {
-    MyObjectFeature *obj_data = (MyObjectFeature *)data;
-    g_free(obj_data->features);
-    g_free(obj_data->feature_name);
-    g_free(obj_data);
-}
-
-// Create user meta for object
-DXUserMeta *obj_user_meta = dx_acquire_user_meta_from_pool();
-
-MyObjectFeature *feature_data = g_new0(MyObjectFeature, 1);
-feature_data->feature_count = 128;
-feature_data->features = g_new(gfloat, 128);
-// ... populate features array ...
-feature_data->feature_name = g_strdup("resnet_features");
-
-dx_user_meta_set_data(obj_user_meta,
-                     feature_data,
-                     sizeof(MyObjectFeature), 
-                     DXUserMetaType::DX_USER_META_OBJECT,
-                     my_object_feature_free,      // Required cleanup function
-                     my_object_feature_copy);     // Required copy function
-
-// Add to object
-dx_add_user_meta_to_obj(obj_meta, obj_user_meta);
-```
-
 **Retrieving User Metadata:**
+
 ```cpp
 // Get all frame user metadata
 auto frame_metas = dx_get_frame_user_metas(frame_meta);
@@ -325,212 +456,68 @@ for (auto user_meta : *frame_metas) {
                 data->custom_id, data->custom_name, data->custom_score);
     }
 }
+```
 
-// Get all object user metadata  
-auto obj_metas = dx_get_object_user_metas(obj_meta);
-for (auto user_meta : *obj_metas) {
-    // Check if this is object-type metadata
-    if (user_meta->user_meta_type == DXUserMetaType::DX_USER_META_OBJECT) {
-        MyObjectFeature *feature = (MyObjectFeature *)user_meta->user_meta_data;
-        g_print("Object feature: %s with %d dimensions\n", 
-                feature->feature_name, feature->feature_count);
+**Important Safety Requirements:**
+
+- **Copy Function**: Always provide a proper copy function that performs deep copy of your data
+- **Release Function**: Always provide a cleanup function that properly frees all allocated memory
+- **Memory Management**: The UserMeta system will automatically handle lifecycle management using your provided functions
+- **Type Checking**: Always verify the metadata type before casting to your custom structure
+
+### Error Reporting from Custom Libraries
+
+Custom pre-process, post-process, and message-convert libraries are loaded via `dlopen` and called from inside the host element (`dxpreprocess` / `dxpostprocess` / `dxmsgconv`). The host wraps every call in `try { ... } catch (std::exception&) catch (...)` and converts any thrown exception into `GST_ELEMENT_ERROR(LIBRARY, FAILED, ...)`, which is delivered on the GStreamer bus so that the application can shut the pipeline down cleanly.
+
+To preserve this contract, custom libraries **must** follow these rules:
+
+- **Do not use `g_error()`, `g_assert()`, `abort()`, or `exit()`.** `g_error()` calls `G_BREAKPOINT() → abort()`, which terminates the process via `SIGABRT`. C++ stack unwinding is skipped, so the host `try/catch` cannot intercept it; bus error messages are never delivered; and `dlclose()`, push-thread join, and other resource cleanup never run. The result is a core dump instead of a clean EOS / NULL-state transition.
+- **Per-frame recoverable errors** (missing input tensor, shape mismatch on a single frame, optional metadata absent, etc.) → use `g_warning()` and return early (`false` for pre-/post-process, `nullptr` for message convert). The host element skips that frame and the pipeline continues.
+- **Permanent errors** (config does not match the loaded model, required resource missing, invariant violated) → `throw std::runtime_error("descriptive message")`. The host element catches it, reports `GST_ELEMENT_ERROR`, and the application gets a normal bus error from which it can transition to `NULL`.
+
+Example (post-process library):
+
+```cpp
+extern "C" void PostProcess(GstBuffer *buf,
+                            std::vector<dxs::DXTensor> network_output,
+                            DXFrameMeta *frame_meta,
+                            DXObjectMeta *object_meta) {
+    // Recoverable: skip this frame, keep pipeline running.
+    if (network_output.empty()) {
+        g_warning("PostProcess: no output tensors for this frame, skipping");
+        return;
     }
+
+    // Permanent: model/config mismatch — let the host element report it.
+    if (network_output[0]._shape.size() != 3) {
+        throw std::runtime_error("PostProcess: unexpected tensor rank, "
+                                 "check that model matches the configured library");
+    }
+
+    // ... normal processing ...
 }
 ```
 
-**Important Safety Requirements:**  
-
-- **Copy Function**: Always provide a proper copy function that performs deep copy of your data  
-- **Release Function**: Always provide a cleanup function that properly frees all allocated memory  
-- **Memory Management**: The UserMeta system will automatically handle lifecycle management using your provided functions  
-- **Type Checking**: Always verify the metadata type before casting to your custom structure  
-
-### **Writing Custom Pre-Process Function**
-For models requiring additional preprocessing beyond the default functionality, you can implement a **Custom Pre-Process Function** using a user-defined library.  
-
-#### **Implementation Example**  
-```cpp
-extern "C" bool CustomPreprocessFunc(GstBuffer *buf,
-                                   DXFrameMeta *frame_meta,
-                                   DXObjectMeta *object_meta,
-                                   void* input_tensor) 
-{
-    // Preprocessing logic
-    return true;
-}
-```
-
-**GstBuffer**  
-
-- Direct access to the GStreamer buffer containing the frame data.  
-- Replaces the previous indirect access through `frame_meta->_buf`.  
-
-**DXFrameMeta**  
-
-- Contains frame-level metadata such as dimensions, format, and stream information.  
-- No longer contains the `_buf` member - buffer access is provided through the first parameter.  
-
-**DXObjectMeta**  
-
-- In **Secondary Mode**, metadata for each object is passed to the function.  
-- In **Primary Mode**, no object metadata is available. (`nullptr`)  
-
-**input_tensor**
-
-- The address of the input tensor generated through user-defined preprocessing.
-- It is pre-allocated based on the input tensor size specified by the `dxpreprocess` property and passed to the user. Therefore, users **must not** free or reallocate this memory.
-
-#### **Library Integration** 
-To build the custom object library, use a `meson.build` file and compile as follows.
-
-```
-gst_dep = dependency('gstreamer-1.0', version : '>=1.16.3',
-    required : true, fallback : ['gstreamer', 'gst_dep'])
-
-dx_stream_dep = dependency('gstdxstream')
-
-libcustompreproc = shared_library('custompreproc', 
-    'preprocess.cpp',
-    dependencies: [gst_dep, dx_stream_dep],
-    install: true,
-    install_dir: plugins_install_dir + '/lib'
-)
-```
-
-Specify the library path and function name in the JSON configuration file for `dxpreprocess` as follows.
-```
-{
-    "library_file_path": "./install/gstreamer-1.0/lib/libcustompreproc.so",
-    "function_name": "CustomPreprocessFunc"
-}
-```
-
-### **Writing Custom Post-Process Function**  
-Postprocessing is essential for interpreting and converting the model’s output tensor into meaningful results. To do this, a custom post-process library **must** be implemented to match your model’s architecture and output format. 
-
-#### **Output Tensor Parsing**  
-To check the structure of the output tensor, use the following command. This prints the tensor shape for each output.  
-
-```
-$ parse_model -m YOLOv7.dxnn
-
-Example output:
-
-outputs:
-  onnx::Reshape_491, FLOAT, [1, 80, 80, 256]
-  onnx::Reshape_525, FLOAT, [1, 40, 40, 256]
-  onnx::Reshape_559, FLOAT, [1, 20, 20, 256]
-```
-
-The example shows three blobs with NHWC dimensions. Use this information to implement the custom postprocessing logic.
-
-#### **Implementation Example**  
-
-```cpp
-extern "C" void YOLOV7(GstBuffer *buf,
-                       std::vector<dxs::DXTensor> network_output,
-                       DXFrameMeta *frame_meta,
-                       DXObjectMeta *object_meta)
-{
-    // Access tensor data using struct members
-    float *output_data = (float *)network_output[0]._data;
-    auto shape = network_output[0]._shape;
-    int batch = shape[0];
-    int height = shape[1];
-    int width = shape[2];
-    int channels = shape[3];
-    
-    // Convert output tensor to bounding box information
-    
-    // Example of creating new object metadata:
-    DXObjectMeta *obj_meta = dx_acquire_obj_meta_from_pool();
-    // ... populate object metadata ...
-    
-    // Add object to frame
-    dx_add_obj_meta_to_frame(frame_meta, obj_meta);
-}
-```
-
-**Function Parameters:**
-
-- **GstBuffer \*buf**: Direct access to the GStreamer buffer containing frame data  
-- **std::vector\<dxs::DXTensor\> network_output**: Output tensors from the inference engine (defined in `dxcommon.hpp`)  
-- **DXFrameMeta \*frame_meta**: Frame-level metadata (dimensions, format, etc.)  
-- **DXObjectMeta \*object_meta**: Object-level metadata (in Secondary Mode) or nullptr (in Primary Mode)  
-
-**Tensor Access Members:**  
-
-- `network_output[i]._data`: Get pointer to tensor data (void*)  
-- `network_output[i]._shape`: Get tensor shape as std::vector<int64_t>  
-- `network_output[i]._type`: Get tensor data type (dxs::DataType)  
-- `network_output[i]._elemSize`: Get size of each element  
-- `network_output[i]._name`: Get tensor name
-
-#### **Library Integration**  
-Build the custom library using a `meson.build` script.
-
-```
-project('postprocess_yolov5s', 'cpp', version : '1.0.0', license : 'LGPL', default_options: ['cpp_std=c++14'])
-
-gst_dep = dependency('gstreamer-1.0', version : '>=1.16.3',
-    required : true, fallback : ['gstreamer', 'gst_dep'])
-
-dx_stream_dep = dependency('gstdxstream')
-opencv_dep = dependency('opencv4', required: true)
-
-yolo_postprocess_lib = shared_library('postprocess_yolo',
-    'postprocess.cpp',
-    dependencies: [opencv_dep, gst_dep, dx_stream_dep],
-    install: true,
-    install_dir: get_option('datadir') / 'gstdxstream' / 'lib'
-)
-```
-
-Specify the library path and function name in the JSON configuration file for `dxpostprocess` as follows.  
-
-```
-{
-    "library_file_path": "./install/gstreamer-1.0/lib/libyolo_postprocess.so",
-    "function_name": "yolo_post_process"
-}
-```
-
-### **Differences in Post-Processing Logic Based on Inference Mode**  
-
-**Primary Mode**  
-
-- Inference is performed on the entire frame.  
-- Postprocessing is responsible for creating new objects (`DXObjectMeta`) based on the model’s output.  
-- These new objects are then added to the associated `DXFrameMeta`.  
-
-**Secondary Mode**  
-
-- Inference is performed per object, based on existing metadata.  
-- Postprocessing is applied to modify or enrich existing object metadata.  
-- The `DxObjectMeta` structure contains the input object information, which is passed to the postprocess function for update or enhancement.  
-
----
-
-## Custom Message Convert Library  
+## Custom Message Convert Library
 
 Custom message conversion in **DX-STREAM** requires implementing a user-defined library that converts inference metadata into the desired message format (typically JSON).
 
 The library converts comprehensive object detection metadata including:
 
 - **Object Detection**: label_id, track_id, confidence, name, bounding box
-- **Body Features**: extracted body feature vectors for re-identification  
+- **Body Features**: extracted body feature vectors for re-identification
 - **Segmentation**: pixel-level classification maps with height, width, and data
 - **Pose Estimation**: 17 keypoints with coordinates (kx, ky) and confidence scores (ks)
 - **Face Detection**: landmarks, face bounding box, confidence, and face feature vectors
 
-#### **Functions to Implement**  
+### Functions to Implement  
 Your custom library **must** define the following three functions.  
 
-- `dxmsg_create_context`: Initializes the message conversion context  
-- `dxmsg_delete_context`: Deletes and releases all resources associated with the context  
-- `dxmsg_convert_payload`: Converts the metadata into the target message format  
+- `dxmsg_create_context`: Initializes the message conversion context
+- `dxmsg_delete_context`: Deletes and releases all resources associated with the context
+- `dxmsg_convert_payload`: Converts the metadata into the target message format
 
-#### **Implementation Example**  
+### Implementation Example  
 
 The custom library implementation consists of the main interface functions and helper functions for JSON conversion:
 
@@ -584,9 +571,20 @@ gchar *dxpayload_convert_to_json(DxMsgContext *context, GstDxMsgMetaInfo *meta_i
 ```
 
 The `dxpayload_convert_to_json` function processes the metadata and generates the final JSON string using json-glib library functions. The returned JSON data is automatically freed by the DxMsgConv element after transmission.
+
+When `include-frame` is enabled on DxMsgConv, `meta_info->_frame_base64` contains the base64-encoded JPEG frame data. Custom libraries can include this in payloads:
+
+```cpp
+if (meta_info->_frame_base64) {
+    json_object_set_string_member(root, "frameData", meta_info->_frame_base64);
+}
 ```
 
-#### **JSON Output Example**
+!!! note "NOTE"
+
+    Even when `include-frame` is set to `true`, `_frame_base64` may be `nullptr` if frame encoding fails (e.g., unsupported format, transform error). Always check for `nullptr` before using `_frame_base64`.
+
+### JSON Output Example
 
 The example `dxpayload_convert_to_json` function implementation generates structured JSON messages by processing metadata from `DXFrameMeta` and `DXObjectMeta` structures. The function uses json-glib library to construct the JSON output:
 
@@ -687,7 +685,7 @@ for (auto obj_meta : frame_meta->_object_meta_list) {
 
 ```
 
-#### **Library Integration**  
+### Library Integration
 
 Build the custom message convert library with proper dependencies:
 
@@ -710,9 +708,7 @@ custom_msgconv_lib = shared_library('dx_msgconvl',
 **Required Dependencies:**
 
 - **gstreamer-1.0**: Core GStreamer framework
-
 - **dx_stream**: DX-STREAM metadata and type definitions
-
 - **json-glib-1.0**: JSON processing library for structured output generation
 
 **Usage in Pipeline:**
@@ -720,7 +716,5 @@ custom_msgconv_lib = shared_library('dx_msgconvl',
 dxmsgconv library-file-path=/opt/dx_stream/msgconv/lib/libdx_msgconvl.so
 ```
 
-!!! note "NOTE" 
+!!! note "NOTE"
     The `config-file-path` property is no longer required as configuration parsing has been removed from the library implementation.
-
----

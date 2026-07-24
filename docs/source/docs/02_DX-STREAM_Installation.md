@@ -104,6 +104,9 @@ $ ./build.sh --clean
 # Build for DEEPX V3 Standalone Device
 $ ./build.sh --v3
 
+# Combine flags
+$ ./build.sh --v3 --type=debug
+
 # Uninstall DX-STREAM
 $ ./build.sh --uninstall
 
@@ -142,7 +145,7 @@ Step C. **Check recognition**: Check if the plugin is correctly recognized by GS
    $ gst-inspect-1.0 dxstream
    ```
 
-!!! success "Standard Installation (`/usr/local` or `/usr`)"
+!!! note "Standard Installation (`/usr/local` or `/usr`)"
 
     Environment variables are added to `~/.bashrc`, but the system can often find the plugin automatically:  
     
@@ -155,7 +158,7 @@ Step C. **Check recognition**: Check if the plugin is correctly recognized by GS
     $ gst-inspect-1.0 dxstream
     ```
 
-!!! info "Custom Prefix Installation"
+!!! note "Custom Prefix Installation"
 
     **Using custom prefix (e.g., `./install`, `/opt/dx-stream`):**  
     
@@ -190,7 +193,7 @@ Each variable serves a different purpose during build-time and runtime:
 | `LD_LIBRARY_PATH` | Dynamic linker finds `.so` files | **Runtime** (when loading shared libraries) |
 | `PATH` | Executable lookup | **Runtime** (when running DX-Stream apps) |
 
-!!! tip "Best Practice"
+!!! note "Best Practice"
     
     - For **production deployments**: Use standard prefix (`/usr/local`)
     - For **development**: Use custom prefix (e.g., `./install`) to avoid requiring sudo
@@ -260,7 +263,7 @@ The uninstall process automatically removes:
 - pkg-config file (`gstdxstream.pc`)
 - **Environment variables from `~/.bashrc`** (automatic cleanup)
 
-!!! success "Automatic Cleanup"
+!!! note "Automatic Cleanup"
 
     The uninstall script **automatically removes** DX-STREAM environment variables from your `~/.bashrc`. After uninstalling:
     
@@ -302,23 +305,23 @@ $ ./run_demo.sh
 
 When the script is executed, you'll be prompted to select a demo from the following options.
 ```
-0: Object Detection (YOLOv5s)
+0: Object Detection (YOLOv26n)
 1: Object Detection (YOLOv5s with PPU)
-2: Face Detection (YOLOV5S_Face)
+2: Face Detection (YOLOv5s_Face)
 3: Face Detection (SCRFD500M with PPU)
-4: Pose Estimation (YOLOV5Pose)
+4: Pose Estimation (YOLOv26n_Pose)
 5: Pose Estimation (YOLOV5Pose with PPU)
-6: Multi-Object Tracking
-7: Semantic Segmentation
+6: Instance Segmentation (YOLOv26n_Seg)
+7: Multi-Object Tracking
 8: Multi-Channel Object Detection
-9: Multi-Channel RTSP
+9: Multi-Channel Object Detection (RTSP)
 -: secondary mode
 which AI demo do you want to run:(timeout:10s, default:0)
 ```
 
 Enter the number corresponding to the desired demo to run it.  
 
-If **no** input is provided within 10 seconds, the default option (`0: Object Detection (YOLOv5s)`) will be executed automatically.
+If **no** input is provided within 10 seconds, the default option (`0: Object Detection (YOLOv26n)`) will be executed automatically.
 
 !!! note "NOTE" 
 

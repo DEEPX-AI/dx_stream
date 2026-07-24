@@ -58,7 +58,13 @@ This allows implementation of customized data handling tailored to specific AI m
 If the downstream sink element has `sync=true`, input buffers may be dropped based on their timestamps. This helps maintain real-time performance and avoids frame backlog under system load.
 
 **H/W Acceleration**  
-If the Rockchip RGA (Raster Graphic Accelerator) module is available in the system environment, the input preprocessing step is offloaded from the CPU to the RGA, enabling hardware-accelerated processing. As a result, CPU usage is reduced and processing becomes more efficient.
+DxPreprocess uses the `VideoTransformFactory` to automatically select the best available hardware backend for color conversion and resizing. The selection priority is:
+
+1. **V3 DSP** – DEEPX V3 device DSP (when built with `--v3`)
+2. **RGA** – Rockchip Raster Graphic Accelerator (auto-detected)
+3. **libyuv** – Software fallback (always available)
+
+The backend is selected automatically at runtime — no configuration required.
 
 ### **Hierarchy**
 
@@ -71,7 +77,30 @@ GObject
                          +----GstDxPreprocess
 ```
 
+### **Pad Templates**
 
+**Sink (input)**
+
+| **Property** | **Value** |
+|---|---|
+| Format | `video/x-raw, format=(string){ RGB, I420, NV12 }; application/x-dxvideoraw` |
+
+**Src (output)**
+
+| **Property** | **Value** |
+|---|---|
+| Format | `video/x-raw, format=(string){ RGB, I420, NV12 }; application/x-dxvideoraw` |
+
+!!! note "Caps `format` vs `color-format` property"
+
+    The sink/src caps `format` specifies the **input video color space** (the raw frame layout that `DxPreprocess` accepts). The `color-format` property below specifies the **output tensor color space** (RGB or BGR) produced for `DxInfer`. They are independent — for example, an NV12 input video can produce a BGR output tensor.
+
+### **Domain Mode Behavior**
+
+`dxpreprocess` is a dual-mode element (see [Multi-Stream Domain](./03_00_Multi_Stream_Domain.md)).
+
+- **Normal mode** (sink caps = `video/x-raw`): frame dimensions are read from caps. `stream_id` is treated as `0`.
+- **Domain mode** (sink caps = `application/x-dxvideoraw`): frame dimensions are read from `DXFrameMeta._width/_height`, and `stream_id` from `DXFrameMeta._stream_id`. The element also requests `DXFrameMeta` as a buffer meta during `ALLOCATION` so that upstream pools allocate buffers with the meta attached.
 ### **Properties**  
 This table provides a complete reference to the properties of the **DxPreprocess** element.  
 
@@ -110,7 +139,7 @@ This table provides a complete reference to the properties of the **DxPreprocess
 
 !!! note "NOTE" 
 
-    - For implementing custom preprocess logic, refer to **Chapter. Writing Your Own Application `“Custom Pre-Process Library Documentation”`**.  
+    - For implementing custom preprocess logic, refer to **Chapter. Writing Your Own Application `“Custom Pre-Process Library Documentation”`**. Custom libraries must follow the error reporting contract described there (no `g_error()` / `abort()`; use `g_warning()` for per-frame skips and `throw std::runtime_error` for permanent errors).
     - All properties can also be configured using a JSON file for enhanced usability and flexibility.
 
 ---

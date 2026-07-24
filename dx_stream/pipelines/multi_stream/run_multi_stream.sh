@@ -9,7 +9,7 @@ OUTPUT_HEIGHT=720
 VIDEO_DIR="${SRC_DIR}/samples/videos/"
 
 # Model auto-download logic
-MODEL_NAME="YoloV5S_PPU.dxnn"
+MODEL_NAME="yolov5-s_640x640_ppu.dxnn"
 MODEL_PATH="$SRC_DIR/samples/models/$MODEL_NAME"
 if [ ! -f "$MODEL_PATH" ]; then
     echo "[INFO] $MODEL_NAME not found in samples/models. Downloading..."
@@ -104,7 +104,7 @@ for i in $(seq 0 $((num_pipelines - 1))); do
     compositor_props+=" sink_${i}::xpos=${xpos} sink_${i}::ypos=${ypos}"
 done
 
-launch_cmd="gst-launch-1.0 -e ${pipeline_str} compositor name=comp ${compositor_props} ! $VIDEOCONVERT_PIPELINE ! fpsdisplaysink sync=false $VIDEO_SINK_ARGS"
+launch_cmd="gst-launch-1.0 ${pipeline_str} compositor name=comp ${compositor_props} ! $VIDEOCONVERT_PIPELINE ! fpsdisplaysink sync=false $VIDEO_SINK_ARGS"
 echo "--------------------------------------------------"
 echo "Generated gst-launch-1.0 command:"
 echo "${launch_cmd}"

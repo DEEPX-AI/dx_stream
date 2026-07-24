@@ -1,8 +1,10 @@
 #include "gst-dxosd.hpp"
 #include "./../metadata/gst-dxframemeta.hpp"
 #include "./../metadata/gst-dxobjectmeta.hpp"
+#include "utils.hpp"
 
 #include <array>
+#include <new>
 #include <cmath>
 #include <cstdio>
 #include <json-glib/json-glib.h>
@@ -22,6 +24,11 @@ static GstCaps *gst_dxosd_transform_caps(GstBaseTransform *trans,
                                          GstCaps *caps, GstCaps *filter);
 static gboolean gst_dxosd_sink_event(GstBaseTransform *trans,
                                      GstEvent *event);
+static gboolean gst_dxosd_propose_allocation(GstBaseTransform *trans,
+                                             GstQuery *decide_query,
+                                             GstQuery *query);
+static gboolean gst_dxosd_query(GstBaseTransform *trans,
+                                GstPadDirection direction, GstQuery *query);
 static GstStateChangeReturn gst_dxosd_change_state(GstElement *element,
                                                    GstStateChange transition);
 
@@ -29,25 +36,38 @@ G_DEFINE_TYPE(GstDxOsd, gst_dxosd, GST_TYPE_BASE_TRANSFORM);
 
 static GstBaseTransformClass *parent_class = nullptr;
 
+static void gst_dxosd_finalize(GObject *object) {
+    auto *self = GST_DXOSD(object);
+    self->_stream_info.~map();
+    G_OBJECT_CLASS(parent_class)->finalize(object);
+}
+
 static void gst_dxosd_class_init(GstDxOsdClass *klass) {
     GST_DEBUG_CATEGORY_INIT(gst_dxosd_debug_category, "dxosd", 0,
                             "DXOsd plugin");
+
+    auto *gobject_class = G_OBJECT_CLASS(klass);
+    gobject_class->finalize = gst_dxosd_finalize;
 
     auto *basetransform_class = GST_BASE_TRANSFORM_CLASS(klass);
     basetransform_class->transform_ip = GST_DEBUG_FUNCPTR(gst_dxosd_transform_ip);
     basetransform_class->transform_caps = GST_DEBUG_FUNCPTR(gst_dxosd_transform_caps);
     basetransform_class->sink_event = GST_DEBUG_FUNCPTR(gst_dxosd_sink_event);
+    basetransform_class->propose_allocation =
+        GST_DEBUG_FUNCPTR(gst_dxosd_propose_allocation);
+    basetransform_class->query = GST_DEBUG_FUNCPTR(gst_dxosd_query);
 
     auto *element_class = GST_ELEMENT_CLASS(klass);
     element_class->change_state = gst_dxosd_change_state;
     gst_element_class_set_static_metadata(element_class, "DXOsd", "Generic",
                                           "Draw inference results",
-                                          "Jo Sangil <sijo@deepx.ai>");
+                                          "Sangil Jo <sijo@deepx.ai>");
 
     // NOSONAR - GStreamer API requires non-const for gst_static_pad_template_get()
     static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE(
         "sink", GST_PAD_SINK, GST_PAD_ALWAYS,
-        GST_STATIC_CAPS("video/x-raw, "
+        GST_STATIC_CAPS(DX_VIDEORAW_CAPS_STR "; "
+                        "video/x-raw, "
                         "format = (string){ RGB, BGR, I420, NV12 }, "
                         "width = [ 1, 16384 ], "
                         "height = [ 1, 16384 ], "
@@ -55,7 +75,8 @@ static void gst_dxosd_class_init(GstDxOsdClass *klass) {
 
     static GstStaticPadTemplate src_template =
         GST_STATIC_PAD_TEMPLATE("src", GST_PAD_SRC, GST_PAD_ALWAYS,
-                                GST_STATIC_CAPS("video/x-raw, "
+                                GST_STATIC_CAPS(DX_VIDEORAW_CAPS_STR "; "
+                                                "video/x-raw, "
                                                 "format = (string){ RGB, BGR, I420, NV12 }, "
                                                 "width = [ 1, 16384 ], "
                                                 "height = [ 1, 16384 ], "
@@ -70,8 +91,9 @@ static void gst_dxosd_class_init(GstDxOsdClass *klass) {
 }
 
 static void gst_dxosd_init(GstDxOsd *self) {
-    GST_INFO_OBJECT(self, "Initializing OSD element (passthrough transform)");
-    self->_stream_info.clear();
+    GST_DEBUG_OBJECT(self, "Initializing OSD element (passthrough transform)");
+    new (&self->_stream_info) std::map<int, GstVideoInfo>();
+    gst_base_transform_set_qos_enabled(GST_BASE_TRANSFORM(self), TRUE);
 }
 
 static GstStateChangeReturn gst_dxosd_change_state(GstElement *element,
@@ -114,7 +136,6 @@ static void set_stream_info(GstDxOsd *self, GstEvent *event, int stream_id) {
 static gboolean gst_dxosd_sink_event(GstBaseTransform *trans,
                                      GstEvent *event) {
     GstDxOsd *self = GST_DXOSD(trans);
-    GstPad *src_pad = GST_BASE_TRANSFORM_SRC_PAD(trans);
 
     switch (GST_EVENT_TYPE(event)) {
     case GST_EVENT_CUSTOM_DOWNSTREAM: {
@@ -133,12 +154,37 @@ static gboolean gst_dxosd_sink_event(GstBaseTransform *trans,
         }
     } break;
     case GST_EVENT_CAPS: {
-        set_stream_info(self, event, 0);
+        GstCaps *incaps = nullptr;
+        gst_event_parse_caps(event, &incaps);
+        if (incaps && !dx_caps_is_videoraw(incaps)) {
+            set_stream_info(self, event, 0);
+        }
     } break;
+    case GST_EVENT_FLUSH_STOP:
+        self->_stream_info.clear();
+        break;
     default:
         break;
     }
-    return gst_pad_push_event(src_pad, event);
+    return GST_BASE_TRANSFORM_CLASS(parent_class)->sink_event(trans, event);
+}
+
+static gboolean gst_dxosd_query(GstBaseTransform *trans,
+                                GstPadDirection direction, GstQuery *query) {
+    if (direction == GST_PAD_SRC && GST_QUERY_TYPE(query) == GST_QUERY_LATENCY) {
+        if (!GST_BASE_TRANSFORM_CLASS(parent_class)->query(trans, direction, query))
+            return FALSE;
+        gboolean live;
+        GstClockTime min_lat, max_lat;
+        gst_query_parse_latency(query, &live, &min_lat, &max_lat);
+        const GstClockTime self_lat = 1 * GST_USECOND;
+        min_lat += self_lat;
+        if (max_lat != GST_CLOCK_TIME_NONE)
+            max_lat += self_lat;
+        gst_query_set_latency(query, live, min_lat, max_lat);
+        return TRUE;
+    }
+    return GST_BASE_TRANSFORM_CLASS(parent_class)->query(trans, direction, query);
 }
 
 static GstFlowReturn gst_dxosd_transform_ip(GstBaseTransform *trans,
@@ -147,19 +193,19 @@ static GstFlowReturn gst_dxosd_transform_ip(GstBaseTransform *trans,
 
     const auto *frame_meta = dx_get_frame_meta(buf);
     if (!frame_meta) {
-        GST_WARNING_OBJECT(self, "No frame metadata, passing through");
+        GST_LOG_OBJECT(self, "No frame metadata, passing through");
         return GST_FLOW_OK;
     }
 
-    GST_DEBUG_OBJECT(self, "Processing buffer: pts=%" GST_TIME_FORMAT " stream=%d, %dx%d",
+    GST_LOG_OBJECT(self, "Processing buffer: pts=%" GST_TIME_FORMAT " stream=%d, %dx%d",
                      GST_TIME_ARGS(GST_BUFFER_PTS(buf)),
                      frame_meta->_stream_id, frame_meta->_width, frame_meta->_height);
 
     // Look up video info by stream_id
     auto it = self->_stream_info.find(frame_meta->_stream_id);
     if (it == self->_stream_info.end()) {
-        GST_WARNING_OBJECT(self, "No video info for stream %d, passing through",
-                           frame_meta->_stream_id);
+        GST_LOG_OBJECT(self, "No video info for stream %d, passing through",
+                       frame_meta->_stream_id);
         return GST_FLOW_OK;
     }
 
@@ -168,7 +214,8 @@ static GstFlowReturn gst_dxosd_transform_ip(GstBaseTransform *trans,
     // Map buffer for read/write
     GstVideoFrame frame;
     if (!gst_video_frame_map(&frame, info, buf, GST_MAP_READWRITE)) {
-        GST_ERROR_OBJECT(self, "Failed to map buffer");
+        GST_ELEMENT_ERROR(self, RESOURCE, READ,
+            ("Failed to map video frame for OSD rendering"), (NULL));
         return GST_FLOW_ERROR;
     }
 
@@ -237,4 +284,20 @@ static GstFlowReturn gst_dxosd_transform_ip(GstBaseTransform *trans,
 
     gst_video_frame_unmap(&frame);
     return GST_FLOW_OK;
+}
+
+static gboolean gst_dxosd_propose_allocation(GstBaseTransform *trans,
+                                             GstQuery *decide_query,
+                                             GstQuery *query) {
+    GstBaseTransformClass *base_class =
+        GST_BASE_TRANSFORM_CLASS(parent_class);
+    gboolean ret = TRUE;
+    if (base_class && base_class->propose_allocation)
+        ret = base_class->propose_allocation(trans, decide_query, query);
+
+    GstCaps *qcaps = nullptr;
+    gst_query_parse_allocation(query, &qcaps, nullptr);
+    if (qcaps && dx_caps_is_videoraw(qcaps))
+        gst_query_add_allocation_meta(query, DX_FRAME_META_API_TYPE, NULL);
+    return ret;
 }

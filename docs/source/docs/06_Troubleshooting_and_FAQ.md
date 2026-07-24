@@ -2,11 +2,11 @@
 
 ## Debug Logging
 
-#### **Overview**
+#### Overview  
 
 DX-STREAM provides comprehensive debug logging through GStreamer's `GST_DEBUG` system. This allows you to monitor element behavior, trace buffer flow, analyze performance, and diagnose issues at various levels of detail.
 
-#### **Basic Usage**
+#### Basic Usage  
 
 **Enable debug logging for all DX-STREAM elements:**
 
@@ -20,7 +20,7 @@ $ GST_DEBUG=dx*:4 ./your_application
 $ GST_DEBUG=dxinfer:4,dxtracker:4 ./your_application
 ```
 
-#### **Debug Levels**
+#### Debug Levels  
 
 | **Level** | **Name**    | **When to Use**                                                   |
 |-----------|-------------|-------------------------------------------------------------------|
@@ -29,7 +29,7 @@ $ GST_DEBUG=dxinfer:4,dxtracker:4 ./your_application
 | 3         | INFO        | State changes and configuration confirmation                      |
 | 4         | DEBUG       | Detailed operational information for troubleshooting              |
 
-#### **Common Scenarios**
+#### Common Scenarios  
 
 **Monitor inference performance:**
 
@@ -61,7 +61,7 @@ $ GST_DEBUG=dxpreprocess:4,dxinfer:4 ./your_app 2>&1 | grep "Dropping"
 $ GST_DEBUG=dx*:4 GST_DEBUG_FILE=/tmp/debug.log ./your_app
 ```
 
-!!! tip "Detailed Guide"
+!!! note "Detailed Guide"
 
     For comprehensive debugging strategies and element-specific logging information, see **Chapter 07 - Debugging Guide**.
 
@@ -69,16 +69,16 @@ $ GST_DEBUG=dx*:4 GST_DEBUG_FILE=/tmp/debug.log ./your_app
 
 ## Rendering Issues  
 
-#### **Problem: Abnormal Behavior**
+#### Problem: Abnormal Behavior  
 
 The pipeline may exhibit abnormal behavior or fail to display video when attempting to render the video stream on the screen.
 
-#### **Cause: Unsupported Element**
+#### Cause: Unsupported Element  
 
 The root cause of abnormal behavior is:
 -	Incompatibility: The specified displaysink element is not supported by the current PC environment (e.g., due to unsupported graphics drivers or display server settings).
 
-#### **Solution: Element Selection & Compatibility**
+#### Solution: Element Selection & Compatibility  
 
 It's essential to address both the hardware fit and the data format compatibility.
 
@@ -95,7 +95,7 @@ Mandatory Step: Always add videoconvert directly before the displaysink element.
 
 - Purpose: This element correctly converts the video format from upstream elements into a format the chosen sink can process, preventing format mismatch errors.
 
-    ```
+    ```bash
     $ gst-launch-1.0 .... ! videoconvert ! autovideosink
     ```
 
@@ -112,11 +112,11 @@ ERROR: pipeline doesn't want to preroll.
 Setting pipeline to NULL ...)
 ```
 
-#### **Problem: Rendering Failure**
+#### Problem: Rendering Failure  
 
 The GStreamer pipeline fails to preroll and terminates prematurely, resulting in a general resource error. The specific error message indicates a system access issue: drmModeSetPlane failed: Permission denied (13).
 
-#### **Cause: High-Ranked KMSSink Failure**
+#### Cause: High-Ranked KMSSink Failure  
 
 The issue stems from the automatic selection process of the sink element:
 
@@ -126,7 +126,7 @@ The issue stems from the automatic selection process of the sink element:
 
 **Environmental Failure**: Due to environmental issues, likely related to permissions or system configuration specific to the Raspberry Pi 5 setup, the selected kmssink failed to operate normally, leading to the "Permission denied" error.
 
-#### **Solution: Manual Sink Replacement**
+#### Solution: Manual Sink Replacement  
 
 The solution involves overriding the automatic, failing selection by manually specifying a stable, compatible sink element.
 
@@ -134,12 +134,11 @@ The solution involves overriding the automatic, failing selection by manually sp
 
 **Result**: **ximagesink uses CPU-based rendering** within an X11 environment, circumventing the resource and permission issues associated with kmssink to ensure proper display output.
 
-
 ---
 
 ## Display Sink Issues on Orange Pi 5 Plus with Debian 12
 
-#### **Problem: Corrupted or Distorted Video Rendering**
+#### Problem: Corrupted or Distorted Video Rendering  
 
 When running DX-STREAM pipeline scripts on **Orange Pi 5 Plus with Debian 12**, you may experience corrupted, distorted, or improperly rendered video output. The video display may appear garbled, with incorrect colors, flickering, or visual artifacts that make the output unusable.
 
@@ -149,7 +148,7 @@ When running DX-STREAM pipeline scripts on **Orange Pi 5 Plus with Debian 12**, 
 - **Operating System**: Debian 12 (official image from [Orange Pi download page](http://www.orangepi.org/html/hardWare/computerAndMicrocontrollers/service-and-support/Orange-Pi-5-plus.html))  
 - **Affected Component**: Video rendering pipeline (specifically the fpsdisplaysink element)  
 
-#### **Cause: GStreamer Format Negotiation Bug**
+#### Cause: GStreamer Format Negotiation Bug  
 
 This is a **GStreamer bug specific to the Orange Pi 5 Plus + Debian 12 environment**. The issue occurs during format negotiation between the `videoconvert` element and the `fpsdisplaysink` element:
 
@@ -163,7 +162,7 @@ This is a **GStreamer bug specific to the Orange Pi 5 Plus + Debian 12 environme
 
 (3) **Not Universal**: While primarily seen on Orange Pi 5 Plus + Debian 12, **similar rendering issues could potentially occur on other ARM-based SBCs or platforms** with comparable GStreamer + display stack configurations.  
 
-#### **Solution: Force I420 Format Conversion**
+#### Solution: Force I420 Format Conversion  
 
 The workaround is to explicitly force the video format to **I420** before passing it to `fpsdisplaysink`, which bypasses the faulty format negotiation.
 
@@ -211,18 +210,18 @@ fi
 
 **Result**: Forcing the `I420` format ensures proper format negotiation and eliminates the rendering corruption, allowing normal video display.
 
-!!! note "When to Apply This Workaround"
-    - **Always apply** if you're using Orange Pi 5 Plus with official Debian 12 image and experiencing rendering issues
-    - **Try first without workaround** on other Debian versions or custom images - it may work fine
-    - **Consider applying** if you experience similar rendering issues on other ARM SBCs with similar software stacks
-    - **No harm in enabling** - forcing I420 format is a safe operation that only affects format negotiation
+!!! note "When to Apply This Workaround"  
 
+    - **Always apply** if you're using Orange Pi 5 Plus with official Debian 12 image and experiencing rendering issues  
+    - **Try first without workaround** on other Debian versions or custom images - it may work fine  
+    - **Consider applying** if you experience similar rendering issues on other ARM SBCs with similar software stacks  
+    - **No harm in enabling** - forcing I420 format is a safe operation that only affects format negotiation  
 
 ---
 
 ## Buffer Delays in Sink Element  
 
-#### **Problem & Symptoms**
+#### Problem & Symptoms  
 
 The core problem is a performance bottleneck in the system, leading to noticeable playback degradation and warning messages.
 
@@ -230,7 +229,7 @@ The core problem is a performance bottleneck in the system, leading to noticeabl
 - Pipeline performance degradation.
 - Warning messages in the console, such as "buffering too slow" or "dropped frames."
 
-#### **Solutions: Performance Optimization**
+#### Solutions: Performance Optimization  
 
 Solutions focus on optimizing both the PC environment and the GStreamer pipeline structure.
 
@@ -266,7 +265,7 @@ Solutions focus on optimizing both the PC environment and the GStreamer pipeline
 
 ## Troubleshooting Message Broker Issues
 
-#### **A. Common MQTT Problems**
+#### A. Common MQTT Problems  
 
 **Connection Refused**
 
@@ -284,6 +283,17 @@ Solutions focus on optimizing both the PC environment and the GStreamer pipeline
   mosquitto_pub -h localhost -p 1883 -t test -m "hello"
   ```
 
+- Remote Connection Refused
+
+  By default, Mosquitto only accepts connections from `localhost`. To allow remote access, add the following to `/etc/mosquitto/mosquitto.conf`:
+
+  ```
+  listener 1883 0.0.0.0
+  allow_anonymous true
+  ```
+
+  Then restart the service: `sudo systemctl restart mosquitto`
+
 **SSL Certificate Issues**
 
 - Verify Chain
@@ -300,7 +310,7 @@ Solutions focus on optimizing both the PC environment and the GStreamer pipeline
   mosquitto_pub -h localhost -p 8883 --cafile ca.crt -t test -m "ssl_test"
   ```
 
-#### **B. Common Kafka Problems**
+#### B. Common Kafka Problems  
 
 **Consumer Lag**
 
@@ -318,7 +328,7 @@ Solutions focus on optimizing both the PC environment and the GStreamer pipeline
     --producer.config ssl.properties
   ```
 
-#### **C. DX-STREAM Broker Element Issues**
+#### C. DX-STREAM Broker Element Issues  
 
 **Library Loading Errors**
 
@@ -336,7 +346,7 @@ Solutions focus on optimizing both the PC environment and the GStreamer pipeline
 - Monitor the broker server resources (CPU, memory, network)
 
 
-#### **D. Critical Kafka Connection Refusal Error** 
+#### D. Critical Kafka Connection Refusal Error   
 
 A common error when using Kafka is connection refusal, as indicated by the following log.
 
@@ -365,9 +375,9 @@ This error usually means the Kafka broker is not running. To resolve this, verif
     $ mkdir utils && cd utils
     $ sudo apt update
     $ sudo apt-get install default-jdk
-    $ wget https://downloads.apache.org/kafka/3.9.0/kafka_2.13-3.9.0.tgz
-    $ tar -xzf kafka_2.13-3.9.0.tgz
-    $ cd kafka_2.13-3.9.0
+    $ wget https://downloads.apache.org/kafka/3.9.2/kafka_2.13-3.9.2.tgz
+    $ tar -xzf kafka_2.13-3.9.2.tgz
+    $ cd kafka_2.13-3.9.2
     ```
 
     Start Zookeeper (terminal 1): Kafka requires Zookeeper to be running first
@@ -382,15 +392,25 @@ This error usually means the Kafka broker is not running. To resolve this, verif
     $ bin/kafka-server-start.sh config/server.properties
     ```
 
-!!! note "NOTE" 
-  
+!!! note "NOTE"
+
     Keep both terminal sessions running while the DX-STREAM pipeline is active to ensure proper operation.
+
+!!! note "Remote Access"
+
+    If the consumer runs on a different machine from the broker, set `advertised.listeners` in `config/server.properties` to the broker's IP:
+
+    ```
+    advertised.listeners=PLAINTEXT://<broker_ip>:9092
+    ```
+
+    Then restart the Kafka server. Without this, remote consumers will fail to resolve the broker's internal hostname.
 
 ---
 
 ## Build Issues with Meson Installation
 
-#### **Overview: How `build.sh` Handles `meson install`**
+#### Overview: How `build.sh` Handles `meson install`  
 
 DX-STREAM uses `sudo meson install` to install plugins into system directories (e.g., `/usr/local/`).  
 Since `sudo` runs as root and does not inherit the user's Python environment, `build.sh` explicitly passes the Python package paths via `PYTHONPATH`:
@@ -406,7 +426,7 @@ This command resolves two things from the **current shell** before `sudo` execut
 
 ---
 
-#### **Supported Meson Installation Methods**
+#### Supported Meson Installation Methods  
 
 The following single-meson-installation environments are fully supported:
 
@@ -419,7 +439,7 @@ The following single-meson-installation environments are fully supported:
 
 ---
 
-#### **Known Limitation: Multiple Meson Installations**
+#### Known Limitation: Multiple Meson Installations  
 
 !!! warning "WARNING"
 
@@ -446,7 +466,7 @@ This is a **fundamental limitation** of the `sudo + PYTHONPATH` pattern and cann
 
 ---
 
-#### **Solution: Keep a Single Meson Installation**
+#### Solution: Keep a Single Meson Installation  
 
 **Step 1.** Check for multiple installations:
 
@@ -490,3 +510,50 @@ $ python3 -c "import mesonbuild, os; print(os.path.dirname(os.path.dirname(meson
 
 # Both should share the same installation prefix (~/.local/ in this example)
 ```
+
+---
+
+## Multi-Stream Domain Issues
+
+#### Problem: `could not link element` between `DxInputSelector` and a downstream element  
+
+A pipeline like this fails to start:
+
+```
+gst-launch-1.0 ... ! dxinputselector ! videoconvert ! ...
+WARNING: erroneous pipeline: could not link dxinputselector0 to videoconvert0
+```
+
+#### Cause: Domain caps mismatch  
+
+`DxInputSelector` outputs `application/x-dxvideoraw`, not `video/x-raw`. Standard GStreamer elements (`videoconvert`, `videoscale`, `compositor`, `videorate`, …) only accept `video/x-raw`, so caps negotiation fails immediately at pipeline construction.
+
+#### Solution  
+
+Either place the standard element **upstream of `DxInputSelector`** (per stream, while caps are still `video/x-raw`), or use a DX-STREAM element that accepts `application/x-dxvideoraw` inside the domain (`DxPreprocess`, `DxInfer`, `DxPostprocess`, `DxTracker`, `DxOsd`, `DxRate`, `DxMsgConv`, `DxMsgBroker`). After `DxOutputSelector`, caps revert to `video/x-raw` and standard elements work again.
+
+See the **Multi-Stream Domain** chapter for the full element placement matrix.
+
+---
+
+#### Problem: Missing `DXFrameMeta` inside the multi-stream domain  
+
+A warning or error such as the following appears at runtime:
+
+```
+WARN  dxosd ... DXFrameMeta is missing on input buffer
+```
+
+or a dual-mode element falls back to `stream_id=0` for every buffer.
+
+#### Cause: Buffer entered the domain without `DXFrameMeta`  
+
+`DXFrameMeta` is normally attached by `DxInputSelector` (or, in single-stream pipelines, by upstream DX-STREAM elements via the allocation query). If a buffer is injected into the domain through some other path — for example a custom `appsrc` placed after `DxInputSelector`, or a test element that does not propose the meta — dual-mode elements have no `_stream_id` to dispatch on.
+
+#### Solution  
+
+- Make sure every buffer entering the domain originates from a sink pad of `DxInputSelector`, which guarantees `DXFrameMeta` is present.
+- If you generate buffers yourself, attach `DXFrameMeta` with `dx_create_frame_meta()` and set `_stream_id` before pushing them.
+- During `ALLOCATION`, dual-mode elements add a request for the `DXFrameMeta` API meta; respect that request in any custom upstream that implements a buffer pool.
+
+---

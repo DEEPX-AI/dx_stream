@@ -3,8 +3,8 @@
 #include "gst-dxusermeta.hpp"
 #include <algorithm>  // for std::find
 
-GST_DEBUG_CATEGORY_EXTERN(dxframemeta_cat);
-#define GST_CAT_DEFAULT dxframemeta_cat
+GST_DEBUG_CATEGORY_EXTERN(dxmeta_cat);
+#define GST_CAT_DEFAULT dxmeta_cat
 
 #define GST_CAT_DEBUG_SAFE(cat, ...) \
     G_STMT_START { \
@@ -65,7 +65,7 @@ static gboolean dx_frame_meta_init(GstMeta *meta, gpointer params,
     std::ignore = params;
     std::ignore = buffer;
 
-    GST_CAT_DEBUG_SAFE(dxframemeta_cat, "Initializing DXFrameMeta");
+    GST_CAT_DEBUG_SAFE(dxmeta_cat, "Initializing DXFrameMeta");
     auto *dx_meta = (DXFrameMeta *)meta;
     
     dx_meta->_stream_id = -1;
@@ -99,7 +99,7 @@ static gboolean dx_frame_meta_init(GstMeta *meta, gpointer params,
 static void dx_frame_meta_free(GstMeta *meta, GstBuffer *buffer) {
     std::ignore = buffer;
 
-    GST_CAT_DEBUG_SAFE(dxframemeta_cat, "Freeing DXFrameMeta");
+    GST_CAT_DEBUG_SAFE(dxmeta_cat, "Freeing DXFrameMeta");
     auto *dx_meta = (DXFrameMeta *)meta;
 
     // Release object metadata
@@ -132,7 +132,7 @@ static void dx_frame_meta_free(GstMeta *meta, GstBuffer *buffer) {
 }
 
 void copy_tensor(DXFrameMeta *src_meta, DXFrameMeta *dst_meta) {
-    GST_CAT_DEBUG_SAFE(dxframemeta_cat, "Shallow copying DXFrameMeta tensors (shared ownership)");
+    GST_CAT_DEBUG_SAFE(dxmeta_cat, "Shallow copying DXFrameMeta tensors (shared ownership)");
 
     // Shallow copy: shared_ptr<void> reference counts are increased
     // - DXTensors._data is shared_ptr<void>, so data is shared
@@ -145,7 +145,7 @@ void dx_frame_meta_copy(GstBuffer *src_buffer, DXFrameMeta *src_frame_meta,
                         GstBuffer *dst_buffer, DXFrameMeta *dst_frame_meta) {
     std::ignore = src_buffer;
     std::ignore = dst_buffer;
-    GST_CAT_DEBUG_SAFE(dxframemeta_cat, "Copying DXFrameMeta");
+    GST_CAT_DEBUG_SAFE(dxmeta_cat, "Copying DXFrameMeta");
 
     dst_frame_meta->_stream_id = src_frame_meta->_stream_id;
     dst_frame_meta->_width = src_frame_meta->_width;
@@ -214,7 +214,7 @@ static gboolean dx_frame_meta_transform(GstBuffer *dest, GstMeta *meta,
     std::ignore = data;
     std::ignore = buffer;
 
-    GST_CAT_DEBUG_SAFE(dxframemeta_cat, "Transforming DXFrameMeta");
+    GST_CAT_DEBUG_SAFE(dxmeta_cat, "Transforming DXFrameMeta");
     auto *src_frame_meta = (DXFrameMeta *)meta;
     const auto *exist_frame_meta = dx_get_frame_meta(dest);
     if (exist_frame_meta) {
@@ -236,14 +236,14 @@ GstBuffer* dx_create_frame_meta(GstBuffer *buffer) {
 }
 
 DXFrameMeta *dx_get_frame_meta(GstBuffer *buffer) {
-    GST_CAT_DEBUG_SAFE(dxframemeta_cat, "Getting DXFrameMeta");
+    GST_CAT_DEBUG_SAFE(dxmeta_cat, "Getting DXFrameMeta");
     auto *frame_meta =
         (DXFrameMeta *)gst_buffer_get_meta(buffer, DX_FRAME_META_API_TYPE);
     return frame_meta;
 }
 
 gboolean dx_add_obj_meta_to_frame(DXFrameMeta *frame_meta, DXObjectMeta *obj_meta) {
-    GST_CAT_DEBUG_SAFE(dxframemeta_cat, "Adding DXObjectMeta to DXFrameMeta");
+    GST_CAT_DEBUG_SAFE(dxmeta_cat, "Adding DXObjectMeta to DXFrameMeta");
     if (!frame_meta || !obj_meta) return FALSE;
     
     frame_meta->_object_meta_list.push_back(obj_meta);
@@ -251,7 +251,7 @@ gboolean dx_add_obj_meta_to_frame(DXFrameMeta *frame_meta, DXObjectMeta *obj_met
 }
 
 gboolean dx_remove_obj_meta_from_frame(DXFrameMeta *frame_meta, DXObjectMeta *obj_meta) {
-    GST_CAT_DEBUG_SAFE(dxframemeta_cat, "Removing DXObjectMeta from DXFrameMeta");
+    GST_CAT_DEBUG_SAFE(dxmeta_cat, "Removing DXObjectMeta from DXFrameMeta");
     if (!frame_meta || !obj_meta) return FALSE;
     
     auto it = std::find(frame_meta->_object_meta_list.begin(), 

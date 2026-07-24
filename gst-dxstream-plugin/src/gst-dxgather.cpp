@@ -3,210 +3,29 @@
 #include "./../metadata/gst-dxobjectmeta.hpp"
 #include "./../metadata/gst-dxusermeta.hpp"
 #include <array>
+#include <vector>
 
 GST_DEBUG_CATEGORY_STATIC(gst_dxgather_debug_category);
 #define GST_CAT_DEFAULT gst_dxgather_debug_category
 
-// NOSONAR - GStreamer API requires non-const GstStaticPadTemplate* for gst_static_pad_template_get()
 static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE(
-    "sink_%u", GST_PAD_SINK, GST_PAD_REQUEST, GST_STATIC_CAPS_ANY);
+    "sink_%u", GST_PAD_SINK, GST_PAD_REQUEST, GST_STATIC_CAPS("video/x-raw"));
 
 static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE(
-    "src", GST_PAD_SRC, GST_PAD_ALWAYS, GST_STATIC_CAPS_ANY);
+    "src", GST_PAD_SRC, GST_PAD_ALWAYS, GST_STATIC_CAPS("video/x-raw"));
 
-static GstFlowReturn gst_dxgather_chain(GstPad *pad, GstObject *parent,
-                                        GstBuffer *buf);
-static void gst_dxgather_release_pad(GstElement *element, GstPad *pad);
-static GstPad *gst_dxgather_request_new_pad(GstElement *element,
-                                            GstPadTemplate *templ,
-                                            const gchar *req_name,
-                                            const GstCaps *caps);
-static GstStateChangeReturn
-gst_dxgather_change_state(GstElement *element, GstStateChange transition);
-static void gst_dxgather_finalize(GObject *object);
-static void gst_dxgather_dispose(GObject *object);
+static GstFlowReturn gst_dxgather_aggregate(GstAggregator *agg, gboolean timeout);
+static GstFlowReturn gst_dxgather_update_src_caps(GstAggregator *agg,
+                                                  GstCaps *downstream_caps,
+                                                  GstCaps **ret);
+static gboolean gst_dxgather_src_query(GstAggregator *agg, GstQuery *query);
+static gboolean gst_dxgather_sink_query(GstAggregator *agg,
+                                        GstAggregatorPad *pad,
+                                        GstQuery *query);
 
-static gpointer gather_push_thread_func(GstDxGather *self);
+G_DEFINE_TYPE(GstDxGather, gst_dxgather, GST_TYPE_AGGREGATOR);
 
-G_DEFINE_TYPE(GstDxGather, gst_dxgather, GST_TYPE_ELEMENT);
-
-static GstElementClass *parent_class = nullptr;  // NOSONAR - GStreamer standard pattern with G_DEFINE_TYPE macro
-
-static void gst_dxgather_dispose(GObject *object) {
-    G_OBJECT_CLASS(parent_class)->dispose(object);
-}
-
-static void gst_dxgather_finalize(GObject *object) {
-    GstDxGather *self = GST_DXGATHER(object);
-
-    for (auto &entry : self->_sinkpads) {
-        gst_object_unref(entry.second);
-    }
-    self->_sinkpads.clear();
-
-    for (auto &entry : self->_buffers) {
-        if (entry.second) {
-            if (GST_IS_BUFFER(entry.second)) {
-                gst_buffer_unref(entry.second);
-            }
-            entry.second = nullptr;
-        }
-    }
-    self->_buffers.clear();
-
-    G_OBJECT_CLASS(parent_class)->finalize(object);
-}
-
-static GstStateChangeReturn
-gst_dxgather_change_state(GstElement *element, GstStateChange transition) {
-    GstDxGather *self = GST_DXGATHER(element);
-
-    GST_INFO_OBJECT(self, "Attempting to change state");
-
-    switch (transition) {
-    case GST_STATE_CHANGE_NULL_TO_READY:
-        break;
-    case GST_STATE_CHANGE_READY_TO_PAUSED:
-        if (!self->_running) {
-            self->_running = TRUE;
-            self->_thread =
-                g_thread_new("gather-push-thread",
-                             (GThreadFunc)gather_push_thread_func, self);
-        }
-        break;
-    case GST_STATE_CHANGE_PAUSED_TO_PLAYING:
-        break;
-    case GST_STATE_CHANGE_PLAYING_TO_PAUSED:
-        if (self->_running) {
-            self->_running = FALSE;
-        }
-        self->_cv.notify_all();
-        g_thread_join(self->_thread);
-        break;
-    case GST_STATE_CHANGE_PAUSED_TO_READY:
-        break;
-    case GST_STATE_CHANGE_READY_TO_NULL:
-        break;
-    default:
-        break;
-    }
-
-    GstStateChangeReturn result =
-        GST_ELEMENT_CLASS(parent_class)->change_state(element, transition);
-    GST_DEBUG_OBJECT(self, "State change completed: %d", result);
-    return result;
-}
-
-static gboolean gst_dxgather_sink_event(GstPad *pad, GstObject *parent,
-                                        GstEvent *event) {
-    GstDxGather *self = GST_DXGATHER(parent);
-
-    gint stream_id = 0;
-    if (g_str_has_prefix(GST_PAD_NAME(pad), "sink_")) {
-        stream_id = atoi(GST_PAD_NAME(pad) + 5);
-    }
-
-    switch (GST_EVENT_TYPE(event)) {
-    case GST_EVENT_EOS:
-        self->_eos_list[stream_id] = true;
-        self->_cv.notify_all();
-        gst_event_unref(event);
-        return TRUE;
-    case GST_EVENT_CAPS: {
-        gboolean result = gst_pad_push_event(self->_srcpad, event);
-        if (!result) {
-            GST_ERROR_OBJECT(
-                self, "Failed to push caps event to src pad : %d\n", result);
-            return FALSE;
-        }
-        return result;
-    }
-    case GST_EVENT_SEGMENT:
-        break;
-    case GST_EVENT_FLUSH_START:
-        break;
-    case GST_EVENT_FLUSH_STOP:
-        break;
-    default:
-        break;
-    }
-    return gst_pad_event_default(pad, parent, event);
-}
-
-static void gst_dxgather_class_init(GstDxGatherClass *klass) {
-    GST_DEBUG_CATEGORY_INIT(gst_dxgather_debug_category, "dxgather", 0,
-                            "DXGather plugin");
-
-    auto *gobject_class = G_OBJECT_CLASS(klass);
-    gobject_class->dispose = gst_dxgather_dispose;
-
-    auto *element_class = GST_ELEMENT_CLASS(klass);
-
-    gobject_class->finalize = gst_dxgather_finalize;
-
-    gst_element_class_set_static_metadata(
-        element_class, "DxGather", "Generic",
-        "Gather Multiple Streams (from the Same Source)",
-        "Jo Sangil <sijo@deepx.ai>");
-
-    gst_element_class_add_static_pad_template(element_class, &sink_template);
-    gst_element_class_add_static_pad_template(element_class, &src_template);
-
-    element_class->request_new_pad =
-        GST_DEBUG_FUNCPTR(gst_dxgather_request_new_pad);
-    element_class->release_pad = GST_DEBUG_FUNCPTR(gst_dxgather_release_pad);
-    parent_class = GST_ELEMENT_CLASS(g_type_class_peek_parent(klass));
-    element_class->change_state = gst_dxgather_change_state;
-}
-
-static void gst_dxgather_init(GstDxGather *self) {
-    self->_srcpad = gst_pad_new("src", GST_PAD_SRC);
-    gst_element_add_pad(GST_ELEMENT(self), self->_srcpad);
-
-    self->_sinkpads.clear();
-    self->_buffers.clear();
-
-    self->_eos_list = std::map<int, bool>();
-
-    self->_thread = nullptr;
-    self->_running = FALSE;
-}
-
-static GstPad *gst_dxgather_request_new_pad(GstElement *element,
-                                            GstPadTemplate *templ,
-                                            const gchar *name,
-                                            const GstCaps *caps) {
-
-    std::ignore = caps;
-
-    GstDxGather *self = GST_DXGATHER(element);
-    const gchar *pad_name = name
-                          ? g_strdup(name)
-                          : g_strdup_printf("sink_%ld", self->_sinkpads.size());
-
-    GstPad *sinkpad = gst_pad_new_from_template(templ, pad_name);
-
-    gst_pad_set_chain_function(sinkpad, GST_DEBUG_FUNCPTR(gst_dxgather_chain));
-    gst_pad_set_event_function(sinkpad,
-                               GST_DEBUG_FUNCPTR(gst_dxgather_sink_event));
-
-    gint stream_id = 0;
-    if (g_str_has_prefix(pad_name, "sink_")) {
-        stream_id = atoi(pad_name + 5);
-    }
-    gst_pad_set_active(sinkpad, TRUE);
-    gst_element_add_pad(element, sinkpad);
-
-    self->_sinkpads[stream_id] = GST_PAD(gst_object_ref(sinkpad));
-    self->_buffers[stream_id] = nullptr;
-    self->_eos_list[stream_id] = false;
-
-    return sinkpad;
-}
-
-static void gst_dxgather_release_pad(GstElement *element, GstPad *pad) {
-    gst_element_remove_pad(element, pad);
-}
+static GstAggregatorClass *parent_class = nullptr;  // NOSONAR
 
 static void copy_box(std::array<float, 4> &dst, const std::array<float, 4> &src) {
     dst = src;
@@ -222,8 +41,6 @@ static void copy_input_tensors(DXObjectMeta *dst, const DXObjectMeta *src) {
         const auto &key = input_tensors.first;
         if (dst->_input_tensors.find(key) != dst->_input_tensors.end())
             continue;
-
-        // Shallow copy - shared_ptr will handle reference counting
         dst->_input_tensors[key] = input_tensors.second;
     }
 }
@@ -231,18 +48,13 @@ static void copy_input_tensors(DXObjectMeta *dst, const DXObjectMeta *src) {
 static void copy_output_tensors(DXObjectMeta *dst, const DXObjectMeta *src) {
     for (const auto &output_tensors : src->_output_tensors) {
         const auto &key = output_tensors.first;
-
         if (dst->_output_tensors.find(key) != dst->_output_tensors.end()) {
-            g_error("[dxgather] Output Tensor is Exist \n");
+            GST_WARNING("Output tensor key '%d' already exists, skipping duplicate", key);
             continue;
         }
-
-        // Shallow copy - shared_ptr will handle reference counting
         dst->_output_tensors[key] = output_tensors.second;
     }
 }
-
-// merge용 헬퍼 (조건부 병합)
 
 static void merge_if_empty_int(int &dst, int src) {
     if (dst == -1 && src != -1) {
@@ -272,8 +84,6 @@ static void merge_container_if_empty(Container &dst, const Container &src) {
         dst = src;
     }
 }
-
-// 실제 함수 구현
 
 void copy_object_meta(DXObjectMeta *dst, const DXObjectMeta *src) {
     if (!dst || !src)
@@ -352,7 +162,6 @@ void frame_meta_merge(GstBuffer **buf0, GstBuffer *buf1) {
         gboolean found = FALSE;
 
         for (auto *obj_meta0 : frame_meta0->_object_meta_list) {
-
             if (obj_meta0->_meta_id == obj_meta1->_meta_id) {
                 merge_object_meta(obj_meta0, obj_meta1);
                 found = TRUE;
@@ -363,7 +172,6 @@ void frame_meta_merge(GstBuffer **buf0, GstBuffer *buf1) {
         if (!found) {
             DXObjectMeta *obj_meta0 = dx_acquire_obj_meta_from_pool();
             copy_object_meta(obj_meta0, obj_meta1);
-
             dx_add_obj_meta_to_frame(frame_meta0, obj_meta0);
         }
     }
@@ -385,114 +193,206 @@ gboolean check_same_source(GstBuffer *buf0, GstBuffer *buf1) {
     return FALSE;
 }
 
-gboolean check_buffer_null(const GstDxGather *self) {
-    for (const auto &entry : self->_buffers) {
-        if (!entry.second) {
-            return false;
+static GstFlowReturn
+gst_dxgather_aggregate(GstAggregator *agg, gboolean /*timeout*/) {
+    GstDxGather *self = GST_DXGATHER(agg);
+
+    GST_LOG_OBJECT(self, "aggregate called");
+
+    GstClockTime latest_pts = GST_CLOCK_TIME_NONE;
+    std::vector<std::pair<GstAggregatorPad *, GstBuffer *>> peeked;
+    gboolean all_eos = TRUE;
+
+    GST_OBJECT_LOCK(agg);
+    for (GList *l = GST_ELEMENT(agg)->sinkpads; l; l = l->next) {
+        GstAggregatorPad *pad = GST_AGGREGATOR_PAD(l->data);
+        if (gst_aggregator_pad_is_eos(pad)) {
+            continue;
+        }
+        all_eos = FALSE;
+        GstBuffer *buf = gst_aggregator_pad_peek_buffer(pad);
+        if (!buf) {
+            GST_OBJECT_UNLOCK(agg);
+            for (auto &p : peeked) gst_buffer_unref(p.second);
+            return GST_AGGREGATOR_FLOW_NEED_DATA;
+        }
+        GstClockTime pts = GST_BUFFER_PTS(buf);
+        if (latest_pts == GST_CLOCK_TIME_NONE || (GST_CLOCK_TIME_IS_VALID(pts) && pts > latest_pts)) {
+            latest_pts = pts;
+        }
+        peeked.emplace_back(pad, buf);
+    }
+    GST_OBJECT_UNLOCK(agg);
+
+    if (all_eos) {
+        GST_DEBUG_OBJECT(self, "All sinkpads EOS, returning GST_FLOW_EOS");
+        return GST_FLOW_EOS;
+    }
+
+    GstBuffer *merged = nullptr;
+    for (auto &p : peeked) {
+        GstAggregatorPad *pad = p.first;
+        GstBuffer *peek_buf = p.second;
+        GstClockTime pts = GST_BUFFER_PTS(peek_buf);
+        gst_buffer_unref(peek_buf);
+
+        if (pts != latest_pts) {
+            GstBuffer *stale = gst_aggregator_pad_pop_buffer(pad);
+            if (stale) {
+                GST_WARNING_OBJECT(self,
+                    "PTS mismatch on pad %s: expected %" GST_TIME_FORMAT
+                    ", got %" GST_TIME_FORMAT " — dropping stale buffer",
+                    GST_PAD_NAME(pad), GST_TIME_ARGS(latest_pts),
+                    GST_TIME_ARGS(pts));
+                gst_buffer_unref(stale);
+            }
+            continue;
+        }
+        GstBuffer *buf = gst_aggregator_pad_pop_buffer(pad);
+        if (!buf) {
+            continue;
+        }
+        if (!merged) {
+            merged = buf;
+        } else if (check_same_source(merged, buf)) {
+            frame_meta_merge(&merged, buf);
+            gst_buffer_unref(buf);
+        } else {
+            GST_WARNING_OBJECT(self,
+                "dxgather requires all sink pads fed from the same source; "
+                "dropping buffer at pts=%" GST_TIME_FORMAT
+                " from pad %s (different source than merged buffer)",
+                GST_TIME_ARGS(GST_BUFFER_PTS(buf)),
+                GST_PAD_NAME(pad));
+            gst_buffer_unref(buf);
         }
     }
-    return true;
+
+    if (!merged) {
+        return GST_AGGREGATOR_FLOW_NEED_DATA;
+    }
+
+    GST_LOG_OBJECT(self, "Pushing merged buffer: pts=%" GST_TIME_FORMAT,
+                     GST_TIME_ARGS(GST_BUFFER_PTS(merged)));
+    return gst_aggregator_finish_buffer(agg, merged);
 }
 
-// get_latest_pts 함수
-static GstClockTime get_latest_pts(const std::map<int, GstBuffer *> &buffers) {
-    auto latest_pts = GST_CLOCK_TIME_NONE;
-    for (const auto &entry : buffers) {
-        if (entry.second) {
-            guint64 pts = GST_BUFFER_PTS(entry.second);
-            if (latest_pts == GST_CLOCK_TIME_NONE || pts > latest_pts) {
-                latest_pts = pts;
-            }
-        }
+static GstFlowReturn
+gst_dxgather_update_src_caps(GstAggregator *agg,
+                             GstCaps *downstream_caps, GstCaps **ret) {
+    GstCaps *sink_caps = nullptr;
+
+    GST_OBJECT_LOCK(agg);
+    for (GList *l = GST_ELEMENT(agg)->sinkpads; l; l = l->next) {
+        GstAggregatorPad *pad = GST_AGGREGATOR_PAD(l->data);
+        sink_caps = gst_pad_get_current_caps(GST_PAD(pad));
+        if (sink_caps)
+            break;
     }
-    return latest_pts;
-}
+    GST_OBJECT_UNLOCK(agg);
 
-// merge_buffers_with_pts 함수
-static GstBuffer *merge_buffers_with_pts(std::map<int, GstBuffer *> &buffers,
-                                         GstClockTime latest_pts) {
-    GstBuffer *output_buffer = nullptr;
-    for (auto &entry : buffers) {
-        GstBuffer *input_buffer = entry.second;
-        if (input_buffer && GST_BUFFER_PTS(input_buffer) == latest_pts) {
-            if (!output_buffer) {
-                output_buffer = gst_buffer_ref(input_buffer);
-            } else if (output_buffer != input_buffer &&
-                       check_same_source(output_buffer, input_buffer)) {
-                frame_meta_merge(&output_buffer, input_buffer);
-            }
-            gst_buffer_unref(input_buffer);
-            entry.second = nullptr;
-        }
-    }
-    return output_buffer;
-}
-
-static gpointer gather_push_thread_func(GstDxGather *self) {
-    while (self->_running) {
-        self->_cv.notify_all();
-        g_usleep(1000);
-
-        GstBuffer *output_buffer = nullptr;
-
-        { // NOSONAR - scope for lock
-            std::unique_lock<std::mutex> lock(self->_mutex);
-
-            if (!check_buffer_null(self)) {
-                continue;
-            }
-
-            GstClockTime latest_pts = get_latest_pts(self->_buffers);
-
-            output_buffer = merge_buffers_with_pts(self->_buffers, latest_pts);
-        }
-
-        self->_cv.notify_all();
-
-        if (output_buffer) {
-            GST_DEBUG_OBJECT(self, "Pushing merged buffer: pts=%" GST_TIME_FORMAT,
-                             GST_TIME_ARGS(GST_BUFFER_PTS(output_buffer)));
-            GstFlowReturn ret = gst_pad_push(self->_srcpad, output_buffer);
-
-            if (ret != GST_FLOW_OK) {
-                GST_ERROR_OBJECT(self, "Failed to push buffer: %d\n", ret);
-            }
-        }
-
-        bool all_eos = true;
-        for (std::map<int, bool>::const_iterator it = self->_eos_list.begin(); it != self->_eos_list.end(); ++it) {
-            if (!it->second) {
-                all_eos = false;
-                break;
-            }
-        }
-        if (all_eos) {
-            GstEvent *eos_event = gst_event_new_eos();
-            if (!gst_pad_push_event(self->_srcpad, eos_event)) {
-                GST_ERROR_OBJECT(self, "Failed to push EOS Event\n");
-                break;
-            }
-        }
+    if (sink_caps) {
+        *ret = gst_caps_intersect(sink_caps, downstream_caps);
+        gst_caps_unref(sink_caps);
+    } else {
+        *ret = gst_caps_ref(downstream_caps);
     }
 
-    return nullptr;
-}
-
-static GstFlowReturn gst_dxgather_chain(GstPad *pad, GstObject *parent,
-                                        GstBuffer *buf) {
-    GstDxGather *self = GST_DXGATHER(parent);
-
-    gint stream_id = 0;
-    if (g_str_has_prefix(GST_PAD_NAME(pad), "sink_")) {
-        stream_id = atoi(GST_PAD_NAME(pad) + 5);
-    }
-    { // NOSONAR - scope for lock
-        std::unique_lock<std::mutex> lock(self->_mutex);
-        self->_cv.wait(lock, [self, stream_id]() {
-            return self->_buffers[stream_id] == nullptr || !self->_running;
-        });
-        self->_buffers[stream_id] = gst_buffer_ref(buf);
-        gst_buffer_unref(buf);
-    }
     return GST_FLOW_OK;
+}
+
+static void gst_dxgather_class_init(GstDxGatherClass *klass) {
+    GST_DEBUG_CATEGORY_INIT(gst_dxgather_debug_category, "dxgather", 0,
+                            "DXGather plugin");
+
+    auto *element_class = GST_ELEMENT_CLASS(klass);
+    auto *agg_class = GST_AGGREGATOR_CLASS(klass);
+
+    gst_element_class_set_static_metadata(
+        element_class, "DxGather", "Generic",
+        "Gather Multiple Streams (from the Same Source)",
+        "Sangil Jo <sijo@deepx.ai>");
+
+    gst_element_class_add_static_pad_template_with_gtype(
+        element_class, &sink_template, GST_TYPE_AGGREGATOR_PAD);
+    gst_element_class_add_static_pad_template(element_class, &src_template);
+
+    parent_class = GST_AGGREGATOR_CLASS(g_type_class_peek_parent(klass));
+    agg_class->aggregate = GST_DEBUG_FUNCPTR(gst_dxgather_aggregate);
+    agg_class->update_src_caps = gst_dxgather_update_src_caps;
+    agg_class->src_query = GST_DEBUG_FUNCPTR(gst_dxgather_src_query);
+    agg_class->sink_query = GST_DEBUG_FUNCPTR(gst_dxgather_sink_query);
+}
+
+static gboolean gst_dxgather_src_query(GstAggregator *agg, GstQuery *query) {
+    switch (GST_QUERY_TYPE(query)) {
+    case GST_QUERY_LATENCY: {
+        if (!GST_AGGREGATOR_CLASS(parent_class)->src_query(agg, query))
+            return FALSE;
+        // self_buffering: gather waits for matching PTS across N sinks.
+        // Approximate self = one frame at the slowest sink framerate.
+        gboolean live;
+        GstClockTime min_lat, max_lat;
+        gst_query_parse_latency(query, &live, &min_lat, &max_lat);
+        GstClockTime worst_frame = 0;
+        GST_OBJECT_LOCK(agg);
+        for (GList *l = GST_ELEMENT(agg)->sinkpads; l; l = l->next) {
+            GstPad *pad = GST_PAD(l->data);
+            GstCaps *caps = gst_pad_get_current_caps(pad);
+            if (!caps) continue;
+            const GstStructure *s = gst_caps_get_structure(caps, 0);
+            gint num = 0, denom = 1;
+            if (s && gst_structure_get_fraction(s, "framerate", &num, &denom) &&
+                num > 0 && denom > 0) {
+                GstClockTime d = gst_util_uint64_scale_int(GST_SECOND, denom, num);
+                if (d > worst_frame) worst_frame = d;
+            }
+            gst_caps_unref(caps);
+        }
+        GST_OBJECT_UNLOCK(agg);
+        if (worst_frame > 0) {
+            min_lat += worst_frame;
+            if (GST_CLOCK_TIME_IS_VALID(max_lat)) max_lat += worst_frame;
+        }
+        gst_query_set_latency(query, live, min_lat, max_lat);
+        return TRUE;
+    }
+    case GST_QUERY_ALLOCATION: {
+        std::vector<GstPad *> pads;
+        GST_OBJECT_LOCK(agg);
+        for (GList *l = GST_ELEMENT(agg)->sinkpads; l; l = l->next) {
+            pads.push_back(GST_PAD(gst_object_ref(l->data)));
+        }
+        GST_OBJECT_UNLOCK(agg);
+        for (GstPad *p : pads) {
+            if (gst_pad_peer_query(p, query)) {
+                for (GstPad *pp : pads) gst_object_unref(pp);
+                return TRUE;
+            }
+        }
+        for (GstPad *p : pads) gst_object_unref(p);
+        return GST_AGGREGATOR_CLASS(parent_class)->src_query(agg, query);
+    }
+    default:
+        return GST_AGGREGATOR_CLASS(parent_class)->src_query(agg, query);
+    }
+}
+
+static gboolean gst_dxgather_sink_query(GstAggregator *agg,
+                                        GstAggregatorPad *pad,
+                                        GstQuery *query) {
+    switch (GST_QUERY_TYPE(query)) {
+    case GST_QUERY_ALLOCATION: {
+        gboolean ret =
+            GST_AGGREGATOR_CLASS(parent_class)->sink_query(agg, pad, query);
+        gst_query_add_allocation_meta(query, DX_FRAME_META_API_TYPE, NULL);
+        return ret;
+    }
+    default:
+        return GST_AGGREGATOR_CLASS(parent_class)->sink_query(agg, pad, query);
+    }
+}
+
+static void gst_dxgather_init(GstDxGather * /*self*/) {
+    /* Aggregator handles all pad management */
 }

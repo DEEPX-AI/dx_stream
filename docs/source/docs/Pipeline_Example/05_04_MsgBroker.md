@@ -34,7 +34,7 @@ The pipeline in the figure is defined in
 
 This section demonstrates how to run a basic message broker pipeline demo using MQTT or Kafka.
 
-#### **MQTT Demo**
+#### MQTT Demo  
 
 **1. Server Setup (Processing Server with Message Broker)**
 ```bash
@@ -43,6 +43,17 @@ sudo apt install mosquitto mosquitto-clients
 sudo systemctl start mosquitto
 sudo systemctl enable mosquitto
 ```
+
+!!! note "NOTE"
+
+    By default, Mosquitto only accepts connections from `localhost`. To allow remote consumers, add the following to `/etc/mosquitto/mosquitto.conf`:
+
+    ```
+    listener 1883 0.0.0.0
+    allow_anonymous true
+    ```
+
+    Then restart the service: `sudo systemctl restart mosquitto`
 
 **2. Run DX-STREAM Pipeline (Server Side)**
 ```bash
@@ -70,23 +81,33 @@ pip install paho-mqtt
 python3 /usr/local/share/gstdxstream/bin/mqtt_sub_example.py -n <server_ip> -p 1883 -t test
 
 # Or for C++ version
-mqtt_sub_example -h <server_ip> -t test -p 1883
+mqtt_sub_example -n <server_ip> -t test -p 1883
 ```
 
-#### **Kafka Demo**
+#### Kafka Demo  
 
 **1. Server Setup (Processing Server with Message Broker)**
 ```bash
 # Install Java and Kafka
 sudo apt install default-jdk
-wget https://downloads.apache.org/kafka/3.9.0/kafka_2.13-3.9.0.tgz
-tar -xzf kafka_2.13-3.9.0.tgz
-cd kafka_2.13-3.9.0
+wget https://downloads.apache.org/kafka/3.9.2/kafka_2.13-3.9.2.tgz
+tar -xzf kafka_2.13-3.9.2.tgz
+cd kafka_2.13-3.9.2
 
 # Start Zookeeper and Kafka server
-bin/zookeeper-server-start.sh config/zookeeper.properties &
+bin/zookeeper-server-start.sh config/zookeeper.properties & \
 bin/kafka-server-start.sh config/server.properties &
 ```
+
+!!! note "NOTE"
+
+    If the consumer runs on a different machine from the broker, set `advertised.listeners` in `config/server.properties` to the broker's IP:
+
+    ```
+    advertised.listeners=PLAINTEXT://<broker_ip>:9092
+    ```
+
+    Then restart the Kafka server. Without this, remote consumers will fail to resolve the broker's internal hostname.
 
 **2. Run DX-STREAM Pipeline (Server Side)**
 ```bash
@@ -116,7 +137,116 @@ python3 /usr/local/share/gstdxstream/bin/kafka_consume_example.py -n <server_ip>
 kafka_consume_example -n <server_ip> -p 9092 -t test
 ```
 
-#### **Network Architecture**
+#### Windows  
+
+On Windows, pre-built batch scripts are provided at `dx_stream/pipelines/windows/`:
+
+```cmd
+broker_mqtt.bat    :: MQTT pipeline (localhost:1883)
+broker_kafka.bat   :: Kafka pipeline (localhost:9092)
+```
+
+Scripts auto-detect `DXSTREAM_ROOT` from their location — no environment variable setup needed.
+
+!!! note "Broker server required"
+
+    `install.bat` installs only the **client libraries** (libmosquitto, librdkafka) needed to build DX-Stream.
+    A separate **broker server** must be running before executing the pipeline.
+
+**MQTT (Mosquitto)**
+
+Download the Windows installer from [mosquitto.org/download](https://mosquitto.org/download/) and install.
+Then start the broker:
+
+```cmd
+mosquitto -v
+```
+
+Or start as a Windows service via Services panel (`services.msc`).
+
+**Kafka**
+
+Kafka 4.3.0+ uses **KRaft mode** (no Zookeeper required).
+
+- (1) Download JDK from [adoptium.net](https://adoptium.net/) (MSI installer recommended) and install.  
+
+- (2) Download Kafka binary from [kafka.apache.org/downloads](https://kafka.apache.org/downloads) and extract to a **short path** (e.g., `C:\kafka`).
+
+!!! warning "Use a short path for Kafka"
+
+    Extracting Kafka under a long path (e.g., inside a user's git repo folder) causes ("The input line is too long") errors in the batch scripts.  
+    
+    Always extract to a short path like `C:\kafka`.  
+
+- (3) Initialize and start (run once from `C:\kafka`):  
+
+```cmd
+cd C:\kafka
+
+:: Generate a cluster UUID
+bin\windows\kafka-storage.bat random-uuid
+:: → copy the printed UUID, e.g. KxWspAMDQNmidYkTX2KZcw
+
+:: Format storage (first time only)
+bin\windows\kafka-storage.bat format -t <UUID> -c config\server.properties --standalone
+
+:: Start broker
+bin\windows\kafka-server-start.bat config\server.properties
+```
+
+**Running the pipelines**
+
+```cmd
+:: from dx_stream repo root
+.\dx_stream\pipelines\windows\broker_mqtt.bat
+.\dx_stream\pipelines\windows\broker_kafka.bat
+```
+
+Custom video (optional):
+
+```cmd
+.\dx_stream\pipelines\windows\broker_mqtt.bat "C:\path\to\video.mp4"
+```
+
+**Consumer apps** are bundled at `install\share\gstdxstream\bin\`:
+
+- `mqtt_sub_example.exe` / `mqtt_sub_example.py`
+- `kafka_consume_example.exe` / `kafka_consume_example.py`
+
+!!! warning "Kafka: start consumer before pipeline"
+
+    Kafka does not retain messages for consumers that connect after publish.
+    Start the consumer first, then run the pipeline:
+
+    ```cmd
+    :: Terminal 1 — consumer first
+    install\share\gstdxstream\bin\kafka_consume_example.exe -n localhost -p 9092 -t test
+
+    :: Terminal 2 — then pipeline
+    .\dx_stream\pipelines\windows\broker_kafka.bat
+    ```
+
+    `Unknown topic or partition` on first launch is normal — the topic is created automatically once the pipeline runs.
+
+    MQTT has no such constraint — consumer can connect before or after the pipeline.
+
+**MQTT consumer:**
+
+```cmd
+install\share\gstdxstream\bin\mqtt_sub_example.exe -n localhost -p 1883 -t test
+:: or Python
+python install\share\gstdxstream\bin\mqtt_sub_example.py -n localhost -p 1883 -t test
+```
+
+**Kafka consumer:**
+
+```cmd
+install\share\gstdxstream\bin\kafka_consume_example.exe -n localhost -p 9092 -t test
+:: or Python
+python install\share\gstdxstream\bin\kafka_consume_example.py -n localhost -p 9092 -t test
+```
+
+#### Network Architecture  
 
 **Processing Server:**  
 
@@ -143,7 +273,7 @@ kafka_consume_example -n <server_ip> -p 9092 -t test
 
     Replace `<server_ip>` with the actual IP address of your processing server. For local testing, use `localhost`.
 
-#### **Pipeline Properties**
+#### Pipeline Properties  
 
 The broker pipelines use the following key properties:
 
@@ -167,14 +297,13 @@ The broker pipelines use the following key properties:
 
 ---
 
-
 ## Advanced MsgBroker Configuration 
 
 This section describes the detailed steps required to set up secure communication for the MQTT and Kafka message brokers, including SSL/TLS encryption and client authentication
 
 ### **MQTT Security Configuration**
 
-#### **SSL/TLS Encryption Setup**
+#### SSL/TLS Encryption Setup  
 
 **1. Generate CA Certificate and Server Keys**  
 
@@ -303,7 +432,7 @@ tls_keyfile = /etc/mosquitto/certs/client.key
 
 ### **Kafka Security Configuration**
 
-#### **SSL/TLS Setup for Kafka**
+#### SSL/TLS Setup for Kafka  
 
 **1. Generate Certificates for Kafka**  
 

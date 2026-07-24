@@ -21,6 +21,27 @@ GObject
                          +----GstDxOsd
 ```
 
+### **Pad Templates**
+
+**Sink (input)**
+
+| **Property** | **Value** |
+|---|---|
+| Format | `video/x-raw, format=(string){ RGB, BGR, NV12, I420 }; application/x-dxvideoraw` |
+
+**Src (output)**
+
+| **Property** | **Value** |
+|---|---|
+| Format | `video/x-raw, format=(string){ RGB, BGR, NV12, I420 }; application/x-dxvideoraw` |
+
+### **Domain Mode Behavior**
+
+`dxosd` is a dual-mode element (see [Multi-Stream Domain](./03_00_Multi_Stream_Domain.md)).
+
+- **Normal mode** (sink caps = `video/x-raw`): a single `video_info` is taken from the caps and reused for every buffer.
+- **Domain mode** (sink caps = `application/x-dxvideoraw`): `dxosd` reads the per-stream wrapped `CAPS` events emitted by `dxinputselector` (one per stream, carrying the original `video/x-raw` caps and the stream-id) and stores a separate `video_info` per `_stream_id`. For each incoming buffer it picks the matching `video_info` from `DXFrameMeta._stream_id`, so streams with different resolutions or formats are rendered correctly.
+
 ### **Properties**  
 
 | **Name**  | **Description**                              | **Type**  | **Default Value** |

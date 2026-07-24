@@ -10,16 +10,18 @@ GStreamer provides a powerful debug logging system controlled by the `GST_DEBUG`
 
 ### Debug Level Overview
 
-The `GST_DEBUG` variable accepts numeric levels from 0 to 5:
+The `GST_DEBUG` variable accepts numeric levels from 0 to 7:
 
 | **Level** | **Name**    | **Description**                                                                 |
 |-----------|-------------|---------------------------------------------------------------------------------|
 | 0         | NONE        | No debug output                                                                 |
 | 1         | ERROR       | Fatal errors that prevent normal operation                                       |
 | 2         | WARNING     | Non-fatal issues that may affect behavior                                        |
-| 3         | INFO        | Informational messages about state changes and major operations                  |
-| 4         | DEBUG       | Detailed operational information useful for troubleshooting                      |
-| 5         | LOG         | Extremely verbose output (not used in DX-STREAM elements)                        |
+| 3         | FIXME       | Fixme messages (rarely used in DX-STREAM)                                        |
+| 4         | INFO        | Informational messages about state changes and major operations                  |
+| 5         | DEBUG       | Detailed operational information useful for troubleshooting                      |
+| 6         | LOG         | Per-buffer trace — every frame/buffer processed logs at this level               |
+| 7         | TRACE       | Internal algorithm details (e.g., inference queue state, tensor contents)         |
 
 ### Basic Usage
 
@@ -288,11 +290,13 @@ $ GST_DEBUG=dxscale:4,dxconvert:4 ./your_app
 
 ## Metadata Debugging
 
-DX-STREAM uses custom GStreamer metadata structures to pass information between elements. You can enable metadata-specific debug logging to trace data flow.
+DX-STREAM uses custom GStreamer metadata structures to pass information between elements. All metadata logging is unified under a single debug category.
 
-### Metadata Categories
+### Metadata Category
 
-**Debug Categories:** `dxframemeta`, `dxobjectmeta`, `dxusermeta`
+**Debug Category:** `dxmeta`
+
+Covers: DXFrameMeta, DXObjectMeta, DXMsgMeta, DXUserMeta
 
 **Key Log Messages:**
 
@@ -304,11 +308,63 @@ DX-STREAM uses custom GStreamer metadata structures to pass information between 
 **Usage:**
 
 ```bash
-# Debug metadata operations
-$ GST_DEBUG=dxframemeta:4,dxobjectmeta:4,dxusermeta:4 ./your_app
+# Debug all metadata operations
+$ GST_DEBUG=dxmeta:5 ./your_app
 
 # Monitor object metadata
-$ GST_DEBUG=dxobjectmeta:4 ./your_app 2>&1 | grep "DXObjectMeta"
+$ GST_DEBUG=dxmeta:5 ./your_app 2>&1 | grep "DXObjectMeta"
+```
+
+---
+
+## Subsystem Debugging
+
+DX-STREAM internal subsystems (shared across multiple elements) use dedicated debug categories for focused diagnostics.
+
+### Transform Kernel
+
+**Debug Category:** `transform_kernel`
+
+Covers: libyuv, RGA, V3 DSP kernels, TransformKernelPool, PreprocessorFactory
+
+**Key Log Messages:**
+
+- `TransformKernelPool: using backend '<name>' (single/pool mode)` - Backend selection
+- `RgaTransformKernel: imcheck rejected` - RGA validation failure with fallback
+- `TransformKernelPool: '<name>' failed, falling back to libyuv` - Automatic fallback
+- `PreprocessorFactory: kernel pool created` - Pool initialization
+
+**Usage:**
+
+```bash
+# Debug video transform operations (resize, color convert, crop)
+$ GST_DEBUG=transform_kernel:5 ./your_app
+
+# Trace per-frame transform execution
+$ GST_DEBUG=transform_kernel:6 ./your_app
+```
+
+### Inference Backend
+
+**Debug Category:** `inference_backend`
+
+Covers: DXRT runtime, InferBackendFactory
+
+**Key Log Messages:**
+
+- `DxrtBackend: initialized (DXRT <version>, <N> devices)` - DXRT init
+- `Put req_id=<id> (pending=<N>)` - Inference request submitted (TRACE level)
+- `Got req_id=<id> (pending=<N>)` - Inference result received (TRACE level)
+- `Get SKIP: seq=<N>, device[<idx>]` - Inference timeout
+
+**Usage:**
+
+```bash
+# Debug inference backend initialization and errors
+$ GST_DEBUG=inference_backend:5 ./your_app
+
+# Trace per-request inference flow (very verbose)
+$ GST_DEBUG=inference_backend:7 ./your_app
 ```
 
 ---
@@ -376,7 +432,7 @@ $ GST_DEBUG=dx*:3 ./your_app 2>&1 | grep -E "property|config"
 **Monitor metadata lifecycle:**
 
 ```bash
-$ GST_DEBUG=dxframemeta:4,dxobjectmeta:4 ./your_app 2>&1 | grep -E "Creating|Freeing|Releasing"
+$ GST_DEBUG=dxmeta:5 ./your_app 2>&1 | grep -E "Creating|Freeing|Releasing"
 ```
 
 **Track buffer allocation:**
@@ -450,7 +506,7 @@ $ gst-inspect-1.0 dxinfer
 **Verify debug categories:**
 
 ```bash
-$ GST_DEBUG=dx*:3 gst-launch-1.0 --gst-debug-help | grep dx
+$ GST_DEBUG=dx*:3,dxmeta:3,transform_kernel:3,inference_backend:3 gst-launch-1.0 --gst-debug-help | grep -E "dx|transform_kernel|inference_backend|dxmeta"
 ```
 
 ### Common Patterns
@@ -481,7 +537,7 @@ $ GST_DEBUG=dx*:4 ./your_app 2>&1 | grep -oP 'pts=\K[0-9:]+'
 - **DX-STREAM Troubleshooting:** See Chapter 06 - Troubleshooting and FAQ
 - **Element-Specific Documentation:** See Chapter 03 - DX-STREAM Elements
 
-!!! tip "Pro Tip"
+!!! note "Pro Tip"
 
     When reporting issues, always include relevant debug logs with `GST_DEBUG=dx*:4` to help diagnose problems quickly.
 

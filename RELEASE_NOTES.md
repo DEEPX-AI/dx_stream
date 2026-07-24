@@ -1,5 +1,29 @@
 # RELEASE_NOTES
 
+## DX-Stream v3.1.0 / 2026-06-25
+
+### 1. Changed
+- **Multi-Stream Domain**: Introduced `application/x-dxvideoraw` domain caps for unified multi-stream processing — a single chain can now process streams with different resolutions and formats
+    - Per-stream sticky events (STREAM_START / CAPS / SEGMENT / EOS) are preserved across the domain so each stream keeps an independent timeline
+    - `dxinputselector` and `dxoutputselector` act as explicit domain boundaries; single-stream processing elements can be placed directly in multi-stream pipelines without modification
+- **Base class migration**: `dxinputselector` and `dxgather` migrated to `GstAggregator` for standard N:1 multiplexing; `dxvnpuoverlay` migrated to `GstBaseSink` for proper render/preroll lifecycle
+- **TransformKernelPool**: Introduced automatic src-format-based kernel selection with libyuv fallback; migrated dxscale, dxconvert, dxpreprocess, dxmsgconv to use unified kernel pool
+- **InferBackend abstraction**: Refactored dxinfer to use Put/Get async pattern with backend property (auto/dxrt/dxvnpu) replacing direct dxrt dependency
+- **Model List Update**: Updated the model list to include models compiled with DX-COM v2.4.0.
+
+### 2. Fixed
+- **LATENCY reporting**: All processing elements now correctly account for their own processing time in LATENCY queries, stabilizing synchronization and QoS behavior in pipelines that include live sources
+- **FLUSH recovery**: Internal queues, threads, and per-stream state are now properly reset on FLUSH, eliminating hangs and errors on seek / replay
+- **Push thread lifecycle**: Improved thread cleanup during EOS / FLUSH / state transitions, resolving single-frame input hangs
+- **Caps negotiation**: Pad template caps tightened so incompatible element connections fail immediately at negotiation time instead of producing runtime anomalies
+- **Error handling**: `abort()` / uncaught exceptions replaced with `GST_ELEMENT_ERROR` across all elements — missing model files, NPU init failures, and errors in user-provided libraries (`dxpreprocess` / `dxpostprocess` / `dxmsgconv`) now produce proper GStreamer error messages instead of crashing the pipeline
+
+### 3. Added
+- **Windows Build and Runtime Environment**: Full Windows MSVC support including dependency check, build, demo launcher, test suite, Python binding (pydxs), and build guide documentation
+- **DEEPX Agent-Driven Development(dx-agent-dev, Beta)**: Describe a pipeline in natural language and an AI agent assembles the GStreamer graph from DEEPX elements, wiring NPU inference into real-time video/stream pipelines end to end.
+- **Test Suite**: Reorganized test infrastructure under `test/base/{element,metadata,pipeline}/` with 73 new test binaries covering element contracts, domain boundaries, end-to-end pipelines, metadata, and pydxs scenarios
+- **DxMsgConv**: Add `include-frame` property for base64 JPEG frame encoding with Kafka/MQTT consumer display support
+
 ## DX-Stream v3.0.1 / 2026-04-21
 
 ### 1. Changed

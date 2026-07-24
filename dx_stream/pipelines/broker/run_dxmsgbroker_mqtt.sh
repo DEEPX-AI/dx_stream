@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SRC_DIR=$(dirname "$(dirname "$SCRIPT_DIR")")
 
 # Model auto-download logic
-MODEL_NAME="YoloV5S_PPU.dxnn"
+MODEL_NAME="yolov5-s_640x640_ppu.dxnn"
 MODEL_PATH="$SRC_DIR/samples/models/$MODEL_NAME"
 if [ ! -f "$MODEL_PATH" ]; then
     echo "[INFO] $MODEL_NAME not found in samples/models. Downloading..."
@@ -27,9 +27,10 @@ INPUT_VIDEO_PATH_LIST=(
 
 for INPUT_VIDEO_PATH in "${INPUT_VIDEO_PATH_LIST[@]}"; do
     gst-launch-1.0 -e urisourcebin uri=file://$INPUT_VIDEO_PATH ! decodebin ! \
-                    dxpreprocess config-file-path=$SRC_DIR/configs/YoloV5S_PPU/preprocess_config.json ! queue ! \
-                    dxinfer config-file-path=$SRC_DIR/configs/YoloV5S_PPU/inference_config.json ! queue ! \
-                    dxpostprocess config-file-path=$SRC_DIR/configs/YoloV5S_PPU/postprocess_config.json ! queue ! \
-                    dxmsgconv config-file-path=$SRC_DIR/configs/msgconv_config.json ! queue ! \
+                    dxpreprocess config-file-path=$SRC_DIR/configs/YoloV5S_PPU/preprocess_config.json ! queue max-size-buffers=1 ! \
+                    dxinfer config-file-path=$SRC_DIR/configs/YoloV5S_PPU/inference_config.json ! queue max-size-buffers=1 ! \
+                    dxpostprocess config-file-path=$SRC_DIR/configs/YoloV5S_PPU/postprocess_config.json ! queue max-size-buffers=1 ! \
+                    dxosd ! queue max-size-buffers=1 ! \
+                    dxmsgconv config-file-path=$SRC_DIR/configs/msgconv_config.json ! queue max-size-buffers=1 ! \
                     dxmsgbroker broker-name=mqtt conn-info=localhost:1883 topic=test
 done

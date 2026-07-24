@@ -1,0 +1,13 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "dx-stream",
+  "version-string": "1.0.0",
+  "description": "DX-Stream GStreamer plugin dependencies",
+  "dependencies": [
+    "eigen3",
+    "opencv4",
+    "libyuv",
+    "mosquitto",
+    "librdkafka"
+  ]
+}
