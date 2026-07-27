@@ -12,7 +12,7 @@
 **Throttle QoS Event**  
 
 - If `throttle` is set to `true`, a Throttle QoS Event is sent upstream when frames are dropped.  
-- **DxInfer** can respond this event t by applying throttling, using the `throttling_delay` value.  
+- **DxInfer** can respond this event by applying throttling, using the `throttling_delay` value.  
 - To enable this function properly, **DxRate must** be placed downstream of **DxInfer** in the pipeline.  
 
 **Framerate and Video Speed**  
