@@ -5,9 +5,11 @@
 ### 1. Changed
 
 ### 2. Fixed
-- Fix typos and add missing details in documentation
+- Fixed typos and added missing details in documentation
 
 ### 3. Added
+
+---
 
 ## DX-Stream v3.1.0 / 2026-06-25
 
@@ -33,15 +35,19 @@
 - **Test Suite**: Reorganized test infrastructure under `test/base/{element,metadata,pipeline}/` with 73 new test binaries covering element contracts, domain boundaries, end-to-end pipelines, metadata, and pydxs scenarios
 - **DxMsgConv**: Add `include-frame` property for base64 JPEG frame encoding with Kafka/MQTT consumer display support
 
+---
+
 ## DX-Stream v3.0.1 / 2026-04-21
 
 ### 1. Changed
 - None
 ### 2. Fixed
-- Fix Typos in User Manual
-- Fix uninstall not removing apps build directories and pydxs build cache
+- Fixed Typos in User Manual
+- Fixed uninstall not removing apps build directories and pydxs build cache
 ### 3. Added
 - Third-party sample model license notice documentation
+
+---
 
 ## DX-Stream v3.0.0 / 2026-04-01
 
@@ -74,10 +80,14 @@
 - Auto-detection and cleanup of old installation files from previous major versions
 - Debugging guide documentation
 
+---
+
 ## DX-Stream v2.2.1 / 2026-02-28
 
 ### 1. Changed
-- Update sample models version from dx_com v2.2.0 to v2.2.1
+- Updated sample models version from dx_com v2.2.0 to v2.2.1
+
+---
 
 ## DX-Stream v2.2.0 / 2025-12-30
 
@@ -119,7 +129,7 @@
 - feat: enhance dependency installation for Debian 12
     - Smart version checking for meson (apt/backports/pip fallback)
     - Handle libdrm version conflicts without breaking HW acceleration
-- update secondary mode pipeline for SCRFD500M_PPU_SECOND
+- Updated secondary mode pipeline for SCRFD500M_PPU_SECOND
 
 ### 2. Fixed
 - **Setup Scripts**: Improved error handling and prevented excessive download retry attempts
@@ -128,7 +138,7 @@
 - **Registry Handling**: Fixed GStreamer registry cache issues with GstShark integration
 - Fixed an event processing timing issue in 'dxinputselector' that caused compositor pipeline freezes.
 - fix: add detection and installation of Rockchip-specific dependencies (librga-dev)
-- update MQTT configuration to include connection timeout and state management
+- Updated MQTT configuration to include connection timeout and state management
 
 ### 3. Added
 - **PPU Support**: Integrated Post-Processing Unit functionality for YOLOv5s, SCRFD500M, and YOLOv5Pose models
@@ -176,7 +186,7 @@
 
 ---
 
-## DX-Stream  v1.7.0 / 2025-07-16
+## DX-Stream v1.7.0 / 2025-07-16
 
 ### 1. Changed
 - dxinfer : Improved the buffer queue management mechanism. Instead of locking inputs based on queue size within the push thread, the system now adds a req_id to the buffer and utilizes a wait function for more efficient processing.
