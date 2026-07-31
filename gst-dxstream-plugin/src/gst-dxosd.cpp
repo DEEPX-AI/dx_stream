@@ -236,6 +236,9 @@ static GstFlowReturn gst_dxosd_transform_ip(GstBaseTransform *trans,
         // Frame-level segmentation (semantic seg)
         draw_semantic_segmentation(surface, frame_meta);
 
+        // Frame-level dense depth map (colormap overlay)
+        draw_depth(surface, frame_meta);
+
         for (const auto *obj_meta : frame_meta->_object_meta_list) {
             draw_object_meta(surface, obj_meta, scale_x, scale_y);
         }

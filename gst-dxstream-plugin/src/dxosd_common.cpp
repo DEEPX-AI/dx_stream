@@ -38,6 +38,19 @@ void draw_semantic_segmentation(cv::Mat &img, const DXFrameMeta *meta) {
     draw_seg_bgr(img, meta->_seg_data.data(), meta->_seg_width, meta->_seg_height, false);
 }
 
+// Frame-level dense depth map: colorize the normalized 0-255 depth with a
+// MAGMA colormap and alpha-blend over the frame (near=dark, far=bright).
+void draw_depth(cv::Mat &img, const DXFrameMeta *meta) {
+    if (meta->_depth_data.empty() || meta->_depth_width <= 0 || meta->_depth_height <= 0)
+        return;
+    cv::Mat depth_map(meta->_depth_height, meta->_depth_width, CV_8UC1,
+                      const_cast<unsigned char *>(meta->_depth_data.data()));
+    cv::Mat resized, colored;
+    cv::resize(depth_map, resized, img.size(), 0, 0, cv::INTER_LINEAR);
+    cv::applyColorMap(resized, colored, cv::COLORMAP_MAGMA);  // BGR
+    cv::addWeighted(img, 0.4, colored, 0.6, 0.0, img);
+}
+
 static cv::Scalar get_instance_color_bgr(const DXObjectMeta *meta) {
     int id = meta->_track_id;
     if (id >= 0) {

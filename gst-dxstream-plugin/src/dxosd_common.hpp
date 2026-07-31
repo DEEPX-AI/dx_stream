@@ -17,6 +17,7 @@ extern const std::vector<cv::Scalar> COLORS;
 
 // BGR drawing functions
 void draw_semantic_segmentation(cv::Mat &img, const DXFrameMeta *meta);
+void draw_depth(cv::Mat &img, const DXFrameMeta *meta);
 void draw_instance_segmentation(cv::Mat &img, const DXObjectMeta *meta, float sx, float sy);
 void draw_keypoints(cv::Mat &img, const DXObjectMeta *meta, float sx, float sy);
 void draw_obb(cv::Mat &img, const DXObjectMeta *meta, float sx, float sy);

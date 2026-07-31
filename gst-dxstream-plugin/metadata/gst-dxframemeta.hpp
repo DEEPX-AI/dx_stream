@@ -45,6 +45,12 @@ struct _DXFrameMeta {
     // RAII-managed tensors (shallow copy through shared_ptr)
     std::map<int, dxs::DXTensors> _input_tensors;   // preproc_id -> input tensors
     std::map<int, dxs::DXTensors> _output_tensors;   // infer_id -> output tensors
+
+    // depth estimation (frame-level dense map, normalized 0-255 single channel).
+    // Appended at struct end to keep ABI-safe against older consumers.
+    std::vector<unsigned char> _depth_data;
+    int _depth_width = 0;
+    int _depth_height = 0;
 };
 
 DX_API GType dx_frame_meta_api_get_type(void);
