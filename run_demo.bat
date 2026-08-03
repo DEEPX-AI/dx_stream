@@ -27,6 +27,7 @@ if not exist "%INSTALL_DIR%\bin\gstdxstream.dll" (
 REM ---- Setup environment (inherited by pipeline scripts via DXSTREAM_ROOT) ----
 set "DXSTREAM_ROOT=%PROJECT_ROOT%"
 set "GST_PLUGIN_PATH=%INSTALL_DIR%\lib\gstreamer-1.0"
+set "GST_REGISTRY=%INSTALL_DIR%\gst-registry.bin"
 set "PATH=%INSTALL_DIR%\bin;%INSTALL_DIR%\share\gstdxstream\lib;%INSTALL_DIR%\share\gstdxstream\bin;%INSTALL_DIR%\lib\gstreamer-1.0;%PATH%"
 
 if defined GSTREAMER_1_0_ROOT_MSVC_X86_64 (

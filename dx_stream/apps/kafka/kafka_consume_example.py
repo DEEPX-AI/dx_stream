@@ -78,7 +78,8 @@ def main(broker, topic, config):
     consumer = Consumer(conf)
 
     def print_assignment(consumer, partitions):
-        print('Assignment:', partitions)
+        summary = ', '.join(f"{p.topic}[{p.partition}]" for p in partitions)
+        print(f"Assignment: {summary}")
 
     consumer.subscribe([topic], on_assign=print_assignment)
 
