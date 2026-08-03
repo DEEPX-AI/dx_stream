@@ -156,13 +156,16 @@ cd dx_rt
 
 - Alternative: `./install.sh --minimal` for runtime-only installation
 
-### [Step 2.4] Verifying Installation (dxrt-cli)
+### [Step 2.4] Verifying Installation (dxcli)
 
 Test the NPU driver and runtime installation:
 
 ```bash
-dxrt-cli -s
+dxcli -s
 ```
+
+!!! note "NOTE"
+    `dxcli` is the standard CLI tool. Legacy name `dxrt-cli` remains available as a backward-compatible alias.
 
 **Expected Output**:
 ```
@@ -189,7 +192,7 @@ dvfs Disabled
 
 **Quick Diagnostics** (If Device is Not Detected)  
 
-If the `dxrt-cli -s` command fails to detect the hardware, execute the following diagnostic checks sequentially.  
+If the `dxcli -s` command fails to detect the hardware, execute the following diagnostic checks sequentially.  
 
 ```bash
 # 1. Verify if the DEEPX NPU kernel driver module is loaded into the system
@@ -348,7 +351,7 @@ Monitor hardware status if performance is slower than expected.
 
 - Verify NPU Status
 ```
-dxrt-cli -s
+dxcli -s
 ```
 
 - Monitor CPU usage 
@@ -358,7 +361,7 @@ htop
 
 !!! note "NOTE"
 
-    Next Steps. fter successful installation:  
+    Next Step. After successful installation:  
 
     - Explore the [**Pipeline Examples**](./Pipeline_Example/05_01_Single-Stream.md)  
     - Learn about [**Writing Custom Applications**](./04_Writing_Your_Own_Application.md)  

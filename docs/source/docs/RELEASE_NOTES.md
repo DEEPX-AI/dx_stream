@@ -1,1 +1,1 @@
-../../../RELEASE_NOTES.md
+--8<-- "RELEASE_NOTES.md"

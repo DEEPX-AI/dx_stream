@@ -271,10 +271,15 @@ Postprocessing is essential for interpreting and converting the model's output t
 To check the structure of the output tensor, use the following command. This prints the tensor shape for each output:  
 
 ```
-$ parse_model -m yolov7_640x640.dxnn
+$ dxparse -m yolov7_640x640.dxnn
+```
+
+!!! note "NOTE"
+    `dxparse` is the standard CLI tool. Legacy name `parse_model` remains available as a backward-compatible alias.
 
 Example output:
 
+```
 outputs:
   onnx::Reshape_491, FLOAT, [1, 80, 80, 256]
   onnx::Reshape_525, FLOAT, [1, 40, 40, 256]
