@@ -1,5 +1,16 @@
 # RELEASE_NOTES
 
+## DX-Stream v3.1.2 / 2026-08-03
+
+### 1. Changed
+
+### 2. Fixed
+- Added self-configuring GST_PLUGIN_PATH for Windows pipeline scripts
+
+### 3. Added
+
+---
+
 ## DX-Stream v3.1.1 / 2026-07-27
 
 ### 1. Changed
