@@ -241,6 +241,16 @@ if errorlevel 1 (
     exit /b 1
 )
 
+REM ---- Invalidate cached GStreamer plugin registry ----
+REM gstdxstream.dll was just rebuilt in-place; GStreamer's registry cache keys
+REM off directory mtime and can keep serving a stale/blacklisted entry for the
+REM same filename even after the file content changed. Force a rescan on the
+REM next pipeline run by deleting this install's own scoped registry cache.
+if exist "%PREFIX%\gst-registry.bin" (
+    echo [INFO] Invalidating stale GStreamer plugin registry cache
+    del /f /q "%PREFIX%\gst-registry.bin" >nul 2>&1
+)
+
 REM ---- Collect runtime DLLs into install\bin\ ----
 echo [INFO] Collecting runtime DLLs into install\bin\...
 if not exist "%PREFIX%\bin" mkdir "%PREFIX%\bin"

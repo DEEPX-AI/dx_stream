@@ -45,8 +45,8 @@ DX-Stream is a GStreamer-based Vision AI application development tool that allow
 - [Performance Evaluation With GstShark](./docs/source/docs/Appendix_Performance_Evaluation_with_GstShark.md)
 - [Third-Party Sample Model Licenses](./docs/source/docs/Appendix_Third_Party_Model_Licenses.md)
 
-**Change Log**
-- [Change Log](./docs/source/docs/Appendix_Change_Log.md)
+**RELEASE_NOTES**
+- [RELEASE_NOTES](./RELEASE_NOTES.md)
 
 ## Third-Party Model License Notice
 
