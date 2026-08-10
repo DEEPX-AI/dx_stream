@@ -8,6 +8,7 @@
         "yolo26-n_640x640.dxnn",
         "yolo26-n-pose_640x640.dxnn",
         "yolo26-n-seg_640x640.dxnn",
+        "yolo26-depth-n_768x768.dxnn",
         "yolov5-s_640x640.dxnn",
         "yolov7_640x640.dxnn",
         "yolov8-n_640x640.dxnn",

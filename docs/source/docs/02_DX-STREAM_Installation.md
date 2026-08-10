@@ -316,6 +316,7 @@ When the script is executed, you'll be prompted to select a demo from the follow
 8: Multi-Channel Object Detection
 9: Multi-Channel Object Detection (RTSP)
 -: secondary mode
+=: Depth Estimation (YOLOv26n_Depth)
 which AI demo do you want to run:(timeout:10s, default:0)
 ```
 

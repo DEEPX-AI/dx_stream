@@ -236,6 +236,9 @@ static GstFlowReturn gst_dxosd_transform_ip(GstBaseTransform *trans,
         // Frame-level segmentation (semantic seg)
         draw_semantic_segmentation(surface, frame_meta);
 
+        // Frame-level dense depth map (colormap overlay)
+        draw_depth(surface, frame_meta);
+
         for (const auto *obj_meta : frame_meta->_object_meta_list) {
             draw_object_meta(surface, obj_meta, scale_x, scale_y);
         }
@@ -254,6 +257,7 @@ static GstFlowReturn gst_dxosd_transform_ip(GstBaseTransform *trans,
 
         // Frame-level segmentation (semantic seg)
         draw_semantic_segmentation_nv12(y_plane, uv_plane, stride_y, stride_uv, width, height, frame_meta);
+        draw_depth_nv12(y_plane, uv_plane, stride_y, stride_uv, width, height, frame_meta);
 
         for (const auto *obj_meta : frame_meta->_object_meta_list) {
             draw_object_meta_yuv_nv12(y_plane, uv_plane, stride_y, stride_uv,
@@ -275,6 +279,7 @@ static GstFlowReturn gst_dxosd_transform_ip(GstBaseTransform *trans,
 
         // Frame-level segmentation (semantic seg)
         draw_semantic_segmentation_i420(y_plane, u_plane, v_plane, stride_y, stride_uv, width, height, frame_meta);
+        draw_depth_i420(y_plane, u_plane, v_plane, stride_y, stride_uv, width, height, frame_meta);
 
         for (const auto *obj_meta : frame_meta->_object_meta_list) {
             draw_object_meta_yuv_i420(y_plane, u_plane, v_plane, stride_y, stride_uv,

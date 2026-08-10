@@ -33,6 +33,11 @@ struct _DXFrameMeta {
     int _seg_width = 0;
     int _seg_height = 0;
 
+    // depth
+    std::vector<unsigned char> _depth_data;
+    int _depth_width = 0;
+    int _depth_height = 0;
+
     // classification result (primary mode)
     int _label;
     std::string _label_name;

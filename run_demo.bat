@@ -68,12 +68,13 @@ echo  [7] Multi-Object Tracking    (YoloV5S + OC_SORT)
 echo  [8] Multi-Stream (4ch)       (Compositor Grid)
 echo  [9] Multi-Channel (RTSP)     (dxinputselector)
 echo  [-] Secondary Mode           (Multi-Model Cascade)
+echo  [=] Depth Estimation         (YOLOv26n_Depth)
 echo  [Q] Exit
 echo.
 echo ============================================================
 
 set "SELECT="
-set /p SELECT="Select demo [0-9, -, Q=Exit]: "
+set /p SELECT="Select demo [0-9, -, =, Q=Exit]: "
 
 if /I "%SELECT%"=="Q" goto :exit
 if "%SELECT%"=="0" call "%PIPELINES_DIR%\object_detection_yolo26n.bat"
@@ -87,6 +88,7 @@ if "%SELECT%"=="7" call "%PIPELINES_DIR%\multi_object_tracker.bat"
 if "%SELECT%"=="8" call "%PIPELINES_DIR%\multi_stream.bat"
 if "%SELECT%"=="9" call "%PIPELINES_DIR%\rtsp.bat" %INTERNAL_RTSP%
 if "%SELECT%"=="-" call "%PIPELINES_DIR%\secondary_mode.bat"
+if "%SELECT%"=="=" call "%PIPELINES_DIR%\depth_estimation_yolo26n.bat"
 
 echo.
 pause
