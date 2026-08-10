@@ -1,5 +1,17 @@
 # RELEASE_NOTES
 
+## DX-Stream v3.1.3 / 2026-08-10
+
+### 1. Changed
+
+### 2. Fixed
+
+### 3. Added
+- Added a demo pipeline for YOLO26 depth estimation
+- Added depth metadata support to DXFrameMeta and depth-map rendering to dxosd
+
+---
+
 ## DX-Stream v3.1.2 / 2026-08-03
 
 ### 1. Changed

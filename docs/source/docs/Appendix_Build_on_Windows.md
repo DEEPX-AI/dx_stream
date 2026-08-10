@@ -219,11 +219,12 @@ The demo menu matches the Linux `run_demo.sh` layout:
 | 3 | Face Detection | SCRFD500M PPU |
 | 4 | Pose Estimation | YOLOv26n_Pose |
 | 5 | Pose Estimation | YOLOV5Pose PPU |
-| 6 | Semantic Segmentation | YOLOv26n-Seg |
+| 6 | Instance Segmentation | YOLOv26n-Seg |
 | 7 | Multi-Object Tracking | YoloV5S + OC_SORT |
 | 8 | Multi-Stream (4ch) | Compositor Grid |
 | 9 | Multi-Channel (RTSP) | dxinputselector |
 | - | Secondary Mode | Multi-Model Cascade |
+| = | Depth Estimation | YOLOv26n_Depth |
 
 Pipeline scripts are located in `dx_stream\pipelines\windows\`. Each script is self-contained and can be run independently if `DXSTREAM_ROOT` is set:
 

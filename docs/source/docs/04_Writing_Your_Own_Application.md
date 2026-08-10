@@ -122,6 +122,8 @@ struct _DXObjectMeta {
 **Segmentation Note:**
 
 - `DXFrameMeta._seg_data`, `_seg_width`, and `_seg_height` store a frame-level semantic class map.
+- `DXFrameMeta._depth_data`, `_depth_width`, and `_depth_height` store a row-major, single-channel, 8-bit relative depth map.
+- The YOLOv26 depth postprocessor normalizes each frame independently to `[0, 255]`; values cannot be compared as absolute distances across frames.
 - `DXObjectMeta._seg_data`, `_seg_width`, and `_seg_height` store an ROI-local binary mask aligned to `_box`.
 - Legacy `SegClsMap` is no longer used for object metadata.
 

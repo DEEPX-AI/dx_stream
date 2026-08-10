@@ -472,6 +472,12 @@ if !errorlevel! neq 0 (
 )
 
 meson install -C "%SUB_BUILD%" --no-rebuild >nul 2>&1
+if !errorlevel! neq 0 (
+    echo [FAIL] %SUB_NAME% - install
+    popd
+    endlocal
+    exit /b 1
+)
 
 popd
 endlocal
