@@ -39,7 +39,7 @@ files. Reports issues with severity levels and actionable resolution steps.
 - **Pipeline scripts**: shell wrappers (`run_*.sh`) and Python pipeline scripts
 - **Custom postprocess**: C++ libraries (`.so` files) for model-specific decoding
 - **Framework**: 33 files in `.github/`
-- **6 pipeline categories**: single network, multi-stream, tracking, secondary mode, RTSP, broker
+- **6 implementation patterns**: single network, multi-stream, tracking, secondary mode, RTSP, broker
 
 ## Validation Targets
 

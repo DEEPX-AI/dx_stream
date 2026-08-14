@@ -22,7 +22,7 @@
 |---|---|
 | **Pipeline, detection, classification** | `.deepx/skills/dx-agent-stream-build-pipeline.md`, `.deepx/toolsets/dx-stream-elements.md` |
 | **MQTT, Kafka, message broker** | `.deepx/skills/dx-agent-stream-build-mqtt-kafka.md`, `.deepx/toolsets/dx-stream-elements.md` |
-| **Multi-model, cascaded, tiled** | `.deepx/skills/dx-agent-stream-build-pipeline.md`, `.deepx/toolsets/dx-stream-metadata.md` |
+| **Multi-model, cascaded, parallel** | `.deepx/skills/dx-agent-stream-build-pipeline.md`, `.deepx/toolsets/dx-stream-metadata.md` |
 | **Model, download** | `.deepx/skills/dx-agent-stream-model-management.md` |
 | **Validation, testing** | `.deepx/skills/dx-agent-stream-validate.md`, `.deepx/instructions/testing-patterns.md` |
 | **Validation, feedback, fix** | `.deepx/skills/dx-agent-stream-validate.md`, parent `dx-runtime/.deepx/skills/dx-agent-runtime-validate.md` |
@@ -35,7 +35,7 @@
 
 | Skill | 설명 |
 |-------|------|
-| dx-agent-stream-build-pipeline | GStreamer 파이프라인 빌드 (single, multi, cascaded, tiled, parallel, broker) |
+| dx-agent-stream-build-pipeline | GStreamer 파이프라인 빌드 (single, multi, cascaded, parallel, broker) |
 | dx-agent-stream-build-mqtt-kafka | MQTT/Kafka message broker 파이프라인 빌드 |
 | dx-agent-stream-model-management | 파이프라인용 .dxnn 모델 다운로드 및 구성 |
 | dx-agent-stream-validate | 파이프라인 검증 검사 실행 |
@@ -172,4 +172,3 @@ pytest test/                         # 단위 테스트 실행
 
 
 {{FRAGMENT:instruction-verification-loop}}
-

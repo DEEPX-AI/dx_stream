@@ -21,7 +21,7 @@ This chapter provides an overview of the DEEPX SDK architecture and explains eac
 
 ![](./../resources/01_02_DX-STREAM_Architecture_Overview.png)
 
-**DX-STREAM** provides dedicated Gstreamer elements for AI model inference on DEEPX NPU and includes auxiliary elements for developing AI applications.  
+**DX-STREAM** provides dedicated GStreamer elements for AI model inference on DEEPX NPU and includes auxiliary elements for developing AI applications.  
 For most AI model processing, you can quickly build an inference environment by setting the properties of the elements provided by DX-Stream. In addition, we support processing through user-defined libraries in pre/post-processing for the user's unique model inference.  
 This plugin-based architecture accelerates development and deployment while providing the flexibility needed for a wide range of vision AI applications, including object detection, multi-stream analysis, and real-time tracking.
 

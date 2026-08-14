@@ -66,6 +66,11 @@ struct _DXFrameMeta {
     int _seg_width = 0;
     int _seg_height = 0;
 
+    // depth
+    std::vector<unsigned char> _depth_data;
+    int _depth_width = 0;
+    int _depth_height = 0;
+
     // classification result (primary mode)
     int _label;
     std::string _label_name;
@@ -123,7 +128,7 @@ struct _DXObjectMeta {
 
 - `DXFrameMeta._seg_data`, `_seg_width`, and `_seg_height` store a frame-level semantic class map.
 - `DXFrameMeta._depth_data`, `_depth_width`, and `_depth_height` store a row-major, single-channel, 8-bit relative depth map.
-- The YOLOv26 depth postprocessor normalizes each frame independently to `[0, 255]`; values cannot be compared as absolute distances across frames.
+- The YOLO26 depth postprocessor normalizes each frame independently to `[0, 255]`; values cannot be compared as absolute distances across frames.
 - `DXObjectMeta._seg_data`, `_seg_width`, and `_seg_height` store an ROI-local binary mask aligned to `_box`.
 - Legacy `SegClsMap` is no longer used for object metadata.
 
@@ -273,7 +278,7 @@ Postprocessing is essential for interpreting and converting the model's output t
 To check the structure of the output tensor, use the following command. This prints the tensor shape for each output:  
 
 ```
-$ dxparse -m yolov7_640x640.dxnn
+$ dxparse -m yolo26-n_640x640.dxnn
 ```
 
 !!! note "NOTE"
@@ -293,7 +298,7 @@ The example shows three blobs with NHWC dimensions. Use this information to impl
 **Implementation Example**  
 
 ```cpp
-extern "C" void YOLOV7(GstBuffer *buf,
+extern "C" void PostProcess(GstBuffer *buf,
                        std::vector<dxs::DXTensor> network_output,
                        DXFrameMeta *frame_meta,
                        DXObjectMeta *object_meta)
@@ -337,17 +342,15 @@ extern "C" void YOLOV7(GstBuffer *buf,
 Build the custom library using a `meson.build` script:
 
 ```
-project('postprocess_yolov5s', 'cpp', version : '1.0.0', license : 'LGPL', default_options: ['cpp_std=c++14'])
+project('postprocess_yolo26od', 'cpp', version : '1.0.0', license : 'LGPL', default_options: ['cpp_std=c++14'])
 
 gst_dep = dependency('gstreamer-1.0', version : '>=1.16.3',
     required : true, fallback : ['gstreamer', 'gst_dep'])
 
 dx_stream_dep = dependency('gstdxstream')
-opencv_dep = dependency('opencv4', required: true)
-
-yolo_postprocess_lib = shared_library('postprocess_yolo',
+yolo26_postprocess_lib = shared_library('postprocess_yolo26od',
     'postprocess.cpp',
-    dependencies: [opencv_dep, gst_dep, dx_stream_dep],
+    dependencies: [gst_dep, dx_stream_dep],
     install: true,
     install_dir: get_option('datadir') / 'gstdxstream' / 'lib'
 )
@@ -357,8 +360,8 @@ Specify the library path and function name in the JSON configuration file for `d
 
 ```
 {
-    "library_file_path": "./install/gstreamer-1.0/lib/libyolo_postprocess.so",
-    "function_name": "yolo_post_process"
+    "library_file_path": "/usr/local/share/gstdxstream/lib/libpostprocess_yolo26od.so",
+    "function_name": "PostProcess"
 }
 ```
 

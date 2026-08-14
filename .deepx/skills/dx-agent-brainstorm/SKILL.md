@@ -44,7 +44,7 @@ Ask 2-3 targeted questions covering:
 
 | Decision | Options | Default |
 |----------|---------|---------|
-| **Pipeline category** | single-model, multi-model, cascaded, tiled, parallel, broker | single-model |
+| **Pipeline category** | single-model, multi-model, cascaded, parallel, broker | single-model |
 | **Model(s)** | Any from `model_list.json` (14 supported) | YoloV8N |
 | **Input source** | video file, USB camera, RTSP stream | video file |
 | **Output** | display, headless (fakesink), file, broker (MQTT/Kafka) | display |
@@ -104,7 +104,7 @@ After approval, invoke the appropriate build skill:
 
 | Pipeline type | Route to |
 |---------------|----------|
-| single-model, multi-model, cascaded, tiled, parallel | `/dx-agent-stream-build-pipeline` |
+| single-model, multi-model, cascaded, parallel | `/dx-agent-stream-build-pipeline` |
 | broker (MQTT/Kafka) | `/dx-agent-stream-build-mqtt-kafka` |
 
 Pass the approved plan context to the build skill.
