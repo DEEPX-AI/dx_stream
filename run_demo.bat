@@ -57,18 +57,18 @@ echo ============================================================
 echo  DX-Stream Demo Menu (Windows)
 echo ============================================================
 echo.
-echo  [0] Object Detection        (YOLOv26n)
+echo  [0] Object Detection        (YOLO26n)
 echo  [1] Object Detection        (YoloV5S PPU)
 echo  [2] Face Detection           (YOLOv5s_Face)
 echo  [3] Face Detection           (SCRFD500M PPU)
-echo  [4] Pose Estimation          (YOLOv26n_Pose)
+echo  [4] Pose Estimation          (YOLO26n_Pose)
 echo  [5] Pose Estimation          (YOLOV5Pose PPU)
-echo  [6] Instance Segmentation    (YOLOv26n-Seg)
+echo  [6] Instance Segmentation    (YOLO26n-Seg)
 echo  [7] Multi-Object Tracking    (YoloV5S + OC_SORT)
 echo  [8] Multi-Stream (4ch)       (Compositor Grid)
 echo  [9] Multi-Channel (RTSP)     (dxinputselector)
 echo  [-] Secondary Mode           (Multi-Model Cascade)
-echo  [=] Depth Estimation         (YOLOv26n_Depth)
+echo  [=] Depth Estimation         (YOLO26n_Depth)
 echo  [Q] Exit
 echo.
 echo ============================================================

@@ -25,7 +25,7 @@ bash ../../.deepx/tools/scripts/run_all.sh generate    # suite 전체 (5개 repo
 |---|---|
 | **Pipeline, detection, classification** | `skills/dx-agent-stream-build-pipeline/SKILL.md`, `toolsets/dx-stream-elements.md` |
 | **MQTT, Kafka, message broker** | `skills/dx-agent-stream-build-mqtt-kafka/SKILL.md`, `toolsets/dx-stream-elements.md` |
-| **Multi-model, cascaded, tiled** | `skills/dx-agent-stream-build-pipeline/SKILL.md`, `toolsets/dx-stream-metadata.md` |
+| **Multi-model, cascaded, parallel** | `skills/dx-agent-stream-build-pipeline/SKILL.md`, `toolsets/dx-stream-metadata.md` |
 | **Model, download, registry** | `skills/dx-agent-stream-model-management/SKILL.md`, `toolsets/model-registry.md` |
 | **Validation, testing** | `skills/dx-agent-stream-validate/SKILL.md`, `instructions/testing-patterns.md` |
 | **Architecture, structure** | `instructions/architecture.md` |
@@ -43,7 +43,7 @@ bash ../../.deepx/tools/scripts/run_all.sh generate    # suite 전체 (5개 repo
 
 | Command | 설명 |
 |---------|-------------|
-| `/dx-agent-stream-build-pipeline` | GStreamer 파이프라인 app 빌드 (6 카테고리: single-model, multi-model, cascaded, tiled, parallel, broker) |
+| `/dx-agent-stream-build-pipeline` | GStreamer 파이프라인 app 빌드 (5 카테고리: single-model, multi-model, cascaded, parallel, broker) |
 | `/dx-agent-stream-build-mqtt-kafka` | MQTT/Kafka 메시지 broker 파이프라인 app 빌드 |
 | `/dx-agent-stream-model-management` | .dxnn 모델 다운로드, 등록, 설정 |
 | `/dx-agent-stream-validate` | 파이프라인 검증 체크 실행 |
@@ -64,7 +64,7 @@ bash ../../.deepx/tools/scripts/run_all.sh generate    # suite 전체 (5개 repo
   instructions/
     architecture.md                      # dx_stream v2.3.0 아키텍처 개요
     coding-standards.md                  # 파이프라인 구성 규칙 및 컨벤션
-    gstreamer-pipeline.md                # 13 element + 6 파이프라인 패턴
+    gstreamer-pipeline.md                # 13 element + 파이프라인 패턴
     testing-patterns.md                  # GStreamer 디버그 및 테스트 패턴
     agent-protocols.md                   # 11개 agent 간 프로토콜
     orchestration.md                     # 5-phase 파이프라인 라이프사이클
@@ -142,7 +142,7 @@ bash ../../.deepx/tools/scripts/run_all.sh generate    # suite 전체 (5개 repo
 | `DxScale` | Transform | 비디오 프레임 resize |
 | `DxConvert` | Transform | 색공간 변환 |
 
-## 6 Pipeline Categories
+## 5 Pipeline Categories
 
 | 카테고리 | 패턴 | 핵심 Element |
 |----------|---------|-------------|

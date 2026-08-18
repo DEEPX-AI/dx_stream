@@ -11,6 +11,9 @@ routes-to:
   - target: dx-model-manager
     label: Manage Models
     description: Download or query models from model_list.json.
+  - target: dx-validator
+    label: Validate Pipeline
+    description: Validate dx_stream pipelines and framework configuration.
 ---
 
 **Response Language**: Match your response language to the user's prompt language — when asking questions or responding, use the same language the user is using. When responding in Korean, keep English technical terms in English. Do NOT transliterate into Korean phonetics (한글 음차 표기 금지). <!-- KOREAN-OK: rule text references the Korean notation term agents must recognize -->
@@ -178,7 +181,7 @@ Output: {display/broker/file}
 
 | Condition | Route To |
 |---|---|
-| Build any pipeline (all 6 categories) | `dx-pipeline-builder` |
+| Build any pipeline (all 5 categories) | `dx-pipeline-builder` |
 | Query model compatibility, download model | `dx-model-manager` |
 | Build + broker integration | `dx-pipeline-builder` (broker category) |
 
