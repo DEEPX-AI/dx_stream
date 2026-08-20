@@ -65,17 +65,18 @@ fi
 
 WRC=$DX_STREAM_PATH
 
-echo "0: Object Detection (YOLOv26n)"
+echo "0: Object Detection (YOLO26n)"
 echo "1: Object Detection (YOLOv5s with PPU)"
 echo "2: Face Detection (YOLOv5s_Face)"
 echo "3: Face Detection (SCRFD500M with PPU)"
-echo "4: Pose Estimation (YOLOv26n_Pose)"
+echo "4: Pose Estimation (YOLO26n_Pose)"
 echo "5: Pose Estimation (YOLOV5Pose with PPU)"
-echo "6: Instance Segmentation (YOLOv26n_Seg)"
+echo "6: Instance Segmentation (YOLO26n_Seg)"
 echo "7: Multi-Object Tracking"
 echo "8: Multi-Channel Object Detection"
 echo "9: Multi-Channel Object Detection (RTSP)"
 echo "-: secondary mode"
+echo "=: Depth Estimation (YOLO26n_Depth)"
 
 read -t 10 -p "which AI demo do you want to run:(timeout:10s, default:0)" select
 
@@ -91,6 +92,7 @@ case $select in
     8)$WRC/dx_stream/pipelines/multi_stream/run_multi_stream.sh;;
     9)$WRC/dx_stream/pipelines/rtsp/run_RTSP.sh $INTERNAL_RTSP_ARG;;
     -)$WRC/dx_stream/pipelines/secondary_mode/run_secondary_mode.sh;;
+    =)$WRC/dx_stream/pipelines/single_network/depth_estimation/run_yolo26n-depth.sh;;
     *)$WRC/dx_stream/pipelines/single_network/object_detection/run_yolo26n.sh;;
 esac
 

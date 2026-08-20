@@ -16,10 +16,13 @@ Python bindings for DX-Stream metadata API.
 Current `pydxs` bindings follow the native metadata headers in `gst-dxstream-plugin/metadata`.
 
 - `DXFrameMeta` includes `seg_data`, `seg_width`, `seg_height`, and `seg_format` for frame-level semantic segmentation.
+- `DXFrameMeta` includes `depth_data`, `depth_width`, `depth_height`, and `depth_format` for frame-level relative depth.
 - `DXObjectMeta` includes `seg_data`, `seg_width`, `seg_height`, and `seg_format` for object-level segmentation.
 - `DXObjectMeta.seg_data` stores an ROI-local binary mask aligned to `obj_meta.box`.
 - `DXFrameMeta.seg_data` stores a full-frame semantic class map.
+- `DXFrameMeta.depth_data` stores a row-major, single-channel, 8-bit map normalized per frame to `[0, 255]`; it is not an absolute distance measurement.
 - In Python, both frame and object `seg_data` values are exposed as `bytes`.
+- In Python, `depth_data` is exposed as `bytes`.
 
 ## Requirements
 
@@ -241,6 +244,25 @@ for obj_meta in frame_meta:
 
 Any object-level segmentation consumer should interpret `obj_meta.seg_data` as an ROI-local mask and use `obj_meta.box` to place it back on the frame.
 
+### Working with Depth Metadata
+
+`DXFrameMeta` stores frame-level relative depth:
+
+- `frame_meta.depth_data`: row-major, single-channel, 8-bit depth map
+- `frame_meta.depth_width`, `frame_meta.depth_height`: depth map dimensions
+- `frame_meta.depth_format`: `"relative-depth-u8"` or `"none"`
+
+Depth values are normalized independently for each frame to `[0, 255]`, so
+they cannot be compared as absolute distances across frames.
+
+```python
+if frame_meta.depth_format == "relative-depth-u8":
+    print(
+        f"Relative depth: {frame_meta.depth_width}x{frame_meta.depth_height}, "
+        f"{len(frame_meta.depth_data)} bytes"
+    )
+```
+
 ### Working with User Metadata
 
 User metadata allows attaching arbitrary Python objects to frames or objects.
@@ -302,5 +324,4 @@ data = user_meta.get_data()
 For complete examples, see:
 - [`test/test_pydxs/test_usermeta.py`](../../../test/test_pydxs/test_usermeta.py) - Basic patterns
 - [`dx_stream/apps/usermeta/usermeta_app.py`](../../../dx_stream/apps/usermeta/usermeta_app.py) - Full application
-
 

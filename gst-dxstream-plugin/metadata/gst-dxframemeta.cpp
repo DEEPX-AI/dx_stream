@@ -79,6 +79,8 @@ static gboolean dx_frame_meta_init(GstMeta *meta, gpointer params,
 
     dx_meta->_seg_width = 0;
     dx_meta->_seg_height = 0;
+    dx_meta->_depth_width = 0;
+    dx_meta->_depth_height = 0;
 
     dx_meta->_label = -1;
     dx_meta->_label_confidence = 0.0f;
@@ -91,6 +93,7 @@ static gboolean dx_frame_meta_init(GstMeta *meta, gpointer params,
     new (&dx_meta->_input_tensors) std::map<int, dxs::DXTensors>();
     new (&dx_meta->_output_tensors) std::map<int, dxs::DXTensors>();
     new (&dx_meta->_seg_data) std::vector<unsigned char>();
+    new (&dx_meta->_depth_data) std::vector<unsigned char>();
     new (&dx_meta->_label_name) std::string();
 
     return TRUE;
@@ -127,6 +130,7 @@ static void dx_frame_meta_free(GstMeta *meta, GstBuffer *buffer) {
     dx_meta->_object_meta_list.~vector(); // NOSONAR
     dx_meta->_frame_user_meta_list.~vector(); // NOSONAR
     dx_meta->_seg_data.~vector(); // NOSONAR
+    dx_meta->_depth_data.~vector(); // NOSONAR
     dx_meta->_input_tensors.~map(); // NOSONAR
     dx_meta->_output_tensors.~map(); // NOSONAR
 }
@@ -169,6 +173,11 @@ void dx_frame_meta_copy(GstBuffer *src_buffer, DXFrameMeta *src_frame_meta,
         dst_frame_meta->_seg_data = src_frame_meta->_seg_data;
         dst_frame_meta->_seg_width = src_frame_meta->_seg_width;
         dst_frame_meta->_seg_height = src_frame_meta->_seg_height;
+    }
+    if (!src_frame_meta->_depth_data.empty()) {
+        dst_frame_meta->_depth_data = src_frame_meta->_depth_data;
+        dst_frame_meta->_depth_width = src_frame_meta->_depth_width;
+        dst_frame_meta->_depth_height = src_frame_meta->_depth_height;
     }
 
     // Deep copy object metadata

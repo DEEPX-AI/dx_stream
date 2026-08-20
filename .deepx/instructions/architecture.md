@@ -45,7 +45,7 @@ gst-dxstream-plugin/
 
 ## Pipeline Categories
 
-dx_stream provides 6 pipeline patterns:
+dx_stream provides 6 implementation patterns:
 
 ### 1. Single Network (`pipelines/single_network/`)
 One model, one input stream. Sub-categories by vision task:
@@ -150,7 +150,7 @@ dx_stream/
   build.sh                     # Build all libraries
   install.sh                   # Install GStreamer plugin
   dx_stream/
-    pipelines/                 # 6 categories of pipeline scripts
+    pipelines/                 # 6 implementation patterns
     custom_library/            # Postprocess + message convert .so
     configs/                   # JSON config files
     apps/                      # Broker consumer examples (kafka, mqtt)

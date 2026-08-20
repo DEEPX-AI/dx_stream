@@ -15,8 +15,8 @@
 
 | 에이전트 | 설명 | 라우팅 대상 |
 |---|---|---|
-| `dx-stream-builder` | 마스터 라우터 — 사용자 요청에서 파이프라인 유형을 분류하여 적절한 전문 에이전트에 디스패치 | `dx-pipeline-builder`, `dx-model-manager` |
-| `dx-pipeline-builder` | 6개 카테고리(단일 모델, 다중 모델, 캐스케이드, 타일, 병렬, 브로커)의 GStreamer 파이프라인 앱 빌드 | — |
+| `dx-stream-builder` | 마스터 라우터 — 사용자 요청에서 파이프라인 유형을 분류하여 적절한 전문 에이전트에 디스패치 | `dx-pipeline-builder`, `dx-model-manager`, `dx-validator` |
+| `dx-pipeline-builder` | 5개 카테고리(단일 모델, 다중 모델, 캐스케이드, 병렬, 브로커)의 GStreamer 파이프라인 앱 빌드 | — |
 | `dx-model-manager` | 파이프라인에서 사용할 `.dxnn` 모델 다운로드 및 설정 | — |
 | `dx-validator` | 생성된 파이프라인 스크립트와 `.deepx/` 프레임워크 무결성 검증 | — |
 
@@ -54,7 +54,7 @@
 
 | 스킬 | 설명 |
 |------|------|
-| `dx-agent-stream-build-pipeline` | 6개 카테고리의 GStreamer 파이프라인 빌드: 단일 모델, 다중 모델, 캐스케이드, 타일, 병렬, 브로커 |
+| `dx-agent-stream-build-pipeline` | 5개 카테고리의 GStreamer 파이프라인 빌드: 단일 모델, 다중 모델, 캐스케이드, 병렬, 브로커 |
 | `dx-agent-stream-build-mqtt-kafka` | 이벤트 퍼블리싱을 위한 MQTT 또는 Kafka 메시지 브로커 파이프라인 빌드 |
 | `dx-agent-stream-model-management` | 대상 NPU 아키텍처용 `.dxnn` 모델 다운로드 및 설정 |
 | `dx-agent-stream-validate` | 파이프라인 검증 검사 실행 (문법, 속성, 엘리먼트 순서) |
@@ -69,7 +69,7 @@ dx_stream 에이전틱 개발은 4가지 AI 코딩 도구에서 작동합니다.
 | 도구 | 설정 파일 | 사용 가능한 에이전트 |
 |---|---|---|
 | **Claude Code** | `CLAUDE.md` | 컨텍스트 라우팅을 통해 4개 에이전트 전체 |
-| **GitHub Copilot** | `.github/copilot-instructions.md`, `.github/agents/`의 4개 에이전트, `.github/skills/`의 16개 스킬, `.github/instructions/`의 2개 instruction | `@dx-stream-builder`, `@dx-pipeline-builder`, `@dx-model-manager`, `@dx-validator` |
+| **GitHub Copilot** | `.github/copilot-instructions.md`, `.github/agents/`의 4개 에이전트, `.github/skills/`의 15개 스킬, `.github/instructions/`의 2개 instruction | `@dx-stream-builder`, `@dx-pipeline-builder`, `@dx-model-manager`, `@dx-validator` |
 | **Cursor** | `.cursor/rules/dx-stream.mdc` (항상), `dx-model-manager.mdc`, `dx-pipeline-builder.mdc`, `dx-stream-builder.mdc`, `dx-validator.mdc`, `stream-pipelines.mdc`, `tests.mdc`, 16개 `skill-*.mdc` 파일 (총 23개) | 자동 적용 규칙과 함께 자유 형식 대화 |
 | **OpenCode** | `AGENTS.md`, `opencode.json`, `.opencode/agents/`의 4개 에이전트, `.deepx/skills/`의 16개 스킬 | `@dx-stream-builder` 또는 `/dx-agent-stream-build-pipeline` |
 
@@ -102,7 +102,7 @@ dx_stream 에이전틱 개발은 4가지 AI 코딩 도구에서 작동합니다.
 
 | 슬래시 명령 | 설명 |
 |---|---|
-| `/dx-agent-stream-build-pipeline` | 6개 카테고리의 GStreamer 파이프라인 빌드 |
+| `/dx-agent-stream-build-pipeline` | 5개 카테고리의 GStreamer 파이프라인 빌드 |
 | `/dx-agent-stream-build-mqtt-kafka` | MQTT/Kafka 브로커 파이프라인 빌드 |
 | `/dx-agent-stream-model-management` | .dxnn 모델 다운로드 및 설정 |
 | `/dx-agent-stream-validate` | 파이프라인 검증 검사 실행 |
@@ -281,20 +281,6 @@ dx-agent-gen generate --repo dx-runtime/dx_stream
 | **Cursor** | 프롬프트를 직접 입력. 파이프라인 파일 생성 시 `stream-pipelines.mdc` 활성화. |
 | **OpenCode** | `@dx-stream-builder` 뒤에 프롬프트 입력, 또는 `/dx-agent-stream-build-pipeline` 스킬 직접 사용. |
 
-### 시나리오 6: 타일 고해상도 파이프라인 빌드
-
-**프롬프트:**
-
-```
-"yolo26n으로 4K 입력 타일 감지 파이프라인 만들어줘"
-```
-
-| 도구 | 사용 방법 |
-|---|---|
-| **GitHub Copilot** | `@dx-pipeline-builder` 뒤에 프롬프트 입력. |
-| **Cursor** | 프롬프트를 직접 입력. |
-| **OpenCode** | `@dx-stream-builder` 뒤에 프롬프트 입력, 또는 `/dx-agent-stream-build-pipeline` 스킬 직접 사용. |
-
 ### 시나리오 7: 멀티스트림 병렬 파이프라인 빌드
 
 **프롬프트:**
@@ -370,7 +356,7 @@ dx-agent-dev/<session_id>/
 
 ## 파이프라인 카테고리
 
-dx_stream은 6개 파이프라인 카테고리를 지원합니다. 각각 고유한 GStreamer 엘리먼트 패턴을 따릅니다.
+dx_stream은 5개 파이프라인 카테고리를 지원합니다. 각각 고유한 GStreamer 엘리먼트 패턴을 따릅니다.
 
 | 카테고리 | 패턴 | 핵심 엘리먼트 |
 |---|---|---|

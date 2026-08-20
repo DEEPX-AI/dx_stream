@@ -25,7 +25,7 @@ Based on what the task involves, read **only** the matching rows:
 |---|---|
 | **Pipeline, detection, classification** | `skills/dx-agent-stream-build-pipeline/SKILL.md`, `toolsets/dx-stream-elements.md` |
 | **MQTT, Kafka, message broker** | `skills/dx-agent-stream-build-mqtt-kafka/SKILL.md`, `toolsets/dx-stream-elements.md` |
-| **Multi-model, cascaded, tiled** | `skills/dx-agent-stream-build-pipeline/SKILL.md`, `toolsets/dx-stream-metadata.md` |
+| **Multi-model, cascaded, parallel** | `skills/dx-agent-stream-build-pipeline/SKILL.md`, `toolsets/dx-stream-metadata.md` |
 | **Model, download, registry** | `skills/dx-agent-stream-model-management/SKILL.md`, `toolsets/model-registry.md` |
 | **Validation, testing** | `skills/dx-agent-stream-validate/SKILL.md`, `instructions/testing-patterns.md` |
 | **Architecture, structure** | `instructions/architecture.md` |
@@ -43,7 +43,7 @@ Based on what the task involves, read **only** the matching rows:
 
 | Command | Description |
 |---------|-------------|
-| `/dx-agent-stream-build-pipeline` | Build GStreamer pipeline app (6 categories: single-model, multi-model, cascaded, tiled, parallel, broker) |
+| `/dx-agent-stream-build-pipeline` | Build GStreamer pipeline app (5 categories: single-model, multi-model, cascaded, parallel, broker) |
 | `/dx-agent-stream-build-mqtt-kafka` | Build MQTT/Kafka message broker pipeline app |
 | `/dx-agent-stream-model-management` | Download, register, and configure .dxnn models |
 | `/dx-agent-stream-validate` | Run pipeline validation checks |
@@ -64,7 +64,7 @@ Based on what the task involves, read **only** the matching rows:
   instructions/
     architecture.md                      # dx_stream v2.3.0 architecture overview
     coding-standards.md                  # Pipeline composition rules & conventions
-    gstreamer-pipeline.md                # 13 elements + 6 pipeline patterns
+    gstreamer-pipeline.md                # 13 elements + pipeline patterns
     testing-patterns.md                  # GStreamer debug & test patterns
     agent-protocols.md                   # 11 inter-agent protocols
     orchestration.md                     # 5-phase pipeline lifecycle
@@ -142,7 +142,7 @@ This knowledge base supports five AI coding tools:
 | `DxScale` | Transform | Resize video frames |
 | `DxConvert` | Transform | Color space conversion |
 
-## 6 Pipeline Categories
+## 5 Pipeline Categories
 
 | Category | Pattern | Key Elements |
 |----------|---------|-------------|

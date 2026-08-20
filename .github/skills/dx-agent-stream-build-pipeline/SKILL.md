@@ -15,7 +15,7 @@ description: Build GStreamer pipeline application for dx_stream
 ## Overview
 
 Build a GStreamer pipeline application for real-time video processing on DEEPX NPU.
-This skill covers all 6 pipeline categories with complete templates and patterns.
+This skill covers all 5 pipeline categories with complete templates and patterns.
 
 ## Output Isolation (MUST FOLLOW)
 
@@ -43,7 +43,7 @@ dx-agent-dev/<YYYYMMDD-HHMMSS>_<model>_<pipeline_category>/
   // ⚠ HARD ERROR: This is the DXNN model name deployed (e.g., "yolo26n", "EfficientNet_Lite0").
   // NOT the AI agent name. Writing "claude-sonnet-4.6", "gpt-4.1", or any AI model name
   // here will cause test_session_json_model_is_dx_model to FAIL.
-  "pipeline_category": "<single_model|multi_model|cascaded|tiled|parallel|broker> (use underscores, NOT hyphens)",
+  "pipeline_category": "<single_model|multi_model|cascaded|parallel|broker> (use underscores, NOT hyphens)",
   "task": "<Object Detection|Pose Estimation|Segmentation|Classification>",
   "postprocess_lib": "<libpostprocess_xxx.so>",
   "tracker": "<dxtracker|none>",
@@ -84,8 +84,8 @@ Default behavior: ALWAYS use `dx-agent-dev/`.
 ## Usage
 
 Invoke with `/dx-agent-stream-build-pipeline` or ask the dx-stream-builder agent.
-Specify the pipeline category (single-model, multi-model, cascaded, tiled,
-parallel, or broker), the model name, and the input source type.
+Specify the pipeline category (single-model, multi-model, cascaded, parallel,
+or broker), the model name, and the input source type.
 
 ## Template Compliance (MANDATORY)
 

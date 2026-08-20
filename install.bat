@@ -110,7 +110,7 @@ if %ERRORLEVEL%==0 (
     echo   [OK] meson already installed
 ) else (
     echo   [INSTALL] Installing meson and ninja...
-    pip install meson ninja
+    python -m pip install meson ninja
     if errorlevel 1 (
         echo   [ERROR] Failed to install meson/ninja via pip
         exit /b 1
