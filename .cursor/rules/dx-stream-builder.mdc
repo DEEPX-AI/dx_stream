@@ -173,7 +173,7 @@ Output: {display/broker/file}
 
 | Condition | Route To |
 |---|---|
-| Build any pipeline (all 6 categories) | `dx-pipeline-builder` |
+| Build any pipeline (all 5 categories) | `dx-pipeline-builder` |
 | Query model compatibility, download model | `dx-model-manager` |
 | Build + broker integration | `dx-pipeline-builder` (broker category) |
 

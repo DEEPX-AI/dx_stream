@@ -27,6 +27,7 @@ if not exist "%INSTALL_DIR%\bin\gstdxstream.dll" (
 REM ---- Setup environment (inherited by pipeline scripts via DXSTREAM_ROOT) ----
 set "DXSTREAM_ROOT=%PROJECT_ROOT%"
 set "GST_PLUGIN_PATH=%INSTALL_DIR%\lib\gstreamer-1.0"
+set "GST_REGISTRY=%INSTALL_DIR%\gst-registry.bin"
 set "PATH=%INSTALL_DIR%\bin;%INSTALL_DIR%\share\gstdxstream\lib;%INSTALL_DIR%\share\gstdxstream\bin;%INSTALL_DIR%\lib\gstreamer-1.0;%PATH%"
 
 if defined GSTREAMER_1_0_ROOT_MSVC_X86_64 (
@@ -56,23 +57,24 @@ echo ============================================================
 echo  DX-Stream Demo Menu (Windows)
 echo ============================================================
 echo.
-echo  [0] Object Detection        (YOLOv26n)
+echo  [0] Object Detection        (YOLO26n)
 echo  [1] Object Detection        (YoloV5S PPU)
 echo  [2] Face Detection           (YOLOv5s_Face)
 echo  [3] Face Detection           (SCRFD500M PPU)
-echo  [4] Pose Estimation          (YOLOv26n_Pose)
+echo  [4] Pose Estimation          (YOLO26n_Pose)
 echo  [5] Pose Estimation          (YOLOV5Pose PPU)
-echo  [6] Instance Segmentation    (YOLOv26n-Seg)
+echo  [6] Instance Segmentation    (YOLO26n-Seg)
 echo  [7] Multi-Object Tracking    (YoloV5S + OC_SORT)
 echo  [8] Multi-Stream (4ch)       (Compositor Grid)
 echo  [9] Multi-Channel (RTSP)     (dxinputselector)
 echo  [-] Secondary Mode           (Multi-Model Cascade)
+echo  [=] Depth Estimation         (YOLO26n_Depth)
 echo  [Q] Exit
 echo.
 echo ============================================================
 
 set "SELECT="
-set /p SELECT="Select demo [0-9, -, Q=Exit]: "
+set /p SELECT="Select demo [0-9, -, =, Q=Exit]: "
 
 if /I "%SELECT%"=="Q" goto :exit
 if "%SELECT%"=="0" call "%PIPELINES_DIR%\object_detection_yolo26n.bat"
@@ -86,6 +88,7 @@ if "%SELECT%"=="7" call "%PIPELINES_DIR%\multi_object_tracker.bat"
 if "%SELECT%"=="8" call "%PIPELINES_DIR%\multi_stream.bat"
 if "%SELECT%"=="9" call "%PIPELINES_DIR%\rtsp.bat" %INTERNAL_RTSP%
 if "%SELECT%"=="-" call "%PIPELINES_DIR%\secondary_mode.bat"
+if "%SELECT%"=="=" call "%PIPELINES_DIR%\depth_estimation_yolo26n.bat"
 
 echo.
 pause

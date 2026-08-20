@@ -21,7 +21,7 @@ When using features like `secondary-mode`, the configuration must be consistentl
 If the downstream sink element has `sync=true`, input buffers may be dropped based on their timestamps to maintain real-time processing performance.  
 
 **Throttle QoS Events**  
-When **DxRate** sends a Throttle QoS Event, **DxInfer** drops incoming frames until the accumulated time between frames exceeds the `throttling_delay` value. This avoids unnecessary NPU computation in low-framerate pipelines and promotes smooth and consistent streaming. 
+When **DxRate** sends a Throttle QoS Event, **DxInfer** drops incoming frames until the accumulated time between frames exceeds the internal `throttling_delay` value. This value is derived from upstream Throttle QoS Events and cannot be configured as a **DxInfer** property. This avoids unnecessary NPU computation in low-framerate pipelines and promotes smooth and consistent streaming.
 
 **Backend Selection**  
 DxInfer selects the inference backend via the `backend` property:

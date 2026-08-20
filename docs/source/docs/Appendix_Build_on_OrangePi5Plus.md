@@ -342,7 +342,7 @@ If the build process fails, clean the environment and rebuild.
 
 ```bash
 # Clean and rebuild
-./build.sh
+./build.sh --clean
 ```
 
 **Performance Issues**  

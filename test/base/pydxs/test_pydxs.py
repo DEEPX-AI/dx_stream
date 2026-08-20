@@ -214,6 +214,22 @@ def test_cpy4_numpy_tensor():
         check("CPY4_numpy_available", True, "numpy not available, skipping tensor data test")
 
 
+# ---- CPY6: DXFrameMeta depth metadata ----
+def test_cpy6_depth_metadata():
+    import pydxs
+
+    buf = Gst.Buffer.new_allocate(None, 4, None)
+    frame_meta = pydxs.dx_create_frame_meta(hash(buf))
+    frame_meta.depth_data = bytes([0, 64, 128, 255])
+    frame_meta.depth_width = 2
+    frame_meta.depth_height = 2
+
+    check("CPY6_depth_data", frame_meta.depth_data == bytes([0, 64, 128, 255]))
+    check("CPY6_depth_width", frame_meta.depth_width == 2)
+    check("CPY6_depth_height", frame_meta.depth_height == 2)
+    check("CPY6_depth_format", frame_meta.depth_format == "relative-depth-u8")
+
+
 # ---- CPY5: writable_buffer context + add/remove objects ----
 def test_cpy5_writable_buffer():
     import pydxs
@@ -311,10 +327,12 @@ def main():
     if HAS_GI:
         test_cpy2_frame_meta_read()
         test_cpy4_numpy_tensor()
+        test_cpy6_depth_metadata()
         test_cpy5_writable_buffer()
     else:
         skip("CPY2_frame_meta_read", "requires gi/GStreamer")
         skip("CPY4_numpy_tensor", "requires gi/GStreamer")
+        skip("CPY6_depth_metadata", "requires gi/GStreamer")
         skip("CPY5_writable_buffer", "requires gi/GStreamer")
 
     total = passed + failed

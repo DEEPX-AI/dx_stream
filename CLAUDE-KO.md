@@ -113,7 +113,7 @@ pytest test/                        # 단위 테스트 실행
 
 | 명령어 | 설명 |
 |---------|------|
-| /dx-agent-stream-build-pipeline | GStreamer 파이프라인 앱 빌드 (6개 카테고리: single-model, multi-model, cascaded, tiled, parallel, broker) |
+| /dx-agent-stream-build-pipeline | GStreamer 파이프라인 앱 빌드 (5개 카테고리: single-model, multi-model, cascaded, parallel, broker) |
 | /dx-agent-stream-build-mqtt-kafka | MQTT/Kafka message broker 파이프라인 앱 빌드 |
 | /dx-agent-stream-model-management | 파이프라인용 .dxnn 모델 다운로드 및 구성 |
 | /dx-agent-stream-validate | 파이프라인 검증 검사 실행 |
@@ -174,7 +174,7 @@ Python에서는 `datetime.now().strftime('%Y%m%d-%H%M%S')`를 사용한다. `dat
 |---|---|
 | **Pipeline, detection, classification** | `.deepx/skills/dx-agent-stream-build-pipeline.md`, `.deepx/toolsets/dx-stream-elements.md` |
 | **MQTT, Kafka, message broker** | `.deepx/skills/dx-agent-stream-build-mqtt-kafka.md`, `.deepx/toolsets/dx-stream-elements.md` |
-| **Multi-model, cascaded, tiled** | `.deepx/skills/dx-agent-stream-build-pipeline.md`, `.deepx/toolsets/dx-stream-metadata.md` |
+| **Multi-model, cascaded, parallel** | `.deepx/skills/dx-agent-stream-build-pipeline.md`, `.deepx/toolsets/dx-stream-metadata.md` |
 | **Model, download** | `.deepx/skills/dx-agent-stream-model-management.md` |
 | **Validation, testing** | `.deepx/skills/dx-agent-stream-validate.md`, `.deepx/instructions/testing-patterns.md` |
 | **Validation, feedback, fix** | `.deepx/skills/dx-agent-stream-validate.md`, parent `dx-runtime/.deepx/skills/dx-agent-runtime-validate.md` |
@@ -437,7 +437,7 @@ Artifact Verification Gate는 각 artifact가 **어떻게** 검증되는지 정�
      확인하세요. 재호출을 기대하며 턴을 양보하지 마세요.
    - **필수 산출물은 컴파일과 독립적** — `setup.sh`, `run.sh`, `verify.py`, factory,
      app 코드는 `.dxnn` 파일이 존재할 필요가 없습니다. 알려진 모델 이름
-     (예: `yolo26-n_640x640.dxnn`)을 플레이스홀더 경로로 사용하여 생성하세요. 실행 검증만
+     (예: `yolo26n.dxnn`)을 플레이스홀더 경로로 사용하여 생성하세요. 실행 검증만
      실제 `.dxnn`이 필요합니다.
 7. **파일 읽기 도구 호출 최소화** — 이미 컨텍스트에 로드된 instruction 파일, agent
    문서, 스킬 문서를 다시 읽지 마세요. 불필요한 `cat` / `bash` 읽기는 각각 5-15초를
@@ -722,4 +722,3 @@ Pre-commit hook이 generator output 무결성을 강제합니다: 생성된 파�
 이 게이트는 `.deepx/` 파일이 작업의 *주요 산출물*인 경우(규칙 추가, 플랫폼 sync,
 KO 번역 생성, agents/skills 수정)에 적용됩니다. 기능 구현 중 `.deepx/`에 단순
 한 줄 수정이 발생하는 경우에는 적용되지 않습니다.
-

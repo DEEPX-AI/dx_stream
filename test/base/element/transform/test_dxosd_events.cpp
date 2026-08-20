@@ -170,6 +170,99 @@ GST_START_TEST(CE_osd_i420_bbox_draws) {
 GST_END_TEST;
 
 // ---------------------------------------------------------------------------
+// CE_osd_nv12_depth_draws
+// Target: gst_dxosd_transform_ip NV12 branch must render frame depth metadata.
+// ---------------------------------------------------------------------------
+GST_START_TEST(CE_osd_nv12_depth_draws) {
+    Harness h("dxosd", "video/x-raw,format=NV12,width=64,height=64,framerate=30/1",
+              "video/x-raw,format=NV12,width=64,height=64,framerate=30/1");
+
+    GstBuffer *buf = make_video_buffer("NV12", 64, 64, 0);
+    DXFrameMeta *fm = make_frame_meta(buf, 0, 64, 64, "NV12");
+    fm->_depth_width = 64;
+    fm->_depth_height = 64;
+    fm->_depth_data.resize(64 * 64);
+    for (size_t i = 0; i < fm->_depth_data.size(); ++i)
+        fm->_depth_data[i] = static_cast<uint8_t>(i);
+
+    gst_harness_push(h.h, buf);
+    GstBuffer *out = gst_harness_pull(h.h);
+    fail_unless(out != nullptr);
+
+    GstMapInfo map;
+    gst_buffer_map(out, &map, GST_MAP_READ);
+    gboolean y_changed = FALSE;
+    for (int x = 0; x < 64; ++x) {
+        if (map.data[x] != 0x80) { y_changed = TRUE; break; }
+    }
+    gst_buffer_unmap(out, &map);
+    gst_buffer_unref(out);
+
+    fail_unless(y_changed, "NV12 depth metadata must change the Y plane");
+}
+GST_END_TEST;
+
+// CE_osd_nv12_depth_overwrites_source: depth display replaces source luminance
+// and chroma with the MAGMA colormap.
+GST_START_TEST(CE_osd_nv12_depth_overwrites_source) {
+    Harness h("dxosd", "video/x-raw,format=NV12,width=64,height=64,framerate=30/1",
+              "video/x-raw,format=NV12,width=64,height=64,framerate=30/1");
+
+    GstBuffer *buf = make_video_buffer("NV12", 64, 64, 0);
+    DXFrameMeta *fm = make_frame_meta(buf, 0, 64, 64, "NV12");
+    fm->_depth_width = 64;
+    fm->_depth_height = 64;
+    fm->_depth_data.assign(64 * 64, 0);
+
+    gst_harness_push(h.h, buf);
+    GstBuffer *out = gst_harness_pull(h.h);
+    fail_unless(out != nullptr);
+
+    // MAGMA(0) converts to BGR(4, 0, 0), whose BT.601 Y value is 16.
+    const guint8 expected_y = 16;
+
+    GstMapInfo map;
+    gst_buffer_map(out, &map, GST_MAP_READ);
+    fail_unless_equals_int(map.data[0], expected_y);
+    gst_buffer_unmap(out, &map);
+    gst_buffer_unref(out);
+}
+GST_END_TEST;
+
+// ---------------------------------------------------------------------------
+// CE_osd_i420_depth_draws
+// Target: gst_dxosd_transform_ip I420 branch must render frame depth metadata.
+// ---------------------------------------------------------------------------
+GST_START_TEST(CE_osd_i420_depth_draws) {
+    Harness h("dxosd", "video/x-raw,format=I420,width=64,height=64,framerate=30/1",
+              "video/x-raw,format=I420,width=64,height=64,framerate=30/1");
+
+    GstBuffer *buf = make_video_buffer("I420", 64, 64, 0);
+    DXFrameMeta *fm = make_frame_meta(buf, 0, 64, 64, "I420");
+    fm->_depth_width = 64;
+    fm->_depth_height = 64;
+    fm->_depth_data.resize(64 * 64);
+    for (size_t i = 0; i < fm->_depth_data.size(); ++i)
+        fm->_depth_data[i] = static_cast<uint8_t>(i);
+
+    gst_harness_push(h.h, buf);
+    GstBuffer *out = gst_harness_pull(h.h);
+    fail_unless(out != nullptr);
+
+    GstMapInfo map;
+    gst_buffer_map(out, &map, GST_MAP_READ);
+    gboolean y_changed = FALSE;
+    for (int x = 0; x < 64; ++x) {
+        if (map.data[x] != 0x80) { y_changed = TRUE; break; }
+    }
+    gst_buffer_unmap(out, &map);
+    gst_buffer_unref(out);
+
+    fail_unless(y_changed, "I420 depth metadata must change the Y plane");
+}
+GST_END_TEST;
+
+// ---------------------------------------------------------------------------
 // CE_osd_nv12_no_meta_passthrough
 // Target: gst_dxosd_transform_ip L161-164 (no frame_meta → passthrough)
 // Same as RGB test but verifies the NV12 path short-circuits correctly.
@@ -247,12 +340,15 @@ static Suite *dxosd_events_suite(void) {
     tcase_set_timeout(tc_nv12, 30.0);
     suite_add_tcase(s, tc_nv12);
     tcase_add_test(tc_nv12, CE_osd_nv12_bbox_draws);
+    tcase_add_test(tc_nv12, CE_osd_nv12_depth_draws);
+    tcase_add_test(tc_nv12, CE_osd_nv12_depth_overwrites_source);
     tcase_add_test(tc_nv12, CE_osd_nv12_no_meta_passthrough);
 
     TCase *tc_i420 = tcase_create("i420");
     tcase_set_timeout(tc_i420, 30.0);
     suite_add_tcase(s, tc_i420);
     tcase_add_test(tc_i420, CE_osd_i420_bbox_draws);
+    tcase_add_test(tc_i420, CE_osd_i420_depth_draws);
     tcase_add_test(tc_i420, CE_osd_i420_no_meta_passthrough);
 
     return s;

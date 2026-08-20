@@ -19,7 +19,7 @@ The pipeline in the figure is defined in
 
 ### **Usage Notes**  
 
-**Configure file setting** 
+**Configuration File Settings** 
 
 - This pipeline runs multiple models sequentially. Be careful to configure each model's preprocess_id and inference_id properly to avoid unexpected behavior.
 

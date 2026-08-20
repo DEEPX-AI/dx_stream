@@ -417,6 +417,26 @@ PYBIND11_MODULE(pydxs, m) {
         .def_readwrite("seg_width", &DXFrameMeta::_seg_width, "Segmentation map width")
         .def_readwrite("seg_height", &DXFrameMeta::_seg_height, "Segmentation map height")
 
+        // Depth data (frame-level, relative depth)
+        .def_property(
+            "depth_data",
+            [](DXFrameMeta &meta) {
+                return py::bytes(static_cast<const char *>(static_cast<const void *>(meta._depth_data.data())), meta._depth_data.size());
+            },
+            [](DXFrameMeta &meta, py::bytes payload) {
+                std::string buffer = payload;
+                meta._depth_data.assign(buffer.begin(), buffer.end());
+            },
+            "Relative depth data (row-major, single-channel uint8 map)")
+        .def_readwrite("depth_width", &DXFrameMeta::_depth_width, "Depth map width")
+        .def_readwrite("depth_height", &DXFrameMeta::_depth_height, "Depth map height")
+        .def_property_readonly(
+            "depth_format",
+            [](const DXFrameMeta &meta) {
+                return meta._depth_data.empty() ? std::string("none") : std::string("relative-depth-u8");
+            },
+            "Depth storage format for depth_data")
+
         .def_readwrite("label", &DXFrameMeta::_label, "Primary classification label index (-1 if absent)")
         .def_readwrite("label_name", &DXFrameMeta::_label_name, "Primary classification label name")
         .def_readwrite("label_confidence", &DXFrameMeta::_label_confidence, "Primary classification confidence score")

@@ -72,10 +72,10 @@ plugins:
       author: DEEPX.ai
       copyright: ⓒ Copyright 2026 DEEPX All Rights Reserved.
       cover_title: DXNN Streamer (DX-STREAM) User Manual
-      cover_subtitle: 2026/07/08 (v3.1.0)
+      cover_subtitle: 2026/08/14 (v3.2.2)
       cover_logo: img/deepx.png
       custom_template_path: source/stylesheets
-      output_path: ../DEEPX_DX-STREAM_UM_v3.1.0_JUL_2026.pdf
+      output_path: ../DEEPX_DX-STREAM_UM_v3.2.2_AUG_2026.pdf
 extra:
   homepage: https://developer.deepx.ai
   generator: false
@@ -113,6 +113,4 @@ markdown_extensions:
       alternate_style: true 
   - attr_list
   - md_in_html
-# extra_javascript:
-#  - https://polyfill.io/v3/polyfill.min.js?features=es6
 copyright: ⓒ Copyright 2026 <a href="http://deepx.ai">DEEPX</a>. All Rights Reserved.

@@ -29,7 +29,7 @@ pytest test/                        # 단위 테스트 실행
 
 | 명령어 | 설명 |
 |---------|------|
-| /dx-agent-stream-build-pipeline | GStreamer 파이프라인 앱 빌드 (6개 카테고리: single-model, multi-model, cascaded, tiled, parallel, broker) |
+| /dx-agent-stream-build-pipeline | GStreamer 파이프라인 앱 빌드 (5개 카테고리: single-model, multi-model, cascaded, parallel, broker) |
 | /dx-agent-stream-build-mqtt-kafka | MQTT/Kafka message broker 파이프라인 앱 빌드 |
 | /dx-agent-stream-model-management | 파이프라인용 .dxnn 모델 다운로드 및 구성 |
 | /dx-agent-stream-validate | 파이프라인 검증 검사 실행 |
@@ -90,7 +90,7 @@ Python에서는 `datetime.now().strftime('%Y%m%d-%H%M%S')`를 사용한다. `dat
 |---|---|
 | **Pipeline, detection, classification** | `.deepx/skills/dx-agent-stream-build-pipeline.md`, `.deepx/toolsets/dx-stream-elements.md` |
 | **MQTT, Kafka, message broker** | `.deepx/skills/dx-agent-stream-build-mqtt-kafka.md`, `.deepx/toolsets/dx-stream-elements.md` |
-| **Multi-model, cascaded, tiled** | `.deepx/skills/dx-agent-stream-build-pipeline.md`, `.deepx/toolsets/dx-stream-metadata.md` |
+| **Multi-model, cascaded, parallel** | `.deepx/skills/dx-agent-stream-build-pipeline.md`, `.deepx/toolsets/dx-stream-metadata.md` |
 | **Model, download** | `.deepx/skills/dx-agent-stream-model-management.md` |
 | **Validation, testing** | `.deepx/skills/dx-agent-stream-validate.md`, `.deepx/instructions/testing-patterns.md` |
 | **Validation, feedback, fix** | `.deepx/skills/dx-agent-stream-validate.md`, parent `dx-runtime/.deepx/skills/dx-agent-runtime-validate.md` |
@@ -115,7 +115,7 @@ Python에서는 `datetime.now().strftime('%Y%m%d-%H%M%S')`를 사용한다. `dat
 | `DxInputSelector` | 여러 입력 스트림 중 하나를 선택해 공유 추론으로 전달 (N:1) |
 | `DxOutputSelector` | 추론 결과를 여러 출력 스트림으로 라우팅 (1:N) |
 
-## 6개 파이프라인 카테고리
+## 5개 파이프라인 카테고리
 
 | 카테고리 | 설명 | 핵심 패턴 |
 |----------|------|-----------|
@@ -170,4 +170,3 @@ source ! queue ! DxPreprocess preprocess-id=0 ! queue ! DxInfer preprocess-id=0 
 
 
 {{FRAGMENT:instruction-verification-loop}}
-

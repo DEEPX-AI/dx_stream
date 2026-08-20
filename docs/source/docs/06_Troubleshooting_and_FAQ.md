@@ -24,10 +24,14 @@ $ GST_DEBUG=dxinfer:4,dxtracker:4 ./your_application
 
 | **Level** | **Name**    | **When to Use**                                                   |
 |-----------|-------------|-------------------------------------------------------------------|
+| 0         | NONE        | No debug output                                                   |
 | 1         | ERROR       | Critical failures preventing operation                            |
 | 2         | WARNING     | Non-fatal issues that may affect behavior                         |
-| 3         | INFO        | State changes and configuration confirmation                      |
-| 4         | DEBUG       | Detailed operational information for troubleshooting              |
+| 3         | FIXME       | Fixme messages; rarely used in DX-STREAM                         |
+| 4         | INFO        | State changes and configuration confirmation                      |
+| 5         | DEBUG       | Detailed operational information for troubleshooting              |
+| 6         | LOG         | Per-buffer logging                                                |
+| 7         | TRACE       | Internal algorithm details                                        |
 
 #### Common Scenarios  
 
