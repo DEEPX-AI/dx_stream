@@ -110,7 +110,7 @@ Read these files before composing:
 
 ### 3a. Compose Pipeline String
 
-Select the appropriate pattern from the 6 categories:
+Select the appropriate pattern from the 5 categories:
 
 | Category | Core Pattern |
 |---|---|

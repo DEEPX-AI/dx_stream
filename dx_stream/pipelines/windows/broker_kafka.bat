@@ -8,6 +8,22 @@ if not defined DXSTREAM_ROOT (
     popd
 )
 
+set "GST_PLUGIN_PATH=%DXSTREAM_ROOT%\install\lib\gstreamer-1.0"
+set "GST_REGISTRY=%DXSTREAM_ROOT%\install\gst-registry.bin"
+set "PATH=%DXSTREAM_ROOT%\install\bin;%DXSTREAM_ROOT%\install\share\gstdxstream\lib;%DXSTREAM_ROOT%\install\share\gstdxstream\bin;%DXSTREAM_ROOT%\install\lib\gstreamer-1.0;%PATH%"
+
+if defined GSTREAMER_1_0_ROOT_MSVC_X86_64 (
+    set "PATH=%GSTREAMER_1_0_ROOT_MSVC_X86_64%\bin;%PATH%"
+) else if exist "C:\Program Files\gstreamer\1.0\msvc_x86_64\bin" (
+    set "PATH=C:\Program Files\gstreamer\1.0\msvc_x86_64\bin;%PATH%"
+)
+
+if not exist "%DXSTREAM_ROOT%\install\bin\gstdxstream.dll" (
+    echo [ERROR] DX-Stream plugin not found at "%DXSTREAM_ROOT%\install\bin\gstdxstream.dll".
+    echo         Run 'build.bat' first.
+    exit /b 1
+)
+
 set "BASE_FWD=%DXSTREAM_ROOT:\=/%"
 set "MODEL_DIR=%BASE_FWD%/dx_stream/samples/models"
 set "VIDEO_DIR=%BASE_FWD%/dx_stream/samples/videos"

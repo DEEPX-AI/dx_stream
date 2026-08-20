@@ -12,8 +12,8 @@ Four agents collaborate to build, configure, and validate dx_stream pipelines.
 
 | Agent | Description | Routes To |
 |---|---|---|
-| `dx-stream-builder` | Master router — classifies the pipeline type from the user request and dispatches to the appropriate specialist agent | `dx-pipeline-builder`, `dx-model-manager` |
-| `dx-pipeline-builder` | Builds GStreamer pipeline apps across 6 categories (single-model, multi-model, cascaded, tiled, parallel, broker) | — |
+| `dx-stream-builder` | Master router — classifies the pipeline type from the user request and dispatches to the appropriate specialist agent | `dx-pipeline-builder`, `dx-model-manager`, `dx-validator` |
+| `dx-pipeline-builder` | Builds GStreamer pipeline apps across 5 categories (single-model, multi-model, cascaded, parallel, broker) | — |
 | `dx-model-manager` | Downloads and configures `.dxnn` models for use in pipelines | — |
 | `dx-validator` | Validates generated pipeline scripts and `.deepx/` framework integrity | — |
 
@@ -51,7 +51,7 @@ User Request
 
 | Skill | Description |
 |-------|-------------|
-| `dx-agent-stream-build-pipeline` | Build a GStreamer pipeline across 6 categories: single-model, multi-model, cascaded, tiled, parallel, broker |
+| `dx-agent-stream-build-pipeline` | Build a GStreamer pipeline across 5 categories: single-model, multi-model, cascaded, parallel, broker |
 | `dx-agent-stream-build-mqtt-kafka` | Build an MQTT or Kafka message broker pipeline for event publishing |
 | `dx-agent-stream-model-management` | Download and configure `.dxnn` models for target NPU architecture |
 | `dx-agent-stream-validate` | Run pipeline validation checks (syntax, properties, element order) |
@@ -99,7 +99,7 @@ the knowledge base through its own configuration.
 
 | Slash Command | Description |
 |---|---|
-| `/dx-agent-stream-build-pipeline` | Build a GStreamer pipeline across 6 categories |
+| `/dx-agent-stream-build-pipeline` | Build a GStreamer pipeline across 5 categories |
 | `/dx-agent-stream-build-mqtt-kafka` | Build an MQTT/Kafka broker pipeline |
 | `/dx-agent-stream-model-management` | Download and configure .dxnn models |
 | `/dx-agent-stream-validate` | Run pipeline validation checks |
@@ -143,7 +143,7 @@ Each AI coding agent auto-loads different configuration files at the dx_stream l
 | `/dx-swe-subagent-dev` | `.deepx/skills/dx-swe-subagent-dev/SKILL.md` |
 | `/dx-swe-debugging` | `.deepx/skills/dx-swe-debugging/SKILL.md` |
 | `/dx-swe-tdd` | `.deepx/skills/dx-swe-tdd/SKILL.md` |
-| `/dx-agent-stream-validate` | `.deepx/skills/dx-validate/SKILL.md` |
+| `/dx-agent-stream-validate` | `.deepx/skills/dx-agent-stream-validate/SKILL.md` |
 | `/dx-swe-verify` | `.deepx/skills/dx-swe-verify/SKILL.md` |
 | `/dx-swe-writing-plans` | `.deepx/skills/dx-swe-writing-plans/SKILL.md` |
 
@@ -215,7 +215,7 @@ This generates:
 | Tool | How to Use |
 |---|---|
 | **Claude Code** | Type the prompt directly. `CLAUDE.md` routes to `dx-agent-stream-build-pipeline` skill. Asks about RTSP URL, display preferences, and tracker type, then generates the pipeline with DxRate → DxPreprocess → DxInfer → DxTracker → DxOsd chain. |
-| **GitHub Copilot** | `@dx-stream-builder` followed by the prompt. Classifies as "single-model + tracking", hands off to `dx-pipeline-builder`, runs `dx-validator` checks. |
+| **GitHub Copilot** |`.github/copilot-instructions.md`, 4 agents in `.github/agents/`, 15 skills in `.github/skills/`, 2 instructions in `.github/instructions/` | `@dx-stream-builder`, `@dx-pipeline-builder`, `@dx-model-manager`, `@dx-validator` |
 | **Cursor** | Type the prompt directly. `dx-stream.mdc` (always loaded) provides the 13-element catalog. `stream-pipelines.mdc` activates for pipeline files. |
 | **OpenCode** | `@dx-stream-builder` followed by the prompt, or `/dx-agent-stream-build-pipeline` skill directly. |
 
@@ -277,20 +277,6 @@ This generates:
 | **Claude Code** | Type the prompt directly. Routes to `dx-agent-stream-build-pipeline` with pose estimation model. Generates pipeline with keypoint overlay via `DxOsd`. |
 | **GitHub Copilot** | `@dx-stream-builder` followed by the prompt. Classifies as "single-model + pose", hands off to `dx-pipeline-builder`. |
 | **Cursor** | Type the prompt directly. `stream-pipelines.mdc` activates for generated pipeline files. |
-| **OpenCode** | `@dx-stream-builder` followed by the prompt, or `/dx-agent-stream-build-pipeline` skill directly. |
-
-### Scenario 6: Build a Tiled High-Resolution Pipeline
-
-**Prompt:**
-
-```
-"Build a tiled detection pipeline for 4K input with yolo26n"
-```
-
-| Tool | How to Use |
-|---|---|
-| **GitHub Copilot** | `@dx-pipeline-builder` followed by the prompt. |
-| **Cursor** | Type the prompt directly. |
 | **OpenCode** | `@dx-stream-builder` followed by the prompt, or `/dx-agent-stream-build-pipeline` skill directly. |
 
 ### Scenario 7: Build a Multi-Stream Parallel Pipeline
@@ -368,14 +354,14 @@ pipeline directory.
 
 ## Pipeline Categories
 
-dx_stream supports six pipeline categories. Each follows a distinct GStreamer element pattern.
+dx_stream supports five pipeline categories. Each follows a distinct GStreamer element pattern.
 
 | Category | Pattern | Key Elements |
 |---|---|---|
 | **Single-model** | `src ! DxPreprocess ! DxInfer ! DxPostprocess ! DxOsd ! sink` | Core inference trio + on-screen display |
 | **Multi-model** | Chain multiple `DxInfer` stages, each with a distinct `preprocess-id` | Multiple inference passes in sequence |
-| **Cascaded** | Primary `DxInfer` → `DxRoiExtract` → `DxScale` → Secondary `DxInfer` | ROI extraction feeds a second model |
-| **Parallel** | `DxMux` to merge multiple source streams into one pipeline | Multi-stream ingest and processing |
+| **Cascaded** | `DxPostprocess ! tee ! DxPreprocess(secondary) ! DxInfer ! DxGather` | Secondary inference branches merge after processing |
+| **Parallel** | `DxInputSelector ! shared DxInfer ! DxOutputSelector` | Multiple streams share inference and return to their output pads |
 | **Broker** | `DxPostprocess ! DxMsgConv ! DxMsgBroker` | Serialize detections and publish to MQTT/Kafka |
 
 ---

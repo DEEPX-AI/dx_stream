@@ -121,6 +121,79 @@ void draw_keypoints(cv::Mat &img, const DXObjectMeta *meta, float sx, float sy) 
         cv::circle(img, pts[i], 3, pose_kpt_color[i], -1, cv::LINE_AA);
 }
 
+// Frame-level dense depth map: colorize the normalized 0-255 depth with a
+// MAGMA colormap and alpha-blend over the frame (near=dark, far=bright).
+void draw_depth(cv::Mat &img, const DXFrameMeta *meta) {
+    if (meta->_depth_data.empty() || meta->_depth_width <= 0 || meta->_depth_height <= 0)
+        return;
+    cv::Mat depth_map(meta->_depth_height, meta->_depth_width, CV_8UC1,
+                      const_cast<unsigned char *>(meta->_depth_data.data()));
+    cv::Mat resized, colored;
+    cv::resize(depth_map, resized, img.size(), 0, 0, cv::INTER_LINEAR);
+    cv::applyColorMap(resized, colored, cv::COLORMAP_MAGMA);  // BGR
+    cv::addWeighted(img, 0, colored, 1.0, 0.0, img);
+}
+
+static bool make_depth_i420(const DXFrameMeta *meta, int width, int height,
+                            cv::Mat &depth_i420) {
+    if (meta->_depth_data.empty() || meta->_depth_width <= 0 || meta->_depth_height <= 0 ||
+        width <= 0 || height <= 0 || width % 2 != 0 || height % 2 != 0)
+        return false;
+
+    cv::Mat depth_map(meta->_depth_height, meta->_depth_width, CV_8UC1,
+                      const_cast<unsigned char *>(meta->_depth_data.data()));
+    cv::Mat resized, colored;
+    cv::resize(depth_map, resized, cv::Size(width, height), 0, 0, cv::INTER_LINEAR);
+    cv::applyColorMap(resized, colored, cv::COLORMAP_MAGMA);
+    cv::cvtColor(colored, depth_i420, cv::COLOR_BGR2YUV_I420);
+    return true;
+}
+
+void draw_depth_i420(uint8_t *y_plane, uint8_t *u_plane, uint8_t *v_plane,
+                     int stride_y, int stride_uv, int width, int height,
+                     const DXFrameMeta *meta) {
+    cv::Mat depth_i420;
+    if (!make_depth_i420(meta, width, height, depth_i420))
+        return;
+
+    const uint8_t *src_y = depth_i420.ptr<uint8_t>();
+    const uint8_t *src_u = src_y + width * height;
+    const uint8_t *src_v = src_u + width * height / 4;
+    cv::Mat y(height, width, CV_8UC1, y_plane, stride_y);
+    cv::Mat u(height / 2, width / 2, CV_8UC1, u_plane, stride_uv);
+    cv::Mat v(height / 2, width / 2, CV_8UC1, v_plane, stride_uv);
+    cv::Mat overlay_y(height, width, CV_8UC1, const_cast<uint8_t *>(src_y), width);
+    cv::Mat overlay_u(height / 2, width / 2, CV_8UC1, const_cast<uint8_t *>(src_u), width / 2);
+    cv::Mat overlay_v(height / 2, width / 2, CV_8UC1, const_cast<uint8_t *>(src_v), width / 2);
+    cv::addWeighted(y, 0, overlay_y, 1.0, 0.0, y);
+    cv::addWeighted(u, 0, overlay_u, 1.0, 0.0, u);
+    cv::addWeighted(v, 0, overlay_v, 1.0, 0.0, v);
+}
+
+void draw_depth_nv12(uint8_t *y_plane, uint8_t *uv_plane,
+                     int stride_y, int stride_uv, int width, int height,
+                     const DXFrameMeta *meta) {
+    cv::Mat depth_i420;
+    if (!make_depth_i420(meta, width, height, depth_i420))
+        return;
+
+    const uint8_t *src_y = depth_i420.ptr<uint8_t>();
+    const uint8_t *src_u = src_y + width * height;
+    const uint8_t *src_v = src_u + width * height / 4;
+    cv::Mat y(height, width, CV_8UC1, y_plane, stride_y);
+    cv::Mat uv(height / 2, width / 2, CV_8UC2, uv_plane, stride_uv);
+    cv::Mat overlay_y(height, width, CV_8UC1, const_cast<uint8_t *>(src_y), width);
+    cv::Mat overlay_uv(height / 2, width / 2, CV_8UC2);
+    for (int row = 0; row < height / 2; ++row) {
+        for (int col = 0; col < width / 2; ++col) {
+            overlay_uv.at<cv::Vec2b>(row, col) =
+                cv::Vec2b(src_u[row * width / 2 + col], src_v[row * width / 2 + col]);
+        }
+    }
+    cv::addWeighted(y, 0, overlay_y, 1.0, 0.0, y);
+    cv::addWeighted(uv, 0, overlay_uv, 1.0, 0.0, uv);
+}
+
 void draw_obb(cv::Mat &img, const DXObjectMeta *meta, float sx, float sy) {
     if (meta->_obb.size() != 5) return;
     float cx = meta->_obb[0] / sx;

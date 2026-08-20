@@ -3,7 +3,24 @@ setlocal
 title DX-Stream Pose Estimation (YOLOv26n_Pose)
 
 if not defined DXSTREAM_ROOT (
-    echo [ERROR] DXSTREAM_ROOT not set. Run run_demo.bat or set DXSTREAM_ROOT manually.
+    pushd "%~dp0..\..\..\"
+    set "DXSTREAM_ROOT=%CD%"
+    popd
+)
+
+set "GST_PLUGIN_PATH=%DXSTREAM_ROOT%\install\lib\gstreamer-1.0"
+set "GST_REGISTRY=%DXSTREAM_ROOT%\install\gst-registry.bin"
+set "PATH=%DXSTREAM_ROOT%\install\bin;%DXSTREAM_ROOT%\install\share\gstdxstream\lib;%DXSTREAM_ROOT%\install\share\gstdxstream\bin;%DXSTREAM_ROOT%\install\lib\gstreamer-1.0;%PATH%"
+
+if defined GSTREAMER_1_0_ROOT_MSVC_X86_64 (
+    set "PATH=%GSTREAMER_1_0_ROOT_MSVC_X86_64%\bin;%PATH%"
+) else if exist "C:\Program Files\gstreamer\1.0\msvc_x86_64\bin" (
+    set "PATH=C:\Program Files\gstreamer\1.0\msvc_x86_64\bin;%PATH%"
+)
+
+if not exist "%DXSTREAM_ROOT%\install\bin\gstdxstream.dll" (
+    echo [ERROR] DX-Stream plugin not found at "%DXSTREAM_ROOT%\install\bin\gstdxstream.dll".
+    echo         Run 'build.bat' first.
     exit /b 1
 )
 

@@ -43,7 +43,7 @@ $ GST_DEBUG=dxinfer:4,dxtracker:4 ./your_application
 $ GST_DEBUG=2,dxinfer:4,dxpreprocess:4 ./your_application
 ```
 
-This sets the global level to WARNING (2) while enabling DEBUG (4) for `dxinfer` and `dxpreprocess`.
+This sets the global level to WARNING (2) while enabling INFO (4) for `dxinfer` and `dxpreprocess`.
 
 ### Advanced Usage
 
@@ -447,8 +447,8 @@ $ GST_DEBUG=dx*:4 ./your_app 2>&1 | grep -E "Acquiring|Releasing|pool"
 
 ### Development Phase
 
-1. **Start with INFO level** (`:3`) to monitor state changes and initialization
-2. **Enable DEBUG level** (`:4`) for specific elements showing issues
+1. **Start with INFO level** (`:4`) to monitor state changes and initialization
+2. **Enable DEBUG level** (`:5`) for specific elements showing issues
 3. **Use targeted filtering** with grep to focus on relevant messages
 4. **Capture logs to file** for detailed analysis
 

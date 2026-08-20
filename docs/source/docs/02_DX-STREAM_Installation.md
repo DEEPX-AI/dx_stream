@@ -74,7 +74,7 @@ $ ./install.sh --help
     - GStreamer 1.16.3 or higher  
     - OpenCV 4.2.0 or higher  
 
-####  **Step 3.** Build & Environment **DX-STREAM**
+####  **Step 3.** Build **DX-STREAM** and Set Up the Environment
 
 **(1) Build & Installation**  
 
@@ -279,7 +279,7 @@ The uninstall process automatically removes:
 
 ## Run DX-STREAM
 
-This section provides a step-by-step guide of quickly running **DX-STREAM**'s sample pipelines
+This section provides a step-by-step guide to quickly running **DX-STREAM**'s sample pipelines
 
 ### Requirements  
 
@@ -305,23 +305,24 @@ $ ./run_demo.sh
 
 When the script is executed, you'll be prompted to select a demo from the following options.
 ```
-0: Object Detection (YOLOv26n)
+0: Object Detection (YOLO26n)
 1: Object Detection (YOLOv5s with PPU)
 2: Face Detection (YOLOv5s_Face)
 3: Face Detection (SCRFD500M with PPU)
-4: Pose Estimation (YOLOv26n_Pose)
+4: Pose Estimation (YOLO26n_Pose)
 5: Pose Estimation (YOLOV5Pose with PPU)
-6: Instance Segmentation (YOLOv26n_Seg)
+6: Instance Segmentation (YOLO26n_Seg)
 7: Multi-Object Tracking
 8: Multi-Channel Object Detection
 9: Multi-Channel Object Detection (RTSP)
 -: secondary mode
+=: Depth Estimation (YOLO26n_Depth)
 which AI demo do you want to run:(timeout:10s, default:0)
 ```
 
 Enter the number corresponding to the desired demo to run it.  
 
-If **no** input is provided within 10 seconds, the default option (`0: Object Detection (YOLOv26n)`) will be executed automatically.
+If **no** input is provided within 10 seconds, the default option (`0: Object Detection (YOLO26n)`) will be executed automatically.
 
 !!! note "NOTE" 
 

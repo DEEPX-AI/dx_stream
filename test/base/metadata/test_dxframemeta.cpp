@@ -32,6 +32,8 @@ GST_START_TEST(TC1_init_defaults) {
     fail_unless_equals_int(fm->_roi[3], -1);
     fail_unless_equals_int(fm->_seg_width, 0);
     fail_unless_equals_int(fm->_seg_height, 0);
+    fail_unless_equals_int(fm->_depth_width, 0);
+    fail_unless_equals_int(fm->_depth_height, 0);
     fail_unless_equals_int(fm->_label, -1);
     fail_unless(fm->_label_confidence == 0.0f);
     fail_unless(fm->_format.empty());
@@ -40,6 +42,7 @@ GST_START_TEST(TC1_init_defaults) {
     fail_unless_equals_int((int)fm->_object_meta_list.size(), 0);
     fail_unless_equals_int((int)fm->_frame_user_meta_list.size(), 0);
     fail_unless_equals_int((int)fm->_seg_data.size(), 0);
+    fail_unless_equals_int((int)fm->_depth_data.size(), 0);
     fail_unless_equals_int((int)fm->_input_tensors.size(), 0);
     fail_unless_equals_int((int)fm->_output_tensors.size(), 0);
     gst_buffer_unref(buf);
@@ -320,6 +323,26 @@ GST_START_TEST(TC16_free_releases_children) {
 }
 GST_END_TEST;
 
+// ---- TC17: non-empty depth_data copy + dims ----
+GST_START_TEST(TC17_copy_depth_nonempty) {
+    GstBuffer *buf = fresh_buf();
+    DXFrameMeta *src = dx_get_frame_meta(buf);
+    src->_depth_data = {0x00, 0x40, 0x80, 0xFF};
+    src->_depth_width = 2;
+    src->_depth_height = 2;
+
+    GstBuffer *dup = gst_buffer_copy(buf);
+    DXFrameMeta *dst = dx_get_frame_meta(dup);
+    fail_unless_equals_int((int)dst->_depth_data.size(), 4);
+    fail_unless_equals_int((int)dst->_depth_data[0], 0x00);
+    fail_unless_equals_int((int)dst->_depth_data[3], 0xFF);
+    fail_unless_equals_int(dst->_depth_width, 2);
+    fail_unless_equals_int(dst->_depth_height, 2);
+    gst_buffer_unref(buf);
+    gst_buffer_unref(dup);
+}
+GST_END_TEST;
+
 static Suite *dxframemeta_suite(void) {
     Suite *s = suite_create("dxframemeta");
     TCase *tc = tcase_create("contract");
@@ -340,6 +363,7 @@ static Suite *dxframemeta_suite(void) {
     tcase_add_test(tc, TC14_copy_seg_nonempty);
     tcase_add_test(tc, TC15_transform_skips_if_exists);
     tcase_add_test(tc, TC16_free_releases_children);
+    tcase_add_test(tc, TC17_copy_depth_nonempty);
     return s;
 }
 

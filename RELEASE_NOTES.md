@@ -1,5 +1,19 @@
 # RELEASE_NOTES
 
+## DX-Stream v3.1.2 / 2026-08-14
+
+### 1. Changed
+
+### 2. Fixed
+- Added self-configuring GST_PLUGIN_PATH for Windows pipeline scripts
+- Corrected minor errors across the documents
+
+### 3. Added
+- Added a demo pipeline for YOLO26 depth estimation
+- Added depth metadata support to DXFrameMeta and depth-map rendering to dxosd
+
+---
+
 ## DX-Stream v3.1.1 / 2026-07-27
 
 ### 1. Changed
@@ -104,7 +118,7 @@
 
 ### 3. Added
 - Added prepare_output_buffer() override to detect and copy shared buffers
-- Added `pydxs` Python binding module for DX Stream metadata,.
+- Added `pydxs` Python binding module for DX-STREAM metadata.
 - Python bindings for `DXFrameMeta`, `DXObjectMeta`, `DXUserMeta`, and related value types.
 - Helper APIs to acquire and attach `DXObjectMeta` to frames and to manage user metadata from Python.
 - A `writable_buffer` context manager to safely ensure buffer writability and create/retrieve `DXFrameMeta` inside GStreamer pad probes.

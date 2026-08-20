@@ -108,7 +108,7 @@ Read `.deepx/README.md` for the complete index.
 |---|---|
 | **Pipeline, detection, classification** | `.deepx/skills/dx-agent-stream-build-pipeline.md`, `.deepx/toolsets/dx-stream-elements.md` |
 | **MQTT, Kafka, message broker** | `.deepx/skills/dx-agent-stream-build-mqtt-kafka.md`, `.deepx/toolsets/dx-stream-elements.md` |
-| **Multi-model, cascaded, tiled** | `.deepx/skills/dx-agent-stream-build-pipeline.md`, `.deepx/toolsets/dx-stream-metadata.md` |
+| **Multi-model, cascaded, parallel** | `.deepx/skills/dx-agent-stream-build-pipeline.md`, `.deepx/toolsets/dx-stream-metadata.md` |
 | **Model, download** | `.deepx/skills/dx-agent-stream-model-management.md` |
 | **Validation, testing** | `.deepx/skills/dx-agent-stream-validate.md`, `.deepx/instructions/testing-patterns.md` |
 | **Validation, feedback, fix** | `.deepx/skills/dx-agent-stream-validate.md`, parent `dx-runtime/.deepx/skills/dx-agent-runtime-validate.md` |
@@ -124,7 +124,7 @@ Read `.deepx/README.md` for the complete index.
 
 | Skill | Description |
 |-------|-------------|
-| dx-agent-stream-build-pipeline | Build GStreamer pipeline (single, multi, cascaded, tiled, parallel, broker) |
+| dx-agent-stream-build-pipeline | Build GStreamer pipeline (single, multi, cascaded, parallel, broker) |
 | dx-agent-stream-build-mqtt-kafka | Build MQTT/Kafka message broker pipeline |
 | dx-agent-stream-model-management | Download and configure .dxnn models for pipelines |
 | dx-agent-stream-validate | Run pipeline validation checks |
@@ -178,7 +178,7 @@ Only write to `src/` when explicitly requested by the user.
 | DxInputSelector | Select one stream from multiple inputs (N:1) for shared inference |
 | DxOutputSelector | Route inference results back to multiple output streams (1:N) |
 
-## 6 Pipeline Categories
+## 5 Pipeline Categories
 
 | Category | Description | Key Pattern |
 |----------|-------------|-------------|
@@ -457,7 +457,7 @@ When the user is absent — autopilot mode, `--yolo` flag, or system auto-respon
      Never yield the turn expecting to be re-invoked.
    - **Mandatory artifacts are compilation-independent** — `setup.sh`, `run.sh`,
      `verify.py`, factory, and app code do NOT require the `.dxnn` file to exist.
-     Generate them using the known model name (e.g., `yolo26-n_640x640.dxnn`) as a
+     Generate them using the known model name (e.g., `yolo26n.dxnn`) as a
      placeholder path. Only execution verification requires the actual `.dxnn`.
 7. **Minimize file-reading tool calls** — Do NOT re-read instruction files,
    agent docs, or skill docs that are already loaded in your context. Each
@@ -740,4 +740,3 @@ This gate applies when `.deepx/` files are the *primary deliverable* (e.g., addi
 rules, syncing platforms, creating KO translations, modifying agents/skills). It
 does NOT apply when a feature implementation incidentally triggers a single-line
 change in `.deepx/`.
-
