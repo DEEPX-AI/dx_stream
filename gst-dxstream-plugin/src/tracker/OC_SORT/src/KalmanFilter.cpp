@@ -28,8 +28,26 @@ void KalmanFilterNew::predict() {
     x_prior = x;
     P_prior = P;
 }
+// Minimum number of history entries always kept. unfreeze() only needs the last
+// two non-null observations, and one fewer remains right after it runs, so 2
+// would do; this leaves room.
+static constexpr std::size_t kHistoryKeep = 8;
+
 void KalmanFilterNew::update(const Eigen::VectorXf &z_) {
     history_obs.push_back(z_);
+    ++total_pushes;
+
+    // Only trim while no freeze is in effect.
+    //
+    // Between freeze and unfreeze the entries are exactly what unfreeze() will
+    // read, so they stay. That window is bounded: OCSort drops a tracker once
+    // `time_since_update > max_age`, so a gap cannot exceed max_age. The vector
+    // is therefore at most `kHistoryKeep + max_age + 2` entries — a constant,
+    // independent of how long the track lives.
+    if (!attr_saved.IsInitialized && history_obs.size() > kHistoryKeep) {
+        history_obs.erase(history_obs.begin(),
+                          history_obs.end() - static_cast<std::ptrdiff_t>(kHistoryKeep));
+    }
     if (z_.size() == 0) {
         if (true == observed)
             freeze();
@@ -74,14 +92,39 @@ void KalmanFilterNew::freeze() {
     attr_saved.P_prior = P_prior;
     attr_saved.x_post = x_post;
     attr_saved.P_post = P_post;
-    attr_saved.history_obs = history_obs;
+    attr_saved.pushes_at_freeze = total_pushes;
 }
 void KalmanFilterNew::unfreeze() {
     if (!attr_saved.IsInitialized) {
         return;
     }
 
-    new_history = history_obs;
+    // Building the virtual trajectory needs only the two most recent real
+    // observations and the number of frames between them. Upstream reads them
+    // through a list alias (new_history = self.history_obs,
+    // kalmanfilter.py:421) that disappears when the call returns — no copy. The
+    // port made it a full deep copy into a member, so every track carried a
+    // second history for its whole life. Reading in place before the rewind
+    // gives the same values with no copy.
+    int lastNotNullIndex = -1;
+    int secondLastNotNullIndex = -1;
+    Eigen::VectorXf box1;
+    Eigen::VectorXf box2;
+
+    for (int i = static_cast<int>(history_obs.size()) - 1; i >= 0; --i) {
+        if (history_obs[i].size() == 0) {
+            continue;
+        }
+        if (lastNotNullIndex == -1) {
+            lastNotNullIndex = i;
+            box2 = history_obs[i];
+        } else if (secondLastNotNullIndex == -1) {
+            secondLastNotNullIndex = i;
+            box1 = history_obs[i];
+            break;
+        }
+    }
+
     x = attr_saved.x;
     P = attr_saved.P;
     Q = attr_saved.Q;
@@ -100,28 +143,27 @@ void KalmanFilterNew::unfreeze() {
     P_prior = attr_saved.P_prior;
     x_post = attr_saved.x_post;
 
-    if (!history_obs.empty()) {
-        history_obs.pop_back();
+    // Rewind the history to the freeze-time snapshot minus its last entry
+    // (upstream :424 and :426). The non-observations collected during the gap are
+    // dropped here, so the history does not grow with every gap. The snapshot is
+    // a prefix (see the pushes_at_freeze comment in the header), so the rewind
+    // copies nothing and stores nothing. The port instead removed one entry from
+    // the current history and kept the snapshot forever, leaving a track holding
+    // three full histories: current, new_history, and snapshot.
+    // pushes_at_freeze = 0 matches upstream's attr_saved = None (:425).
+    //
+    // The rewind is computed as a relative count: drop everything appended since
+    // the freeze (the gap's non-observations plus the observation just added),
+    // then one more for upstream's `[:-1]`. An absolute length would point
+    // somewhere else once the front has been trimmed.
+    const std::size_t appended = total_pushes - attr_saved.pushes_at_freeze;
+    if (history_obs.size() > appended + 1) {
+        history_obs.resize(history_obs.size() - appended - 1);
+    } else {
+        history_obs.clear();
     }
-
-    int lastNotNullIndex = -1;
-    int secondLastNotNullIndex = -1;
-    Eigen::VectorXf box1;
-    Eigen::VectorXf box2;
-
-    for (int i = static_cast<int>(new_history.size()) - 1; i >= 0; --i) {
-        if (new_history[i].size() == 0) {
-            continue;
-        }
-        if (lastNotNullIndex == -1) {
-            lastNotNullIndex = i;
-            box2 = new_history[i];
-        } else if (secondLastNotNullIndex == -1) {
-            secondLastNotNullIndex = i;
-            box1 = new_history[i];
-            break;
-        }
-    }
+    attr_saved.pushes_at_freeze = 0;
+    attr_saved.IsInitialized = false;
 
     if (lastNotNullIndex == -1 || secondLastNotNullIndex == -1) {
         return;

@@ -35,10 +35,11 @@ files. Reports issues with severity levels and actionable resolution steps.
 
 ## Scope
 
-- **13 GStreamer elements**: DxPreprocess, DxInfer, DxPostprocess, DxTracker, DxOsd, DxGather, DxInputSelector, DxOutputSelector, DxRate, DxMsgConv, DxMsgBroker, DxScale, DxConvert
+- **GStreamer elements**: Consult `toolsets/dx-stream-elements.md` and
+  `gst-inspect-1.0` for the current supported element surface.
 - **Pipeline scripts**: shell wrappers (`run_*.sh`) and Python pipeline scripts
 - **Custom postprocess**: C++ libraries (`.so` files) for model-specific decoding
-- **Framework**: 33 files in `.github/`
+- **Framework**: 33 files in `.deepx/`
 - **6 implementation patterns**: single network, multi-stream, tracking, secondary mode, RTSP, broker
 
 ## Validation Targets
@@ -126,7 +127,7 @@ Missing queues cause pipeline deadlocks under load.
 ## Context Loading
 
 ```
-1. .github/memory/common_pitfalls.md    (always)
+1. .deepx/memory/common_pitfalls.md    (always)
 2. .github/skills/dx-agent-stream-validate/SKILL.md  (validation reference)
 3. .deepx/scripts/validate_app.py      (pipeline validator)
 4. .deepx/scripts/validate_framework.py (framework validator)

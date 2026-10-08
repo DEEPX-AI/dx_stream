@@ -47,17 +47,19 @@ echo ============================================================
 gst-launch-1.0 ^
     urisourcebin uri="file:///%VIDEO%" ^
     ! decodebin ^
+    ! queue max-size-buffers=1 ^
     ! dxpreprocess preprocess-id=1 resize-width=640 resize-height=640 keep-ratio=true pad-value=114 ^
-    ! queue ^
+    ! queue max-size-buffers=1 ^
     ! dxinfer preprocess-id=1 inference-id=1 model-path="%MODEL%" ^
-    ! queue ^
+    ! queue max-size-buffers=1 ^
     ! dxpostprocess inference-id=1 library-file-path="%LIB%" function-name=YOLOV5S_PPU ^
-    ! queue ^
+    ! queue max-size-buffers=1 ^
     ! dxtracker config-file-path="%TRACKER_CONFIG%" ^
-    ! queue ^
+    ! queue max-size-buffers=1 ^
     ! dxosd ^
-    ! queue ^
+    ! queue max-size-buffers=1 ^
     ! videoconvert ^
+    ! queue max-size-buffers=1 ^
     ! fpsdisplaysink sync=false
 
 endlocal

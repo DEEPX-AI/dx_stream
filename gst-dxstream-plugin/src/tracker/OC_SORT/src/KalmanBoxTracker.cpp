@@ -1,4 +1,5 @@
-﻿#include "../include/KalmanBoxTracker.hpp"
+﻿#include <algorithm>
+#include "../include/KalmanBoxTracker.hpp"
 #include <utility>
 namespace ocsort {
 KalmanBoxTracker::KalmanBoxTracker(Eigen::VectorXf bbox_, int cls_, int idx_,
@@ -69,7 +70,27 @@ void KalmanBoxTracker::update(Eigen::VectorXf *bbox_, int cls_, int idx_) {
 
     last_observation = *bbox_;
     observations[age] = *bbox_;
-    history_observations.push_back(*bbox_);
+
+    // Drop observations that can no longer be read.
+    //
+    // Only three places read `observations`, and all three look at the last
+    // delta_t entries:
+    //   1. `observations[age - dt]` just above       (dt = 1..delta_t)
+    //   2. k_previous_obs(): `observations_.at(cur_age - dt)` (dt = 1..delta_t)
+    //   3. k_previous_obs() fallback max_element — the entry just inserted is
+    //      the largest key
+    // `age` only increases, so keys older than `age - delta_t` are never read
+    // again. Upstream keeps them because a 30-60 second MOT clip does not care.
+    // A 24/7 pipeline does: one track adds one entry per frame forever, which is
+    // 864,000 entries a day at 10 fps.
+    //
+    // How many to keep comes from delta_t. A hardcoded number would go quietly
+    // wrong the moment the setting changes. A negative delta_t is clamped to 0
+    // here; otherwise this would erase the entry just inserted and leave the
+    // fallback scanning an empty map.
+    const int keep_from = age - std::max(0, delta_t);
+    for (; oldest_obs_age < keep_from; ++oldest_obs_age)
+        observations.erase(oldest_obs_age);
     time_since_update = 0;
     history.clear();
     hits += 1;

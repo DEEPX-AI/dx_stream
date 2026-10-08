@@ -279,7 +279,7 @@ This generates:
 | **Cursor** | Type the prompt directly. `stream-pipelines.mdc` activates for generated pipeline files. |
 | **OpenCode** | `@dx-stream-builder` followed by the prompt, or `/dx-agent-stream-build-pipeline` skill directly. |
 
-### Scenario 7: Build a Multi-Stream Parallel Pipeline
+### Scenario 6: Build a Multi-Stream Parallel Pipeline
 
 **Prompt:**
 
@@ -294,7 +294,7 @@ This generates:
 | **Cursor** | Type the prompt directly. |
 | **OpenCode** | `@dx-stream-builder` followed by the prompt, or `/dx-agent-stream-build-pipeline` skill directly. |
 
-### Scenario 8: Build a Segmentation Pipeline
+### Scenario 7: Build a Segmentation Pipeline
 
 **Prompt:**
 

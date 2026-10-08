@@ -1,29 +1,23 @@
 # RELEASE_NOTES
 
-## DX-Stream v3.1.2 / 2026-08-14
+## DX-Stream v3.2.0 / 2026-10-09
 
 ### 1. Changed
+- **Model List Update**: Updated the sample model list and download source to models compiled with DX-COM v2.5.0.
+    - Removed retired SCRFD500M PPU face-detection and YOLOV5Pose PPU pose-estimation demos, including their Linux/Windows pipeline launchers.
+    - Replaced the retired EfficientNet Lite0 256x256 model with the supported 224x224 model in Linux/Windows secondary pipelines and regression tests.
+- **Transform backends**: Moved V3 DSP and RGA kernels to optional hardware backend plugins; the core retains the software path and loads installed hardware backends when available
 
 ### 2. Fixed
-- Added self-configuring GST_PLUGIN_PATH for Windows pipeline scripts
-- Corrected minor errors across the documents
+- **OC-SORT reliability**: Fixed observation history retention, assignment and association/GIoU handling, momentum weighting, invalid/unmatched predictions, and invalid tracker-config recovery.
+- **Documentation**: Corrected errors, typos, and missing details
 
 ### 3. Added
-- Added a demo pipeline for YOLO26 depth estimation
-- Added depth metadata support to DXFrameMeta and depth-map rendering to dxosd
-
----
-
-## DX-Stream v3.1.1 / 2026-07-27
-
-### 1. Changed
-
-### 2. Fixed
-- Fixed typos and added missing details in documentation
-
-### 3. Added
-
----
+- **OpenGL ES transform backend**: Added the optional `gstdxstream-gles` backend plugin that runs crop, resize, letterbox and color conversion on EGL/GLES 3.0 GPUs with zero-copy DMA-BUF import; secondary preprocessing batches each frame's objects into one GPU submission
+- **New demo pipelines**: `run_demo.sh` now supports the following new examples
+    - Added a YOLO26 depth-estimation pipeline with `DXFrameMeta` depth metadata and `dxosd` depth-map rendering
+    - Added Raspberry Pi camera pipelines using `libcamerasrc` for YOLO26 detection, pose, segmentation, and depth
+- **DX-H1 V-NPU support**: Added hardware-accelerated decode, encode, transform, preprocessing, and inference through `dxvnpudec`, `dxvnpuenc`, and `dxinfer`
 
 ## DX-Stream v3.1.0 / 2026-06-25
 

@@ -60,9 +60,10 @@ If the downstream sink element has `sync=true`, input buffers may be dropped bas
 **H/W Acceleration**  
 DxPreprocess uses the `VideoTransformFactory` to automatically select the best available hardware backend for color conversion and resizing. The selection priority is:
 
-1. **V3 DSP** – DEEPX V3 device DSP (when built with `--v3`)
-2. **RGA** – Rockchip Raster Graphic Accelerator (auto-detected)
-3. **libyuv** – Software fallback (always available)
+1. **V3 DSP** – DEEPX V3 device DSP (when the V3 sibling plugin is installed)
+2. **VNPU** – DEEPX VNPU hardware backend (when the VNPU sibling plugin is installed)
+3. **RGA** – Rockchip Raster Graphic Accelerator (when the RGA sibling plugin is installed)
+4. **libyuv** – Software fallback (always available)
 
 The backend is selected automatically at runtime — no configuration required.
 

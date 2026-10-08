@@ -13,13 +13,32 @@
 // scratch_ for per-slot storage to support multi-stream concurrency.
 // ---------------------------------------------------------------------------
 
+#include "dxcommon.hpp"
 #include "video_transform_kernel.hpp"
 #include <unordered_map>
 #include <vector>
 
 namespace dxt {
 
-class TransformKernelBase : public IVideoTransformKernel {
+// DX_API: this class is compiled into gstdxstream.dll's main plugin target but
+// is subclassed from *other* plugin DLLs built as separate meson targets
+// (gstdxstream-vnpu.dll, gstdxstream-v3.dll, gstdxstream-rga.dll link against
+// gstdxstream.lib). Without the export annotation, init()/effective_crop()/
+// compute_dst_rect() are invisible in gstdxstream.lib's import table on
+// Windows, so any HW-backend subclass built outside the main DLL fails to
+// link with LNK2019 (Linux hides this because .so symbols are exported by
+// default with no -fvisibility=hidden set in this project).
+//
+// C4251/C4275 (STL member / non-exported base without dll-interface) are
+// the standard MSVC warnings for this pattern. They matter when a DLL's
+// public ABI must stay stable across independently-versioned compilers/CRTs;
+// here every plugin DLL in this project is always built together with the
+// same MSVC/STL, so there is no real ABI mismatch risk — suppress locally.
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4251 4275)
+#endif
+class DX_API TransformKernelBase : public IVideoTransformKernel {
 public:
     ~TransformKernelBase() override = default;
 
@@ -52,5 +71,8 @@ protected:
                           int& dst_x, int& dst_y,
                           int& content_w, int& content_h) const;
 };
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 }  // namespace dxt

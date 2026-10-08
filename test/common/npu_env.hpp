@@ -22,7 +22,13 @@ inline bool path_exists(const std::string &p) {
 
 inline std::string dx_stream_root() {
     const char *env = g_getenv("DX_STREAM_ROOT");
-    if (env && *env) return env;
+    if (env && *env) {
+        std::string root = env;
+#ifdef _WIN32
+        for (char &c : root) if (c == '\\') c = '/';
+#endif
+        return root;
+    }
 
     // cwd may be test/_bin or similar — walk up to find root.
     // Accept both forward and back slashes as separator (Windows compat).

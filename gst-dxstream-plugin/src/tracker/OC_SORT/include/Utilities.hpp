@@ -15,7 +15,7 @@ Eigen::VectorXf convert_bbox_to_z(Eigen::VectorXf bbox);
 Eigen::VectorXf speed_direction(Eigen::VectorXf bbox1, Eigen::VectorXf bbox2);
 Eigen::VectorXf convert_x_to_bbox(Eigen::VectorXf x);
 Eigen::VectorXf
-k_previous_obs(std::unordered_map<int, Eigen::VectorXf> observations_,
+k_previous_obs(const std::unordered_map<int, Eigen::VectorXf> &observations_,
                int cur_age, int k);
 } // namespace ocsort
 #endif // OC_SORT_CPP_UTILITIES_HPP

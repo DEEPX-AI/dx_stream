@@ -34,9 +34,9 @@ pytest test/                        # Run unit tests
 | /dx-agent-stream-model-management | Download and configure .dxnn models for pipelines |
 | /dx-agent-stream-validate | Run pipeline validation checks |
 | /dx-agent-runtime-validate | Full feedback loop: validate, collect, approve, apply, verify |
-| /dx-swe-brainstorm | Brainstorm, propose 2-3 approaches, spec self-review, then plan |
-| /dx-swe-tdd | Validation-driven development with optional Red-Green-Refactor for unit tests |
-| /dx-swe-verify | Process: verify before claiming completion — evidence before assertions |
+| /dx-agent-brainstorm | DEEPX build brainstorming with model registry check and sub-project routing |
+| /dx-agent-tdd | DEEPX build validation order — factory, pipeline, and integration checks |
+| /dx-agent-verify | DEEPX build verification checklists — dx_app, dx_stream, and cross-project |
 | /dx-swe-writing-plans | Write implementation plans with bite-sized tasks |
 | /dx-swe-executing-plans | Execute plans with review checkpoints |
 | /dx-swe-subagent-dev | Execute plans via fresh subagent per task with two-stage review |
@@ -45,6 +45,7 @@ pytest test/                        # Run unit tests
 | /dx-swe-requesting-review | Request code review after completing features |
 | /dx-skill-router | Skill discovery and invocation — check skills before any action |
 | /dx-harness-writing-skills | Create and edit skill files |
+| /dx-harness-validate | Validate this repo's .deepx/ integrity (bootstraps the suite harness when standalone) |
 | /dx-swe-parallel-agents | Dispatch parallel subagents for independent tasks |
 
 ## Interactive Workflow (MUST FOLLOW)
@@ -88,21 +89,21 @@ Only write to `src/` when explicitly requested by the user.
 
 | Task mentions... | Read these files |
 |---|---|
-| **Pipeline, detection, classification** | `.deepx/skills/dx-agent-stream-build-pipeline.md`, `.deepx/toolsets/dx-stream-elements.md` |
-| **MQTT, Kafka, message broker** | `.deepx/skills/dx-agent-stream-build-mqtt-kafka.md`, `.deepx/toolsets/dx-stream-elements.md` |
-| **Multi-model, cascaded, parallel** | `.deepx/skills/dx-agent-stream-build-pipeline.md`, `.deepx/toolsets/dx-stream-metadata.md` |
-| **Model, download** | `.deepx/skills/dx-agent-stream-model-management.md` |
-| **Validation, testing** | `.deepx/skills/dx-agent-stream-validate.md`, `.deepx/instructions/testing-patterns.md` |
-| **Validation, feedback, fix** | `.deepx/skills/dx-agent-stream-validate.md`, parent `dx-runtime/.deepx/skills/dx-agent-runtime-validate.md` |
-| **Brainstorm, plan, design** | `.deepx/skills/dx-swe-brainstorm.md` |
-| **TDD, validation, incremental** | `.deepx/skills/dx-swe-tdd.md` |
-| **Completion, verify, evidence** | `.deepx/skills/dx-swe-verify.md` |
+| **Pipeline, detection, classification** | `.deepx/skills/dx-agent-stream-build-pipeline/SKILL.md`, `.deepx/toolsets/dx-stream-elements.md` |
+| **MQTT, Kafka, message broker** | `.deepx/skills/dx-agent-stream-build-mqtt-kafka/SKILL.md`, `.deepx/toolsets/dx-stream-elements.md` |
+| **Multi-model, cascaded, parallel** | `.deepx/skills/dx-agent-stream-build-pipeline/SKILL.md`, `.deepx/toolsets/dx-stream-metadata.md` |
+| **Model, download** | `.deepx/skills/dx-agent-stream-model-management/SKILL.md` |
+| **Validation, testing** | `.deepx/skills/dx-agent-stream-validate/SKILL.md`, `.deepx/instructions/testing-patterns.md` |
+| **Validation, feedback, fix** | `.deepx/skills/dx-agent-stream-validate/SKILL.md`, parent `../.deepx/skills/dx-agent-runtime-validate/SKILL.md` |
+| **Brainstorm, plan, design** | `.deepx/skills/dx-agent-brainstorm/SKILL.md` |
+| **TDD, validation, incremental** | `.deepx/skills/dx-agent-tdd/SKILL.md` |
+| **Completion, verify, evidence** | `.deepx/skills/dx-agent-verify/SKILL.md` |
 | **Debug, root cause, investigate** | `.deepx/skills/dx-swe-debugging/SKILL.md` |
 | **Plan, execute, subagent** | `.deepx/skills/dx-swe-writing-plans/SKILL.md`, `.deepx/skills/dx-swe-executing-plans/SKILL.md` |
 | **Code review, feedback** | `.deepx/skills/dx-swe-receiving-review/SKILL.md`, `.deepx/skills/dx-swe-requesting-review/SKILL.md` |
 | **ALWAYS read (every task)** | `.deepx/memory/common_pitfalls.md`, `.deepx/instructions/coding-standards.md` |
 
-## 13 GStreamer Elements
+## Supported GStreamer Elements
 
 | Element | Purpose |
 |---------|---------|
@@ -117,6 +118,16 @@ Only write to `src/` when explicitly requested by the user.
 | `DxMsgBroker` | Publish serialized messages to MQTT or Kafka |
 | `DxInputSelector` | Select one stream from multiple inputs (N:1) for shared inference |
 | `DxOutputSelector` | Route inference results back to multiple output streams (1:N) |
+
+## DX-H1 V-NPU Optional Capability
+
+Build the optional V-NPU plugin with `./build.sh --dxvnpu`; on Windows, set
+`DEEPX_VNPU_DIR` to the V-NPU SDK installation. Confirm `dxvnpudec` and
+`dxvnpuenc` using `gst-inspect-1.0` before using H.264/H.265 hardware codecs.
+Keep these codec elements outside the `application/x-dxvideoraw` multi-stream
+domain. Use `dxinfer backend=dxvnpu` for V-NPU inference, and treat the
+VNPU transform kernel in `dxpreprocess`, `dxscale`, and `dxconvert` as optional
+image-transform acceleration with a valid fallback path.
 
 ## 5 Pipeline Categories
 
@@ -176,3 +187,5 @@ Persistent knowledge in `.deepx/memory/`. Read at task start, update when learni
 ---
 
 {{FRAGMENT:instruction-verification-loop}}
+
+{{FRAGMENT:harness-bootstrap}}

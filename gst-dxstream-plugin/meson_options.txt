@@ -1,2 +1,8 @@
-option('v3_flag', type: 'boolean', value: false, description: 'Enable V3 mode')
-option('dxvnpu_flag', type: 'boolean', value: false, description: 'Enable DXVNPU elements (requires dxvnpu library)')
+option('with_dxv3', type: 'feature', value: 'disabled',
+       description: 'Build DX V3 hardware backend (requires dxdsp)')
+option('with_dxvnpu', type: 'feature', value: 'disabled',
+       description: 'Build DX VNPU hardware backend (requires dxvnpu)')
+option('with_rkrga', type: 'feature', value: 'auto',
+       description: 'Build RK RGA hardware backend (requires librga)')
+option('with_gles', type: 'feature', value: 'auto',
+       description: 'Build OpenGL ES 3.0 (EGL dma-buf) hardware backend (auto: ARM hosts only)')

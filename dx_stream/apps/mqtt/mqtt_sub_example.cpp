@@ -120,7 +120,7 @@ void on_message(struct mosquitto *mosq, void *obj,
     bool has_frame = false;
     if (json_object_has_member(obj_json, "frameData")) {
         frame_base64 = json_object_get_string_member(obj_json, "frameData");
-        has_frame = (frame_base64 && strlen(frame_base64) > 0);
+        has_frame = (frame_base64 && frame_base64[0] != '\0');
         if (has_frame) {
             frame_base64_copy = frame_base64;
         }

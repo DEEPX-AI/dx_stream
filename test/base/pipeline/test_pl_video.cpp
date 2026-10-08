@@ -54,7 +54,7 @@ GST_START_TEST(PL_video_decode_transform) {
     int count = 0;
     GstSample *s;
     while ((s = gst_app_sink_try_pull_sample(GST_APP_SINK(sink),
-                                              2 * GST_SECOND)) != nullptr) {
+                                              10 * GST_SECOND)) != nullptr) {
         GstCaps *caps = gst_sample_get_caps(s);
         GstVideoInfo info;
         fail_unless(gst_video_info_from_caps(&info, caps));

@@ -64,7 +64,7 @@ Based on what the task involves, read **only** the matching rows:
   instructions/
     architecture.md                      # dx_stream v2.3.0 architecture overview
     coding-standards.md                  # Pipeline composition rules & conventions
-    gstreamer-pipeline.md                # 13 elements + pipeline patterns
+    gstreamer-pipeline.md                # Current element reference + pipeline patterns
     testing-patterns.md                  # GStreamer debug & test patterns
     agent-protocols.md                   # 11 inter-agent protocols
     orchestration.md                     # 5-phase pipeline lifecycle
@@ -84,10 +84,10 @@ Based on what the task involves, read **only** the matching rows:
     dx-agent-verify/
       SKILL.md                           # Process skill
   toolsets/
-    dx-stream-elements.md                # Complete 13-element property reference
+    dx-stream-elements.md                # Current element property reference
     dx-stream-metadata.md                # pydxs metadata API reference
     dx-engine-api.md                     # DX-RT inference engine reference
-    model-registry.md                    # model_list.json reference (14 models)
+    model-registry.md                    # model_list.json reference
   memory/
     MEMORY.md                            # Memory index
     common_pitfalls.md                   # 10 known pitfalls [DX_STREAM] + [UNIVERSAL]
@@ -124,7 +124,7 @@ This knowledge base supports five AI coding tools:
 - **OpenCode** — `AGENTS.md` + `.opencode/agents/`, `opencode.json`
 - **Codex CLI** — `AGENTS.md` + `.codex/skills/dx-codex-identity/SKILL.md` (auto identity), plus direct reads of `.deepx/skills/*/SKILL.md`
 
-## 13 GStreamer Elements
+## Supported GStreamer Elements
 
 | Element | Category | Purpose |
 |---------|----------|---------|
@@ -141,6 +141,13 @@ This knowledge base supports five AI coding tools:
 | `DxMsgBroker` | Messaging | Publish JSON to Kafka or MQTT |
 | `DxScale` | Transform | Resize video frames |
 | `DxConvert` | Transform | Color space conversion |
+| `DxVnpuDec` | Optional Codec | DX-H1 V-NPU H.264/H.265 hardware decode (`dxvnpudec`, `--dxvnpu`) |
+| `DxVnpuEnc` | Optional Codec | DX-H1 V-NPU H.264/H.265 hardware encode (`dxvnpuenc`, `--dxvnpu`) |
+
+`dxvnpudec` and `dxvnpuenc` are optional DX-H1 V-NPU codec elements. Build them
+with `./build.sh --dxvnpu`; on Windows, configure `DEEPX_VNPU_DIR`. The current
+element surface is defined by `toolsets/dx-stream-elements.md` and runtime
+`gst-inspect-1.0`, not a fixed element total.
 
 ## 5 Pipeline Categories
 
@@ -200,3 +207,7 @@ bash ../../.deepx/tools/scripts/run_all.sh generate
 
 Persistent knowledge in `memory/`. Read at task start, update when learning new
 patterns or discovering pitfalls. See `memory/MEMORY.md` for the memory index.
+
+## CI Drift Gate
+
+This repo is checked by the `subrepo-gate` CI job (`.github/workflows/dx-agent-dev-subrepo-gate-{ghes,cloud}.yml`). What it runs, how to reproduce it locally and how to fix a red gate: [`docs/ci-subrepo-gate.md`](docs/ci-subrepo-gate.md).

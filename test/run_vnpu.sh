@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# VNPU test suite (conditional: requires dxvnpudec element)
+# VNPU hardware test suite
 set -u
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=setup_env.sh
 source "$SCRIPT_DIR/setup_env.sh"
+export DXVNPU_TEST_DEVICE=1
 
 if ! gst-inspect-1.0 dxvnpudec >/dev/null 2>&1; then
     echo "===== Test Group: vnpu ====="

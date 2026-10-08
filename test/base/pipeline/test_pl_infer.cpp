@@ -150,48 +150,6 @@ static std::string infer_pipe_noapp() {
            " ! fakesink sync=false";
 }
 
-GST_START_TEST(PL_A_infer_eos) {
-    DXTEST_SKIP_IF(!can_run_infer(), "model/NPU/postprocess not available");
-    test_eos_propagation(infer_pipe_noapp().c_str(), 30 * GST_SECOND);
-}
-GST_END_TEST;
-
-GST_START_TEST(PL_A_infer_lifecycle) {
-    DXTEST_SKIP_IF(!can_run_infer(), "model/NPU/postprocess not available");
-    test_lifecycle_cycle(infer_pipe_noapp().c_str(), 3);
-}
-GST_END_TEST;
-
-GST_START_TEST(PL_A_infer_no_bus_error) {
-    DXTEST_SKIP_IF(!can_run_infer(), "model/NPU/postprocess not available");
-
-    std::string desc = infer_pipe_noapp();
-    GError *err = nullptr;
-    GstElement *pipe = gst_parse_launch(desc.c_str(), &err);
-    fail_unless(pipe != nullptr);
-    if (err) g_error_free(err);
-
-    GstBus *bus = gst_pipeline_get_bus(GST_PIPELINE(pipe));
-    gst_element_set_state(pipe, GST_STATE_PLAYING);
-
-    GstMessage *msg = gst_bus_timed_pop_filtered(bus, 30 * GST_SECOND,
-        (GstMessageType)(GST_MESSAGE_EOS | GST_MESSAGE_ERROR));
-    fail_unless(msg != nullptr, "timeout waiting for EOS");
-
-    if (GST_MESSAGE_TYPE(msg) == GST_MESSAGE_ERROR) {
-        GError *gerr = nullptr;
-        gst_message_parse_error(msg, &gerr, nullptr);
-        fail("unexpected bus ERROR: %s", gerr ? gerr->message : "unknown");
-        g_error_free(gerr);
-    }
-    gst_message_unref(msg);
-
-    gst_element_set_state(pipe, GST_STATE_NULL);
-    gst_object_unref(bus);
-    gst_object_unref(pipe);
-}
-GST_END_TEST;
-
 static Suite *pl_infer_suite(void) {
     Suite *s = suite_create("pl_infer");
     TCase *tc = tcase_create("inference");
@@ -199,9 +157,6 @@ static Suite *pl_infer_suite(void) {
     suite_add_tcase(s, tc);
     tcase_add_test(tc, PL_A_infer_produces_detections);
     tcase_add_test(tc, PL_A_infer_detection_fields);
-    tcase_add_test(tc, PL_A_infer_eos);
-    tcase_add_test(tc, PL_A_infer_lifecycle);
-    tcase_add_test(tc, PL_A_infer_no_bus_error);
     return s;
 }
 

@@ -10,7 +10,9 @@ REM    4) Python bindings (pydxs)
 REM  Usage:
 REM    build.bat                -> configure (if needed) and compile all
 REM    build.bat --clean        -> remove builddirs, then configure & compile
-REM    build.bat --dxvnpu       -> enable DXVNPU elements
+REM    build.bat --dxv3         -> enable DX V3 transform backend
+REM    build.bat --dxvnpu       -> enable DXVNPU backend
+REM    build.bat --rkrga        -> enable RK RGA transform backend
 REM    build.bat --type=debug   -> debug build
 REM    build.bat --plugin-only  -> build only the GStreamer plugin
 REM    build.bat --uninstall    -> remove install/ and env vars
@@ -25,7 +27,9 @@ set "BUILD_DIR=%PLUGIN_DIR%\builddir"
 set "PREFIX=%PROJECT_ROOT%\install"
 
 set "CLEAN_MODE="
+set "DXV3_MODE="
 set "DXVNPU_MODE="
+set "RKRGA_MODE="
 set "PLUGIN_ONLY="
 set "UNINSTALL_MODE="
 set "BUILD_TYPE=release"
@@ -38,6 +42,21 @@ if /I "%~1"=="--clean" (
 )
 if /I "%~1"=="--dxvnpu" (
     set "DXVNPU_MODE=1"
+    shift
+    goto parse_args
+)
+if /I "%~1"=="--dxv3" (
+    set "DXV3_MODE=1"
+    shift
+    goto parse_args
+)
+if /I "%~1"=="--v3" (
+    set "DXV3_MODE=1"
+    shift
+    goto parse_args
+)
+if /I "%~1"=="--rkrga" (
+    set "RKRGA_MODE=1"
     shift
     goto parse_args
 )
@@ -62,11 +81,13 @@ if /I "%~1"=="--type=release" (
     goto parse_args
 )
 if /I "%~1"=="--help" (
-    echo Usage: build.bat [--clean] [--dxvnpu] [--type=debug^|release] [--plugin-only] [--uninstall]
+    echo Usage: build.bat [--clean] [--v3^|--dxv3] [--dxvnpu] [--rkrga] [--type=debug^|release] [--plugin-only] [--uninstall]
     echo.
     echo Options:
     echo   --clean          Remove builddirs before configure
-    echo   --dxvnpu         Enable DXVNPU elements [requires dxvnpu library]
+    echo   --v3, --dxv3     Enable DX V3 transform backend [requires dxdsp]
+    echo   --dxvnpu         Enable DXVNPU backend [requires dxvnpu library]
+    echo   --rkrga          Enable RK RGA transform backend [requires librga]
     echo   --type=TYPE      Build type: debug or release [default: release]
     echo   --plugin-only    Build only the GStreamer plugin (skip libs/apps/pydxs^)
     echo   --uninstall      Remove install directory and registered environment variables
@@ -118,33 +139,39 @@ if not defined DEEPX_SDK_DIR (
     exit /b 1
 )
 set "DXRT_SDK_DIR=%DEEPX_SDK_DIR%"
-if not exist "%DXRT_SDK_DIR%\lib\x64\dxrt.lib" (
-    echo [ERROR] dxrt.lib not found at %DXRT_SDK_DIR%\lib\x64
+REM Newer SDK installers place dxrt.lib directly under lib\; older ones use lib\x64\.
+set "DXRT_LIB_DIR=%DXRT_SDK_DIR%\lib"
+if not exist "%DXRT_LIB_DIR%\dxrt.lib" set "DXRT_LIB_DIR=%DXRT_SDK_DIR%\lib\x64"
+if not exist "%DXRT_LIB_DIR%\dxrt.lib" (
+    echo [ERROR] dxrt.lib not found at %DXRT_SDK_DIR%\lib or %DXRT_SDK_DIR%\lib\x64
     echo         Check that DEEPX_SDK_DIR points to the correct SDK directory.
     exit /b 1
 )
 set "DXRT_RUNTIME_DIR="
 if exist "%DEEPX_SDK_DIR%\bin" set "DXRT_RUNTIME_DIR=%DEEPX_SDK_DIR%\bin"
 set "INCLUDE=%DXRT_SDK_DIR%\include;%INCLUDE%"
-set "LIB=%DXRT_SDK_DIR%\lib\x64;%LIB%"
+set "LIB=%DXRT_LIB_DIR%;%LIB%"
 echo [INFO] dxrt sdk: %DXRT_SDK_DIR%
+echo [INFO] dxrt lib: %DXRT_LIB_DIR%
 if defined DXRT_RUNTIME_DIR echo [INFO] dxrt runtime: %DXRT_RUNTIME_DIR%
 
 REM ---- DEEPX dxvnpu (optional, required with --dxvnpu) ----
 if defined DXVNPU_MODE (
-    if not defined DXVNPU_DIR (
-        echo [ERROR] DXVNPU_DIR environment variable is not set.
-        echo         Set DXVNPU_DIR to the dxvnpu install directory.
-        echo         Expected: %%DXVNPU_DIR%%\include\ and %%DXVNPU_DIR%%\lib\dxvnpu.lib
+    if not defined DEEPX_VNPU_DIR (
+        echo [ERROR] DEEPX_VNPU_DIR environment variable is not set.
+        echo         Install the DX-H1 V-NPU SDK or set its install directory.
+        echo         Expected: %%DEEPX_VNPU_DIR%%\lib\cmake\dxvnpu\dxvnpuConfig.cmake
         exit /b 1
     )
-    if not exist "!DXVNPU_DIR!\lib\dxvnpu.lib" (
-        echo [ERROR] dxvnpu.lib not found at !DXVNPU_DIR!\lib
+    if not exist "!DEEPX_VNPU_DIR!\lib\cmake\dxvnpu\dxvnpuConfig.cmake" (
+        echo [ERROR] dxvnpu CMake package not found under !DEEPX_VNPU_DIR!
         exit /b 1
     )
-    set "INCLUDE=!DXVNPU_DIR!\include;%INCLUDE%"
-    set "LIB=!DXVNPU_DIR!\lib;%LIB%"
-    echo [INFO] dxvnpu: !DXVNPU_DIR!
+    set "CMAKE_PREFIX_PATH=!DEEPX_VNPU_DIR!;%CMAKE_PREFIX_PATH%"
+    set "DXVNPU_RUNTIME_DIR="
+    if exist "!DEEPX_VNPU_DIR!\bin" set "DXVNPU_RUNTIME_DIR=!DEEPX_VNPU_DIR!\bin"
+    echo [INFO] dxvnpu SDK: !DEEPX_VNPU_DIR!
+    if defined DXVNPU_RUNTIME_DIR echo [INFO] dxvnpu runtime: !DXVNPU_RUNTIME_DIR!
 )
 
 REM ---- vcpkg dependencies ----
@@ -204,7 +231,13 @@ where pkg-config >nul 2>nul || (echo [WARN] pkg-config not in PATH; relying on G
 REM ---- Meson options ----
 set "MESON_OPTS=--prefix="%PREFIX%" --buildtype=%BUILD_TYPE%"
 if defined DXVNPU_MODE (
-    set "MESON_OPTS=%MESON_OPTS% -Ddxvnpu_flag=true"
+    set "MESON_OPTS=%MESON_OPTS% -Dwith_dxvnpu=enabled"
+)
+if defined DXV3_MODE (
+    set "MESON_OPTS=%MESON_OPTS% -Dwith_dxv3=enabled"
+)
+if defined RKRGA_MODE (
+    set "MESON_OPTS=%MESON_OPTS% -Dwith_rkrga=enabled"
 )
 
 REM ---- Configure ----
@@ -386,6 +419,7 @@ if !errorlevel! neq 0 (
 REM Ensure gstdxstream.dll is findable during import verification
 set "PATH=%PREFIX%\bin;%PREFIX%\lib\gstreamer-1.0;!PATH!"
 if defined DXRT_RUNTIME_DIR if exist "!DXRT_RUNTIME_DIR!" set "PATH=!DXRT_RUNTIME_DIR!;!PATH!"
+if defined DXVNPU_RUNTIME_DIR if exist "!DXVNPU_RUNTIME_DIR!" set "PATH=!DXVNPU_RUNTIME_DIR!;!PATH!"
 
 pushd "!PYDXS_DIR!"
 echo [INFO] Installing pydxs...

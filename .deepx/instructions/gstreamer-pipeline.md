@@ -1,6 +1,6 @@
 # GStreamer Pipeline Composition Guide
 
-## 13 Elements Reference
+## Current Element Reference
 
 ### DxPreprocess
 

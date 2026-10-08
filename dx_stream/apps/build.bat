@@ -78,10 +78,13 @@ if not defined DEEPX_SDK_DIR (
     echo [ERROR] DEEPX_SDK_DIR environment variable is not set.
     exit /b 1
 )
-if exist "!DEEPX_SDK_DIR!\lib\x64" (
+REM Newer SDK installers place dxrt.lib directly under lib\; older ones use lib\x64\.
+if exist "!DEEPX_SDK_DIR!\lib\dxrt.lib" (
+    set "LIB=!DEEPX_SDK_DIR!\lib;%LIB%"
+) else if exist "!DEEPX_SDK_DIR!\lib\x64\dxrt.lib" (
     set "LIB=!DEEPX_SDK_DIR!\lib\x64;%LIB%"
-    set "INCLUDE=!DEEPX_SDK_DIR!\include;%INCLUDE%"
 )
+set "INCLUDE=!DEEPX_SDK_DIR!\include;%INCLUDE%"
 
 REM ---- vcpkg paths ----
 if exist "!VCPKG_INSTALLED!\lib" (

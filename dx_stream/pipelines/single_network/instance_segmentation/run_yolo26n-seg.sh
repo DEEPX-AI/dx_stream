@@ -43,7 +43,7 @@ VIDEOCONVERT_PIPELINE="videoconvert"
 # fi
 
 for INPUT_VIDEO_PATH in "${INPUT_VIDEO_PATH_LIST[@]}"; do
-    gst-launch-1.0 urisourcebin uri=file://$INPUT_VIDEO_PATH ! decodebin ! \
+    gst-launch-1.0 urisourcebin uri=file://$INPUT_VIDEO_PATH ! decodebin ! queue max-size-buffers=1 ! \
                     dxpreprocess \
                         preprocess-id=1 \
                         resize-width=640 \
@@ -61,6 +61,6 @@ for INPUT_VIDEO_PATH in "${INPUT_VIDEO_PATH_LIST[@]}"; do
                     queue max-size-buffers=1 ! \
                     dxtracker ! \
                     queue max-size-buffers=1 ! \
-                    dxosd ! \
+                    dxosd ! queue max-size-buffers=1 ! \
                     $VIDEOCONVERT_PIPELINE ! fpsdisplaysink sync=false $VIDEO_SINK_ARGS
 done

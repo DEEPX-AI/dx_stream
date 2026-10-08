@@ -10,6 +10,7 @@
 #include <gst/app/gstappsink.h>
 #include "harness_helpers.hpp"
 #include "buffer_factory.hpp"
+#include "gst-dxinfer.hpp"
 #include "meta_helpers.hpp"
 #include "npu_env.hpp"
 
@@ -98,88 +99,73 @@ static GstBuffer *make_infer_buffer(GstClockTime pts) {
     return buf;
 }
 
+class TestInferBackend final : public IInferBackend {
+public:
+    bool Init(const InferBackendOptions&) override { return true; }
+    bool Put(void*, void*) override { return !flushed; }
+    bool Get(dxs::DXTensors&) override { return !flushed; }
+    void Flush() override { flushed = true; ++flush_count; }
+    void Reset() override { flushed = false; ++reset_count; }
+    size_t GetOutputBufferSize() const override { return 0; }
+    const char* GetName() const override { return "test"; }
+    bool IsFlushed() const override { return flushed; }
+
+    gboolean flushed = FALSE;
+    guint flush_count = 0;
+    guint reset_count = 0;
+};
+
+static GstDxInfer *make_infer_with_test_backend(TestInferBackend **backend) {
+    auto *element = GST_DXINFER(gst_element_factory_make("dxinfer", nullptr));
+    fail_unless(element != nullptr);
+    *backend = new TestInferBackend;
+    element->_backend.reset(*backend);
+    return element;
+}
+
 // ---------------------------------------------------------------------------
 // CE_infer_flush_stop_resets_eos_state
-// Target: gst_dxinfer_sink_event FLUSH_STOP L485-494
-//   - backend->Reset() called
-//   - stream_eos_arrived.clear()
-//   - stream_pending_buffers.clear()
-// MUT: remove L490-493 → after flush, stream still appears as EOS'd → buffers dropped
-// Requires: NPU runtime
+// Target: gst_dxinfer_sink_event FLUSH_STOP
 // ---------------------------------------------------------------------------
 GST_START_TEST(CE_infer_flush_stop_resets_eos_state) {
-    DXTEST_SKIP_IF(!runtime_available(), "NPU runtime not available");
-    std::string model = resolve_test_model();
+    TestInferBackend *backend;
+    GstDxInfer *infer = make_infer_with_test_backend(&backend);
+    infer->_eos_ctx.stream_eos_arrived.insert(7);
+    infer->_eos_ctx.stream_pending_buffers.emplace(7, 1);
 
-    GstElement *pipe = make_infer_pipeline_appsrc(model);
-    fail_unless(pipe != nullptr);
+    GstPad *sinkpad = gst_element_get_static_pad(GST_ELEMENT(infer), "sink");
+    gst_pad_set_active(sinkpad, TRUE);
+    gst_pad_send_event(sinkpad, gst_event_new_flush_start());
+    gst_pad_send_event(sinkpad, gst_event_new_flush_stop(TRUE));
 
-    GstElement *src = gst_bin_get_by_name(GST_BIN(pipe), "src");
-    GstElement *sink = gst_bin_get_by_name(GST_BIN(pipe), "sink");
+    fail_unless(backend->reset_count >= 1);
+    fail_unless(infer->_eos_ctx.stream_eos_arrived.empty());
+    fail_unless(infer->_eos_ctx.stream_pending_buffers.empty());
 
-    gst_element_set_state(pipe, GST_STATE_PLAYING);
-
-    gst_app_src_push_buffer(GST_APP_SRC(src), make_infer_buffer(0));
-    g_usleep(200000);
-
-    GstPad *src_pad = gst_element_get_static_pad(src, "src");
-    gst_pad_push_event(src_pad, gst_event_new_flush_start());
-    gst_pad_push_event(src_pad, gst_event_new_flush_stop(TRUE));
-
-    GstSegment seg;
-    gst_segment_init(&seg, GST_FORMAT_TIME);
-    gst_pad_push_event(src_pad, gst_event_new_segment(&seg));
-    gst_object_unref(src_pad);
-
-    gst_app_src_push_buffer(GST_APP_SRC(src), make_infer_buffer(100 * GST_MSECOND));
-
-    GstSample *s = gst_app_sink_try_pull_sample(GST_APP_SINK(sink), 5 * GST_SECOND);
-    fail_unless(s != nullptr,
-                "Buffer after FLUSH must not be dropped — FLUSH_STOP must clear EOS state");
-    gst_sample_unref(s);
-
-    gst_element_set_state(pipe, GST_STATE_NULL);
-    gst_object_unref(src);
-    gst_object_unref(sink);
-    gst_object_unref(pipe);
+    gst_pad_set_active(sinkpad, FALSE);
+    gst_object_unref(sinkpad);
+    gst_object_unref(infer);
 }
 GST_END_TEST;
 
 // ---------------------------------------------------------------------------
 // CE_infer_flush_start_calls_backend_flush
-// Target: gst_dxinfer_sink_event FLUSH_START L478-483
-//   - backend->Flush() called (unblocks Get())
-//   - cv.notify_all() (wakes push thread)
-// MUT: remove L479-480 → push thread blocks forever on backend->Get()
-// Verified by: pipeline doesn't hang on FLUSH_START + subsequent NULL transition
+// Target: gst_dxinfer_sink_event FLUSH_START
 // ---------------------------------------------------------------------------
 GST_START_TEST(CE_infer_flush_start_calls_backend_flush) {
-    if (!model_available()) return;
-    std::string model = resolve_test_model();
+    TestInferBackend *backend;
+    GstDxInfer *infer = make_infer_with_test_backend(&backend);
 
-    GstElement *pipe = make_infer_pipeline_appsrc(model, "fakesink");
-    fail_unless(pipe != nullptr);
+    GstPad *sinkpad = gst_element_get_static_pad(GST_ELEMENT(infer), "sink");
+    gst_pad_set_active(sinkpad, TRUE);
+    gst_pad_send_event(sinkpad, gst_event_new_flush_start());
 
-    GstElement *src = gst_bin_get_by_name(GST_BIN(pipe), "src");
-    gst_element_set_state(pipe, GST_STATE_PLAYING);
+    fail_unless_equals_int(backend->flush_count, 1);
+    fail_unless(backend->IsFlushed());
 
-    for (int i = 0; i < 3; i++) {
-        gst_app_src_push_buffer(GST_APP_SRC(src), make_infer_buffer(i * GST_SECOND / 30));
-    }
-
-    g_usleep(100000);
-
-    GstPad *src_pad = gst_element_get_static_pad(src, "src");
-    gst_pad_push_event(src_pad, gst_event_new_flush_start());
-    gst_pad_push_event(src_pad, gst_event_new_flush_stop(TRUE));
-    gst_object_unref(src_pad);
-
-    GstStateChangeReturn ret = gst_element_set_state(pipe, GST_STATE_NULL);
-    fail_unless(ret != GST_STATE_CHANGE_FAILURE,
-                "NULL transition after FLUSH must not fail/hang");
-
-    gst_object_unref(src);
-    gst_object_unref(pipe);
+    gst_pad_set_active(sinkpad, FALSE);
+    gst_object_unref(sinkpad);
+    gst_object_unref(infer);
 }
 GST_END_TEST;
 
@@ -190,7 +176,11 @@ GST_END_TEST;
 // MUT: remove L500 → downstream never sees TAG/GAP events
 // ---------------------------------------------------------------------------
 GST_START_TEST(CE_infer_default_event_forwarded) {
-    if (!model_available()) return;
+    // Needs actual data flow through PLAYING state for the event to reach the
+    // downstream probe — model_available() alone doesn't guarantee the dxrt
+    // backend can actually run (e.g. no NPU hardware), which silently keeps
+    // the pipeline out of PLAYING and makes this fail for an unrelated reason.
+    DXTEST_SKIP_IF(!runtime_available(), "NPU runtime not available");
     std::string model = resolve_test_model();
 
     GstElement *pipe = make_infer_pipeline_appsrc(model, "fakesink");
@@ -226,7 +216,9 @@ GST_END_TEST;
 // MUT: remove L446 → wrapped non-EOS events lost
 // ---------------------------------------------------------------------------
 GST_START_TEST(CE_infer_wrapped_event_forwarded) {
-    if (!model_available()) return;
+    // Same rationale as CE_infer_default_event_forwarded above: this needs a
+    // live PLAYING pipeline pushing data, not just a resolvable model path.
+    DXTEST_SKIP_IF(!runtime_available(), "NPU runtime not available");
     std::string model = resolve_test_model();
 
     GstElement *pipe = make_infer_pipeline_appsrc(model, "fakesink");

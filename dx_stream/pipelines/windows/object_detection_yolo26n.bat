@@ -45,14 +45,19 @@ echo ============================================================
 gst-launch-1.0 ^
     filesrc location="%VIDEO%" ^
     ! decodebin ^
+    ! queue max-size-buffers=1 ^
     ! videoconvert ! "video/x-raw,format=NV12" ^
+    ! queue max-size-buffers=1 ^
     ! dxpreprocess preprocess-id=1 resize-width=640 resize-height=640 ^
     ! queue max-size-buffers=1 ^
     ! dxinfer preprocess-id=1 inference-id=1 model-path="%MODEL%" ^
     ! queue max-size-buffers=1 ^
     ! dxpostprocess inference-id=1 library-file-path="%LIB%" function-name=PostProcess ^
+    ! queue max-size-buffers=1 ^
     ! dxosd ^
+    ! queue max-size-buffers=1 ^
     ! videoconvert ^
+    ! queue max-size-buffers=1 ^
     ! fpsdisplaysink sync=false
 
 endlocal

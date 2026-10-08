@@ -40,13 +40,13 @@ VIDEOCONVERT_PIPELINE="videoconvert"
 # fi
 
 for INPUT_VIDEO_PATH in "${INPUT_VIDEO_PATH_LIST[@]}"; do
-    gst-launch-1.0 urisourcebin uri=file://$INPUT_VIDEO_PATH ! decodebin ! \
-                    dxpreprocess config-file-path=$SRC_DIR/configs/YoloV5S_PPU/preprocess_config.json ! queue ! \
-                    dxinfer config-file-path=$SRC_DIR/configs/YoloV5S_PPU/inference_config.json ! queue ! \
-                    dxpostprocess config-file-path=$SRC_DIR/configs/YoloV5S_PPU/postprocess_config.json ! queue ! \
-                    dxtracker config-file-path=$SRC_DIR/configs/tracker_config.json ! queue ! \
-                    dxosd ! queue ! \
-                    $VIDEOCONVERT_PIPELINE ! fpsdisplaysink sync=false
+    gst-launch-1.0 urisourcebin uri=file://$INPUT_VIDEO_PATH ! decodebin ! queue max-size-buffers=1 ! \
+                    dxpreprocess config-file-path=$SRC_DIR/configs/YoloV5S_PPU/preprocess_config.json ! queue max-size-buffers=1 ! \
+                    dxinfer config-file-path=$SRC_DIR/configs/YoloV5S_PPU/inference_config.json ! queue max-size-buffers=1 ! \
+                    dxpostprocess config-file-path=$SRC_DIR/configs/YoloV5S_PPU/postprocess_config.json ! queue max-size-buffers=1 ! \
+                    dxtracker config-file-path=$SRC_DIR/configs/tracker_config.json ! queue max-size-buffers=1 ! \
+                    dxosd ! queue max-size-buffers=1 ! \
+                    $VIDEOCONVERT_PIPELINE ! queue max-size-buffers=1 ! fpsdisplaysink sync=false
 done
 
 
