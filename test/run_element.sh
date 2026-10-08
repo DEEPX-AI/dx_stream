@@ -7,6 +7,7 @@ source "$SCRIPT_DIR/setup_env.sh"
 PASS=0; FAIL=0
 
 check_dxrt_available
+ensure_valgrind || true
 
 echo "===== Test Group: element ====="
 while IFS= read -r src; do
@@ -29,7 +30,10 @@ while IFS= read -r src; do
         # read): the plain run above doesn't reliably SIGSEGV — it depends on
         # heap layout/ASLR — so also require a clean valgrind pass here.
         if [ "$name" = "test_dxpreprocess_wrapped_caps" ]; then
-            if VALGRIND=1 "$SCRIPT_DIR/run_test.sh" "$rel" > /dev/null 2>&1; then
+            if ! command -v valgrind >/dev/null 2>&1; then
+                echo "  [FAIL] $name (valgrind not installed: memory check required)"
+                FAIL=$((FAIL+1))
+            elif VALGRIND=1 "$SCRIPT_DIR/run_test.sh" "$rel" > /dev/null 2>&1; then
                 PASS=$((PASS+1))
             else
                 echo "  [FAIL] $name (valgrind detected invalid memory access)"

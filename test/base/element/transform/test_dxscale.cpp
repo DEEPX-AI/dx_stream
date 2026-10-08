@@ -176,6 +176,46 @@ GST_START_TEST(CE_scale_pts_on_resize) {
 }
 GST_END_TEST;
 
+GST_START_TEST(CE_scale_same_size_copies_custom_stride_rows) {
+    Harness h("dxscale");
+    gst_harness_set_src_caps_str(
+        h.h, "video/x-raw,format=RGB,width=64,height=8,framerate=30/1");
+
+    constexpr gint width = 64;
+    constexpr gint height = 8;
+    constexpr gint source_stride = 240;
+    constexpr gint output_stride = width * 3;
+    GstBuffer *in = gst_buffer_new_allocate(nullptr, source_stride * height, nullptr);
+    fail_unless(in != nullptr);
+    gsize offset[] = {0};
+    gint stride[] = {source_stride};
+    gst_buffer_add_video_meta_full(in, GST_VIDEO_FRAME_FLAG_NONE,
+                                   GST_VIDEO_FORMAT_RGB, width, height, 1,
+                                   offset, stride);
+
+    GstMapInfo source = GST_MAP_INFO_INIT;
+    fail_unless(gst_buffer_map(in, &source, GST_MAP_WRITE));
+    for (gint row = 0; row < height; ++row) {
+        std::memset(source.data + row * source_stride, row, output_stride);
+        std::memset(source.data + row * source_stride + output_stride, 0xee,
+                    source_stride - output_stride);
+    }
+    gst_buffer_unmap(in, &source);
+
+    gst_harness_push(h.h, in);
+    GstBuffer *out = gst_harness_try_pull(h.h);
+    fail_unless(out != nullptr);
+
+    GstMapInfo destination = GST_MAP_INFO_INIT;
+    fail_unless(gst_buffer_map(out, &destination, GST_MAP_READ));
+    for (gint row = 0; row < height; ++row)
+        for (gint byte = 0; byte < output_stride; ++byte)
+            fail_unless_equals_int(destination.data[row * output_stride + byte], row);
+    gst_buffer_unmap(out, &destination);
+    gst_buffer_unref(out);
+}
+GST_END_TEST;
+
 // CE_scale_same_size_skips_meta: same-size path skips meta copy
 // (known implementation gap pin -- gst_copy_video_frame does not copy meta)
 // Target: gst_dxscale_transform L327-328 (same-size early return)
@@ -217,6 +257,7 @@ static Suite *dxscale_suite(void) {
     tcase_add_test(tc, CE_scale_output_buffer_size);
     tcase_add_test(tc, CE_scale_meta_on_resize);
     tcase_add_test(tc, CE_scale_pts_on_resize);
+    tcase_add_test(tc, CE_scale_same_size_copies_custom_stride_rows);
     tcase_add_test(tc, CE_scale_same_size_skips_meta);
     return s;
 }

@@ -312,6 +312,7 @@ static void handle_ready_to_paused(GstDxInfer *self) {
     self->_timing_ctx.throughput_start = std::chrono::steady_clock::now();
 
     if (!self->_secondary_mode) {
+        self->_push_ctx.worker_failed = FALSE;
         self->_push_ctx.push_running = TRUE;
         GST_INFO_OBJECT(self, "Starting push thread");
         self->_push_ctx.push_thread =
@@ -531,6 +532,7 @@ static gboolean gst_dxinfer_sink_event(GstPad *pad, GstObject *parent,
     case GST_EVENT_FLUSH_STOP:
         if (!self->_secondary_mode) {
             drain_push_thread(self);
+            self->_push_ctx.worker_failed = FALSE;
             self->_push_ctx.push_running = TRUE;
             self->_push_ctx.push_thread =
                 g_thread_new("push-thread", (GThreadFunc)push_thread_func, self);
@@ -694,6 +696,7 @@ static void gst_dxinfer_init(GstDxInfer *self) {
     new (&self->_push_ctx.cv) std::condition_variable();
     self->_push_ctx.push_thread = nullptr;
     self->_push_ctx.push_running = FALSE;
+    self->_push_ctx.worker_failed = FALSE;
 
     self->_timing_ctx.avg_latency = 0;
     self->_timing_ctx.recent_latencies = g_queue_new();
@@ -794,7 +797,18 @@ static gpointer push_thread_func(GstDxInfer *self) {
             auto get_start = std::chrono::steady_clock::now();
             bool ok = self->_backend->Get(frame_meta->_output_tensors[self->_infer_id]);
             if (!ok) {
-                GST_DEBUG_OBJECT(self, "Backend Get() returned false, exiting push loop");
+                const gboolean flushed = self->_backend->IsFlushed();
+                {
+                    std::lock_guard<std::mutex> lock(self->_push_ctx.push_lock);
+                    self->_push_ctx.worker_failed = !flushed;
+                    self->_push_ctx.push_running = FALSE;
+                }
+                if (!flushed) {
+                    GST_ELEMENT_ERROR(self, RESOURCE, FAILED,
+                                      ("Inference backend failed while retrieving output"),
+                                      (nullptr));
+                }
+                self->_push_ctx.cv.notify_all();
                 break;
             }
             auto latency_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -945,7 +959,15 @@ GstFlowReturn secondary_mode_infer(GstDxInfer *self, GstBuffer *buf, const DXFra
                     }
                     return GST_FLOW_FLUSHING;
                 }
-                GST_WARNING_OBJECT(self, "Backend Get() failed for object, skipping");
+                GST_ELEMENT_ERROR(self, RESOURCE, FAILED,
+                                  ("Inference backend failed while retrieving output"),
+                                  (nullptr));
+                gst_buffer_unref(buf);
+                {
+                    std::lock_guard<std::mutex> lock(self->_eos_ctx.eos_lock);
+                    self->_eos_ctx.stream_pending_buffers[frame_meta->_stream_id] -= 1;
+                }
+                return GST_FLOW_ERROR;
             }
         }
     }
@@ -988,6 +1010,12 @@ GstFlowReturn primary_mode_infer(GstDxInfer *self, GstBuffer *buf, DXFrameMeta *
 
     {
         std::lock_guard<std::mutex> lock(self->_push_ctx.push_lock);
+        if (self->_push_ctx.worker_failed) {
+            gst_buffer_unref(buf);
+            std::lock_guard<std::mutex> eos_lock(self->_eos_ctx.eos_lock);
+            self->_eos_ctx.stream_pending_buffers[frame_meta->_stream_id] -= 1;
+            return GST_FLOW_ERROR;
+        }
         self->_push_ctx.push_queue.push({submitted, buf});
         self->_push_ctx.cv.notify_all();
     }
@@ -999,6 +1027,11 @@ static GstFlowReturn gst_dxinfer_chain(GstPad *pad, GstObject *parent,
 
     std::ignore = pad;
     GstDxInfer *self = GST_DXINFER(parent);
+
+    if (self->_push_ctx.worker_failed) {
+        gst_buffer_unref(buf);
+        return GST_FLOW_ERROR;
+    }
 
     GST_LOG_OBJECT(self, "Chain: pts=%" GST_TIME_FORMAT,
                    GST_TIME_ARGS(GST_BUFFER_PTS(buf)));

@@ -87,7 +87,7 @@ static void parse_message(const rd_kafka_message_t *msg,
     bool has_frame = false;
     if (json_object_has_member(obj, "frameData")) {
         frame_base64 = json_object_get_string_member(obj, "frameData");
-        has_frame = (frame_base64 && strlen(frame_base64) > 0);
+        has_frame = (frame_base64 && frame_base64[0] != '\0');
         if (has_frame) {
             frame_base64_copy = frame_base64;
         }

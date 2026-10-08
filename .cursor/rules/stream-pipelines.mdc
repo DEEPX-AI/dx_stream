@@ -12,7 +12,7 @@ globs: ["**/pipeline/**", "**/pipelines/**", "**/*pipeline*.py"]
 - DxRate for RTSP sources to limit frame rate
 - DxInfer model-path must be absolute filesystem path
 - DxMsgConv before DxMsgBroker for message publishing
-- Read `.deepx/skills/dx-build-pipeline-app.md` for full patterns
+- Read `.deepx/skills/dx-agent-stream-build-pipeline/SKILL.md` for full patterns
 - **Template Compliance**: Use templates as-is, default single sink. Dual output (tee) allowed with `x264enc tune=zerolatency` (MANDATORY — without it pipeline deadlocks)
 - **Path resolution in dx-agent-dev**: Use `DX_STREAM_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"`, NOT production 3-level-up pattern
 - **Mandatory deliverables**: Every pipeline build MUST produce `session.json`, `README.md`, `run_<app>.sh`, `pipeline.py`. README.md MUST include venv activation (`source ../../venv-dx_stream/bin/activate`) — `pydxs` is only available inside the venv (pitfall #15)

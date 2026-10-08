@@ -87,17 +87,49 @@ mqtt_sub_example -n <server_ip> -t test -p 1883
 #### Kafka Demo  
 
 **1. Server Setup (Processing Server with Message Broker)**
-```bash
-# Install Java and Kafka
-sudo apt install default-jdk
-wget https://downloads.apache.org/kafka/3.9.2/kafka_2.13-3.9.2.tgz
-tar -xzf kafka_2.13-3.9.2.tgz
-cd kafka_2.13-3.9.2
 
-# Start Zookeeper and Kafka server
-bin/zookeeper-server-start.sh config/zookeeper.properties & \
-bin/kafka-server-start.sh config/server.properties &
+This example uses Kafka **4.3.1** in **KRaft mode** for a single-node demo.
+Kafka **4.0+** no longer supports ZooKeeper and requires **Java 17 or later** to run the broker.
+
+```bash
+# Install Java 17 explicitly (default-jdk may install Java 11)
+sudo apt update
+sudo apt install openjdk-17-jdk
+java -version
+
+# Download and extract Kafka (skip if already installed)
+wget https://downloads.apache.org/kafka/4.3.1/kafka_2.13-4.3.1.tgz
+tar -xzf kafka_2.13-4.3.1.tgz
+cd kafka_2.13-4.3.1
+
+# Initialize KRaft storage (first time only)
+KAFKA_CLUSTER_ID=$(bin/kafka-storage.sh random-uuid)
+bin/kafka-storage.sh format -t "$KAFKA_CLUSTER_ID" -c config/server.properties --standalone
+
+# Start the broker in the foreground; use another terminal for the pipeline
+bin/kafka-server-start.sh config/server.properties
 ```
+
+!!! note "Java version"
+
+    Confirm that `java -version` reports Java **17 or later** before running Kafka.
+    If it still reports Java 11, select Java 17 with `sudo update-alternatives --config java`.
+    If `JAVA_HOME` is set, it must also point to a Java 17+ installation, because Kafka uses it instead of the default `java`.
+
+!!! warning "Initialize storage only once"
+
+    Run all Kafka commands from the extracted Kafka root directory, not its `bin/` directory.
+    If storage is already initialized, skip UUID generation and formatting; restart using only `bin/kafka-server-start.sh config/server.properties`.
+    Do not delete existing data or reformat storage to resolve an initialization error.
+    The default `log.dirs` is `/tmp/kraft-combined-logs`; for persistent use, change it to a durable directory before the first format.
+
+After the broker starts, verify connectivity from another terminal in the Kafka root directory:
+
+```bash
+bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
+```
+
+An empty list is normal if no topics have been created yet.
 
 !!! note "NOTE"
 
@@ -166,9 +198,9 @@ Or start as a Windows service via Services panel (`services.msc`).
 
 **Kafka**
 
-Kafka 4.3.0+ uses **KRaft mode** (no Zookeeper required).
+Kafka 4.0+ uses **KRaft mode** (ZooKeeper is no longer supported) and requires **Java 17 or later** to run the broker.
 
-- (1) Download JDK from [adoptium.net](https://adoptium.net/) (MSI installer recommended) and install.  
+- (1) Download JDK **17 or later** from [adoptium.net](https://adoptium.net/) (MSI installer recommended) and install. Confirm with `java -version`; if `JAVA_HOME` is set, it must point to the same supported JDK.
 
 - (2) Download Kafka binary from [kafka.apache.org/downloads](https://kafka.apache.org/downloads) and extract to a **short path** (e.g., `C:\kafka`).
 
@@ -178,7 +210,7 @@ Kafka 4.3.0+ uses **KRaft mode** (no Zookeeper required).
     
     Always extract to a short path like `C:\kafka`.  
 
-- (3) Initialize and start (run once from `C:\kafka`):  
+- (3) Initialize storage once, then start the broker from `C:\kafka`. On subsequent starts, run only the broker start command:
 
 ```cmd
 cd C:\kafka

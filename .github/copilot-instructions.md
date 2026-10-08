@@ -1,7 +1,7 @@
 # dx_stream — Copilot Global Instructions
 
 > GStreamer-based video analytics framework for DEEPX NPU accelerators.
-> 12 custom GStreamer elements, 5 pipeline categories.
+> Core GStreamer elements, optional hardware extensions, and 5 pipeline categories.
 
 ## Response Language
 
@@ -106,15 +106,15 @@ Read `.deepx/README.md` for the complete index.
 
 | If the task mentions... | Read these files |
 |---|---|
-| **Pipeline, detection, classification** | `.deepx/skills/dx-agent-stream-build-pipeline.md`, `.deepx/toolsets/dx-stream-elements.md` |
-| **MQTT, Kafka, message broker** | `.deepx/skills/dx-agent-stream-build-mqtt-kafka.md`, `.deepx/toolsets/dx-stream-elements.md` |
-| **Multi-model, cascaded, parallel** | `.deepx/skills/dx-agent-stream-build-pipeline.md`, `.deepx/toolsets/dx-stream-metadata.md` |
-| **Model, download** | `.deepx/skills/dx-agent-stream-model-management.md` |
-| **Validation, testing** | `.deepx/skills/dx-agent-stream-validate.md`, `.deepx/instructions/testing-patterns.md` |
-| **Validation, feedback, fix** | `.deepx/skills/dx-agent-stream-validate.md`, parent `dx-runtime/.deepx/skills/dx-agent-runtime-validate.md` |
-| **Brainstorm, plan, design** | `.deepx/skills/dx-swe-brainstorm.md` |
-| **TDD, validation, incremental** | `.deepx/skills/dx-swe-tdd.md` |
-| **Completion, verify, evidence** | `.deepx/skills/dx-swe-verify.md` |
+| **Pipeline, detection, classification** | `.deepx/skills/dx-agent-stream-build-pipeline/SKILL.md`, `.deepx/toolsets/dx-stream-elements.md` |
+| **MQTT, Kafka, message broker** | `.deepx/skills/dx-agent-stream-build-mqtt-kafka/SKILL.md`, `.deepx/toolsets/dx-stream-elements.md` |
+| **Multi-model, cascaded, parallel** | `.deepx/skills/dx-agent-stream-build-pipeline/SKILL.md`, `.deepx/toolsets/dx-stream-metadata.md` |
+| **Model, download** | `.deepx/skills/dx-agent-stream-model-management/SKILL.md` |
+| **Validation, testing** | `.deepx/skills/dx-agent-stream-validate/SKILL.md`, `.deepx/instructions/testing-patterns.md` |
+| **Validation, feedback, fix** | `.deepx/skills/dx-agent-stream-validate/SKILL.md`, parent `../.deepx/skills/dx-agent-runtime-validate/SKILL.md` |
+| **Brainstorm, plan, design** | `.deepx/skills/dx-agent-brainstorm/SKILL.md` |
+| **TDD, validation, incremental** | `.deepx/skills/dx-agent-tdd/SKILL.md` |
+| **Completion, verify, evidence** | `.deepx/skills/dx-agent-verify/SKILL.md` |
 | **Debug, root cause, investigate** | `.deepx/skills/dx-swe-debugging/SKILL.md` |
 | **Plan, execute, subagent** | `.deepx/skills/dx-swe-writing-plans/SKILL.md`, `.deepx/skills/dx-swe-executing-plans/SKILL.md` |
 | **Code review, feedback** | `.deepx/skills/dx-swe-receiving-review/SKILL.md`, `.deepx/skills/dx-swe-requesting-review/SKILL.md` |
@@ -129,9 +129,9 @@ Read `.deepx/README.md` for the complete index.
 | dx-agent-stream-model-management | Download and configure .dxnn models for pipelines |
 | dx-agent-stream-validate | Run pipeline validation checks |
 | dx-agent-runtime-validate | Full feedback loop: validate, collect, approve, apply, verify |
-| dx-swe-brainstorm | Brainstorm, propose 2-3 approaches, spec self-review, then plan |
-| dx-swe-tdd | Validation-driven development with optional Red-Green-Refactor for unit tests |
-| dx-swe-verify | Process: verify before claiming completion — evidence before assertions |
+| dx-agent-brainstorm | DEEPX build brainstorming with model registry check and sub-project routing |
+| dx-agent-tdd | DEEPX build validation order — factory, pipeline, and integration checks |
+| dx-agent-verify | DEEPX build verification checklists — dx_app, dx_stream, and cross-project |
 | dx-swe-writing-plans | Write implementation plans with bite-sized tasks |
 | dx-swe-executing-plans | Execute plans with review checkpoints |
 | dx-swe-subagent-dev | Execute plans via fresh subagent per task with two-stage review |
@@ -140,6 +140,7 @@ Read `.deepx/README.md` for the complete index.
 | dx-swe-requesting-review | Request code review after completing features |
 | dx-skill-router | Skill discovery and invocation — check skills before any action |
 | dx-harness-writing-skills | Create and edit skill files |
+| dx-harness-validate | Validate this repo's .deepx/ integrity (bootstraps the suite harness when standalone) |
 | dx-swe-parallel-agents | Dispatch parallel subagents for independent tasks |
 
 ## Interactive Workflow (MUST FOLLOW)
@@ -162,7 +163,7 @@ Only write to `src/` when explicitly requested by the user.
 - **`<agent>`**: the coding agent identifier — use `claude`, `codex`, `copilot`, `cursor`, or `opencode`.
 - **`<coding_model>`**: shortened coding model name — e.g., `sonnet46`, `opus46`, `gpt53codex`, `gpt55`.
 
-## 13 GStreamer Elements
+## Supported GStreamer Elements
 
 | Element | Purpose |
 |---------|---------|
@@ -177,6 +178,16 @@ Only write to `src/` when explicitly requested by the user.
 | DxMsgBroker | Publish to MQTT or Kafka |
 | DxInputSelector | Select one stream from multiple inputs (N:1) for shared inference |
 | DxOutputSelector | Route inference results back to multiple output streams (1:N) |
+
+## DX-H1 V-NPU Optional Capability
+
+Build the optional V-NPU plugin with `./build.sh --dxvnpu`; on Windows, set
+`DEEPX_VNPU_DIR` to the V-NPU SDK installation. Confirm `dxvnpudec` and
+`dxvnpuenc` using `gst-inspect-1.0` before using H.264/H.265 hardware codecs.
+Keep these codec elements outside the `application/x-dxvideoraw` multi-stream
+domain. Use `dxinfer backend=dxvnpu` for V-NPU inference, and treat the
+VNPU transform kernel in `dxpreprocess`, `dxscale`, and `dxconvert` as optional
+image-transform acceleration with a valid fallback path.
 
 ## 5 Pipeline Categories
 
@@ -740,3 +751,62 @@ This gate applies when `.deepx/` files are the *primary deliverable* (e.g., addi
 rules, syncing platforms, creating KO translations, modifying agents/skills). It
 does NOT apply when a feature implementation incidentally triggers a single-line
 change in `.deepx/`.
+
+## Standalone Checkout — Harness Bootstrap (HARD GATE)
+
+This repo is a sub-project of dx-all-suite, but it can also be cloned **on its
+own**. In that standalone case the harness tooling is simply not present:
+
+| Present in this repo | Ships only with dx-all-suite |
+|---|---|
+| `.deepx/{agents,skills,templates/{en,ko},scripts,memory,instructions,toolsets}` | `.deepx/tools/` — the `dx-agent-gen` generator |
+| `.deepx/scripts/validate_framework.py` | `.deepx/templates/fragments/` — the shared fragments |
+| this instruction file (already generated) | `.deepx/tests/conformance/` |
+
+The Instruction File Verification Loop above tells you to run
+`dx-agent-gen generate` / `check` and the conformance tests. In a standalone
+checkout **none of those commands can work** — which is exactly how `.deepx/`
+edits get committed unverified and become drift that only CI catches.
+
+### Required before the FIRST `.deepx/` edit
+
+```bash
+bash .deepx/scripts/harness_bootstrap.sh --check
+```
+
+It resolves a real dx-all-suite checkout in this order — explicit
+`--suite-dir` / `$DX_SUITE_DIR`, then a parent directory (the normal nested
+case: nothing is downloaded), then a previously acquired `.dx-harness/suite`
+cache, then a shallow clone into `.dx-harness/` — and then runs **the same
+verification the CI `subrepo-gate` runs**: the generator drift check plus this
+repo's `validate_framework.py`.
+
+`.dx-harness/` is git-ignored, so nothing it downloads can reach the index.
+
+### When it exits 3 — STOP
+
+Exit code 3 means no suite could be acquired (no local suite, no cache, no
+network). Then:
+
+- **Do NOT edit any file under `**/.deepx/**`** in this checkout. Without the
+  generator and the fragments you cannot regenerate `CLAUDE.md` / `AGENTS.md` /
+  `.claude/` / `.github/` / `.cursor/` / `.opencode/`, so every edit ships as
+  drift.
+- **Do NOT work around it.** Specifically, if the generator reports
+  `unresolved template variables` listing `FRAGMENT` placeholders, those
+  fragments are **missing, not wrong**. Editing the templates, renaming
+  fragments, or adding variables to `_build_template_context()` turns a missing
+  input into a second, worse drift that is committed.
+- Say so plainly, and offer the two documented ways forward:
+  `--suite-dir /path/to/dx-all-suite`, `$DX_SUITE_DIR`, or doing the harness
+  work from a full dx-all-suite checkout.
+
+Non-harness work is unaffected: application code, `src/`, docs, tests and
+`dx-agent-dev/<session_id>/` outputs proceed normally when bootstrap fails.
+
+### Scope note
+
+`--check` deliberately does **not** run the suite conformance suite. Those
+checks are cross-level — they compare all 5 levels against each other — so they
+cannot be satisfied when the other sub-repos are absent. Matching the
+`subrepo-gate` scope exactly is what makes "local green" mean "CI green".

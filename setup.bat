@@ -17,7 +17,7 @@ set "MODEL_LIST=%PROJECT_ROOT%\model_list.json"
 set "MODEL_DIR=%PROJECT_ROOT%\dx_stream\samples\models"
 set "VIDEO_DIR=%PROJECT_ROOT%\dx_stream\samples\videos"
 set "DOWNLOAD_DIR=%PROJECT_ROOT%\download"
-set "BASE_URL=https://sdk.deepx.ai/modelzoo/dxnn"
+set "BASE_URL=https://sdk.deepx.ai/modelzoo/q-lite-dxnn"
 set "VIDEO_URL=https://sdk.deepx.ai/res/video/sample_videos.tar.gz"
 
 set "FORCE=0"

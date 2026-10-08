@@ -1,7 +1,7 @@
 {
-    "version": "2_4_0",
+    "version": "2_5_0",
     "models": [
-        "efficientnet-lite0_256x256.dxnn",
+        "efficientnet-lite0_224x224.dxnn",
         "scrfd-500m_640x640.dxnn",
         "yolov5-s_640x640_ppu.dxnn",
         "yolov5-s-face_640x640.dxnn",
@@ -15,8 +15,6 @@
         "yolov9-s_640x640.dxnn",
         "yolox-s_640x640.dxnn",
         "yolo11-n_640x640.dxnn",
-        "yolov8-m-pose_640x640.dxnn",
-        "SCRFD500M_PPU.dxnn",
-        "YOLOV5Pose_PPU.dxnn" 
+        "yolov8-m-pose_640x640.dxnn"
     ]
 }

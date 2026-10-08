@@ -30,6 +30,13 @@ set "GST_PLUGIN_PATH=%INSTALL_DIR%\lib\gstreamer-1.0"
 set "GST_REGISTRY=%INSTALL_DIR%\gst-registry.bin"
 set "PATH=%INSTALL_DIR%\bin;%INSTALL_DIR%\share\gstdxstream\lib;%INSTALL_DIR%\share\gstdxstream\bin;%INSTALL_DIR%\lib\gstreamer-1.0;%PATH%"
 
+if defined DEEPX_VNPU_DIR if exist "%DEEPX_VNPU_DIR%\bin" (
+    set "PATH=%DEEPX_VNPU_DIR%\bin;%PATH%"
+)
+if defined DEEPX_SDK_DIR if exist "%DEEPX_SDK_DIR%\bin" (
+    set "PATH=%DEEPX_SDK_DIR%\bin;%PATH%"
+)
+
 if defined GSTREAMER_1_0_ROOT_MSVC_X86_64 (
     set "PATH=%GSTREAMER_1_0_ROOT_MSVC_X86_64%\bin;%PATH%"
 ) else if exist "C:\Program Files\gstreamer\1.0\msvc_x86_64\bin" (
@@ -60,35 +67,31 @@ echo.
 echo  [0] Object Detection        (YOLO26n)
 echo  [1] Object Detection        (YoloV5S PPU)
 echo  [2] Face Detection           (YOLOv5s_Face)
-echo  [3] Face Detection           (SCRFD500M PPU)
-echo  [4] Pose Estimation          (YOLO26n_Pose)
-echo  [5] Pose Estimation          (YOLOV5Pose PPU)
-echo  [6] Instance Segmentation    (YOLO26n-Seg)
-echo  [7] Multi-Object Tracking    (YoloV5S + OC_SORT)
-echo  [8] Multi-Stream (4ch)       (Compositor Grid)
-echo  [9] Multi-Channel (RTSP)     (dxinputselector)
-echo  [-] Secondary Mode           (Multi-Model Cascade)
-echo  [=] Depth Estimation         (YOLO26n_Depth)
+echo  [3] Pose Estimation          (YOLO26n_Pose)
+echo  [4] Instance Segmentation    (YOLO26n-Seg)
+echo  [5] Depth Estimation         (YOLO26n_Depth)
+echo  [6] Multi-Object Tracking    (YoloV5S + OC_SORT)
+echo  [7] Multi-Stream (4ch)       (Compositor Grid)
+echo  [8] Multi-Channel (RTSP)     (dxinputselector)
+echo  [9] Secondary Mode           (Multi-Model Cascade)
 echo  [Q] Exit
 echo.
 echo ============================================================
 
 set "SELECT="
-set /p SELECT="Select demo [0-9, -, =, Q=Exit]: "
+set /p SELECT="Select demo [0-9, Q=Exit]: "
 
 if /I "%SELECT%"=="Q" goto :exit
 if "%SELECT%"=="0" call "%PIPELINES_DIR%\object_detection_yolo26n.bat"
 if "%SELECT%"=="1" call "%PIPELINES_DIR%\object_detection_yolov5s_ppu.bat"
 if "%SELECT%"=="2" call "%PIPELINES_DIR%\face_detection_yolov5s_face.bat"
-if "%SELECT%"=="3" call "%PIPELINES_DIR%\face_detection_scrfd500m_ppu.bat"
-if "%SELECT%"=="4" call "%PIPELINES_DIR%\pose_estimation_yolo26n_pose.bat"
-if "%SELECT%"=="5" call "%PIPELINES_DIR%\pose_estimation_yolov5pose_ppu.bat"
-if "%SELECT%"=="6" call "%PIPELINES_DIR%\segmentation_yolo26n_seg.bat"
-if "%SELECT%"=="7" call "%PIPELINES_DIR%\multi_object_tracker.bat"
-if "%SELECT%"=="8" call "%PIPELINES_DIR%\multi_stream.bat"
-if "%SELECT%"=="9" call "%PIPELINES_DIR%\rtsp.bat" %INTERNAL_RTSP%
-if "%SELECT%"=="-" call "%PIPELINES_DIR%\secondary_mode.bat"
-if "%SELECT%"=="=" call "%PIPELINES_DIR%\depth_estimation_yolo26n.bat"
+if "%SELECT%"=="3" call "%PIPELINES_DIR%\pose_estimation_yolo26n_pose.bat"
+if "%SELECT%"=="4" call "%PIPELINES_DIR%\segmentation_yolo26n_seg.bat"
+if "%SELECT%"=="5" call "%PIPELINES_DIR%\depth_estimation_yolo26n.bat"
+if "%SELECT%"=="6" call "%PIPELINES_DIR%\multi_object_tracker.bat"
+if "%SELECT%"=="7" call "%PIPELINES_DIR%\multi_stream.bat"
+if "%SELECT%"=="8" call "%PIPELINES_DIR%\rtsp.bat" %INTERNAL_RTSP%
+if "%SELECT%"=="9" call "%PIPELINES_DIR%\secondary_mode.bat"
 
 echo.
 pause

@@ -2,7 +2,7 @@
 
 > **SDK Source of Truth**: `docs/source/docs/Elements/`, `gst-inspect-1.0 dx*`
 
-> Primary API reference for all 13 dx_stream GStreamer elements.
+> Primary API reference for the currently supported dx_stream GStreamer elements.
 > Use this as the definitive source for element properties, pads, and usage patterns.
 
 ---
@@ -66,6 +66,7 @@ model file. Attaches DXTensorMeta to the output buffer.
 | `model-path` | string | "" | Absolute path to .dxnn model file |
 | `batch-size` | int | 1 | Batch size for inference |
 | `secondary-mode` | bool | false | Run inference on per-object ROIs |
+| `backend` | string | "auto" | Inference backend: `auto`, `dxrt`, or `dxvnpu` when built with V-NPU support |
 | `config-file-path` | string | "" | Path to JSON configuration file |
 
 **Pad Templates:**
@@ -83,6 +84,9 @@ dxinfer config-file-path=/path/to/inference_config.json
 # Secondary mode
 dxinfer preprocess-id=2 inference-id=2 secondary-mode=true \
     model-path=/abs/path/to/efficientnet-lite0_256x256.dxnn
+
+# Select the DX-H1 V-NPU inference backend explicitly
+dxinfer preprocess-id=1 inference-id=1 backend=dxvnpu model-path=/abs/path/to/model.dxnn
 ```
 
 **Common Pitfalls:**
@@ -384,6 +388,8 @@ dxscale width=640 height=360
 **Common Pitfalls:**
 - Width/height of 0 passes through unchanged
 - Not a replacement for DxPreprocess (no normalization/padding)
+- When available, the VNPU transform kernel can accelerate scaling; do not require it
+  because DX-H1 V-NPU support is an optional build feature.
 
 ---
 
@@ -411,6 +417,24 @@ dxscale width=640 height=360
 **Common Pitfalls:**
 - Prefer GStreamer's `videoconvert` for standard conversions
 - DxConvert is optimized for hardware-accelerated conversion on supported platforms
+- The VNPU transform kernel may accelerate format conversion when V-NPU support is built.
+
+---
+
+## DX-H1 V-NPU Optional Capability
+
+Build this optional plugin with `./build.sh --dxvnpu`. On Windows, set
+`DEEPX_VNPU_DIR` to the V-NPU SDK installation before building. Verify availability
+with `gst-inspect-1.0 dxvnpudec`, `gst-inspect-1.0 dxvnpuenc`, and
+`gst-inspect-1.0 dxinfer`.
+
+- `dxvnpudec` and `dxvnpuenc` provide H.264/H.265 hardware codec paths. They use
+  standard raw-video caps and are outside the `application/x-dxvideoraw` multi-stream
+  domain.
+- `dxinfer backend=dxvnpu` selects the V-NPU inference backend; leave
+  `backend=auto` when a pipeline must run without this optional hardware.
+- `dxpreprocess`, `dxscale`, and `dxconvert` may select a VNPU transform kernel for
+  image resize and color conversion. Keep normal fallback paths valid.
 
 ---
 

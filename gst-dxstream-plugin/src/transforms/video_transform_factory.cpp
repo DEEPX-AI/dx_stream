@@ -1,33 +1,115 @@
 #include "video_transform_factory.hpp"
 
 #include <algorithm>
+#include <mutex>
 
 // ---------------------------------------------------------------------------
-// Backend includes — guarded by compile-time defines.
-// Add new backends here as they are implemented.
+// Core-only backend includes.
 // ---------------------------------------------------------------------------
-
-#ifdef DEEPX_V3
-#include "v3_dsp_transform_kernel.hpp"
-#endif
-
-#ifdef HAVE_DXVNPU
-#include "vnpu_transform_kernel.hpp"
-#endif
-
-#ifdef HAVE_LIBRGA
-#include "rga_transform_kernel.hpp"
-#endif
 
 // libyuv is always available as the universal software fallback.
 #include "libyuv_transform_kernel.hpp"
 
+#include "./../../general/dx_dlfcn.h"
 #include <gst/gst.h>
 
 #define GST_CAT_DEFAULT transform_kernel_cat
 GST_DEBUG_CATEGORY_EXTERN(transform_kernel_cat);
 
 namespace dxt {
+
+#ifdef _WIN32
+#define DXVNPU_BACKEND_LIB "gstdxstream-vnpu.dll"
+#define DXRGA_BACKEND_LIB "gstdxstream-rga.dll"
+#define DXV3_BACKEND_LIB "gstdxstream-v3.dll"
+#else
+#define DXVNPU_BACKEND_LIB "libgstdxstream-vnpu.so"
+#define DXRGA_BACKEND_LIB "libgstdxstream-rga.so"
+#define DXV3_BACKEND_LIB "libgstdxstream-v3.so"
+#define DXGLES_BACKEND_LIB "libgstdxstream-gles.so"
+#endif
+
+using CreateTransformKernelFn = IVideoTransformKernel* (*)();
+
+struct TransformBackendFactory {
+    const char* library;
+    const char* symbol;
+    void* handle = nullptr;
+    CreateTransformKernelFn create = nullptr;
+    std::once_flag load_once;
+};
+
+static CreateTransformKernelFn LoadTransformFactory(TransformBackendFactory& factory) {
+    std::call_once(factory.load_once, [&factory] {
+        factory.handle = dlopen(factory.library, RTLD_NOW);
+        if (!factory.handle) {
+            GST_DEBUG("transform backend unavailable: %s not found (%s)",
+                      factory.library, dlerror());
+            return;
+        }
+
+        factory.create = reinterpret_cast<CreateTransformKernelFn>(
+            dlsym(factory.handle, factory.symbol));
+        if (!factory.create) {
+            GST_ERROR("%s not found in %s (%s)",
+                      factory.symbol, factory.library, dlerror());
+            dlclose(factory.handle);
+            factory.handle = nullptr;
+        }
+    });
+    return factory.create;
+}
+
+static TransformBackendFactory v3_factory = {
+    DXV3_BACKEND_LIB, "dx_create_v3_transform_kernel"};
+static TransformBackendFactory vnpu_factory = {
+    DXVNPU_BACKEND_LIB, "dx_create_vnpu_transform_kernel"};
+static TransformBackendFactory rga_factory = {
+    DXRGA_BACKEND_LIB, "dx_create_rga_transform_kernel"};
+#ifndef _WIN32
+static TransformBackendFactory gles_factory = {
+    DXGLES_BACKEND_LIB, "dx_create_gles_transform_kernel"};
+#endif
+
+static void ensure_transform_kernel_debug_category() {
+    static gsize initialized = 0;
+    if (g_once_init_enter(&initialized)) {
+        if (!transform_kernel_cat) {
+            GST_DEBUG_CATEGORY_INIT(transform_kernel_cat, "transform_kernel", 0,
+                                    "Video transform kernels");
+        }
+        g_once_init_leave(&initialized, 1);
+    }
+}
+
+static std::unique_ptr<IVideoTransformKernel> CreateV3TransformKernel() {
+    auto create = LoadTransformFactory(v3_factory);
+    return create ? std::unique_ptr<IVideoTransformKernel>(create()) : nullptr;
+}
+
+// vnpu is not linked into this plugin. Loaded on demand from the sibling
+// plugin (gstdxstream-vnpu), same as the dxvnpu infer backend.
+static std::unique_ptr<IVideoTransformKernel> CreateVnpuTransformKernel() {
+    auto create = LoadTransformFactory(vnpu_factory);
+    return create ? std::unique_ptr<IVideoTransformKernel>(create()) : nullptr;
+}
+
+// rga is not linked into this plugin. Loaded on demand from the sibling
+// plugin (gstdxstream-rga), same pattern as the vnpu transform kernel.
+static std::unique_ptr<IVideoTransformKernel> CreateRgaTransformKernel() {
+    auto create = LoadTransformFactory(rga_factory);
+    return create ? std::unique_ptr<IVideoTransformKernel>(create()) : nullptr;
+}
+
+// OpenGL ES (any EGL dma-buf capable GPU) is loaded on demand from the sibling plugin (gstdxstream-gles).
+static std::unique_ptr<IVideoTransformKernel> CreateGlesTransformKernel() {
+#ifdef _WIN32
+    return nullptr;
+#else
+    auto create = LoadTransformFactory(gles_factory);
+    return create ? std::unique_ptr<IVideoTransformKernel>(create()) : nullptr;
+#endif
+}
 
 // ---------------------------------------------------------------------------
 // Internal helper
@@ -79,27 +161,26 @@ std::unique_ptr<IVideoTransformKernel> VideoTransformFactory::create(
     const TransformOps& ops,
     VideoFormat         src_format)
 {
+    ensure_transform_kernel_debug_category();
     std::unique_ptr<IVideoTransformKernel> result;
 
     // 1. V3 DSP (highest priority)
-#ifdef DEEPX_V3
-    result = try_init(std::make_unique<V3DspTransformKernel>(), dst_template, ops, src_format);
+    result = try_init(CreateV3TransformKernel(), dst_template, ops, src_format);
     if (result) return result;
-#endif
 
     // 2. VNPU hardware
-#ifdef HAVE_DXVNPU
-    result = try_init(std::make_unique<VnpuTransformKernel>(), dst_template, ops, src_format);
+    result = try_init(CreateVnpuTransformKernel(), dst_template, ops, src_format);
     if (result) return result;
-#endif
 
     // 3. RGA hardware
-#ifdef HAVE_LIBRGA
-    result = try_init(std::make_unique<RgaTransformKernel>(), dst_template, ops, src_format);
+    result = try_init(CreateRgaTransformKernel(), dst_template, ops, src_format);
     if (result) return result;
-#endif
 
-    // 4. libyuv software fallback (always available)
+    // 4. OpenGL ES GPU (generic; after SoC-specific engines)
+    result = try_init(CreateGlesTransformKernel(), dst_template, ops, src_format);
+    if (result) return result;
+
+    // 5. libyuv software fallback (always available)
     result = try_init(std::make_unique<LibyuvTransformKernel>(), dst_template, ops, src_format);
     if (result) return result;
 
@@ -116,26 +197,26 @@ std::unique_ptr<IVideoTransformKernel> VideoTransformFactory::create_backend(
     const FrameDesc&    dst_template,
     const TransformOps& ops)
 {
-#ifdef HAVE_DXVNPU
+    ensure_transform_kernel_debug_category();
     if (backend_name == "vnpu") {
-        return try_init(std::make_unique<VnpuTransformKernel>(), dst_template, ops,
+        return try_init(CreateVnpuTransformKernel(), dst_template, ops,
                         VideoFormat::NV12, false);
     }
-#endif
 
-#ifdef HAVE_LIBRGA
     if (backend_name == "rga") {
-        return try_init(std::make_unique<RgaTransformKernel>(), dst_template, ops,
+        return try_init(CreateRgaTransformKernel(), dst_template, ops,
                         VideoFormat::NV12, false);
     }
-#endif
 
-#ifdef DEEPX_V3
     if (backend_name == "v3dsp") {
-        return try_init(std::make_unique<V3DspTransformKernel>(), dst_template, ops,
+        return try_init(CreateV3TransformKernel(), dst_template, ops,
                         VideoFormat::NV12, false);
     }
-#endif
+
+    if (backend_name == "gles") {
+        return try_init(CreateGlesTransformKernel(), dst_template, ops,
+                        VideoFormat::NV12, false);
+    }
 
     if (backend_name == "libyuv") {
         return try_init(std::make_unique<LibyuvTransformKernel>(), dst_template, ops,
@@ -152,18 +233,14 @@ std::unique_ptr<IVideoTransformKernel> VideoTransformFactory::create_backend(
 // ---------------------------------------------------------------------------
 
 std::vector<std::string> VideoTransformFactory::available_backends() {
+    ensure_transform_kernel_debug_category();
     std::vector<std::string> backends;
 
-#ifdef DEEPX_V3
-    backends.push_back("v3dsp");
-#endif
-
-#ifdef HAVE_DXVNPU
-    backends.push_back("vnpu");
-#endif
-
-#ifdef HAVE_LIBRGA
-    backends.push_back("rga");
+    if (LoadTransformFactory(v3_factory)) backends.push_back("v3dsp");
+    if (LoadTransformFactory(vnpu_factory)) backends.push_back("vnpu");
+    if (LoadTransformFactory(rga_factory)) backends.push_back("rga");
+#ifndef _WIN32
+    if (LoadTransformFactory(gles_factory)) backends.push_back("gles");
 #endif
 
     backends.push_back("libyuv");

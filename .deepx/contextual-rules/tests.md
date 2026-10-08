@@ -33,7 +33,7 @@ timeout 30 gst-launch-1.0 \
 ### Element Registration Test
 
 ```bash
-# Verify all 13 elements are registered
+# Verify all expected core elements are registered
 EXPECTED_ELEMENTS=(
     dxpreprocess dxinfer dxpostprocess dxtracker dxosd
     dxgather dxinputselector dxoutputselector dxrate
@@ -46,7 +46,7 @@ for elem in "${EXPECTED_ELEMENTS[@]}"; do
         exit 1
     }
 done
-echo "PASS: All 13 elements registered"
+echo "PASS: All expected core elements registered"
 ```
 
 ## GST_DEBUG Levels for Testing

@@ -101,11 +101,17 @@ $ ./build.sh --type=debug
 # Clean previous build files before building
 $ ./build.sh --clean
 
-# Build for DEEPX V3 Standalone Device
-$ ./build.sh --v3
+# Enable the optional DEEPX V3 backend
+$ ./build.sh --dxv3
+
+# Enable the optional DEEPX VNPU backend
+$ ./build.sh --dxvnpu
+
+# Enable the optional RK RGA backend
+$ ./build.sh --rkrga
 
 # Combine flags
-$ ./build.sh --v3 --type=debug
+$ ./build.sh --dxv3 --type=debug
 
 # Uninstall DX-STREAM
 $ ./build.sh --uninstall
@@ -308,15 +314,13 @@ When the script is executed, you'll be prompted to select a demo from the follow
 0: Object Detection (YOLO26n)
 1: Object Detection (YOLOv5s with PPU)
 2: Face Detection (YOLOv5s_Face)
-3: Face Detection (SCRFD500M with PPU)
-4: Pose Estimation (YOLO26n_Pose)
-5: Pose Estimation (YOLOV5Pose with PPU)
-6: Instance Segmentation (YOLO26n_Seg)
-7: Multi-Object Tracking
-8: Multi-Channel Object Detection
-9: Multi-Channel Object Detection (RTSP)
--: secondary mode
-=: Depth Estimation (YOLO26n_Depth)
+3: Pose Estimation (YOLO26n_Pose)
+4: Instance Segmentation (YOLO26n_Seg)
+5: Depth Estimation (YOLO26n_Depth)
+6: Multi-Object Tracking
+7: Multi-Channel Object Detection
+8: Multi-Channel Object Detection (RTSP)
+9: secondary mode
 which AI demo do you want to run:(timeout:10s, default:0)
 ```
 

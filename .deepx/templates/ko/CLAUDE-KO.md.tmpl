@@ -34,9 +34,9 @@ pytest test/                        # 단위 테스트 실행
 | /dx-agent-stream-model-management | 파이프라인용 .dxnn 모델 다운로드 및 구성 |
 | /dx-agent-stream-validate | 파이프라인 검증 검사 실행 |
 | /dx-agent-runtime-validate | 전체 피드백 루프: 검증, 수집, 승인, 적용, 확인 |
-| /dx-swe-brainstorm | 브레인스토밍, 2-3가지 접근법 제안, 스펙 자체 검토 후 계획 |
-| /dx-swe-tdd | 검증 주도 개발, 선택적 Red-Green-Refactor 단위 테스트 |
-| /dx-swe-verify | 프로세스: 완료 선언 전 검증 — 주장 전 증거 |
+| /dx-agent-brainstorm | 모델 레지스트리 확인과 서브프로젝트 라우팅을 포함한 DEEPX 빌드 브레인스토밍 |
+| /dx-agent-tdd | DEEPX 빌드 검증 순서 — factory, pipeline, integration 체크 |
+| /dx-agent-verify | DEEPX 빌드 검증 체크리스트 — dx_app, dx_stream, cross-project |
 | /dx-swe-writing-plans | 세분화된 태스크로 구현 계획 작성 |
 | /dx-swe-executing-plans | 리뷰 체크포인트와 함께 계획 실행 |
 | /dx-swe-subagent-dev | 태스크별 신규 서브에이전트로 계획 실행, 2단계 리뷰 |
@@ -45,6 +45,7 @@ pytest test/                        # 단위 테스트 실행
 | /dx-swe-requesting-review | 기능 완료 후 코드 리뷰 요청 |
 | /dx-skill-router | 스킬 탐색 및 호출 — 모든 작업 전 스킬 확인 |
 | /dx-harness-writing-skills | 스킬 파일 생성 및 편집 |
+| /dx-harness-validate | 이 repo의 .deepx/ 무결성 검증 (단독 checkout이면 suite harness 자동 확보) |
 | /dx-swe-parallel-agents | 독립 태스크를 위한 병렬 서브에이전트 디스패치 |
 
 ## 대화형 워크플로우 (반드시 준수)
@@ -88,18 +89,18 @@ Python에서는 `datetime.now().strftime('%Y%m%d-%H%M%S')`를 사용한다. `dat
 
 | 작업에서 언급하는 내용... | 읽을 파일 |
 |---|---|
-| **Pipeline, detection, classification** | `.deepx/skills/dx-agent-stream-build-pipeline.md`, `.deepx/toolsets/dx-stream-elements.md` |
-| **MQTT, Kafka, message broker** | `.deepx/skills/dx-agent-stream-build-mqtt-kafka.md`, `.deepx/toolsets/dx-stream-elements.md` |
-| **Multi-model, cascaded, parallel** | `.deepx/skills/dx-agent-stream-build-pipeline.md`, `.deepx/toolsets/dx-stream-metadata.md` |
-| **Model, download** | `.deepx/skills/dx-agent-stream-model-management.md` |
-| **Validation, testing** | `.deepx/skills/dx-agent-stream-validate.md`, `.deepx/instructions/testing-patterns.md` |
-| **Validation, feedback, fix** | `.deepx/skills/dx-agent-stream-validate.md`, parent `dx-runtime/.deepx/skills/dx-agent-runtime-validate.md` |
+| **Pipeline, detection, classification** | `.deepx/skills/dx-agent-stream-build-pipeline/SKILL.md`, `.deepx/toolsets/dx-stream-elements.md` |
+| **MQTT, Kafka, message broker** | `.deepx/skills/dx-agent-stream-build-mqtt-kafka/SKILL.md`, `.deepx/toolsets/dx-stream-elements.md` |
+| **Multi-model, cascaded, parallel** | `.deepx/skills/dx-agent-stream-build-pipeline/SKILL.md`, `.deepx/toolsets/dx-stream-metadata.md` |
+| **Model, download** | `.deepx/skills/dx-agent-stream-model-management/SKILL.md` |
+| **Validation, testing** | `.deepx/skills/dx-agent-stream-validate/SKILL.md`, `.deepx/instructions/testing-patterns.md` |
+| **Validation, feedback, fix** | `.deepx/skills/dx-agent-stream-validate/SKILL.md`, parent `../.deepx/skills/dx-agent-runtime-validate/SKILL.md` |
 | **항상 읽기 (모든 작업)** | `.deepx/memory/common_pitfalls.md`, `.deepx/instructions/coding-standards.md` |
-| **Brainstorm, plan, design** | `.deepx/skills/dx-swe-brainstorm.md` |
-| **TDD, validation, incremental** | `.deepx/skills/dx-swe-tdd.md` |
-| **Completion, verify, evidence** | `.deepx/skills/dx-swe-verify.md` |
+| **Brainstorm, plan, design** | `.deepx/skills/dx-agent-brainstorm/SKILL.md` |
+| **TDD, validation, incremental** | `.deepx/skills/dx-agent-tdd/SKILL.md` |
+| **Completion, verify, evidence** | `.deepx/skills/dx-agent-verify/SKILL.md` |
 
-## 13개 GStreamer 요소
+## 지원되는 GStreamer 요소
 
 | 요소 | 목적 |
 |------|------|
@@ -114,6 +115,16 @@ Python에서는 `datetime.now().strftime('%Y%m%d-%H%M%S')`를 사용한다. `dat
 | `DxMsgBroker` | MQTT 또는 Kafka로 직렬화된 메시지 발행 |
 | `DxInputSelector` | 여러 입력 스트림 중 하나를 선택해 공유 추론으로 전달 (N:1) |
 | `DxOutputSelector` | 추론 결과를 여러 출력 스트림으로 라우팅 (1:N) |
+
+## DX-H1 V-NPU 선택적 기능
+
+Optional V-NPU plugin은 `./build.sh --dxvnpu`로 빌드한다. Windows에서는
+`DEEPX_VNPU_DIR`가 V-NPU SDK 설치 위치를 가리켜야 한다. H.264/H.265 hardware
+codec 사용 전 `gst-inspect-1.0`으로 `dxvnpudec`와 `dxvnpuenc`를 확인한다.
+이 codec element는 `application/x-dxvideoraw` multi-stream domain 밖에 둔다.
+V-NPU inference에는 `dxinfer backend=dxvnpu`를 사용한다. `dxpreprocess`,
+`dxscale`, `dxconvert`의 VNPU transform kernel은 fallback path를 유지해야 하는
+optional image-transform acceleration이다.
 
 ## 5개 파이프라인 카테고리
 
@@ -170,3 +181,5 @@ source ! queue ! DxPreprocess preprocess-id=0 ! queue ! DxInfer preprocess-id=0 
 
 
 {{FRAGMENT:instruction-verification-loop}}
+
+{{FRAGMENT:harness-bootstrap}}

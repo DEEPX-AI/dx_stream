@@ -33,6 +33,7 @@ public:
 
 protected:
     bool process_object(GstBuffer* buf, DXFrameMeta *frame_meta, DXObjectMeta *object_meta, const int &preprocess_id);
+    void secondary_batch(GstBuffer* buf, DXFrameMeta* frame_meta, int preprocess_id);
     void cleanup_temp_buffers(int stream_id);
     bool check_object(const DXFrameMeta *frame_meta, DXObjectMeta *object_meta);
     bool check_object_roi(const float *box, const int *roi) const;

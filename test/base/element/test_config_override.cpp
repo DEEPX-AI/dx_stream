@@ -8,13 +8,6 @@
 
 #include <glib/gstdio.h>
 #include <cstring>
-#ifdef _WIN32
-#include <io.h>
-#define write _write
-#define close _close
-#else
-#include <unistd.h>
-#endif
 
 using namespace dxtest;
 
@@ -23,14 +16,22 @@ static gchar *write_temp_json(const char *content) {
     int fd = g_mkstemp(path);
     fail_unless(fd >= 0, "g_mkstemp failed for pattern: %s", path);
 
-    gsize len = strlen(content);
-    gsize written = 0;
-    while (written < len) {
-        gssize n = write(fd, content + written, len - written);
-        fail_unless(n > 0, "write to temp file failed");
-        written += (gsize)n;
-    }
-    close(fd);
+    // g_mkstemp() only needs to atomically reserve a unique filename here —
+    // the actual write must go through GLib's own g_file_set_contents(), not
+    // raw fd + CRT write()/close(). On Windows, mixing g_mkstemp()'s fd
+    // (opened by the GLib DLL's UCRT instance) with a direct _write()/_close()
+    // call from this test binary's own CRT triggers a UCRT parameter
+    // validation abort (c0000409 stack buffer overrun) — verified via a
+    // minimal repro outside of gstcheck/dxstream entirely. g_close() and
+    // g_file_set_contents() are safe cross-CRT/cross-platform GLib APIs.
+    GError *err = nullptr;
+    fail_unless(g_close(fd, &err), "g_close failed: %s", err ? err->message : "(no error set)");
+    g_clear_error(&err);
+
+    gboolean ok = g_file_set_contents(path, content, (gssize)strlen(content), &err);
+    fail_unless(ok, "g_file_set_contents failed: %s", err ? err->message : "(no error set)");
+    g_clear_error(&err);
+
     return path;
 }
 

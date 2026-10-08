@@ -42,10 +42,12 @@ $gstDir = if ($env:GSTREAMER_1_0_ROOT_MSVC_X86_64) {
 }
 
 $installDir = Join-Path $projectRoot "install"
+# vcpkg manifest deps (eigen3, opencv4, etc.) — same location build.bat uses
+$vcpkgPkgConfig = Join-Path $projectRoot "vcpkg_installed\x64-windows\lib\pkgconfig"
 
 # ---- pkg-config path ----
 $existingPkgPath = if ($env:PKG_CONFIG_PATH) { $env:PKG_CONFIG_PATH } else { "" }
-$env:PKG_CONFIG_PATH = "$installDir\lib\pkgconfig;$gstDir\lib\pkgconfig;$existingPkgPath"
+$env:PKG_CONFIG_PATH = "$installDir\lib\pkgconfig;$vcpkgPkgConfig;$gstDir\lib\pkgconfig;$existingPkgPath"
 
 # ---- check gstdxstream built ----
 $checkResult = & pkg-config --exists gstdxstream 2>&1
@@ -75,6 +77,15 @@ New-Item -ItemType Directory -Force $logDir | Out-Null
 $binPath  = Join-Path $binDir "$name.exe"
 $buildLog = Join-Path $logDir "$name.log.build"
 $runLog   = Join-Path $logDir "$name.log"
+
+# Remove any stale run log from a previous invocation up front. If this run's
+# build or execution fails before $runLog is (re)written below, run_element.bat's
+# show_log helper must not display a leftover PASS/FAIL log from an unrelated
+# earlier run — that previously made compile/link failures look like runtime
+# test failures (e.g. a stale "TAG event must be forwarded" failure printed
+# under a build that actually failed with LNK2019).
+Remove-Item $runLog, "$runLog.err" -ErrorAction SilentlyContinue
+
 
 # ---- pkg-config flag helpers ----
 function ConvertPkgConfigIncludes([string]$raw) {
@@ -119,6 +130,32 @@ $includes += "/I`"$testDir\common`""
 $includes += "/I`"$projectRoot\gst-dxstream-plugin\src`""
 $includes += "/I`"$projectRoot\gst-dxstream-plugin\metadata`""
 $includes += "/I`"$projectRoot\gst-dxstream-plugin\general`""
+
+# ---- eigen3 (vcpkg) ----
+# Tracker.hpp does `#include <eigen3/Eigen/Dense>` (Linux system-package style,
+# where /usr/include/eigen3/Eigen/Dense resolves via the default /usr/include
+# search path). vcpkg's eigen3.pc Cflags is "-I<prefix>/include/eigen3" — meant
+# for code that does `#include <Eigen/Dense>` — so using it directly would look
+# for <prefix>/include/eigen3/eigen3/Eigen/Dense and fail. We need the PARENT
+# of that dir instead, so derive it from eigen3's pkg-config prefix.
+$eigenPrefix = (& pkg-config --variable=prefix eigen3 2>&1 | Out-String).Trim()
+if ($LASTEXITCODE -eq 0 -and $eigenPrefix) {
+    $includes += "/I`"$eigenPrefix/include`""
+} else {
+    Write-Error "[FATAL] eigen3 not found via pkg-config. Run 'build.bat' first (vcpkg_installed missing?)."
+    exit 3
+}
+
+# ---- dxvnpu SDK (optional — only present when built with build.bat --dxvnpu) ----
+# No .pc file is generated for this dependency (build.bat resolves it via a CMake
+# package, not pkg-config), so it must be located directly through the same
+# DEEPX_VNPU_DIR env var build.bat itself requires for --dxvnpu. Left out
+# entirely (not a fatal error) when unset, since most test groups don't need it —
+# only test/dxvnpu/**/*.cpp does, and those simply fail to compile with a clear
+# "cannot open include file" error if this SDK isn't installed/configured.
+if ($env:DEEPX_VNPU_DIR -and (Test-Path "$($env:DEEPX_VNPU_DIR)\include")) {
+    $includes += "/I`"$($env:DEEPX_VNPU_DIR)\include`""
+}
 
 # ---- cl.exe: must be in PATH (caller should have run vcvarsall or use x64 Dev Prompt) ----
 if (-not (Get-Command cl.exe -ErrorAction SilentlyContinue)) {
@@ -198,4 +235,18 @@ if (Test-Path "$runLog.err") {
     Remove-Item "$runLog.err" -ErrorAction SilentlyContinue
 }
 
-exit $run.ExitCode
+$testFailed = $true
+if (Test-Path $runLog) {
+    $gstCheckSummary = Select-String -Path $runLog -Quiet -Pattern `
+        '^\d+%: Checks: \d+, Failures: \d+, Errors: \d+$'
+    $gstCheckFailure = Select-String -Path $runLog -Quiet -Pattern `
+        '^\d+%: Checks: \d+, Failures: [1-9]\d*, Errors: \d+$',
+        '^\d+%: Checks: \d+, Failures: \d+, Errors: [1-9]\d*$'
+    $testFailed = -not $gstCheckSummary -or $gstCheckFailure
+}
+
+if ($testFailed) {
+    exit 1
+}
+
+exit 0

@@ -1,8 +1,9 @@
 @echo off
-REM VNPU test suite (Windows, conditional: requires dxvnpudec element)
+REM VNPU hardware test suite (Windows)
 REM Usage:  run_vnpu.bat
 REM Exit code: 0=all PASS or skipped, 1=any FAIL
 setlocal EnableDelayedExpansion
+set "DXVNPU_TEST_DEVICE=1"
 
 set "SCRIPT_DIR=%~dp0"
 if "%SCRIPT_DIR:~-1%"=="\" set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"

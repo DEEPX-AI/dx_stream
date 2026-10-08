@@ -28,8 +28,13 @@ Eigen::VectorXf convert_x_to_bbox(Eigen::VectorXf x) {
     bbox << x(0) - w / 2, x(1) - h / 2, x(0) + w / 2, x(1) + h / 2;
     return bbox;
 }
+// The observations map is taken by reference. Upstream passes a Python dict,
+// which is already a reference (noahcao/OC_SORT ocsort.py:11); only this port
+// passed by value. The call site (OCSort.cpp) runs once per live track per
+// frame, so the copy grows with track age. Measured: 57% throughput loss after
+// 21.5 hours.
 Eigen::VectorXf
-k_previous_obs(std::unordered_map<int, Eigen::VectorXf> observations_,
+k_previous_obs(const std::unordered_map<int, Eigen::VectorXf> &observations_,
                int cur_age, int k) {
     if (observations_.empty())
         return Eigen::VectorXf::Constant(5, -1.0);
@@ -44,6 +49,6 @@ k_previous_obs(std::unordered_map<int, Eigen::VectorXf> observations_,
                                      return p1.first < p2.first;
                                  });
     int max_age = iter->first;
-    return observations_[max_age];
+    return observations_.at(max_age);
 }
 } // namespace ocsort

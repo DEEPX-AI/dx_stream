@@ -224,22 +224,25 @@ if not defined DEEPX_SDK_DIR (
     exit /b 1
 )
 set "DXRT_SDK_DIR=%DEEPX_SDK_DIR%"
-if not exist "%DXRT_SDK_DIR%\lib\x64\dxrt.lib" (
-    echo   [ERROR] dxrt.lib not found at %DXRT_SDK_DIR%\lib\x64
+REM Newer SDK installers place dxrt.lib directly under lib\; older ones use lib\x64\.
+set "DXRT_LIB_DIR=%DXRT_SDK_DIR%\lib"
+if not exist "%DXRT_LIB_DIR%\dxrt.lib" set "DXRT_LIB_DIR=%DXRT_SDK_DIR%\lib\x64"
+if not exist "%DXRT_LIB_DIR%\dxrt.lib" (
+    echo   [ERROR] dxrt.lib not found at %DXRT_SDK_DIR%\lib or %DXRT_SDK_DIR%\lib\x64
     echo           Check that DEEPX_SDK_DIR points to the correct SDK directory.
     exit /b 1
 )
-echo   [OK] dxrt sdk: %DXRT_SDK_DIR%
+echo   [OK] dxrt sdk: %DXRT_SDK_DIR% (lib: %DXRT_LIB_DIR%)
 
 REM ---- dxvnpu (optional) ----
-if defined DXVNPU_DIR (
-    if exist "%DXVNPU_DIR%\lib\dxvnpu.lib" (
-        echo   [OK] dxvnpu: %DXVNPU_DIR%
+if defined DEEPX_VNPU_DIR (
+    if exist "%DEEPX_VNPU_DIR%\lib\cmake\dxvnpu\dxvnpuConfig.cmake" (
+        echo   [OK] dxvnpu: %DEEPX_VNPU_DIR%
     ) else (
-        echo   [WARN] DXVNPU_DIR is set but dxvnpu.lib not found at %DXVNPU_DIR%\lib
+        echo   [WARN] DEEPX_VNPU_DIR is set but dxvnpu CMake package was not found
     )
 ) else (
-    echo   [INFO] DXVNPU_DIR not set [optional]. Set it for VNPU element builds.
+    echo   [INFO] DEEPX_VNPU_DIR not set [optional]. Install the VNPU SDK for VNPU element builds.
 )
 
 echo.

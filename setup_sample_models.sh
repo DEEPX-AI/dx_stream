@@ -23,7 +23,7 @@ if ! command -v jq >/dev/null 2>&1; then
     print_colored "jq installed successfully." "SUCCESS"
 fi
 
-BASE_URL="https://sdk.deepx.ai/modelzoo/dxnn"
+BASE_URL="https://sdk.deepx.ai/modelzoo/q-lite-dxnn"
 MODEL_LIST_JSON="$SCRIPT_DIR/model_list.json"
 OUTPUT_DIR="$SCRIPT_DIR/dx_stream/samples/models"
 SYMLINK_TARGET_PATH=""
@@ -122,7 +122,7 @@ for model in "${MODEL_FILES[@]}"; do
         continue
     fi
     print_colored "Downloading $model ..." "INFO"
-    curl -fSL -o "$dest" "$url"
+    curl -fSL --proto '=https' -o "$dest" "$url"
     if [ $? -ne 0 ]; then
         print_colored "Failed to download $url" "ERROR"
         rm -f "$dest"

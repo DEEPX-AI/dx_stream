@@ -62,9 +62,19 @@ CFLAGS+=" -I$SCRIPT_DIR/common"
 CFLAGS+=" -I$PROJECT_ROOT/gst-dxstream-plugin/src"
 CFLAGS+=" -I$PROJECT_ROOT/gst-dxstream-plugin/metadata"
 CFLAGS+=" -I$PROJECT_ROOT/gst-dxstream-plugin/general"
+
+# <gstdxstream/*.hpp> must match the plugin under test (setup_env.sh prefers the local builddir),
+# not an older installed copy: DXFrameMeta layout changes otherwise break every meta access.
+HDR_DIR="$BUILD_DIR/include/gstdxstream"
+mkdir -p "$HDR_DIR"
+for h in general/dxcommon.hpp metadata/gst-dxframemeta.hpp metadata/gst-dxobjectmeta.hpp \
+         metadata/gst-dxusermeta.hpp metadata/gst-dxmsgmeta.hpp; do
+    ln -sf "$PROJECT_ROOT/gst-dxstream-plugin/$h" "$HDR_DIR/"
+done
+CFLAGS+=" -I$BUILD_DIR/include"
 CFLAGS+=" $(pkg-config --cflags gstdxstream gstreamer-check-1.0 gstreamer-app-1.0 gstreamer-video-1.0)"
 
-LIBS="$(pkg-config --libs gstdxstream gstreamer-check-1.0 gstreamer-app-1.0 gstreamer-video-1.0) -lpthread"
+LIBS="$(pkg-config --libs gstdxstream gstreamer-check-1.0 gstreamer-app-1.0 gstreamer-video-1.0) -lpthread -ldl"
 
 NAME="$(basename "$SRC" .cpp)"
 BIN="$BUILD_DIR/$NAME"
@@ -79,11 +89,12 @@ fi
 # valgrind still flags the invalid access deterministically.
 if [ "${VALGRIND:-0}" = "1" ]; then
     if ! command -v valgrind >/dev/null 2>&1; then
-        echo "[SKIP] valgrind not installed"
-        exit 0
+        echo "[FAIL] valgrind not installed"
+        exit 1
     fi
     # CK_FORK=no: keep check's whole suite in one process so valgrind sees it all.
-    if CK_FORK=no valgrind --error-exitcode=99 --quiet "$BIN" > "$LOG" 2>&1; then
+    if CK_FORK=no valgrind --error-exitcode=99 --quiet --suppressions="$SCRIPT_DIR/valgrind.supp" \
+            "$BIN" > "$LOG" 2>&1; then
         exit 0
     else
         exit 1

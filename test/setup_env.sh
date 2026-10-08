@@ -22,7 +22,33 @@ export LD_LIBRARY_PATH="${ACTUAL_LIBDIR}/gstreamer-1.0:${INSTALL_PREFIX}/share/g
 if [ -f "${LOCAL_PLUGIN_DIR}/libgstdxstream.so" ]; then
     export GST_PLUGIN_PATH="${LOCAL_PLUGIN_DIR}:${GST_PLUGIN_PATH}"
     export LD_LIBRARY_PATH="${LOCAL_PLUGIN_DIR}:${LD_LIBRARY_PATH}"
+
+    for backend_dir in "${PROJECT_ROOT}/gst-dxstream-plugin/builddir"/src-{v3,vnpu,rga,gles}; do
+        if [ -f "${backend_dir}/libgstdxstream-${backend_dir##*-}.so" ]; then
+            export LD_LIBRARY_PATH="${backend_dir}:${LD_LIBRARY_PATH}"
+        fi
+    done
 fi
+
+# Memory-checked tests require valgrind; install it via apt (sudo may prompt for a password).
+ensure_valgrind() {
+    command -v valgrind >/dev/null 2>&1 && return 0
+    if ! command -v apt-get >/dev/null 2>&1; then
+        echo "  [SETUP] valgrind not found and apt-get unavailable: install valgrind manually"
+        return 1
+    fi
+    local sudo=""
+    [ "$(id -u)" -ne 0 ] && sudo="sudo"
+    echo "  [SETUP] Installing valgrind ..."
+    # CI images often ship without apt lists, so retry after an update.
+    $sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq valgrind >/dev/null ||
+        { $sudo apt-get update -qq >/dev/null &&
+          $sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq valgrind >/dev/null; }
+    if ! command -v valgrind >/dev/null 2>&1; then
+        echo "  [SETUP] valgrind installation failed"
+        return 1
+    fi
+}
 
 # Check dx-rt runtime availability (call once, result cached in DXRT_AVAILABLE)
 check_dxrt_available() {

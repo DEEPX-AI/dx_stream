@@ -281,7 +281,7 @@ dx-agent-gen generate --repo dx-runtime/dx_stream
 | **Cursor** | 프롬프트를 직접 입력. 파이프라인 파일 생성 시 `stream-pipelines.mdc` 활성화. |
 | **OpenCode** | `@dx-stream-builder` 뒤에 프롬프트 입력, 또는 `/dx-agent-stream-build-pipeline` 스킬 직접 사용. |
 
-### 시나리오 7: 멀티스트림 병렬 파이프라인 빌드
+### 시나리오 6: 멀티스트림 병렬 파이프라인 빌드
 
 **프롬프트:**
 
@@ -296,7 +296,7 @@ dx-agent-gen generate --repo dx-runtime/dx_stream
 | **Cursor** | 프롬프트를 직접 입력. |
 | **OpenCode** | `@dx-stream-builder` 뒤에 프롬프트 입력, 또는 `/dx-agent-stream-build-pipeline` 스킬 직접 사용. |
 
-### 시나리오 8: 세그멘테이션 파이프라인 빌드
+### 시나리오 7: 세그멘테이션 파이프라인 빌드
 
 **프롬프트:**
 

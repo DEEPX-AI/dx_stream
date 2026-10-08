@@ -77,7 +77,7 @@ Expected directory structure (set up by the installer)
 ```
 %DEEPX_SDK_DIR%\
     include\
-    lib\x64\dxrt.lib
+    lib\dxrt.lib        (or lib\x64\dxrt.lib on older SDK versions)
     bin\dxrt.dll
 ```
 
@@ -93,6 +93,16 @@ If for any reason the variable is missing, set it manually.
 ```cmd
 set DEEPX_SDK_DIR=C:\Program Files\DEEPX\DX_SDK_<version>
 ```
+
+**DEEPX_VNPU_DIR (auto-configured by the DX-H1 V-NPU SDK installer)**
+
+Build with `--dxvnpu` requires the SDK CMake package at:
+```
+%DEEPX_VNPU_DIR%\lib\cmake\dxvnpu\dxvnpuConfig.cmake
+```
+
+The installer also provides the VNPU runtime DLL directory. `build.bat` and
+`run_demo.bat` add `%DEEPX_VNPU_DIR%\bin` to their process `PATH`.
 
 ---
 
@@ -206,7 +216,7 @@ For air-gapped environments, manually place model files (`.dxnn`) in `dx_stream\
 
 ```cmd
 run_demo.bat                    :: Interactive demo menu
-run_demo.bat --internal-rtsp    :: Use internal RTSP server for demo 9
+run_demo.bat --internal-rtsp    :: Use internal RTSP server for demo 8
 ```
 
 The demo menu matches the Linux `run_demo.sh` layout:
@@ -216,15 +226,13 @@ The demo menu matches the Linux `run_demo.sh` layout:
 | 0 | Object Detection | YOLO26n |
 | 1 | Object Detection | YoloV5S PPU |
 | 2 | Face Detection | YOLOv5s_Face |
-| 3 | Face Detection | SCRFD500M PPU |
-| 4 | Pose Estimation | YOLO26n_Pose |
-| 5 | Pose Estimation | YOLOV5Pose PPU |
-| 6 | Instance Segmentation | YOLO26n-Seg |
-| 7 | Multi-Object Tracking | YoloV5S + OC_SORT |
-| 8 | Multi-Stream (4ch) | Compositor Grid |
-| 9 | Multi-Channel (RTSP) | dxinputselector |
-| - | Secondary Mode | Multi-Model Cascade |
-| = | Depth Estimation | YOLO26n_Depth |
+| 3 | Pose Estimation | YOLO26n_Pose |
+| 4 | Instance Segmentation | YOLO26n-Seg |
+| 5 | Depth Estimation | YOLO26n_Depth |
+| 6 | Multi-Object Tracking | YoloV5S + OC_SORT |
+| 7 | Multi-Stream (4ch) | Compositor Grid |
+| 8 | Multi-Channel (RTSP) | dxinputselector |
+| 9 | Secondary Mode | Multi-Model Cascade |
 
 Pipeline scripts are located in `dx_stream\pipelines\windows\`. Each script is self-contained and can be run independently if `DXSTREAM_ROOT` is set:
 

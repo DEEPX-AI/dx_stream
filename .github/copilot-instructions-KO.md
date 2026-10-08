@@ -1,7 +1,7 @@
 # dx_stream — Copilot 전역 지시사항
 
 > DEEPX NPU 가속기를 위한 GStreamer 기반 비디오 분석 프레임워크.
-> 12개 커스텀 GStreamer 요소, 5개 파이프라인 카테고리.
+> 핵심 GStreamer 요소, 선택적 hardware extension, 5개 파이프라인 카테고리.
 
 ## 응답 언어
 
@@ -104,15 +104,15 @@ API accuracy. Please switch to a recommended model.
 
 | 작업에서 언급하는 내용... | 읽을 파일 |
 |---|---|
-| **Pipeline, detection, classification** | `.deepx/skills/dx-agent-stream-build-pipeline.md`, `.deepx/toolsets/dx-stream-elements.md` |
-| **MQTT, Kafka, message broker** | `.deepx/skills/dx-agent-stream-build-mqtt-kafka.md`, `.deepx/toolsets/dx-stream-elements.md` |
-| **Multi-model, cascaded, parallel** | `.deepx/skills/dx-agent-stream-build-pipeline.md`, `.deepx/toolsets/dx-stream-metadata.md` |
-| **Model, download** | `.deepx/skills/dx-agent-stream-model-management.md` |
-| **Validation, testing** | `.deepx/skills/dx-agent-stream-validate.md`, `.deepx/instructions/testing-patterns.md` |
-| **Validation, feedback, fix** | `.deepx/skills/dx-agent-stream-validate.md`, parent `dx-runtime/.deepx/skills/dx-agent-runtime-validate.md` |
-| **Brainstorm, plan, design** | `.deepx/skills/dx-swe-brainstorm.md` |
-| **TDD, validation, incremental** | `.deepx/skills/dx-swe-tdd.md` |
-| **Completion, verify, evidence** | `.deepx/skills/dx-swe-verify.md` |
+| **Pipeline, detection, classification** | `.deepx/skills/dx-agent-stream-build-pipeline/SKILL.md`, `.deepx/toolsets/dx-stream-elements.md` |
+| **MQTT, Kafka, message broker** | `.deepx/skills/dx-agent-stream-build-mqtt-kafka/SKILL.md`, `.deepx/toolsets/dx-stream-elements.md` |
+| **Multi-model, cascaded, parallel** | `.deepx/skills/dx-agent-stream-build-pipeline/SKILL.md`, `.deepx/toolsets/dx-stream-metadata.md` |
+| **Model, download** | `.deepx/skills/dx-agent-stream-model-management/SKILL.md` |
+| **Validation, testing** | `.deepx/skills/dx-agent-stream-validate/SKILL.md`, `.deepx/instructions/testing-patterns.md` |
+| **Validation, feedback, fix** | `.deepx/skills/dx-agent-stream-validate/SKILL.md`, parent `../.deepx/skills/dx-agent-runtime-validate/SKILL.md` |
+| **Brainstorm, plan, design** | `.deepx/skills/dx-agent-brainstorm/SKILL.md` |
+| **TDD, validation, incremental** | `.deepx/skills/dx-agent-tdd/SKILL.md` |
+| **Completion, verify, evidence** | `.deepx/skills/dx-agent-verify/SKILL.md` |
 | **항상 읽기 (모든 작업)** | `.deepx/memory/common_pitfalls.md`, `.deepx/instructions/coding-standards.md` |
 
 ## Skill 목록
@@ -124,9 +124,9 @@ API accuracy. Please switch to a recommended model.
 | dx-agent-stream-model-management | 파이프라인용 .dxnn 모델 다운로드 및 구성 |
 | dx-agent-stream-validate | 파이프라인 검증 검사 실행 |
 | dx-agent-runtime-validate | 전체 피드백 루프: 검증, 수집, 승인, 적용, 확인 |
-| dx-swe-brainstorm | 브레인스토밍, 2-3가지 접근법 제안, 스펙 자체 검토 후 계획 |
-| dx-swe-tdd | 검증 주도 개발, 선택적 Red-Green-Refactor 단위 테스트 |
-| dx-swe-verify | 프로세스: 완료 선언 전 검증 — 주장 전 증거 |
+| dx-agent-brainstorm | 모델 레지스트리 확인과 서브프로젝트 라우팅을 포함한 DEEPX 빌드 브레인스토밍 |
+| dx-agent-tdd | DEEPX 빌드 검증 순서 — factory, pipeline, integration 체크 |
+| dx-agent-verify | DEEPX 빌드 검증 체크리스트 — dx_app, dx_stream, cross-project |
 | dx-swe-writing-plans | 세분화된 태스크로 구현 계획 작성 |
 | dx-swe-executing-plans | 리뷰 체크포인트와 함께 계획 실행 |
 | dx-swe-subagent-dev | 태스크별 신규 서브에이전트로 계획 실행, 2단계 리뷰 |
@@ -135,6 +135,7 @@ API accuracy. Please switch to a recommended model.
 | dx-swe-requesting-review | 기능 완료 후 코드 리뷰 요청 |
 | dx-skill-router | 스킬 탐색 및 호출 — 모든 작업 전 스킬 확인 |
 | dx-harness-writing-skills | 스킬 파일 생성 및 편집 |
+| dx-harness-validate | 이 repo의 .deepx/ 무결성 검증 (단독 checkout이면 suite harness 자동 확보) |
 | dx-swe-parallel-agents | 독립 태스크를 위한 병렬 서브에이전트 디스패치 |
 
 ## 대화형 워크플로우 (반드시 준수)
@@ -157,7 +158,7 @@ Python에서는 `datetime.now().strftime('%Y%m%d-%H%M%S')`를 사용한다. `dat
 - **`<agent>`**: 코딩 에이전트 식별자 — `claude`, `codex`, `copilot`, `cursor`, `opencode` 중 하나를 사용하세요.
 - **`<coding_model>`**: 코딩 모델 축약명 — 예: `sonnet46`, `opus46`, `gpt53codex`, `gpt55`.
 
-## 13개 GStreamer 요소
+## 지원되는 GStreamer 요소
 
 | 요소 | 목적 |
 |------|------|
@@ -172,6 +173,16 @@ Python에서는 `datetime.now().strftime('%Y%m%d-%H%M%S')`를 사용한다. `dat
 | DxMsgBroker | MQTT 또는 Kafka로 발행 |
 | DxInputSelector | 여러 입력 스트림 중 하나를 선택해 공유 추론으로 전달 (N:1) |
 | DxOutputSelector | 추론 결과를 여러 출력 스트림으로 라우팅 (1:N) |
+
+## DX-H1 V-NPU 선택적 기능
+
+Optional V-NPU plugin은 `./build.sh --dxvnpu`로 빌드한다. Windows에서는
+`DEEPX_VNPU_DIR`가 V-NPU SDK 설치 위치를 가리켜야 한다. H.264/H.265 hardware
+codec 사용 전 `gst-inspect-1.0`으로 `dxvnpudec`와 `dxvnpuenc`를 확인한다.
+이 codec element는 `application/x-dxvideoraw` multi-stream domain 밖에 둔다.
+V-NPU inference에는 `dxinfer backend=dxvnpu`를 사용한다. `dxpreprocess`,
+`dxscale`, `dxconvert`의 VNPU transform kernel은 fallback path를 유지해야 하는
+optional image-transform acceleration이다.
 
 ## 5개 파이프라인 카테고리
 
@@ -724,3 +735,61 @@ Pre-commit hook이 generator output 무결성을 강제합니다: 생성된 파�
 이 게이트는 `.deepx/` 파일이 작업의 *주요 산출물*인 경우(규칙 추가, 플랫폼 sync,
 KO 번역 생성, agents/skills 수정)에 적용됩니다. 기능 구현 중 `.deepx/`에 단순
 한 줄 수정이 발생하는 경우에는 적용되지 않습니다.
+
+## Standalone Checkout — Harness Bootstrap (HARD GATE)
+
+이 repo는 dx-all-suite의 sub-project이지만 **단독으로 clone**될 수도 있습니다.
+단독 checkout인 경우 harness tooling이 존재하지 않습니다:
+
+| 이 repo에 있는 것 | dx-all-suite에만 있는 것 |
+|---|---|
+| `.deepx/{agents,skills,templates/{en,ko},scripts,memory,instructions,toolsets}` | `.deepx/tools/` — `dx-agent-gen` generator |
+| `.deepx/scripts/validate_framework.py` | `.deepx/templates/fragments/` — 공유 fragment |
+| 이 instruction 파일 (이미 생성됨) | `.deepx/tests/conformance/` |
+
+위의 Instruction File Verification Loop은 `dx-agent-gen generate` / `check`와
+conformance 테스트 실행을 지시합니다. 그러나 단독 checkout에서는 **그 명령들이
+동작할 수 없습니다**. 바로 이 지점에서 `.deepx/` 수정이 검증 없이 commit되어
+CI에서만 발견되는 drift가 됩니다.
+
+### 첫 `.deepx/` 수정 전에 반드시 실행
+
+```bash
+bash .deepx/scripts/harness_bootstrap.sh --check
+```
+
+이 스크립트는 다음 순서로 실제 dx-all-suite checkout을 확보합니다 — 명시적
+`--suite-dir` / `$DX_SUITE_DIR`, 상위 디렉터리 탐색(일반적인 nested 구성:
+다운로드 없음), 이전에 확보한 `.dx-harness/suite` 캐시, 그리고 `.dx-harness/`로
+shallow clone. 확보 후에는 **CI `subrepo-gate`와 동일한 검증**을 실행합니다:
+generator drift check와 이 repo의 `validate_framework.py`.
+
+`.dx-harness/`는 git-ignore되므로 다운로드된 내용이 index에 들어가지 않습니다.
+
+### exit 3인 경우 — STOP
+
+exit code 3은 suite를 확보하지 못했다는 뜻입니다(로컬 suite 없음, 캐시 없음,
+네트워크 불가). 이때는:
+
+- **`**/.deepx/**` 아래 어떤 파일도 수정하지 마십시오.** generator와 fragment가
+  없으면 `CLAUDE.md` / `AGENTS.md` / `.claude/` / `.github/` / `.cursor/` /
+  `.opencode/`를 재생성할 수 없으므로, 모든 수정이 drift로 commit됩니다.
+- **우회하지 마십시오.** 특히 generator가 `FRAGMENT` placeholder를 나열하며
+  `unresolved template variables` 오류를 출력하면, 해당 fragment는 **누락된
+  것이지 잘못된 것이 아닙니다**. template을 수정하거나 fragment 이름을 바꾸거나
+  `_build_template_context()`에 변수를 추가하는 것은 누락된 입력을 더 심각한
+  두 번째 drift로 만들어 commit하는 행위입니다.
+- 상황을 그대로 알리고, 문서화된 두 가지 해결책을 제시하십시오:
+  `--suite-dir /path/to/dx-all-suite`, `$DX_SUITE_DIR`, 또는 전체
+  dx-all-suite checkout에서 harness 작업을 수행.
+
+harness 이외의 작업은 영향을 받지 않습니다: application 코드, `src/`, 문서,
+테스트, `dx-agent-dev/<session_id>/` 산출물은 bootstrap 실패와 무관하게 정상
+진행합니다.
+
+### 범위 안내
+
+`--check`는 suite conformance 테스트를 의도적으로 실행하지 **않습니다**. 해당
+검사들은 cross-level 검사로 5개 레벨을 상호 비교하기 때문에, 다른 sub-repo가
+없는 상태에서는 만족될 수 없습니다. `subrepo-gate`와 범위를 정확히 일치시키는
+것이 "로컬 통과 = CI 통과"를 보장하는 방법입니다.

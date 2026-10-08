@@ -10,10 +10,10 @@ alwaysApply: true
 ## Context Routing
 | Task | Read |
 |---|---|
-| Pipeline (any category) | `.deepx/skills/dx-build-pipeline-app.md` |
-| MQTT/Kafka broker | `.deepx/skills/dx-build-mqtt-kafka-app.md` |
-| Model management | `.deepx/skills/dx-model-management.md` |
-| Validation | `.deepx/skills/dx-validate.md` |
+| Pipeline (any category) | `.deepx/skills/dx-agent-stream-build-pipeline/SKILL.md` |
+| MQTT/Kafka broker | `.deepx/skills/dx-agent-stream-build-mqtt-kafka/SKILL.md` |
+| Model management | `.deepx/skills/dx-agent-stream-model-management/SKILL.md` |
+| Validation | `.deepx/skills/dx-agent-stream-validate/SKILL.md` |
 | Always | `.deepx/memory/common_pitfalls.md` |
 
 ## Critical Conventions
@@ -28,9 +28,9 @@ alwaysApply: true
 ## Process Skills (available for all tasks)
 | Skill | When to use | Read |
 |---|---|---|
-| Brainstorm & Plan | Before any pipeline generation | `.deepx/skills/dx-brainstorm-and-plan.md` |
-| TDD | Validate each file after creation | `.deepx/skills/dx-tdd.md` |
-| Verify Completion | Before claiming task is done | `.deepx/skills/dx-verify-completion.md` |
+| Brainstorm & Plan | Before any pipeline generation | `.deepx/skills/dx-agent-brainstorm/SKILL.md` |
+| TDD | Validate each file after creation | `.deepx/skills/dx-agent-tdd/SKILL.md` |
+| Verify Completion | Before claiming task is done | `.deepx/skills/dx-agent-verify/SKILL.md` |
 
 ## Interactive Workflow (MUST FOLLOW)
 - Ask 2-3 questions before building

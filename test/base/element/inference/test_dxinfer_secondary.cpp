@@ -11,13 +11,6 @@
 
 #include <glib/gstdio.h>
 #include <cstring>
-#ifdef _WIN32
-#include <io.h>
-#define write _write
-#define close _close
-#else
-#include <unistd.h>
-#endif
 
 using namespace dxtest;
 
@@ -57,14 +50,16 @@ GST_START_TEST(CE_infer_secondary_config_json) {
         "  \"inference_id\": 2,\n"
         "  \"secondary_mode\": true\n"
         "}\n";
-    gsize len = strlen(json);
-    gsize written = 0;
-    while (written < len) {
-        gssize n = write(fd, json + written, len - written);
-        fail_unless(n > 0, "write to temp file failed");
-        written += (gsize)n;
-    }
-    close(fd);
+    // See test_config_override.cpp write_temp_json() for why raw fd +
+    // write()/close() is unsafe on Windows (UCRT abort, c0000409) — use
+    // g_close() + g_file_set_contents() instead.
+    GError *err = nullptr;
+    fail_unless(g_close(fd, &err), "g_close failed: %s", err ? err->message : "(no error set)");
+    g_clear_error(&err);
+
+    gboolean ok = g_file_set_contents(path, json, (gssize)strlen(json), &err);
+    fail_unless(ok, "g_file_set_contents failed: %s", err ? err->message : "(no error set)");
+    g_clear_error(&err);
 
     g_object_set(e, "config-file-path", path, nullptr);
 
