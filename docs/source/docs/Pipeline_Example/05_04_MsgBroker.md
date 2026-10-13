@@ -160,7 +160,8 @@ gst-launch-1.0 \
 **3. Client Application (Any Machine - Consumer Only)**
 ```bash
 # Install Python Kafka client library (client machine only needs this)
-pip install kafka-python
+python3 -m pip install --upgrade pip
+python3 -m pip install confluent-kafka
 
 # Run the Kafka client to receive messages from server
 python3 /usr/local/share/gstdxstream/bin/kafka_consume_example.py -n <server_ip> -p 9092 -t test
