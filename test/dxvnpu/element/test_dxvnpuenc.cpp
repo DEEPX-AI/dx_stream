@@ -114,10 +114,8 @@ static void encode_before_eos(dxvnpu_codec_t codec, const gchar* output_caps,
     fail_unless(samples > 0, "encoder must push output before EOS");
 
     if (flush) {
-        GstPad* srcpad = gst_element_get_static_pad(source, "src");
-        fail_unless(gst_pad_push_event(srcpad, gst_event_new_flush_start()));
-        fail_unless(gst_pad_push_event(srcpad, gst_event_new_flush_stop(TRUE)));
-        gst_object_unref(srcpad);
+        fail_unless(gst_element_send_event(source, gst_event_new_flush_start()));
+        fail_unless(gst_element_send_event(source, gst_event_new_flush_stop(TRUE)));
         input = nv12_frame();
         GST_BUFFER_PTS(input) = GST_SECOND;
         fail_unless_equals_int(gst_app_src_push_buffer(GST_APP_SRC(source), input), GST_FLOW_OK);
