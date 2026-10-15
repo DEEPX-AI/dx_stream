@@ -305,13 +305,17 @@ static Suite *aggregator_queries_suite(void) {
     Suite *s = suite_create("aggregator_queries");
 
     TCase *tc_isel = tcase_create("dxinputselector");
+#ifndef _WIN32
     tcase_set_timeout(tc_isel, 30.0);
+#endif
     suite_add_tcase(s, tc_isel);
     tcase_add_test(tc_isel, CE_inputsel_latency_query_adds_preroll);
     tcase_add_test(tc_isel, CE_inputsel_sink_query_allocation_meta);
 
     TCase *tc_gath = tcase_create("dxgather");
+#ifndef _WIN32
     tcase_set_timeout(tc_gath, 30.0);
+#endif
     suite_add_tcase(s, tc_gath);
     tcase_add_test(tc_gath, CE_gather_latency_query_adds_frame);
     tcase_add_test(tc_gath, CE_gather_sink_query_allocation_meta);

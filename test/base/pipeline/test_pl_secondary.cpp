@@ -324,7 +324,9 @@ GST_END_TEST;
 static Suite *pl_secondary_suite(void) {
     Suite *s = suite_create("pl_secondary");
     TCase *tc = tcase_create("secondary_inference");
+#ifndef _WIN32
     tcase_set_timeout(tc, 120.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, PL_A2_secondary_iou_validation);
     tcase_add_test(tc, PL_A2_secondary_eos);

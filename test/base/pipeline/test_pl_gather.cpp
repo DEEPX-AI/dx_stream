@@ -213,7 +213,9 @@ GST_END_TEST;
 static Suite *pl_gather_suite(void) {
     Suite *s = suite_create("pl_gather");
     TCase *tc = tcase_create("gather");
+#ifndef _WIN32
     tcase_set_timeout(tc, 30.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, PL_F_gather_merges_objects);
     tcase_add_test(tc, PL_F_gather_selects_latest_pts);

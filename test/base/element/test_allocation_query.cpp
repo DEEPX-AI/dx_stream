@@ -117,7 +117,9 @@ GST_END_TEST;
 static Suite *allocation_query_suite(void) {
     Suite *s = suite_create("allocation_query");
     TCase *tc = tcase_create("allocation_lockin");
+#ifndef _WIN32
     tcase_set_timeout(tc, 20.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, CE_scale_allocation_default);
     tcase_add_test(tc, CE_convert_allocation_default);

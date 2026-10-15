@@ -12,11 +12,8 @@ set "GST_PLUGIN_PATH=%DXSTREAM_ROOT%\install\lib\gstreamer-1.0"
 set "GST_REGISTRY=%DXSTREAM_ROOT%\install\gst-registry.bin"
 set "PATH=%DXSTREAM_ROOT%\install\bin;%DXSTREAM_ROOT%\install\share\gstdxstream\lib;%DXSTREAM_ROOT%\install\share\gstdxstream\bin;%DXSTREAM_ROOT%\install\lib\gstreamer-1.0;%PATH%"
 
-if defined GSTREAMER_1_0_ROOT_MSVC_X86_64 (
-    set "PATH=%GSTREAMER_1_0_ROOT_MSVC_X86_64%\bin;%PATH%"
-) else if exist "C:\Program Files\gstreamer\1.0\msvc_x86_64\bin" (
-    set "PATH=C:\Program Files\gstreamer\1.0\msvc_x86_64\bin;%PATH%"
-)
+call "%DXSTREAM_ROOT%\scripts\setup_gstreamer.bat" runtime
+if errorlevel 1 exit /b 1
 
 if not exist "%DXSTREAM_ROOT%\install\bin\gstdxstream.dll" (
     echo [ERROR] DX-Stream plugin not found at "%DXSTREAM_ROOT%\install\bin\gstdxstream.dll".
@@ -53,6 +50,8 @@ gst-launch-1.0 ^
     ! dxinfer preprocess-id=1 inference-id=1 model-path="%MODEL%" ^
     ! queue max-size-buffers=1 ^
     ! dxpostprocess inference-id=1 library-file-path="%LIB%" function-name=PostProcess ^
+    ! queue max-size-buffers=1 ^
+    ! dxtracker ^
     ! queue max-size-buffers=1 ^
     ! dxosd ^
     ! queue max-size-buffers=1 ^

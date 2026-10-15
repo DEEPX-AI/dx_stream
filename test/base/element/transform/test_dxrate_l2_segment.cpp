@@ -57,7 +57,9 @@ GST_END_TEST;
 static Suite *rate_l2_segment_suite(void) {
     Suite *s = suite_create("rate_l2_segment");
     TCase *tc = tcase_create("unwrap");
+#ifndef _WIN32
     tcase_set_timeout(tc, 10.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, CE_rate_domain_wrapped_segment_unwrap);
     return s;

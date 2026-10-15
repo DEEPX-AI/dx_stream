@@ -72,7 +72,9 @@ GST_END_TEST;
 static Suite *dxvnpuinf_suite() {
     Suite *suite = suite_create("dxvnpuinf");
     TCase *testcase = tcase_create("acceptance");
+#ifndef _WIN32
     tcase_set_timeout(testcase, 30.0);
+#endif
     suite_add_tcase(suite, testcase);
     tcase_add_test(testcase, CE_infer_dxvnpu_async_fifo);
     return suite;

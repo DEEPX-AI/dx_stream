@@ -225,7 +225,9 @@ GST_END_TEST;
 static Suite *dxtracker_config_contract_suite(void) {
     Suite *s = suite_create("dxtracker_config_contract");
     TCase *tc = tcase_create("config_contract");
+#ifndef _WIN32
     tcase_set_timeout(tc, 60.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, DC_malformed_config_value_keeps_the_tracker_working);
     return s;

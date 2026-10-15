@@ -202,7 +202,9 @@ GST_END_TEST;
 static Suite *dxpreprocess_wrapped_suite(void) {
     Suite *s = suite_create("dxpreprocess_wrapped");
     TCase *tc = tcase_create("wrapped_caps");
+#ifndef _WIN32
     tcase_set_timeout(tc, 20.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, CE_preprocess_wrapped_caps_registers);
     tcase_add_test(tc, CE_preprocess_wrapped_caps_forwarded);

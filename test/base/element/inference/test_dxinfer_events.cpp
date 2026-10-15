@@ -444,7 +444,9 @@ GST_END_TEST;
 static Suite *dxinfer_events_suite(void) {
     Suite *s = suite_create("dxinfer_events");
     TCase *tc = tcase_create("event_query");
+#ifndef _WIN32
     tcase_set_timeout(tc, 30.0);
+#endif
     tcase_add_checked_fixture(tc, dxtest_crash_fixture_setup, NULL);
     suite_add_tcase(s, tc);
     tcase_add_test(tc, CE_infer_flush_stop_resets_eos_state);

@@ -269,7 +269,9 @@ GST_END_TEST;
 static Suite *dxedge_buffers_suite(void) {
     Suite *s = suite_create("dxedge_buffers");
     TCase *tc = tcase_create("edge_cases");
+#ifndef _WIN32
     tcase_set_timeout(tc, 20.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, CE_osd_no_meta_passthrough);
     tcase_add_test(tc, CE_osd_empty_objects);

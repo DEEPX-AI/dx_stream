@@ -3,7 +3,7 @@
 This element bridges internal AI pipeline processing and external communication systems. It receives the raw inference metadata—data about detected objects, classifications, and tracking—from the upstream **DxPostprocess** elements.
 **DxMsgConv** then transforms this complex metadata into structured message payloads using various standard formats, such as JSON or Protocol Buffers. Once converted, these payloads are passed downstream to the **DxMsgBroker** element, which is responsible for transmitting them reliably to an external broker server (like an MQTT or Kafka broker).
 
-To properly implement the specific structure and content required for the final messages—referred to as the "actual message format logic"—a user-defined custom library is required. This library contains the unique code that dictates how the inference metadata is mapped into the desired message payload structure. For guidance on developing and integrating this custom logic, users must consult the relevant documentation, specifically: **Chapter. Writing Your Own Application "Custom Message Convert Library Documentation".**
+To properly implement the specific structure and content required for the final messages—referred to as the "actual message format logic"—a user-defined custom library is required. This library contains the unique code that dictates how the inference metadata is mapped into the desired message payload structure. For guidance on developing and integrating this custom logic, users must consult the relevant documentation, specifically: **Chapter. Writing Your Own Application "Custom Message Convert Library".**
 
 
 ### **Key Features**
@@ -20,7 +20,7 @@ To properly implement the specific structure and content required for the final 
 
 **Configuration**  
 
-- Message format conversion can be customized using a configuration file.
+- Element properties (`library-file-path`, `message-interval`, `include-frame`) can also be set through a JSON configuration file (`config-file-path`).
 
 ### **Example Output Format**
 
@@ -73,33 +73,32 @@ GObject
 
 | **Property** | **Value** |
 |---|---|
-| Format | `video/x-raw; application/x-dxvideoraw` |
+| Format | `video/x-raw, format=(string){ NV12, I420, RGB, BGR }; application/x-dxvideoraw` |
 
 **Src (output)**
 
 | **Property** | **Value** |
 |---|---|
-| Format | `video/x-raw; application/x-dxvideoraw` |
+| Format | `video/x-raw, format=(string){ NV12, I420, RGB, BGR }; application/x-dxvideoraw` |
 
 `DxMsgConv` is essentially **caps-agnostic** — it does not inspect raw video pixels. It accepts either `video/x-raw` or `application/x-dxvideoraw` solely so it can be placed anywhere in the chain; processing operates on the buffer's `DXFrameMeta` / `DXObjectMeta` only.
 
 ### **Custom Library Error Reporting**
 
 Custom message-converter libraries must follow the error reporting contract described in **Chapter. Writing Your Own Application "Error Reporting from Custom Libraries"** — no `g_error()` / `abort()`; use `g_warning()` + `return nullptr` for per-frame skips, and `throw std::runtime_error` for permanent errors.
+
 ### **Properties**
 
 | **Name**            | **Description**                                                      | **Type**  | **Default Value** |
 |----------------------|----------------------------------------------------------------------|-----------|--------------------|
 | `config-file-path`  | Path to the configuration file. (optional).| String    | `null`     |
 | `library-file-path` | Path to the custom message converter library. **Required**.       | String    | `null`           |
-| `message-interval` | Frame interval at which message is converted.                      | Integer    | `1`             |
+| `message-interval` | Frame interval at which message is converted (range: 1-10000).                      | Integer    | `1`             |
 | `include-frame`  | Flag whether to include frame data as base64 JPEG in the message. (optional). | Boolean   | `false`          |
 
 !!! warning "Limitation"
 
-    **DxMsgConv** must not be placed after an `input-selector` element. Caps are configured once via `set_caps` callback and are not re-negotiated during stream switching. Placing **DxMsgConv** downstream of `input-selector` may result in caps mismatch when streams are switched at runtime.
-
----
+    **DxMsgConv** must not be placed after GStreamer's built-in `input-selector` element (this does not apply to **DxInputSelector**). Caps are configured once via `set_caps` callback and are not re-negotiated during stream switching. Placing **DxMsgConv** downstream of `input-selector` may result in caps mismatch when streams are switched at runtime.
 
 !!! note "NOTE"  
 

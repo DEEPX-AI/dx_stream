@@ -9,33 +9,10 @@ CPY4: numpy conversion for tensors
 CPY5: writable_buffer context manager + read-only buffer safety
 """
 
-import os
 import sys
 import threading
 
-
-# On Windows (Python 3.8+), dependent DLLs of the compiled `pydxs` extension are
-# not resolved via PATH. Promote relevant directories with add_dll_directory so
-# gstdxstream.dll and its transitive deps (gstreamer, dxrt, opencv, ...) load.
-if sys.platform == 'win32':
-    _dll_dirs = []
-    _root = os.environ.get('DX_STREAM_ROOT')
-    if _root:
-        _dll_dirs += [
-            os.path.join(_root, 'install', 'lib', 'gstreamer-1.0'),
-            os.path.join(_root, 'install', 'bin'),
-        ]
-    # Everything already on PATH (gstreamer bin, DEEPX runtime, etc.)
-    _dll_dirs += [p for p in os.environ.get('PATH', '').split(os.pathsep) if p]
-    _seen = set()
-    for _d in _dll_dirs:
-        _d = _d.strip().strip('"')
-        if _d and _d not in _seen and os.path.isdir(_d):
-            _seen.add(_d)
-            try:
-                os.add_dll_directory(_d)
-            except OSError:
-                pass
+import pydxs
 
 # PyGObject (gi) is required for the GStreamer-pipeline based test cases. It is
 # readily available on Linux but impractical to build against a redistributable

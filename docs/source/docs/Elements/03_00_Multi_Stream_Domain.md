@@ -69,6 +69,8 @@ Every buffer inside the domain carries a **`DXFrameMeta`**. Dual-mode elements u
 
 If a buffer arriving at `dxinputselector` has no `DXFrameMeta`, the selector creates one and sets `_stream_id` from the sink pad number.
 
+The maximum number of streams is 64 (`_stream_id` must be in the range 0–63). Buffers with an out-of-range `_stream_id` are dropped with a warning.
+
 ---
 
 ## Event Model
@@ -76,14 +78,14 @@ If a buffer arriving at `dxinputselector` has no `DXFrameMeta`, the selector cre
 Inside the domain, two layers of events coexist:
 
 - **L1A — domain-wide standard events.** A single `STREAM_START`, `CAPS` (`application/x-dxvideoraw`), `SEGMENT`, and (eventually) `EOS` for the entire merged chain. `dxinputselector` emits these once; intermediate elements forward them through standard GStreamer paths.
-- **L1B — pipeline-wide standard events.** `FLUSH_START`, `FLUSH_STOP`, `RECONFIGURE`. These are not stream-specific and are propagated normally.
-- **L2 — per-stream lifecycle events.** Each input stream's original `STREAM_START`, `CAPS` (`video/x-raw`), `SEGMENT`, `TAG`, `EOS`, `GAP` is **wrapped** as a `CUSTOM_DOWNSTREAM` event of type `application/x-dx-wrapped-event` that carries the stream-id. Upstream-direction `QoS` and `RECONFIGURE` are wrapped similarly as `CUSTOM_UPSTREAM` events.
+- **L1B — pipeline-wide standard events.** `FLUSH_START`, `FLUSH_STOP` (and non-wrapped `TAG` / `GAP`). These are not stream-specific and are propagated normally. `RECONFIGURE` travels upstream and is handled as an L2 event (see below).
+- **L2 — per-stream lifecycle events.** Each input stream's original `STREAM_START`, `CAPS` (`video/x-raw`), `SEGMENT`, `TAG`, `EOS`, `GAP` is **wrapped** as a `CUSTOM_DOWNSTREAM` event of type `application/x-dx-wrapped-event` that carries the stream-id. Upstream-direction `QoS` and `RECONFIGURE` are wrapped similarly as `CUSTOM_UPSTREAM` events of type `application/x-dx-wrapped-event-upstream`.
 
 Downstream behavior:
 
 - `dxinputselector` emits L1A sticky events once, and wraps every per-stream sticky event as an L2 event.
 - Intermediate (dual-mode) elements either ignore L2 events (they are not their own caps) or peek at them to update per-stream state (e.g., `dxosd` learns each stream's `video_info` from wrapped CAPS).
-- `dxoutputselector` drops L1A events (the global merged ones), broadcasts L1B (FLUSH/RECONFIGURE) to every output, and unwraps each L2 event to the matching srcpad for that stream-id.
+- `dxoutputselector` drops L1A events (the global merged ones), broadcasts L1B (`FLUSH_START`, `FLUSH_STOP`, and non-wrapped `TAG` / `GAP`) to every output, ignores a raw `RECONFIGURE` arriving on its sink pad, and unwraps each L2 event to the matching srcpad for that stream-id.
 
 Upstream behavior:
 
@@ -108,6 +110,6 @@ LATENCY inside the domain is reported as a single, stream-agnostic value — the
 ## Troubleshooting
 
 - **"Could not link element …"** between `dxinputselector` and a downstream element usually means the downstream element does not accept `application/x-dxvideoraw`. See `Troubleshooting and FAQ → Domain caps mismatch`.
-- **Missing `DXFrameMeta`** inside the domain means a buffer entered the chain without going through `dxinputselector`. See `Troubleshooting and FAQ → DXFrameMeta missing`.
+- **Missing `DXFrameMeta`** inside the domain means a buffer entered the chain without going through `dxinputselector`. See `Troubleshooting and FAQ → Missing DXFrameMeta inside the multi-stream domain`.
 
 ---

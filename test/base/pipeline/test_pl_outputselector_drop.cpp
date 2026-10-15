@@ -151,7 +151,9 @@ GST_END_TEST;
 static Suite *pl_osel_drop_suite(void) {
     Suite *s = suite_create("pl_outputselector_drop");
     TCase *tc = tcase_create("event_drop");
+#ifndef _WIN32
     tcase_set_timeout(tc, 30.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, PL_osel_wrapped_eos_routes_correctly);
     tcase_add_test(tc, PL_osel_data_reaches_correct_sink);

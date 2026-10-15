@@ -204,7 +204,9 @@ static Suite *vnpu_suite(void) {
     Suite *s = suite_create("vnpu");
 
     TCase *tc_dec = tcase_create("dxvnpudec");
+#ifndef _WIN32
     tcase_set_timeout(tc_dec, 10.0);
+#endif
     tcase_add_test(tc_dec, CA1_vnpudec_factory_make);
     tcase_add_test(tc_dec, CA2_vnpudec_property_defaults_and_set);
     tcase_add_test(tc_dec, CB3_vnpudec_full_cycle);
@@ -213,7 +215,9 @@ static Suite *vnpu_suite(void) {
     suite_add_tcase(s, tc_dec);
 
     TCase *tc_enc = tcase_create("dxvnpuenc");
+#ifndef _WIN32
     tcase_set_timeout(tc_enc, 10.0);
+#endif
     tcase_add_test(tc_enc, CA1_vnpuenc_factory_make);
     tcase_add_test(tc_enc, CA2_vnpuenc_property_defaults_and_set);
     tcase_add_test(tc_enc, CB3_vnpuenc_full_cycle);

@@ -153,7 +153,9 @@ static std::string infer_pipe_noapp() {
 static Suite *pl_infer_suite(void) {
     Suite *s = suite_create("pl_infer");
     TCase *tc = tcase_create("inference");
+#ifndef _WIN32
     tcase_set_timeout(tc, 60.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, PL_A_infer_produces_detections);
     tcase_add_test(tc, PL_A_infer_detection_fields);

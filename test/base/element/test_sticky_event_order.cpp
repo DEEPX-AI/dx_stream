@@ -123,7 +123,9 @@ GST_END_TEST;
 static Suite *sticky_event_order_suite(void) {
     Suite *s = suite_create("sticky_event_order");
     TCase *tc = tcase_create("order");
+#ifndef _WIN32
     tcase_set_timeout(tc, 30.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, STICKY_dxosd_order);
     tcase_add_test(tc, STICKY_dxrate_order);

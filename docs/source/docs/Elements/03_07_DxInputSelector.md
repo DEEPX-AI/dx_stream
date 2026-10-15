@@ -8,6 +8,7 @@ It is the entry boundary of the multi-stream domain — its src caps are `applic
 
 - Among N input streams, DxInputSelector selects the buffer with the smallest PTS and forwards it downstream.  
 - This approach ensures that the output stream maintains temporal consistency across input channels.  
+- Buffers without a valid PTS are dropped.  
 
 
 **Event Handling**
@@ -47,7 +48,7 @@ GObject
 | **Name**    | **Description**           | **Type**  | **Default Value** |
 |-------------|---------------------------|-----------|--------------------|
 | `name`     | Sets the unique name of the DxInputSelector element.  | String   | `"dxinputselector0"`   |
-| `max-queue-size` | Maximum number of buffers to queue per input stream.  | Unsigned Integer | `2` |
+| `max-queue-size` | Number of buffers per stream assumed when reporting LATENCY (reported latency = `max-queue-size` × frame duration). It does not limit the queue size.  | Unsigned Integer | `2` |
 
 !!! note "NOTE"  
 
@@ -61,4 +62,4 @@ GObject
     Elements designed for the domain (`DxPreprocess`, `DxInfer`, `DxPostprocess`, `DxTracker`, `DxOsd`, `DxRate`, `DxMsgConv`, `DxMsgBroker`) accept `application/x-dxvideoraw` and read per-buffer dimensions/stream-id from `DXFrameMeta`.  
     See [Multi-Stream Domain](./03_00_Multi_Stream_Domain.md) for the placement matrix.
 
-----
+---

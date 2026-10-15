@@ -74,15 +74,12 @@ if not errorlevel 1 (
 )
 
 REM ---- GStreamer MSVC ----
-set "GST_FOUND=0"
-if defined GSTREAMER_1_0_ROOT_MSVC_X86_64 (
-    if exist "%GSTREAMER_1_0_ROOT_MSVC_X86_64%\bin\gst-inspect-1.0.exe" set "GST_FOUND=1"
-)
-if "!GST_FOUND!"=="0" (
-    if exist "C:\Program Files\gstreamer\1.0\msvc_x86_64\bin\gst-inspect-1.0.exe" set "GST_FOUND=1"
-)
-if "!GST_FOUND!"=="1" (
-    echo   [OK] GStreamer MSVC x86_64
+call "%PROJECT_ROOT%\scripts\setup_gstreamer.bat" runtime
+if not errorlevel 1 (
+    powershell -NoProfile -ExecutionPolicy Bypass ^
+        -File "%PROJECT_ROOT%\scripts\check_gstreamer_version.ps1" ^
+        -GStreamerRoot "!GST_ROOT!"
+    if errorlevel 1 set "FAIL=1"
 ) else (
     echo   [MISSING] GStreamer MSVC x86_64 [Runtime + Development]
     echo            Download: https://gstreamer.freedesktop.org/download/
@@ -90,9 +87,21 @@ if "!GST_FOUND!"=="1" (
     set "FAIL=1"
 )
 
+REM ---- pkg-config ----
+pkg-config --version >nul 2>nul
+if not errorlevel 1 (
+    echo   [OK] pkg-config
+) else (
+    echo   [MISSING] pkg-config ^(not found or failed to run^)
+    echo            Download: https://github.com/pkgconf/pkgconf/releases
+    echo            Install the pkgconf x64 MSI and add its install directory to PATH.
+    echo            Open a new terminal, verify "pkg-config --version", and re-run.
+    set "FAIL=1"
+)
+
 echo.
 if "!FAIL!"=="1" (
-    echo [ERROR] Missing prerequisites. Install the items above and re-run.
+    echo [ERROR] Missing or incompatible prerequisites. Resolve the items above and re-run.
     exit /b 1
 )
 echo [Phase 1] All prerequisites OK.
@@ -250,7 +259,7 @@ echo ============================================================
 echo  Installation complete.
 echo  Next step: run build.bat to compile DX-Stream.
 echo ============================================================
-endlocal
+endlocal & set "PATH=%PATH%"
 exit /b 0
 
 :CheckVcpkgDeps

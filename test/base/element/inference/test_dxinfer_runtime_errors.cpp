@@ -159,7 +159,9 @@ GST_END_TEST;
 static Suite *dxinfer_runtime_suite(void) {
     Suite *s = suite_create("dxinfer_runtime");
     TCase *tc = tcase_create("runtime_errors");
+#ifndef _WIN32
     tcase_set_timeout(tc, 60.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, CE_infer_no_meta_drops_harness);
     tcase_add_test(tc, CE_infer_multiple_state_cycles);

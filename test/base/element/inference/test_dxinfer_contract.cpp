@@ -272,7 +272,9 @@ GST_END_TEST;
 static Suite *dxinfer_contract_suite(void) {
     Suite *s = suite_create("dxinfer_contract");
     TCase *tc = tcase_create("element_contract");
+#ifndef _WIN32
     tcase_set_timeout(tc, 60.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, CONTRACT_infer_sink_query_forwards_unknown);
     tcase_add_test(tc, CONTRACT_infer_accept_caps_rejects_invalid);

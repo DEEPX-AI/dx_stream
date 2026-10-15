@@ -1,21 +1,21 @@
-# Building DX-Stream on Orange Pi 5 Plus
+# Building DX-STREAM on Orange Pi 5 Plus
 
-This guide provides comprehensive instructions for building and running DX-Stream on the Orange Pi 5 Plus single-board computer with **DEEPX DX-M1 NPU** for AI accelerator.
+This guide provides comprehensive instructions for building and running DX-STREAM on the Orange Pi 5 Plus single-board computer with **DEEPX DX-M1 NPU** for AI accelerator.
 
-The Orange Pi 5 Plus is a powerful ARM-based development board designed for high-performance edge computing. When paired with the DEEPX DX-M1 NPU, it provides significant acceleration for AI and computer vision applications. This guide covers the complete setup process from SD card preparation to running DX-Stream applications.
+The Orange Pi 5 Plus is a powerful ARM-based development board designed for high-performance edge computing. When paired with the DEEPX DX-M1 NPU, it provides significant acceleration for AI and computer vision applications. This guide covers the complete setup process from SD card preparation to running DX-STREAM applications.
 
-**DX-Stream Building Process**
+**DX-STREAM Building Process**
 
 The overall construction and validation process is broken down into four sequential steps.
 
 - Step 1: SD Card Setup
 - Step 2: DX-RT NPU Driver Installation
-- Step 3: Build DX-Stream
+- Step 3: Build DX-STREAM
 - Step 4: Running Demo Applications
 
 ## Prerequisites
 
-This section outlines the essential hardware and software components required for building and running DX-Stream on the Orange Pi 5 Plus with the DEEPX DX-M1 NPU. Ensuring these requirements is crucial for a successful installation.
+This section outlines the essential hardware and software components required for building and running DX-STREAM on the Orange Pi 5 Plus with the DEEPX DX-M1 NPU. Ensuring these requirements is crucial for a successful installation.
 
 ### Hardware Requirements
 - Orange Pi 5 Plus development board
@@ -154,7 +154,6 @@ cd dx_rt
 
 - `--all`: Installs all dependencies and development tools
 
-- Alternative: `./install.sh --minimal` for runtime-only installation
 
 ### [Step 2.4] Verifying Installation (dxcli)
 
@@ -204,9 +203,9 @@ dmesg | grep -i deepx
 
 ---
 
-## [Step 3] Building DX-Stream Framework
+## [Step 3] Building DX-STREAM Framework
 
-Compile and install the DX-Stream GStreamer framework and plugins.
+Compile and install the DX-STREAM GStreamer framework and plugins.
 
 ### [Step 3.1] Installing Build Dependencies
 
@@ -216,7 +215,7 @@ The Orange Pi 5 Plus Ubuntu image includes pre-configured GStreamer packages wit
 sudo apt-get update
 sudo apt install -y python3-pip ninja-build
 sudo pip install meson
-sudo apt-get install -y libeigen3-dev libjson-glib-dev librdkafka-dev libmosquitto-dev libyuv-dev
+sudo apt-get install -y libeigen3-dev libjson-glib-dev librdkafka-dev libmosquitto-dev libyuv-dev librga-dev
 ```
 
 **Package Descriptions**  
@@ -227,8 +226,13 @@ sudo apt-get install -y libeigen3-dev libjson-glib-dev librdkafka-dev libmosquit
 - `librdkafka-dev`: Apache Kafka client library  
 - `libmosquitto-dev`: MQTT broker client library  
 - `libyuv-dev`: YUV color space conversion library  
+- `librga-dev`: Rockchip RGA library. The RGA transform backend of DX-STREAM is built automatically when it is installed  
 
-### [Step 3.2] Cloning & Compiling DX-Stream
+!!! note "NOTE"
+
+    DX-STREAM also requires OpenCV 4.2.0 or higher. If the image does not include it, install it with `sudo apt install -y libopencv-dev`.
+
+### [Step 3.2] Cloning & Compiling DX-STREAM
 
 ```bash
 cd ~/dxnn
@@ -248,7 +252,13 @@ cd dx_stream
 
 ### [Step 3.3] Verifying GStreamer Plugins
 
-Check if DX-Stream plugins are properly installed:
+Apply the environment variables that `build.sh` added to `~/.bashrc` (or open a new terminal):
+
+```bash
+source ~/.bashrc
+```
+
+Check if DX-STREAM plugins are properly installed:
 
 ```bash
 gst-inspect-1.0 | grep dx
@@ -257,13 +267,13 @@ gst-inspect-1.0 | grep dx
 **Expected Output**:  
 
 ```
-dxstream:  dxgather: DX Gather
-dxstream:  dxinfer: DX Inference
-dxstream:  dxmsgbroker: DX Message Broker
-dxstream:  dxmsgconv: DX Message Converter
-dxstream:  dxosd: DX On-Screen Display
-dxstream:  dxpostprocess: DX Post-process
-dxstream:  dxpreprocess: DX Pre-process
+dxstream:  dxgather: DxGather
+dxstream:  dxinfer: DXInfer
+dxstream:  dxmsgbroker: DXMsgBroker
+dxstream:  dxmsgconv: DXMsgConv
+dxstream:  dxosd: DXOsd
+dxstream:  dxpostprocess: DXPostprocess
+dxstream:  dxpreprocess: DXPreprocess
 ...
 ```
 
@@ -289,7 +299,7 @@ cd ~/dxnn/dx_stream
 **Available Demo Options**:  
 
 - Object detection with YOLO models  
-- Face detection and recognition  
+- Face detection (YOLOv5s_Face)  
 - Pose estimation  
 - Real-time video processing  
 
@@ -302,6 +312,7 @@ For detailed demo instructions, refer to the [**Installation Guide**](./02_DX-ST
     - Video Decode/Encode (VPU): Rockchip RK3588 VPU  
     - GPU Acceleration: Mali-G610 MP4  
     - NPU Acceleration (AI): DEEPX DX-M1 (25 TOPS)  
+    - 2D Acceleration (RGA): Rockchip RGA, used by the DX-STREAM transform backend (`DxPreprocess`, `DxScale`, `DxConvert`) when `librga-dev` is installed  
 
     For maximum performance, ensure your pipelines utilize these specific hardware accelerators.
 
@@ -309,7 +320,7 @@ For detailed demo instructions, refer to the [**Installation Guide**](./02_DX-ST
 
 ## Troubleshooting & Diagnostics
 
-This section provides guidance for resolving common issues encountered during the DX-Stream installation or runtime.
+This section provides guidance for resolving common issues encountered during the DX-STREAM installation or runtime.
 
 ### Hardware & Plugin Issues (NPU, GStreamer Cache)
 
@@ -327,11 +338,12 @@ dmesg | grep -i dx_rt
 
 **GStreamer Plugin Not Found**  
 
-If DX-Stream plugins are not registered, manually refresh the plugin cache.
+If DX-STREAM plugins are not registered, clear the GStreamer cache and check again.
 
 ```bash
-# Refresh plugin cache
-gst-inspect-1.0 --plugin-path=/usr/local/lib/gstreamer-1.0
+# Clear plugin cache
+rm -rf ~/.cache/gstreamer-1.0/
+gst-inspect-1.0 dxstream
 ```
 
 ### Build & Performance Issues

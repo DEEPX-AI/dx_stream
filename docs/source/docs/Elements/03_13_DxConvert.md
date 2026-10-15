@@ -62,14 +62,14 @@ gst-launch-1.0 \
   autovideosink
 ```
 
-Convert I420 to BGR before inference:
+Convert I420 to RGB before inference:
 
 ```bash
 gst-launch-1.0 \
   filesrc location=input.mp4 ! decodebin ! \
   video/x-raw,format=I420 ! \
   dxconvert ! \
-  video/x-raw,format=BGR ! \
+  video/x-raw,format=RGB ! \
   dxpreprocess preprocess-id=1 ... ! \
   dxinfer ...
 ```
@@ -90,7 +90,7 @@ gst-launch-1.0 \
 
     - `dxconvert` does **not** perform scaling. Input and output resolutions must match.
     - For video scaling, use **DxScale**.
-    - Hardware acceleration is available for NV12→RGB and NV12→BGR on RGA. Other combinations use the libyuv software backend.
+    - Which conversions are hardware-accelerated depends on the platform and the installed backends. Combinations that no hardware backend supports use the libyuv software backend.
 
 !!! warning "DxInputSelector Placement"
 

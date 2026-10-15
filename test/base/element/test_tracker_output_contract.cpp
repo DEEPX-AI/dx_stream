@@ -301,7 +301,9 @@ GST_END_TEST;
 static Suite *tracker_output_contract_suite(void) {
     Suite *s = suite_create("tracker_output_contract");
     TCase *tc = tcase_create("output_contract");
+#ifndef _WIN32
     tcase_set_timeout(tc, 120.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, TO_emitted_boxes_are_real);
     tcase_add_test(tc, TO_declared_parameters_are_observable);

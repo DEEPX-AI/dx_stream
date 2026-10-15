@@ -253,7 +253,9 @@ GST_END_TEST;
 static Suite *pl_roi_suite(void) {
     Suite *s = suite_create("pl_roi");
     TCase *tc = tcase_create("roi_clipping");
+#ifndef _WIN32
     tcase_set_timeout(tc, 60.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, PL_A5_primary_roi_all_inside);
     tcase_add_test(tc, PL_A5_primary_roi_precision);

@@ -68,7 +68,9 @@ GST_END_TEST;
 static Suite *dxtracker_caps_suite(void) {
     Suite *s = suite_create("dxtracker_caps");
     TCase *tc = tcase_create("templates");
+#ifndef _WIN32
     tcase_set_timeout(tc, 10.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, TRK_sink_template_constrained);
     tcase_add_test(tc, TRK_src_template_constrained);

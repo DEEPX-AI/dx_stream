@@ -142,7 +142,9 @@ GST_END_TEST;
 static Suite *pl_infer_models_suite(void) {
     Suite *s = suite_create("pl_infer_models");
     TCase *tc = tcase_create("multi_model_precision");
+#ifndef _WIN32
     tcase_set_timeout(tc, 120.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, PL_A1_YoloV5S_PPU_precision);
     tcase_add_test(tc, PL_A1_yolo26n_precision);

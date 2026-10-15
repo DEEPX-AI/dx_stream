@@ -77,6 +77,46 @@ python3 -c "import gi; gi.require_version('Gst', '1.0'); from gi.repository impo
 python3 -c "import pydxs; print('pydxs OK')"
 ```
 
+### Windows Installation and Verification
+
+Run `install.bat` and `build.bat` from the project root, then verify in a new CMD:
+
+```cmd
+call venv-dx_stream\Scripts\activate.bat
+python -c "import pydxs; print('pydxs OK')"
+test\run_pydxs.bat
+```
+
+On Windows Python 3.8+, `pydxs` registers its dependency directories with
+`os.add_dll_directory()` before loading the private native extension
+`pydxs._pydxs`. Applications do not need to register DLL directories themselves.
+Directory handles remain alive for subsequent native calls. Python 3.6-3.7
+retains its legacy PATH-based loading behavior.
+
+The loader selects one DX Stream installation and one GStreamer SDK:
+
+| Runtime | Discovery order |
+|---------|-----------------|
+| DX Stream | `DX_STREAM_ROOT\install`, the current venv/package checkout's `install`, then the prefix recorded when the wheel was built |
+| GStreamer | `GSTREAMER_1_0_ROOT_MSVC_X86_64`, `GSTREAMER_1_0_ROOT_X86_64`, the build-selected SDK, then standard MSVC x64 installation locations |
+| DEEPX runtime | `DEEPX_SDK_DIR\bin`, the build-selected SDK, then the legacy runtime directory |
+| Optional V-NPU runtime | `DEEPX_VNPU_DIR\bin`, or the SDK recorded by a V-NPU-enabled build |
+
+Use absolute paths for these variables. An explicit invalid `DX_STREAM_ROOT` or
+DEEPX SDK path produces an import error rather than loading another checkout.
+The loader does not search arbitrary PATH entries or depend on the application's
+working directory. If an installation is moved, update the corresponding
+variables or rebuild/reinstall the binding. Runtime DLLs are not bundled in the
+wheel; the external SDK installations must remain available.
+
+`build.bat` verifies plain `import pydxs` without manual DLL registration.
+`test\run_pydxs.bat` also runs the cold-process import and DLL loader regression
+checks. Native import does not require `gi`; pipeline tests still require a
+Python-compatible PyGObject installation and are skipped when it is unavailable.
+
+The public `pydxs` API is unchanged. Linux continues to use the native `pydxs`
+module and its existing rpath configuration.
+
 ## Quick Start
 
 ### 1. Run Basic Tests
@@ -324,4 +364,3 @@ data = user_meta.get_data()
 For complete examples, see:
 - [`test/test_pydxs/test_usermeta.py`](../../../test/test_pydxs/test_usermeta.py) - Basic patterns
 - [`dx_stream/apps/usermeta/usermeta_app.py`](../../../dx_stream/apps/usermeta/usermeta_app.py) - Full application
-

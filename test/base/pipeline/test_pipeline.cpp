@@ -417,7 +417,9 @@ GST_END_TEST;
 static Suite *pipeline_suite(void) {
     Suite *s = suite_create("pipeline");
     TCase *tc = tcase_create("integration");
+#ifndef _WIN32
     tcase_set_timeout(tc, 30.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, PL_transform_chain);
     tcase_add_test(tc, PL_transform_meta_preserved);

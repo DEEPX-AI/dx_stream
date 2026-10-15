@@ -172,7 +172,9 @@ GST_END_TEST;
 static Suite *pl_interval_semantic_suite(void) {
     Suite *s = suite_create("pl_interval_semantic");
     TCase *tc = tcase_create("interval_semantics");
+#ifndef _WIN32
     tcase_set_timeout(tc, 60.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, PL_A4_interval_infer_vs_skip);
     tcase_add_test(tc, PL_A4_interval_skip_ratio);

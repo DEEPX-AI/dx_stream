@@ -88,7 +88,9 @@ GST_END_TEST;
 static Suite *pl_state_stress_suite(void) {
     Suite *s = suite_create("pl_state_stress");
     TCase *tc = tcase_create("state_cycles");
+#ifndef _WIN32
     tcase_set_timeout(tc, 120.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, PL_state_stress_transform_10x);
     tcase_add_test(tc, PL_state_stress_rate_10x);

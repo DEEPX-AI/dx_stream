@@ -198,7 +198,9 @@ GST_END_TEST;
 static Suite *latency_contract_suite(void) {
     Suite *s = suite_create("latency_contract");
     TCase *tc = tcase_create("self_time");
+#ifndef _WIN32
     tcase_set_timeout(tc, 30.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, LAT_dxrate_adds_frame_duration);
     tcase_add_test(tc, LAT_dxosd_self_time_added);

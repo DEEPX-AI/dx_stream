@@ -184,7 +184,9 @@ GST_END_TEST;
 static Suite *pl_event_chain_suite(void) {
     Suite *s = suite_create("pl_event_chain");
     TCase *tc = tcase_create("event_propagation");
+#ifndef _WIN32
     tcase_set_timeout(tc, 60.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, PL_event_chain_stream_start);
     tcase_add_test(tc, PL_event_chain_ordering);

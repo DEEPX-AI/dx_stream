@@ -332,12 +332,16 @@ static Suite *dxosd_events_suite(void) {
     Suite *s = suite_create("dxosd_events");
 
     TCase *tc_state = tcase_create("state");
+#ifndef _WIN32
     tcase_set_timeout(tc_state, 30.0);
+#endif
     suite_add_tcase(s, tc_state);
     tcase_add_test(tc_state, CE_osd_paused_to_ready_clears_stream_info);
 
     TCase *tc_nv12 = tcase_create("nv12");
+#ifndef _WIN32
     tcase_set_timeout(tc_nv12, 30.0);
+#endif
     suite_add_tcase(s, tc_nv12);
     tcase_add_test(tc_nv12, CE_osd_nv12_bbox_draws);
     tcase_add_test(tc_nv12, CE_osd_nv12_depth_draws);
@@ -345,7 +349,9 @@ static Suite *dxosd_events_suite(void) {
     tcase_add_test(tc_nv12, CE_osd_nv12_no_meta_passthrough);
 
     TCase *tc_i420 = tcase_create("i420");
+#ifndef _WIN32
     tcase_set_timeout(tc_i420, 30.0);
+#endif
     suite_add_tcase(s, tc_i420);
     tcase_add_test(tc_i420, CE_osd_i420_bbox_draws);
     tcase_add_test(tc_i420, CE_osd_i420_depth_draws);

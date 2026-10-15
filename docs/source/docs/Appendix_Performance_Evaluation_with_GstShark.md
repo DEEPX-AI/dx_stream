@@ -6,8 +6,8 @@ GstShark is a powerful performance analysis tool for GStreamer pipelines that pr
 
 ### Automated Installation Script
 
-DX-Stream provides an automated installation script to simplify the setup of GstShark and its dependencies.
-Execute the following command from the DX-Stream project root directory:
+DX-STREAM provides an automated installation script to simplify the setup of GstShark and its dependencies.
+Execute the following command from the DX-STREAM project root directory:
 
 ```bash
 ./install_gstshark.sh
@@ -15,10 +15,10 @@ Execute the following command from the DX-Stream project root directory:
 
 This automated script performs the following actions required for a system-wide GstShark installation:  
 
-- **Dependency Installation**: Installs necessary system packages (e.g., graphviz, libgraphviz-dev).  
-- **Source Acquisition**: Clones the GstShark repository from GitHub.  
+- **Dependency Installation**: Installs necessary system packages (graphviz, libgraphviz-dev, octave, epstool, babeltrace).  
+- **Source Acquisition**: Clones the GstShark repository from GitHub into the `util/` directory of the project root.  
 - **Build and Configuration**: Compiles and installs GstShark with the appropriate GStreamer configurations.  
-- **PATH Update**: Adds GstShark visualization and analysis tools to your system's PATH environment variable.  
+- **PATH Update**: Adds the GstShark visualization and analysis tools (`gstshark-plot`) to your user `PATH` by appending an entry to `~/.bashrc`.  
 
 !!! note "NOTE" 
 
@@ -28,7 +28,7 @@ This automated script performs the following actions required for a system-wide 
 
 GstShark uses environment variables to control which performance data is collected and where the results are stored.  
 
-- `GST_TRACER`: Specifies which GstShark tracers to use (semicolon-separated)
+- `GST_TRACERS`: Specifies which GstShark tracers to use (semicolon-separated)
 - `GST_SHARK_LOCATION`: Directory where GstShark results will be saved
 - `GST_DEBUG`: Controls debug output level for tracer information
 
@@ -56,21 +56,21 @@ This command demonstrates how to use GstShark to analyze a standard H.264 video 
 
 ```bash
 GST_DEBUG=GST_TRACER:7 GST_TRACERS="cpuusage;proctime;framerate;bitrate" \
-    gst-launch-1.0 filesrc location=./dx_stream/samples/videos/codec_test_clip_h264_16Mbps.mp4 ! \
+    gst-launch-1.0 filesrc location=./dx_stream/samples/videos/boat.mp4 ! \
     qtdemux ! h264parse ! avdec_h264 ! videoconvert ! fakesink
 ```
 
 ### DX-STREAM Pipeline Analysis
 
-To analyze the performance contribution of the NPU-accelerated elements (dxpreprocess, dxinfer, dxpostprocess), include them in the pipeline and use relevant tracers like queuelevel to detect bottlenecks around the NPU element.
+To analyze the performance contribution of the NPU-accelerated elements (dxpreprocess, dxinfer, dxpostprocess), include them in the pipeline and use relevant tracers like queuelevel to detect bottlenecks around the NPU element. The `queuelevel` tracer measures only `queue` elements, so place a `queue` between the processing stages as shown below.
 
 ```bash
 GST_DEBUG="GST_TRACER:7" GST_TRACERS="cpuusage;proctime;framerate;queuelevel" \
-    gst-launch-1.0 filesrc location=./dx_stream/samples/videos/codec_test_clip_h264_16Mbps.mp4 ! \
-    qtdemux ! h264parse ! avdec_h264 ! \
-    dxpreprocess config-file-path=./dx_stream/configs/Object_Detection/YoloV7/preprocess_config.json ! \
-    dxinfer config-file-path=./dx_stream/configs/Object_Detection/YoloV7/inference_config.json ! \
-    dxpostprocess config-file-path=./dx_stream/configs/Object_Detection/YoloV7/postprocess_config.json ! \
+    gst-launch-1.0 filesrc location=./dx_stream/samples/videos/boat.mp4 ! \
+    qtdemux ! h264parse ! avdec_h264 ! queue max-size-buffers=1 ! \
+    dxpreprocess config-file-path=./dx_stream/configs/YoloV5S_PPU/preprocess_config.json ! queue max-size-buffers=1 ! \
+    dxinfer config-file-path=./dx_stream/configs/YoloV5S_PPU/inference_config.json ! queue max-size-buffers=1 ! \
+    dxpostprocess config-file-path=./dx_stream/configs/YoloV5S_PPU/postprocess_config.json ! queue max-size-buffers=1 ! \
     dxosd ! fakesink
 ```
 
@@ -86,7 +86,7 @@ mkdir -p /tmp/gst-shark-results
 GST_DEBUG="GST_TRACER:7" \
 GST_TRACERS="cpuusage;proctime;framerate;bitrate" \
 GST_SHARK_LOCATION="/tmp/gst-shark-results" \
-    gst-launch-1.0 filesrc location=./dx_stream/samples/videos/codec_test_clip_h264_16Mbps.mp4 ! \
+    gst-launch-1.0 filesrc location=./dx_stream/samples/videos/boat.mp4 ! \
     qtdemux ! h264parse ! avdec_h264 ! videoconvert ! fakesink
 
 # View results
@@ -124,10 +124,10 @@ GstShark tracers help pinpoint the exact location and nature of performance bott
 
 Applying these strategies can alleviate identified bottlenecks:
 
-- **Element Configuration:** Adjust element-specific parameters, such as quantization settings in the NPU elements or interpolation methods in video conversion elements.  
+- **Element Configuration:** Adjust element-specific parameters, such as the inference `interval` of DxPreprocess or interpolation methods in video conversion elements.  
 - **Buffer Management:** Optimize queue sizes and buffer pools to balance latency and throughput. Larger queues reduce frame drops but increase latency.  
 - **Threading:** Utilize multi-threaded elements, where available, to leverage multiple CPU cores for parallel processing.  
-- **Hardware Acceleration:** Crucially, ensure GPU acceleration (Mali-G610 MP4) is enabled for supported non-NPU elements (e.g., video conversion) to offload the host CPU.  
+- **Hardware Acceleration:** Crucially, ensure hardware acceleration (e.g., GPU) available on your platform is enabled for supported non-NPU elements (e.g., video conversion) to offload the host CPU.  
 
 ---
 
@@ -145,7 +145,7 @@ This section addresses common issues encountered when using GstShark for perform
 
 ### GStreamer Registry Issues
 
-If the GstShark tracers (e.g., sharktime, sharklog) are not recognized by GStreamer, the plugin registry cache is likely outdated. Follow these steps to force GStreamer to rescan and register the tracers.
+If the GstShark tracers (e.g., cpuusage, proctime) are not recognized by GStreamer, the plugin registry cache is likely outdated. Follow these steps to force GStreamer to rescan and register the tracers.
 
 - Clear GStreamer Registry Cache
 

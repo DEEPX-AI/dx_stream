@@ -84,7 +84,9 @@ GST_END_TEST;
 static Suite *pl_video_suite(void) {
     Suite *s = suite_create("pl_video");
     TCase *tc = tcase_create("video_data");
+#ifndef _WIN32
     tcase_set_timeout(tc, 60.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, PL_video_decode_transform);
     tcase_add_test(tc, PL_video_lifecycle);
