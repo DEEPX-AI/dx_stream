@@ -152,7 +152,9 @@ GST_END_TEST;
 static Suite *caps_renegotiation_suite(void) {
     Suite *s = suite_create("caps_renegotiation");
     TCase *tc = tcase_create("renego");
+#ifndef _WIN32
     tcase_set_timeout(tc, 30.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, CE_scale_caps_renego);
     tcase_add_test(tc, CE_convert_caps_renego);

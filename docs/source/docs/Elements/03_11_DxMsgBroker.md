@@ -8,6 +8,7 @@ Connection settings are managed using the `conn-info` property.
 
 - Receives payloads from upstream elements and publishes them to the selected broker.  
 - Compatible with broker systems such as MQTT and Kafka.  
+- If the broker is not connected or publishing fails, the message is dropped with a warning. After 10 consecutive failures, the element posts an error and the pipeline stops. A successful publish resets the counter.  
 
 **Connection Information**  
 
@@ -60,6 +61,6 @@ GObject
 
 !!! warning "Property validation"
 
-    `conn-info` and `topic` are documented as **required**, but the element does **not** validate them in code. If they are omitted, the element does not fail at construction time — the error surfaces only when the broker tries to connect or publish (e.g., broker connection refused, or messages published to a fallback topic name). Always set both explicitly.
+    `broker-name`, `conn-info`, and `topic` are validated when the element starts. If `broker-name` is not `mqtt` or `kafka`, or if `conn-info` or `topic` is empty, the element posts a `GST_ELEMENT_ERROR` and fails to start. Always set `conn-info` and `topic` explicitly.
 
 ---

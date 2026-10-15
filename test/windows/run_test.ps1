@@ -32,14 +32,22 @@ if (-not $projectRoot) {
 $testDir = Join-Path $projectRoot "test"
 
 # ---- GStreamer root ----
-$gstDir = if ($env:GSTREAMER_1_0_ROOT_MSVC_X86_64) {
-    $env:GSTREAMER_1_0_ROOT_MSVC_X86_64.TrimEnd('\')
-} elseif (Test-Path "C:\Program Files\gstreamer\1.0\msvc_x86_64") {
+$gstDir = $null
+foreach ($candidate in @(
+    $env:GSTREAMER_1_0_ROOT_MSVC_X86_64,
+    $env:GSTREAMER_1_0_ROOT_X86_64,
     "C:\Program Files\gstreamer\1.0\msvc_x86_64"
-} else {
-    Write-Error "[FATAL] GStreamer MSVC not found. Install GStreamer or set GSTREAMER_1_0_ROOT_MSVC_X86_64."
+)) {
+    if ($candidate -and (Test-Path -LiteralPath "$candidate\lib\pkgconfig\gstreamer-1.0.pc")) {
+        $gstDir = $candidate.TrimEnd('\')
+        break
+    }
+}
+if (-not $gstDir) {
+    Write-Error "[FATAL] GStreamer development files not found. Set GSTREAMER_1_0_ROOT_MSVC_X86_64 or GSTREAMER_1_0_ROOT_X86_64."
     exit 3
 }
+$env:PATH = "$gstDir\bin;$env:PATH"
 
 $installDir = Join-Path $projectRoot "install"
 # vcpkg manifest deps (eigen3, opencv4, etc.) — same location build.bat uses
@@ -208,8 +216,8 @@ $env:PATH = "$installDir\lib\gstreamer-1.0;$installDir\bin;" +
             "$installDir\share\gstdxstream\bin;" +
             "$gstDir\bin;$env:PATH"
 
-# Timeout: 120 s per test (some tests like dxmsgbroker have 30s internal TC timeouts
-# and run multiple TCs; 60s was too short)
+# Windows suites omit tcase_set_timeout(): no-fork libcheck builds may exit(2).
+# This watchdog limits the whole executable, including all its test cases.
 $TEST_TIMEOUT_SEC = 120
 
 $run = Start-Process -FilePath $binPath -NoNewWindow -PassThru `

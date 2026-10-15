@@ -175,7 +175,9 @@ GST_END_TEST;
 static Suite *dxvnpupreprocess_suite() {
     Suite *suite = suite_create("dxvnpupreprocess");
     TCase *testcase = tcase_create("acceptance");
+#ifndef _WIN32
     tcase_set_timeout(testcase, 30.0);
+#endif
     suite_add_tcase(suite, testcase);
     tcase_add_test(testcase, CE_preprocess_vnpu_host_tensor);
     tcase_add_test(testcase, CE_preprocess_vnpu_crop_applies_to_tensor);

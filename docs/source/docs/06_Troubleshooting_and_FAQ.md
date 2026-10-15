@@ -38,25 +38,25 @@ $ GST_DEBUG=dxinfer:4,dxtracker:4 ./your_application
 **Monitor inference performance:**
 
 ```bash
-$ GST_DEBUG=dxinfer:4 ./your_app 2>&1 | grep "completed in"
+$ GST_DEBUG=dxinfer:5 ./your_app 2>&1 | grep "Inference throughput"
 ```
 
 **Debug configuration loading:**
 
 ```bash
-$ GST_DEBUG=dx*:3 ./your_app 2>&1 | grep "Loaded"
+$ GST_DEBUG=dx*:4 ./your_app 2>&1 | grep -i "loaded"
 ```
 
 **Track buffer flow:**
 
 ```bash
-$ GST_DEBUG=dx*:4 ./your_app 2>&1 | grep "Processing buffer"
+$ GST_DEBUG=dx*:6 ./your_app 2>&1 | grep "Processing buffer"
 ```
 
 **Identify dropped frames:**
 
 ```bash
-$ GST_DEBUG=dxpreprocess:4,dxinfer:4 ./your_app 2>&1 | grep "Dropping"
+$ GST_DEBUG=dxpreprocess:6,dxinfer:6 ./your_app 2>&1 | grep "Dropping"
 ```
 
 **Save logs to file:**
@@ -80,7 +80,8 @@ The pipeline may exhibit abnormal behavior or fail to display video when attempt
 #### Cause: Unsupported Element  
 
 The root cause of abnormal behavior is:
--	Incompatibility: The specified displaysink element is not supported by the current PC environment (e.g., due to unsupported graphics drivers or display server settings).
+
+- Incompatibility: The specified displaysink element is not supported by the current PC environment (e.g., due to unsupported graphics drivers or display server settings).
 
 #### Solution: Element Selection & Compatibility  
 
@@ -255,7 +256,7 @@ Solutions focus on optimizing both the PC environment and the GStreamer pipeline
     gst-launch-1.0 filesrc location=video.mp4 ! decodebin ! queue ! autovideosink
     ```
 
-- **2.	Use Asynchronous Rendering (Disable Synchronization):**
+- **2. Use Asynchronous Rendering (Disable Synchronization):**
 
     Disable real-time playback synchronization by setting sync=false on the sink element. This tells the sink to render frames as quickly as possible, ignoring the clock and often reducing perceived lag, though it may result in playback that is faster or slower than real-time.
 
@@ -321,7 +322,7 @@ Solutions focus on optimizing both the PC environment and the GStreamer pipeline
 - Check Consumer Group Status
   ```bash
   # monitor the consumer group status to identify lag
-  bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 --group dx_stream_group --describe
+  bin/kafka-consumer-groups.sh --bootstrap-server localhost:9092 --group my-group --describe
   ```
 
 **SSL Handshake Failures**
@@ -346,7 +347,7 @@ Solutions focus on optimizing both the PC environment and the GStreamer pipeline
 
 **Performance Issues**
 
-- Adjust `message-interval` property to reduce message frequency
+- Adjust the `message-interval` property on **DxMsgConv** to reduce message frequency
 - Monitor the broker server resources (CPU, memory, network)
 
 
@@ -373,24 +374,25 @@ This error usually means the Kafka broker is not running. To resolve this, verif
 
 - Installation and Startup (If not running)
 
-    Installation: Create a utilities directory and install required dependencies (Java JDK is essential). Download and extract the Kafka distribution:
+    Installation: Create a utilities directory and install **Java 17 or later** (required by Kafka 4.0+). Download and extract the Kafka distribution:
 
     ```
     $ mkdir utils && cd utils
     $ sudo apt update
-    $ sudo apt-get install default-jdk
-    $ wget https://downloads.apache.org/kafka/3.9.2/kafka_2.13-3.9.2.tgz
-    $ tar -xzf kafka_2.13-3.9.2.tgz
-    $ cd kafka_2.13-3.9.2
+    $ sudo apt install openjdk-17-jdk
+    $ wget https://downloads.apache.org/kafka/4.3.1/kafka_2.13-4.3.1.tgz
+    $ tar -xzf kafka_2.13-4.3.1.tgz
+    $ cd kafka_2.13-4.3.1
     ```
 
-    Start Zookeeper (terminal 1): Kafka requires Zookeeper to be running first
+    Initialize KRaft storage (first time only): Kafka 4.0+ no longer uses Zookeeper
 
     ```
-    $ bin/zookeeper-server-start.sh config/zookeeper.properties
+    $ KAFKA_CLUSTER_ID=$(bin/kafka-storage.sh random-uuid)
+    $ bin/kafka-storage.sh format -t "$KAFKA_CLUSTER_ID" -c config/server.properties --standalone
     ```
 
-    Start Kafka Broker (Terminal 2): In a separate terminal session, start the Kafka broker
+    Start the Kafka broker (in the foreground; keep this terminal open and use another terminal for the pipeline)
 
     ```
     $ bin/kafka-server-start.sh config/server.properties
@@ -398,7 +400,7 @@ This error usually means the Kafka broker is not running. To resolve this, verif
 
 !!! note "NOTE"
 
-    Keep both terminal sessions running while the DX-STREAM pipeline is active to ensure proper operation.
+    Keep the broker terminal running while the DX-STREAM pipeline is active. If storage is already initialized, skip the format step and run only `bin/kafka-server-start.sh config/server.properties`.
 
 !!! note "Remote Access"
 
@@ -542,13 +544,22 @@ See the **Multi-Stream Domain** chapter for the full element placement matrix.
 
 #### Problem: Missing `DXFrameMeta` inside the multi-stream domain  
 
-A warning or error such as the following appears at runtime:
+One of the following symptoms appears at runtime:
 
-```
-WARN  dxosd ... DXFrameMeta is missing on input buffer
-```
+- `DxInfer` posts an error:
 
-or a dual-mode element falls back to `stream_id=0` for every buffer.
+  ```
+  ERROR dxinfer ... No DXFrameMeta in push buffer
+  ```
+
+- `DxPostprocess`, `DxTracker`, or `DxOsd` pass the buffer through unchanged, so no results or overlays appear. The only trace is a log-level message, visible with `GST_DEBUG=dx*:6`:
+
+  ```
+  LOG   dxpostprocess ... No DXFrameMeta, passing through
+  LOG   dxosd ... No frame metadata, passing through
+  ```
+
+- A dual-mode element such as `DxRate` or `DxMsgConv` falls back to `stream_id=0` for every buffer.
 
 #### Cause: Buffer entered the domain without `DXFrameMeta`  
 

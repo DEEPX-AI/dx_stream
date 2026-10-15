@@ -77,7 +77,9 @@ GST_END_TEST;
 static Suite *dxvnpudec_suite() {
     Suite *suite = suite_create("dxvnpudec");
     TCase *testcase = tcase_create("acceptance");
+#ifndef _WIN32
     tcase_set_timeout(testcase, 60.0);
+#endif
     suite_add_tcase(suite, testcase);
     tcase_add_test(testcase, CE_dxvnpudec_h264_sample);
     tcase_add_test(testcase, CE_dxvnpudec_h265_sample);

@@ -102,6 +102,7 @@ GObject
 
 - **Normal mode** (sink caps = `video/x-raw`): frame dimensions are read from caps. `stream_id` is treated as `0`.
 - **Domain mode** (sink caps = `application/x-dxvideoraw`): frame dimensions are read from `DXFrameMeta._width/_height`, and `stream_id` from `DXFrameMeta._stream_id`. The element also requests `DXFrameMeta` as a buffer meta during `ALLOCATION` so that upstream pools allocate buffers with the meta attached.
+
 ### **Properties**  
 This table provides a complete reference to the properties of the **DxPreprocess** element.  
 
@@ -113,7 +114,7 @@ This table provides a complete reference to the properties of the **DxPreprocess
 | `resize-width`       | Specifies the width for resizing.                                                                   | Unsigned Integer     | `0`                    |
 | `resize-height`      | Specifies the height for resizing.                                                                  | Unsigned Integer     | `0`                    |
 | `keep-ratio`         | Maintains the original aspect ratio during resizing.                                                | Boolean              | `true`                 |
-| `pad-value`          | Padding color value for R, G, B pixels during                                             | Unsigned Integer     | `0`                    |
+| `pad-value`          | Padding color value for R, G, B (range: 0-255)                                            | Unsigned Integer     | `0`                    |
 | `color-format`       | Specifies the color format for preprocessing. (`0`: RGB, `1`: BGR)                                  | Unsigned Integer     | `0` (RGB)              |
 | `secondary-mode`     | Enables Secondary Mode for processing object regions.                                               | Boolean              | `false`                |
 | `target-class-id`    | Filters objects in Secondary Mode by class ID. (`-1` processes all objects).                        | Integer              | `-1`                   |
@@ -124,8 +125,6 @@ This table provides a complete reference to the properties of the **DxPreprocess
 | `transpose`          | Enables transposing of the output tensor axes.                                                      | Boolean              | `false`                |
 | `library-file-path`  | Path to the custom preprocess library, if used.                                                     | String               | `null`                 |
 | `function-name`      | Name of the custom preprocessing function to use.                                                   | String               | `null`                 |
-
-
 
 ### **Example JSON Configuration**
 
@@ -140,7 +139,7 @@ This table provides a complete reference to the properties of the **DxPreprocess
 
 !!! note "NOTE" 
 
-    - For implementing custom preprocess logic, refer to **Chapter. Writing Your Own Application `“Custom Pre-Process Library Documentation”`**. Custom libraries must follow the error reporting contract described there (no `g_error()` / `abort()`; use `g_warning()` for per-frame skips and `throw std::runtime_error` for permanent errors).
+    - For implementing custom preprocess logic, refer to **Chapter. Writing Your Own Application `“Writing Custom Pre-Process Function”`**. Custom libraries must follow the error reporting contract described there (no `g_error()` / `abort()`; use `g_warning()` for per-frame skips and `throw std::runtime_error` for permanent errors).
     - All properties can also be configured using a JSON file for enhanced usability and flexibility.
 
 ---

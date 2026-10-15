@@ -321,7 +321,9 @@ GST_END_TEST;
 static Suite *dxgather_branches_suite(void) {
     Suite *s = suite_create("dxgather_branches");
     TCase *tc = tcase_create("3branch_merge");
+#ifndef _WIN32
     tcase_set_timeout(tc, 30.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, CE_gather_3branch_merge_by_meta_id);
     tcase_add_test(tc, CE_gather_3branch_different_meta_ids);

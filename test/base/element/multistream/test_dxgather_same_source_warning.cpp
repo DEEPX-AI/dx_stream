@@ -119,7 +119,9 @@ GST_END_TEST;
 static Suite *dxgather_same_source_warning_suite(void) {
     Suite *s = suite_create("dxgather_same_source_warning");
     TCase *tc = tcase_create("warning");
+#ifndef _WIN32
     tcase_set_timeout(tc, 15.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, CE_gather_same_source_mismatch_logs_warning);
     return s;

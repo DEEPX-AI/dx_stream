@@ -98,12 +98,16 @@ exit /b 1
 :args_done
 
 REM ---- Handle uninstall ----
-if defined UNINSTALL_MODE (
-    call :do_uninstall
+if not defined UNINSTALL_MODE goto build_prerequisites
+call :do_uninstall
+if errorlevel 1 (
     endlocal
-    exit /b 0
+    exit /b 1
 )
+endlocal
+exit /b 0
 
+:build_prerequisites
 REM ---- Locate Visual Studio (vcvarsall.bat) ----
 set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
 set "VCVARS="
@@ -189,18 +193,9 @@ if exist "!VCPKG_INSTALLED!\lib" (
 )
 
 REM ---- GStreamer dev environment ----
-if not defined GSTREAMER_1_0_ROOT_MSVC_X86_64 (
-    if exist "C:\Program Files\gstreamer\1.0\msvc_x86_64" (
-        set "GSTREAMER_1_0_ROOT_MSVC_X86_64=C:\Program Files\gstreamer\1.0\msvc_x86_64"
-    )
-)
-if defined GSTREAMER_1_0_ROOT_MSVC_X86_64 (
-    set "PATH=%GSTREAMER_1_0_ROOT_MSVC_X86_64%\bin;%PATH%"
-    set "PKG_CONFIG_PATH=%GSTREAMER_1_0_ROOT_MSVC_X86_64%\lib\pkgconfig;%PKG_CONFIG_PATH%"
-    echo [INFO] GStreamer: %GSTREAMER_1_0_ROOT_MSVC_X86_64%
-) else (
-    echo [WARN] GStreamer MSVC dev not found; meson setup will fail.
-)
+call "%PROJECT_ROOT%\scripts\setup_gstreamer.bat" development
+if errorlevel 1 exit /b 1
+echo [INFO] GStreamer: %GST_ROOT%
 
 REM ---- Clean ----
 if defined CLEAN_MODE (
@@ -289,7 +284,11 @@ echo [INFO] Collecting runtime DLLs into install\bin\...
 if not exist "%PREFIX%\bin" mkdir "%PREFIX%\bin"
 
 REM Copy plugin DLL to bin/ as well (for DLL co-location)
-copy /Y "%PREFIX%\lib\gstreamer-1.0\gstdxstream.dll" "%PREFIX%\bin\" >nul 2>&1
+copy /Y "%PREFIX%\lib\gstreamer-1.0\gstdxstream.dll" "%PREFIX%\bin\" >nul
+if errorlevel 1 (
+    echo [ERROR] Failed to copy gstdxstream.dll into the runtime directory.
+    exit /b 1
+)
 
 REM vcpkg runtime DLLs
 set "VCPKG_BIN=%PROJECT_ROOT%\vcpkg_installed\x64-windows\bin"
@@ -297,11 +296,13 @@ if exist "!VCPKG_BIN!" (
     for %%F in ("!VCPKG_BIN!\*.dll") do (
         set "DLL_NAME=%%~nxF"
         if /I not "!DLL_NAME!"=="legacy.dll" (
-        if /I not "!DLL_NAME!"=="libssl-3-x64.dll" (
-        if /I not "!DLL_NAME!"=="libcrypto-3-x64.dll" (
         if /I not "!DLL_NAME!"=="turbojpeg.dll" (
-            copy /Y "%%F" "%PREFIX%\bin\" >nul 2>&1
-        ))))
+            copy /Y "%%F" "%PREFIX%\bin\" >nul
+            if errorlevel 1 (
+                echo [ERROR] Failed to copy runtime DLL: %%F
+                exit /b 1
+            )
+        ))
     )
 )
 
@@ -417,6 +418,8 @@ if !errorlevel! neq 0 (
 )
 
 REM Ensure gstdxstream.dll is findable during import verification
+set "GST_PLUGIN_PATH=%PREFIX%\lib\gstreamer-1.0"
+set "GST_REGISTRY=%PREFIX%\gst-registry.bin"
 set "PATH=%PREFIX%\bin;%PREFIX%\lib\gstreamer-1.0;!PATH!"
 if defined DXRT_RUNTIME_DIR if exist "!DXRT_RUNTIME_DIR!" set "PATH=!DXRT_RUNTIME_DIR!;!PATH!"
 if defined DXVNPU_RUNTIME_DIR if exist "!DXVNPU_RUNTIME_DIR!" set "PATH=!DXVNPU_RUNTIME_DIR!;!PATH!"
@@ -424,9 +427,11 @@ if defined DXVNPU_RUNTIME_DIR if exist "!DXVNPU_RUNTIME_DIR!" set "PATH=!DXVNPU_
 pushd "!PYDXS_DIR!"
 echo [INFO] Installing pydxs...
 python -m pip install --quiet --no-build-isolation .
-if !errorlevel! equ 0 (
+set "PYDXS_INSTALL_RESULT=!errorlevel!"
+popd
+if "!PYDXS_INSTALL_RESULT!"=="0" (
     echo [ OK ] pydxs
-    python -c "import os, sys; dirs = [r'%PREFIX%\bin', r'%PREFIX%\lib\gstreamer-1.0', r'%GSTREAMER_1_0_ROOT_MSVC_X86_64%\bin', r'%DXRT_RUNTIME_DIR%']; [os.add_dll_directory(d) for d in dirs if d and os.path.isdir(d)]; import pydxs; print('[INFO] Import verification: OK')" 2>&1
+    python -c "import pydxs; print('[INFO] Import verification: OK')" 2>&1
     if !errorlevel! neq 0 (
         echo [FAIL] pydxs import verification failed. Check DLL dependencies.
         set "BUILD_FAILED=1"
@@ -436,8 +441,6 @@ if !errorlevel! equ 0 (
     echo [INFO] Retry with verbose output: pip install -v .
     set "BUILD_FAILED=1"
 )
-popd
-
 call deactivate 2>nul
 
 :pydxs_done
@@ -448,19 +451,24 @@ if "!BUILD_FAILED!"=="1" (
     echo [WARN] Build completed with errors. Check output above.
     endlocal
     exit /b 1
-) else (
-    echo [OK] Full build finished successfully.
-    echo      Plugin installed to: %PREFIX%
 )
 
 REM ---- Register environment variables ----
 call :setup_env
+if errorlevel 1 (
+    echo [ERROR] Build artifacts were installed, but environment registration failed.
+    endlocal
+    exit /b 1
+)
 
 echo.
+echo [OK] Full build finished successfully.
+echo      Plugin installed to: %PREFIX%
 echo ==========================================================
 echo  Next steps:
 echo    - Run demo now:       run_demo.bat
 echo    - Manual testing:     Open a NEW terminal, then:
+echo                          call scripts\setup_gstreamer.bat runtime
 echo                          gst-inspect-1.0 dxstream
 echo    - Uninstall:          build.bat --uninstall
 echo ==========================================================
@@ -523,47 +531,16 @@ REM ============================================================
 :setup_env
 echo.
 echo [INFO] Registering environment variables...
-
-set "PLUGIN_PATH=%PREFIX%\lib\gstreamer-1.0"
-set "RUNTIME_PATH=%PREFIX%\bin"
-set "CUSTOMLIB_PATH=%PREFIX%\share\gstdxstream\lib"
-set "APPS_PATH=%PREFIX%\share\gstdxstream\bin"
-
-REM -- Set GST_PLUGIN_PATH --
-setx GST_PLUGIN_PATH "%PLUGIN_PATH%" >nul 2>&1
-if !errorlevel! equ 0 (
-    echo   GST_PLUGIN_PATH = %PLUGIN_PATH%
-) else (
-    echo   [WARN] Failed to set GST_PLUGIN_PATH
+powershell -NoProfile -ExecutionPolicy Bypass ^
+    -File "%PROJECT_ROOT%\scripts\manage_build_environment.ps1" ^
+    -Mode Register -InstallPrefix "%PREFIX%"
+if errorlevel 1 (
+    echo [ERROR] Failed to register the user environment.
+    exit /b 1
 )
 
-REM -- Add entries to user PATH (avoid duplicates) --
-set "PATHS_TO_ADD=%RUNTIME_PATH%;%CUSTOMLIB_PATH%;%APPS_PATH%;%PLUGIN_PATH%"
-
-powershell -NoProfile -Command ^
-    "$paths = '%PATHS_TO_ADD%' -split ';' | Where-Object { $_ -ne '' };" ^
-    "$normalize = { param($p) $p.Trim().TrimEnd([char[]]'\/').ToLowerInvariant() };" ^
-    "$targetKeys = @{}; foreach ($p in $paths) { $targetKeys[(& $normalize $p)] = $true; }" ^
-    "$userPath = [Environment]::GetEnvironmentVariable('Path', 'User');" ^
-    "if ($null -eq $userPath) { $userPath = ''; }" ^
-    "$parts = $userPath -split ';' | Where-Object { $_ -ne '' };" ^
-    "$filtered = New-Object System.Collections.Generic.List[string];" ^
-    "$seen = @{};" ^
-    "foreach ($entry in $parts) {" ^
-    "  $key = & $normalize $entry;" ^
-    "  if ($targetKeys.ContainsKey($key)) { continue; }" ^
-    "  if (-not $seen.ContainsKey($key)) { $filtered.Add($entry); $seen[$key] = $true; }" ^
-    "}" ^
-    "$newPath = (@($paths) + @($filtered)) -join ';';" ^
-    "if ($newPath -ne $userPath) {" ^
-    "  [Environment]::SetEnvironmentVariable('Path', $newPath, 'User');" ^
-    "  Write-Host '  PATH entries updated.'" ^
-    "} else {" ^
-    "  Write-Host '  PATH entries already registered.'" ^
-    "}"
-
 echo.
-echo [INFO] Environment variables registered. Restart terminal to apply.
+echo [INFO] Environment variables registered. Restart terminal or IDE to apply.
 exit /b 0
 
 REM ============================================================
@@ -572,84 +549,63 @@ REM ============================================================
 :do_uninstall
 echo.
 echo [INFO] === Uninstalling DX-Stream ===
+set "UNINSTALL_FAILED=0"
 
 REM -- Remove install directory --
-if exist "%PREFIX%" (
-    echo [INFO] Removing %PREFIX%
-    rmdir /S /Q "%PREFIX%"
-) else (
-    echo [INFO] Install directory not found, skipping.
-)
+call :remove_uninstall_directory "%PREFIX%"
 
 REM -- Remove build directories --
-if exist "%BUILD_DIR%" (
-    echo [INFO] Removing %BUILD_DIR%
-    rmdir /S /Q "%BUILD_DIR%"
-)
+call :remove_uninstall_directory "%BUILD_DIR%"
 set "DXSTREAM_DIR=%PROJECT_ROOT%\dx_stream"
 for /D %%D in ("%DXSTREAM_DIR%\custom_library\postprocess_library\*") do (
-    if exist "%%D\builddir" rmdir /S /Q "%%D\builddir"
+    call :remove_uninstall_directory "%%~fD\builddir"
 )
-if exist "%DXSTREAM_DIR%\custom_library\message_convert_library\dx_msgconvl\builddir" (
-    rmdir /S /Q "%DXSTREAM_DIR%\custom_library\message_convert_library\dx_msgconvl\builddir"
-)
+call :remove_uninstall_directory "%DXSTREAM_DIR%\custom_library\message_convert_library\dx_msgconvl\builddir"
 for /D %%D in ("%DXSTREAM_DIR%\apps\*") do (
-    if exist "%%D\builddir" rmdir /S /Q "%%D\builddir"
+    call :remove_uninstall_directory "%%~fD\builddir"
 )
-echo [INFO] Build directories removed.
 
-REM -- Uninstall pydxs and remove venv --
+REM -- The dedicated venv includes pydxs; no system Python or pip is required. --
 set "VENV_PATH=%PROJECT_ROOT%\venv-dx_stream"
-if exist "!VENV_PATH!\Scripts\activate.bat" (
-    call "!VENV_PATH!\Scripts\activate.bat"
-    python -m pip uninstall -y pydxs >nul 2>&1
-    call deactivate 2>nul
-    echo [INFO] pydxs uninstalled from venv.
-)
-if exist "!VENV_PATH!" (
-    rmdir /S /Q "!VENV_PATH!"
-    echo [INFO] Virtual environment removed: !VENV_PATH!
-)
-if exist "%PROJECT_ROOT%\bindings\python\pydxs\build" rmdir /S /Q "%PROJECT_ROOT%\bindings\python\pydxs\build"
-if exist "%PROJECT_ROOT%\bindings\python\pydxs\dist" rmdir /S /Q "%PROJECT_ROOT%\bindings\python\pydxs\dist"
-if exist "%PROJECT_ROOT%\bindings\python\pydxs\src\pydxs.egg-info" rmdir /S /Q "%PROJECT_ROOT%\bindings\python\pydxs\src\pydxs.egg-info"
+call :remove_uninstall_directory "!VENV_PATH!"
+call :remove_uninstall_directory "%PROJECT_ROOT%\bindings\python\pydxs\build"
+call :remove_uninstall_directory "%PROJECT_ROOT%\bindings\python\pydxs\dist"
+call :remove_uninstall_directory "%PROJECT_ROOT%\bindings\python\pydxs\pydxs.egg-info"
+call :remove_uninstall_directory "%PROJECT_ROOT%\bindings\python\pydxs\src\pydxs.egg-info"
 
-REM -- Remove GST_PLUGIN_PATH --
-reg query "HKCU\Environment" /v GST_PLUGIN_PATH >nul 2>&1
-if !errorlevel! equ 0 (
-    reg delete "HKCU\Environment" /v GST_PLUGIN_PATH /f >nul 2>&1
-    echo [INFO] Removed GST_PLUGIN_PATH
-) else (
-    echo [INFO] GST_PLUGIN_PATH not set, skipping.
+REM -- Remove only this checkout's User environment entries. --
+powershell -NoProfile -ExecutionPolicy Bypass ^
+    -File "%PROJECT_ROOT%\scripts\manage_build_environment.ps1" ^
+    -Mode Unregister -InstallPrefix "%PREFIX%"
+if errorlevel 1 (
+    echo [ERROR] Failed to remove this checkout's user environment entries.
+    set "UNINSTALL_FAILED=1"
 )
-
-REM -- Remove entries from user PATH --
-set "PLUGIN_PATH=%PREFIX%\lib\gstreamer-1.0"
-set "RUNTIME_PATH=%PREFIX%\bin"
-set "CUSTOMLIB_PATH=%PREFIX%\share\gstdxstream\lib"
-set "APPS_PATH=%PREFIX%\share\gstdxstream\bin"
-set "PATHS_TO_REMOVE=%RUNTIME_PATH%;%CUSTOMLIB_PATH%;%APPS_PATH%;%PLUGIN_PATH%"
-
-powershell -NoProfile -Command ^
-    "$removals = '%PATHS_TO_REMOVE%' -split ';' | Where-Object { $_ -ne '' };" ^
-    "$normalize = { param($p) $p.Trim().TrimEnd([char[]]'\/').ToLowerInvariant() };" ^
-    "$removeKeys = @{}; foreach ($p in $removals) { $removeKeys[(& $normalize $p)] = $true; }" ^
-    "$userPath = [Environment]::GetEnvironmentVariable('Path', 'User');" ^
-    "if ($null -eq $userPath) { $userPath = ''; }" ^
-    "$parts = $userPath -split ';' | Where-Object { $_ -ne '' };" ^
-    "$filtered = New-Object System.Collections.Generic.List[string];" ^
-    "foreach ($entry in $parts) {" ^
-    "  $key = & $normalize $entry;" ^
-    "  if (-not $removeKeys.ContainsKey($key)) { $filtered.Add($entry); }" ^
-    "}" ^
-    "$newPath = ($filtered -join ';');" ^
-    "if ($newPath -ne $userPath) {" ^
-    "  [Environment]::SetEnvironmentVariable('Path', $newPath, 'User');" ^
-    "  Write-Host '[INFO] PATH entries removed.'" ^
-    "} else {" ^
-    "  Write-Host '[INFO] No PATH entries to remove.'" ^
-    "}"
 
 echo.
-echo [OK] Uninstall complete. Restart terminal to apply environment changes.
+if "!UNINSTALL_FAILED!"=="1" (
+    echo [ERROR] Uninstall incomplete. Close DX-Stream applications, check permissions, and retry.
+    exit /b 1
+)
+echo [OK] Uninstall complete. Restart terminal or IDE to apply environment changes.
+exit /b 0
+
+:remove_uninstall_directory
+if not exist "%~1" exit /b 0
+echo [INFO] Removing "%~1"
+call :reset_uninstall_error
+rmdir /S /Q "%~1"
+if errorlevel 1 (
+    echo [ERROR] Could not remove "%~1".
+    set "UNINSTALL_FAILED=1"
+    exit /b 1
+)
+if exist "%~1" (
+    echo [ERROR] Directory remains after removal: "%~1".
+    set "UNINSTALL_FAILED=1"
+    exit /b 1
+)
+exit /b 0
+
+:reset_uninstall_error
 exit /b 0

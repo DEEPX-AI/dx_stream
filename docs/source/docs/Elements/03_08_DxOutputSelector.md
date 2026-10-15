@@ -15,12 +15,12 @@ It is the exit boundary of the multi-stream domain — see [Multi-Stream Domain]
 Sink-side events arriving from upstream are classified and dispatched in three ways:
 
 - **Domain-wide standard events** (`STREAM_START`, `CAPS=application/x-dxvideoraw`, `SEGMENT`, the final global `EOS`) are consumed at the boundary — the downstream pipeline outside the domain does not receive them. Each output stream's lifecycle is reconstructed from the per-stream wrapped events below.
-- **Pipeline-wide events** (`FLUSH_START`, `FLUSH_STOP`, `RECONFIGURE`) are **broadcast to every src pad** so that every downstream branch flushes or reconfigures in sync.
+- **Pipeline-wide events** (`FLUSH_START`, `FLUSH_STOP`) and non-wrapped `TAG` / `GAP` events (as well as any unknown event) are **broadcast to every src pad** so that every downstream branch flushes in sync. A raw `RECONFIGURE` arriving on the sink pad is ignored.
 - **Per-stream wrapped events** (`application/x-dx-wrapped-event` from `dxinputselector`, carrying the original per-stream `STREAM_START`, `CAPS=video/x-raw`, `SEGMENT`, `TAG`, `EOS`, `GAP`) are unwrapped and forwarded to the src pad whose index matches the wrapped stream-id. This is how each downstream output sees its own original `video/x-raw` lifecycle.
 
 **Upstream QoS**
 
-QoS events arriving on a src pad are wrapped with the corresponding stream-id and sent upstream as a `CUSTOM_UPSTREAM` event. `dxinputselector` unwraps them and forwards each to the matching sink, so a slow consumer on stream `N` only throttles its own upstream source — not the other streams.
+`QoS` and `RECONFIGURE` events arriving on a src pad are wrapped with the corresponding stream-id and sent upstream as a `CUSTOM_UPSTREAM` event. `dxinputselector` unwraps them and forwards each to the matching sink, so a slow consumer on stream `N` only throttles its own upstream source — not the other streams. Other upstream events (e.g., `SEEK`, `NAVIGATION`) are forwarded to the sink pad as-is.
 
 ### **Hierarchy**
 
@@ -56,7 +56,7 @@ GObject
 
     - `DxOutputSelector` requires asynchronous operation between its upstream and downstream elements. To achieve this, a `queue` element must be added to each of its src pads. Failure to do so may result in abnormal pipeline hangs.
 
-    - The `stream_id` from the `DXFrameMeta` of the buffer received on the sink pad is parsed and used as the index of the src pad. If `stream_id` does not match any configured src pad index, the buffer is dropped with a warning and the pipeline continues.
+    - The `stream_id` from the `DXFrameMeta` of the buffer received on the sink pad is parsed and used as the index of the src pad. If `stream_id` does not match any configured src pad index, the buffer is dropped with a warning and the pipeline continues. A buffer without `DXFrameMeta` is dropped silently (no warning).
 
 !!! warning "No global EOS downstream"
 

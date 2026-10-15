@@ -93,7 +93,9 @@ GST_END_TEST;
 static Suite *pl_interval_suite(void) {
     Suite *s = suite_create("pl_interval");
     TCase *tc = tcase_create("rate");
+#ifndef _WIN32
     tcase_set_timeout(tc, 30.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, PL_E_rate_reduces_framerate);
     tcase_add_test(tc, PL_E_rate_eos);

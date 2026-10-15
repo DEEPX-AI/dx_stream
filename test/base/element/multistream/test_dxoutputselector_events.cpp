@@ -442,7 +442,9 @@ GST_END_TEST;
 static Suite *dxoutputselector_events_suite(void) {
     Suite *s = suite_create("dxoutputselector_events");
     TCase *tc = tcase_create("event_classification");
+#ifndef _WIN32
     tcase_set_timeout(tc, 30.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, CE_outputsel_l1a_stream_start_dropped);
     tcase_add_test(tc, CE_outputsel_l1a_caps_dropped);

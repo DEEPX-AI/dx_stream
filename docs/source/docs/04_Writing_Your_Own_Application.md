@@ -191,9 +191,9 @@ The **DX-STREAM** inference pipeline is composed of the following elements:
 
 **DxInfer**
 
-- Performs inference using **DX-RT** backend
+- Performs inference using the selected backend (**DX-RT** or VNPU)
 - Receives input tensors from `dxpreprocess` and generates output tensors
-- Supports the `dxrt` inference backend via the `backend` property
+- Selects the inference backend via the `backend` property (`auto` (default), `dxrt`, `dxvnpu`)
 
 **DxPostprocess**
 
@@ -256,7 +256,7 @@ libcustompreproc = shared_library('custompreproc',
     'preprocess.cpp',
     dependencies: [gst_dep, dx_stream_dep],
     install: true,
-    install_dir: plugins_install_dir + '/lib'
+    install_dir: get_option('datadir') / 'gstdxstream' / 'lib'
 )
 ```
 
@@ -264,7 +264,7 @@ Specify the library path and function name in the JSON configuration file for `d
 
 ```json
 {
-    "library_file_path": "./install/gstreamer-1.0/lib/libcustompreproc.so",
+    "library_file_path": "/usr/local/share/gstdxstream/lib/libcustompreproc.so",
     "function_name": "CustomPreprocessFunc"
 }
 ```
@@ -482,7 +482,7 @@ Custom pre-process, post-process, and message-convert libraries are loaded via `
 To preserve this contract, custom libraries **must** follow these rules:
 
 - **Do not use `g_error()`, `g_assert()`, `abort()`, or `exit()`.** `g_error()` calls `G_BREAKPOINT() → abort()`, which terminates the process via `SIGABRT`. C++ stack unwinding is skipped, so the host `try/catch` cannot intercept it; bus error messages are never delivered; and `dlclose()`, push-thread join, and other resource cleanup never run. The result is a core dump instead of a clean EOS / NULL-state transition.
-- **Per-frame recoverable errors** (missing input tensor, shape mismatch on a single frame, optional metadata absent, etc.) → use `g_warning()` and return early (`false` for pre-/post-process, `nullptr` for message convert). The host element skips that frame and the pipeline continues.
+- **Per-frame recoverable errors** (missing input tensor, shape mismatch on a single frame, optional metadata absent, etc.) → use `g_warning()` and return early (`false` for pre-process, plain `return` for post-process, `nullptr` for message convert). The host element skips that frame and the pipeline continues.
 - **Permanent errors** (config does not match the loaded model, required resource missing, invariant violated) → `throw std::runtime_error("descriptive message")`. The host element catches it, reports `GST_ELEMENT_ERROR`, and the application gets a normal bus error from which it can transition to `NULL`.
 
 Example (post-process library):
@@ -499,7 +499,7 @@ extern "C" void PostProcess(GstBuffer *buf,
     }
 
     // Permanent: model/config mismatch — let the host element report it.
-    if (network_output[0]._shape.size() != 3) {
+    if (network_output[0]._shape.size() != 4) {
         throw std::runtime_error("PostProcess: unexpected tensor rank, "
                                  "check that model matches the configured library");
     }
@@ -516,7 +516,7 @@ The library converts comprehensive object detection metadata including:
 
 - **Object Detection**: label_id, track_id, confidence, name, bounding box
 - **Body Features**: extracted body feature vectors for re-identification
-- **Segmentation**: pixel-level classification maps with height, width, and data
+- **Segmentation**: object-level ROI binary masks with height, width, format, box, and data pointer
 - **Pose Estimation**: 17 keypoints with coordinates (kx, ky) and confidence scores (ks)
 - **Face Detection**: landmarks, face bounding box, confidence, and face feature vectors
 
@@ -635,17 +635,17 @@ for (auto obj_meta : frame_meta->_object_meta_list) {
         },
         "body_feature": [0.321, 0.654, 0.987],
         "segment": {
-                    "height": 200,
-                    "width": 200,
-                    "format": "roi-binary-mask",
-                    "background_value": 0,
-                    "foreground_value": 255,
-                    "box": {
-                        "startX": 300.0,
-                        "startY": 400.0,
-                        "endX": 500.0,
-                        "endY": 600.0
-                    },
+          "height": 200,
+          "width": 200,
+          "format": "roi-binary-mask",
+          "background_value": 0,
+          "foreground_value": 255,
+          "box": {
+            "startX": 300.0,
+            "startY": 400.0,
+            "endX": 500.0,
+            "endY": 600.0
+          },
           "data": 140712345678912
         },
         "pose": {
@@ -693,8 +693,6 @@ for (auto obj_meta : frame_meta->_object_meta_list) {
 - Memory addresses (like segmentation data pointer) are cast to integer representation
 - Object-level `segment` payloads are ROI-local binary masks aligned to `object.box`, not full-frame class maps
 
-```
-
 ### Library Integration
 
 Build the custom message convert library with proper dependencies:
@@ -704,14 +702,15 @@ gst_dep = dependency('gstreamer-1.0', version : '>=1.16.3',
     required : true, fallback : ['gstreamer', 'gst_dep'])
 
 dx_stream_dep = dependency('gstdxstream')
-json_glib_dep = dependency('json-glib-1.0', required: true)
+json_glib_dep = dependency('json-glib-1.0', version : '>= 1.0')
+opencv_dep = dependency('opencv4', required: true)
+dxrt_dep = declare_dependency(link_args: ['-ldxrt'])
 
 custom_msgconv_lib = shared_library('dx_msgconvl', 
     ['dx_msgconvl.cpp', 'dx_msgconvl_priv.cpp'],
-    dependencies: [gst_dep, dx_stream_dep, json_glib_dep],
-    include_directories: [include_directories('.')],
+    dependencies: [gst_dep, opencv_dep, json_glib_dep, dx_stream_dep, dxrt_dep],
     install: true,
-    install_dir: '/opt/dx_stream/msgconv/lib'
+    install_dir: get_option('datadir') / 'gstdxstream' / 'lib'
 )
 ```
 
@@ -720,11 +719,13 @@ custom_msgconv_lib = shared_library('dx_msgconvl',
 - **gstreamer-1.0**: Core GStreamer framework
 - **dx_stream**: DX-STREAM metadata and type definitions
 - **json-glib-1.0**: JSON processing library for structured output generation
+- **opencv4**: Used by the sample library for frame and mask handling
+- **dxrt**: DX-RT library linked by the sample library
 
 **Usage in Pipeline:**
 ```bash
-dxmsgconv library-file-path=/opt/dx_stream/msgconv/lib/libdx_msgconvl.so
+dxmsgconv library-file-path=/usr/local/share/gstdxstream/lib/libdx_msgconvl.so
 ```
 
 !!! note "NOTE"
-    The `config-file-path` property is no longer required as configuration parsing has been removed from the library implementation.
+    The custom library does not parse configuration files. The `config-file-path` property of DxMsgConv is optional and is parsed by the element itself.

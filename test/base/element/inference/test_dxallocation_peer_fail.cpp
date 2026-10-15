@@ -51,7 +51,9 @@ GST_END_TEST;
 static Suite *allocation_peer_fail_suite(void) {
     Suite *s = suite_create("allocation_peer_fail");
     TCase *tc = tcase_create("no_peer");
+#ifndef _WIN32
     tcase_set_timeout(tc, 10.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, ALLOC_dxinfer_no_peer_no_meta);
     return s;

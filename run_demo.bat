@@ -37,11 +37,8 @@ if defined DEEPX_SDK_DIR if exist "%DEEPX_SDK_DIR%\bin" (
     set "PATH=%DEEPX_SDK_DIR%\bin;%PATH%"
 )
 
-if defined GSTREAMER_1_0_ROOT_MSVC_X86_64 (
-    set "PATH=%GSTREAMER_1_0_ROOT_MSVC_X86_64%\bin;%PATH%"
-) else if exist "C:\Program Files\gstreamer\1.0\msvc_x86_64\bin" (
-    set "PATH=C:\Program Files\gstreamer\1.0\msvc_x86_64\bin;%PATH%"
-)
+call "%PROJECT_ROOT%\scripts\setup_gstreamer.bat" runtime
+if errorlevel 1 exit /b 1
 
 REM ---- Verify GStreamer ----
 where gst-launch-1.0 >nul 2>nul

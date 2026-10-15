@@ -1,6 +1,6 @@
 **DxTracker** is a GStreamer element designed to perform Multi-Object Tracking (MOT) on object detection results in a video stream. It uses bounding box metadata from upstream detection elements (such as **DxPostprocess**) to continuously track and assign consistent IDs across frames.   
 
-Currently, **DxTracker** supports the `OC_SORT` algorithm as its default tracking method. For more information about `OC_SORT`, refer to [the Object Tracking Algorithms](https://github.com/noahcao/OC_SORT) document. 
+Currently, **DxTracker** supports the `OC_SORT` algorithm as its default tracking method. For more information about `OC_SORT`, refer to the [OC_SORT repository](https://github.com/noahcao/OC_SORT). 
 
 
 ### **Key Features**
@@ -34,7 +34,7 @@ The configuration file must include
 - `params`: Contains algorithm-specific parameters
 
 **Default Behavior**  
-If no config file is provided, **DxTracker** uses the `OC_SORT`algorithm with built-in default values.  
+If no config file is provided, **DxTracker** uses the `OC_SORT` algorithm with built-in default values.  
 If only `tracker_name` is specified without params, the `default` parameter values for that algorithm are applied.
 
 **Limitations**  
@@ -85,7 +85,7 @@ GObject
 
     - The JSON configuration file is required to customize tracking algorithm parameters.  
     - If **no** configuration file is provided, **DxTracker** uses `OC_SORT` with default settings.  
-    - All parameters values **must** be defined within the params section of the JSON file.  
+    - All parameter values **must** be defined within the params section of the JSON file.  
     - Track IDs are only assigned to successfully tracked objects. Objects that can **not** be tracked are removed and **not** passed downstream.  
 
 ---

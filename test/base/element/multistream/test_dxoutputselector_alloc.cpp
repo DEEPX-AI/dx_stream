@@ -101,7 +101,9 @@ GST_END_TEST;
 static Suite *outputsel_alloc_suite(void) {
     Suite *s = suite_create("outputsel_alloc");
     TCase *tc = tcase_create("direction");
+#ifndef _WIN32
     tcase_set_timeout(tc, 10.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, CE_outputsel_alloc_does_not_leak_to_sink_peer);
     return s;

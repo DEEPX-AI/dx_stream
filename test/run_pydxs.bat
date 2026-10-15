@@ -45,14 +45,12 @@ set "DX_STREAM_ROOT=%PROJECT_ROOT%"
 set "PYTHONIOENCODING=utf-8"
 
 REM GStreamer MSVC root (for runtime DLLs + GI typelibs)
-if defined GSTREAMER_1_0_ROOT_MSVC_X86_64 (
-    set "GST_ROOT=%GSTREAMER_1_0_ROOT_MSVC_X86_64%"
-) else (
-    set "GST_ROOT=C:\Program Files\gstreamer\1.0\msvc_x86_64"
-)
+call "%PROJECT_ROOT%\scripts\setup_gstreamer.bat" runtime
+if errorlevel 1 exit /b 1
 
 if exist "%INSTALL_PREFIX%\lib\gstreamer-1.0" (
-    set "GST_PLUGIN_PATH=%INSTALL_PREFIX%\lib\gstreamer-1.0;!GST_PLUGIN_PATH!"
+    set "GST_PLUGIN_PATH=%INSTALL_PREFIX%\lib\gstreamer-1.0"
+    set "GST_REGISTRY=%INSTALL_PREFIX%\gst-registry.bin"
     set "PATH=%INSTALL_PREFIX%\bin;%INSTALL_PREFIX%\lib\gstreamer-1.0;!PATH!"
 )
 
@@ -61,13 +59,13 @@ if exist "!GST_ROOT!\bin" set "PATH=!GST_ROOT!\bin;!PATH!"
 if exist "!GST_ROOT!\lib\girepository-1.0" set "GI_TYPELIB_PATH=!GST_ROOT!\lib\girepository-1.0;!GI_TYPELIB_PATH!"
 
 REM DEEPX runtime (dxrt.dll) — dependency of gstdxstream.dll
+if defined DEEPX_SDK_DIR if exist "!DEEPX_SDK_DIR!\bin" set "PATH=!DEEPX_SDK_DIR!\bin;!PATH!"
 if exist "C:\Program Files\DEEPX\DXNN\runtime" set "PATH=C:\Program Files\DEEPX\DXNN\runtime;!PATH!"
 
 REM Run tests
 python "%PYDXS_TEST%" > "%LOG_DIR%\pydxs.log" 2>&1
 if !errorlevel! equ 0 (
     echo   [PASS] pydxs
-    echo   -- summary: PASS=1 FAIL=0 --
 ) else (
     echo   [FAIL] pydxs
     if exist "%LOG_DIR%\pydxs.log" (
@@ -75,6 +73,20 @@ if !errorlevel! equ 0 (
         type "%LOG_DIR%\pydxs.log"
     )
     echo   -- summary: PASS=0 FAIL=1 --
+    call deactivate 2>nul
+    endlocal
+    exit /b 1
+)
+
+REM Check cold imports and DLL discovery without test-side path registration.
+python -m unittest discover -s "%SCRIPT_DIR%\windows" -p test_pydxs_loader.py -v > "%LOG_DIR%\pydxs_loader.log" 2>&1
+if !errorlevel! equ 0 (
+    echo   [PASS] pydxs_loader
+    echo   -- summary: PASS=2 FAIL=0 --
+) else (
+    echo   [FAIL] pydxs_loader
+    type "%LOG_DIR%\pydxs_loader.log"
+    echo   -- summary: PASS=1 FAIL=1 --
     call deactivate 2>nul
     endlocal
     exit /b 1

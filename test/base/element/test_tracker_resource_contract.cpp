@@ -393,7 +393,9 @@ GST_END_TEST;
 static Suite *tracker_resource_contract_suite(void) {
     Suite *s = suite_create("tracker_resource_contract");
     TCase *tc = tcase_create("resource_contract");
+#ifndef _WIN32
     tcase_set_timeout(tc, 300.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, TR_per_frame_cost_is_flat);
     tcase_add_test(tc, TR_flicker_cost_is_flat);

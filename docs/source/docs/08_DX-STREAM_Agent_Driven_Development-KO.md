@@ -38,9 +38,9 @@
 
 | 스킬 | 설명 |
 |------|------|
-| `dx-swe-brainstorm` | 파이프라인 생성 전 브레인스토밍 및 계획 수립 |
-| `dx-swe-tdd` | 테스트 주도 개발 — 파일 생성 직후 즉시 검증 |
-| `dx-swe-verify` | 완료 선언 전 검증 — 증거 기반 확인 |
+| `dx-agent-brainstorm` | 파이프라인 생성 전 브레인스토밍 및 계획 수립 |
+| `dx-agent-tdd` | 테스트 주도 개발 — 파일 생성 직후 즉시 검증 |
+| `dx-agent-verify` | 완료 선언 전 검증 — 증거 기반 확인 |
 | `dx-swe-writing-plans` | 스펙 또는 요구사항에서 구현 계획 작성 |
 | `dx-swe-executing-plans` | 검토 체크포인트가 포함된 구현 계획 실행 |
 | `dx-swe-debugging` | 체계적 디버깅 — 수정 제안 전 진단 |
@@ -59,6 +59,13 @@
 | `dx-agent-stream-model-management` | 대상 NPU 아키텍처용 `.dxnn` 모델 다운로드 및 설정 |
 | `dx-agent-stream-validate` | 파이프라인 검증 검사 실행 (문법, 속성, 엘리먼트 순서) |
 
+#### DEEPX 하네스 (내부용)
+
+| 스킬 | 설명 |
+|------|------|
+| `dx-harness-validate` | `.deepx/` 무결성 검증 (내부 하네스 개발용) |
+| `dx-harness-writing-skills` | 배포 전 스킬 작성, 수정 및 검증 (내부 하네스 개발용) |
+
 ---
 
 ## 지원 AI 도구
@@ -69,9 +76,9 @@ dx_stream 에이전틱 개발은 4가지 AI 코딩 도구에서 작동합니다.
 | 도구 | 설정 파일 | 사용 가능한 에이전트 |
 |---|---|---|
 | **Claude Code** | `CLAUDE.md` | 컨텍스트 라우팅을 통해 4개 에이전트 전체 |
-| **GitHub Copilot** | `.github/copilot-instructions.md`, `.github/agents/`의 4개 에이전트, `.github/skills/`의 15개 스킬, `.github/instructions/`의 2개 instruction | `@dx-stream-builder`, `@dx-pipeline-builder`, `@dx-model-manager`, `@dx-validator` |
-| **Cursor** | `.cursor/rules/dx-stream.mdc` (항상), `dx-model-manager.mdc`, `dx-pipeline-builder.mdc`, `dx-stream-builder.mdc`, `dx-validator.mdc`, `stream-pipelines.mdc`, `tests.mdc`, 16개 `skill-*.mdc` 파일 (총 23개) | 자동 적용 규칙과 함께 자유 형식 대화 |
-| **OpenCode** | `AGENTS.md`, `opencode.json`, `.opencode/agents/`의 4개 에이전트, `.deepx/skills/`의 16개 스킬 | `@dx-stream-builder` 또는 `/dx-agent-stream-build-pipeline` |
+| **GitHub Copilot** | `.github/copilot-instructions.md`, `.github/agents/`의 4개 에이전트, `.github/skills/`의 17개 스킬, `.github/instructions/`의 2개 instruction | `@dx-stream-builder`, `@dx-pipeline-builder`, `@dx-model-manager`, `@dx-validator` |
+| **Cursor** | `.cursor/rules/dx-stream.mdc` (항상), `dx-model-manager.mdc`, `dx-pipeline-builder.mdc`, `dx-stream-builder.mdc`, `dx-validator.mdc`, `stream-pipelines.mdc`, `tests.mdc`, 17개 `skill-*.mdc` 파일 (총 24개) | 자동 적용 규칙과 함께 자유 형식 대화 |
+| **OpenCode** | `AGENTS.md`, `opencode.json`, `.opencode/agents/`의 4개 에이전트, `.deepx/skills/`의 17개 스킬 | `@dx-stream-builder` 또는 `/dx-agent-stream-build-pipeline` |
 
 ### Copilot 파일별 자동 Instruction
 
@@ -86,9 +93,9 @@ dx_stream 에이전틱 개발은 4가지 AI 코딩 도구에서 작동합니다.
 
 | 슬래시 명령 | 설명 |
 |---|---|
-| `/dx-swe-brainstorm` | 파이프라인 생성 전 브레인스토밍 및 계획 수립 |
-| `/dx-swe-tdd` | 점진적 검증을 포함한 테스트 주도 개발 |
-| `/dx-swe-verify` | 증거 기반 완료 검증 |
+| `/dx-agent-brainstorm` | 파이프라인 생성 전 브레인스토밍 및 계획 수립 |
+| `/dx-agent-tdd` | 점진적 검증을 포함한 테스트 주도 개발 |
+| `/dx-agent-verify` | 증거 기반 완료 검증 |
 | `/dx-swe-writing-plans` | 스펙에서 구현 계획 작성 |
 | `/dx-swe-executing-plans` | 구현 계획 실행 |
 | `/dx-swe-debugging` | 수정 제안 전 체계적 디버깅 |
@@ -106,6 +113,13 @@ dx_stream 에이전틱 개발은 4가지 AI 코딩 도구에서 작동합니다.
 | `/dx-agent-stream-build-mqtt-kafka` | MQTT/Kafka 브로커 파이프라인 빌드 |
 | `/dx-agent-stream-model-management` | .dxnn 모델 다운로드 및 설정 |
 | `/dx-agent-stream-validate` | 파이프라인 검증 검사 실행 |
+
+**DEEPX 하네스 (내부용)**
+
+| 슬래시 명령 | 설명 |
+|---|---|
+| `/dx-harness-validate` | `.deepx/` 무결성 검증 |
+| `/dx-harness-writing-skills` | 배포 전 스킬 작성, 수정 및 검증 |
 
 ### 플랫폼별 파일 참조
 
@@ -134,7 +148,7 @@ dx_stream 에이전틱 개발은 4가지 AI 코딩 도구에서 작동합니다.
 
 | 스킬 | 파일 |
 |-------|------|
-| `/dx-swe-brainstorm` | `.deepx/skills/dx-swe-brainstorm/SKILL.md` |
+| `/dx-agent-brainstorm` | `.deepx/skills/dx-agent-brainstorm/SKILL.md` |
 | `/dx-agent-stream-build-mqtt-kafka` | `.deepx/skills/dx-agent-stream-build-mqtt-kafka/SKILL.md` |
 | `/dx-agent-stream-build-pipeline` | `.deepx/skills/dx-agent-stream-build-pipeline/SKILL.md` |
 | `/dx-swe-parallel-agents` | `.deepx/skills/dx-swe-parallel-agents/SKILL.md` |
@@ -145,10 +159,12 @@ dx_stream 에이전틱 개발은 4가지 AI 코딩 도구에서 작동합니다.
 | `/dx-skill-router` | `.deepx/skills/dx-skill-router/SKILL.md` |
 | `/dx-swe-subagent-dev` | `.deepx/skills/dx-swe-subagent-dev/SKILL.md` |
 | `/dx-swe-debugging` | `.deepx/skills/dx-swe-debugging/SKILL.md` |
-| `/dx-swe-tdd` | `.deepx/skills/dx-swe-tdd/SKILL.md` |
+| `/dx-agent-tdd` | `.deepx/skills/dx-agent-tdd/SKILL.md` |
 | `/dx-agent-stream-validate` | `.deepx/skills/dx-validate/SKILL.md` |
-| `/dx-swe-verify` | `.deepx/skills/dx-swe-verify/SKILL.md` |
+| `/dx-agent-verify` | `.deepx/skills/dx-agent-verify/SKILL.md` |
 | `/dx-swe-writing-plans` | `.deepx/skills/dx-swe-writing-plans/SKILL.md` |
+| `/dx-harness-validate` | `.deepx/skills/dx-harness-validate/SKILL.md` |
+| `/dx-harness-writing-skills` | `.deepx/skills/dx-harness-writing-skills/SKILL.md` |
 
 #### 공유 지식 베이스 (`.deepx/`)
 
@@ -160,7 +176,7 @@ dx_stream 에이전틱 개발은 4가지 AI 코딩 도구에서 작동합니다.
 | 디렉토리 | 파일 | 설명 |
 |-----------|-------|-------------|
 | `.deepx/agents/` | 4개 파일 (`dx-stream-builder.md`, `dx-pipeline-builder.md`, `dx-model-manager.md`, `dx-validator.md`) | 권위 있는 에이전트 정의 |
-| `.deepx/skills/` | 16개 디렉토리 (스킬당 1개, 각각 `SKILL.md` 포함) | 상세 스킬 워크플로우 |
+| `.deepx/skills/` | 17개 디렉토리 (스킬당 1개, 각각 `SKILL.md` 포함) | 상세 스킬 워크플로우 |
 | `.deepx/toolsets/` | 4개 파일 | GStreamer 요소 및 API 참조 |
 | `.deepx/instructions/` | 6개 파일 | 코딩 표준 및 워크플로우 규칙 |
 | `.deepx/memory/` | 4개 파일 | 지속적 지식 — 함정 및 세션 메모리 |
@@ -181,7 +197,7 @@ dx_stream 에이전틱 개발은 4가지 AI 코딩 도구에서 작동합니다.
 
 #### GitHub Copilot 스킬 (`.github/skills/`)
 
-16개 스킬 디렉토리 (`dx-agent-gen`으로 생성된 인라인 복사본), `.deepx/skills/`와 1:1 대응.
+17개 스킬 디렉토리 (`dx-agent-gen`으로 생성된 인라인 복사본), `.deepx/skills/`와 1:1 대응.
 
 ---
 
@@ -196,7 +212,7 @@ dx-agent-gen generate --repo dx-runtime/dx_stream
 생성 대상:
 - `.claude/agents/` — Claude Code 에이전트 파일
 - `.github/agents/`, `.github/skills/`, `.github/instructions/` — GitHub Copilot 파일
-- `.cursor/rules/` — Cursor 규칙 파일 (총 23개)
+- `.cursor/rules/` — Cursor 규칙 파일 (총 24개)
 - `.opencode/agents/` — OpenCode 에이전트 파일
 - `CLAUDE.md`, `AGENTS.md`, `opencode.json` — 플랫폼 진입점
 
@@ -380,9 +396,9 @@ dx_stream은 NPU 가속 파이프라인을 위한 13개 커스텀 GStreamer 엘�
 | `DxTracker` | 다중 객체 추적 (프레임 간 영속적 ID 할당) |
 | `DxOsd` | 프레임에 바운딩 박스, 레이블, 오버레이 그리기 |
 | `DxGather` | N-to-1 병합 — 여러 브랜치에서 버퍼 수집 |
-| `DxInputSelector` | N-to-1 라운드 로빈 입력 선택 |
+| `DxInputSelector` | N-to-1 병합 — 여러 스트림의 프레임을 PTS 순서로 결합 |
 | `DxOutputSelector` | 1-to-N 디먹스 — 버퍼를 N개 출력 패드 중 하나로 라우팅 |
-| `DxRate` | 프레임 속도 제한 (RTSP 소스에 필수) |
+| `DxRate` | 프레임 속도 제한 (RTSP 같은 가변 속도 소스에 권장) |
 | `DxMsgConv` | 감지 메타데이터를 JSON으로 직렬화 |
 | `DxMsgBroker` | 직렬화된 메시지를 MQTT 또는 Kafka에 퍼블리시 |
 | `DxScale` | 프레임을 대상 해상도로 리사이즈 |
@@ -396,9 +412,9 @@ dx_stream은 NPU 가속 파이프라인을 위한 13개 커스텀 GStreamer 엘�
 
 1. **`preprocess-id` 매칭** — `DxPreprocess`와 `DxInfer`는 동일한 `preprocess-id` 값을 공유해야 합니다. 불일치 시 무음 추론 실패가 발생합니다.
 2. **Queue 배치** — 파이프라인 데드락을 방지하기 위해 모든 처리 단계 사이에 `queue` 엘리먼트를 삽입합니다.
-3. **RTSP용 `DxRate`** — RTSP 소스 직후에 항상 `DxRate`를 삽입하여 프레임 폭주와 버퍼 오버런을 방지합니다.
+3. **RTSP용 `DxRate`** — 에이전트는 RTSP 소스 직후에 `DxRate`를 삽입하여 가변 속도 소스로 인한 프레임 폭주와 버퍼 오버런을 방지합니다.
 4. **`DxMsgConv` → `DxMsgBroker` 순서** — `DxMsgBroker`로 퍼블리시하기 전에 항상 `DxMsgConv`로 메타데이터를 직렬화합니다.
-5. **절대 모델 경로** — `DxInfer`의 `model-path` 속성은 절대 파일 시스템 경로여야 합니다. 상대 경로는 런타임 에러를 유발합니다.
+5. **절대 모델 경로** — `DxInfer`의 `model-path` 속성은 절대 파일 시스템 경로로 해석되어야 합니다 (예: `$SRC_DIR` 기준으로 계산). 상대 경로는 실행 위치에 따라 달라져 런타임에 실패할 수 있습니다.
 
 ---
 
@@ -452,6 +468,6 @@ python .deepx/scripts/validate_framework.py
 | 추론이 감지 결과를 생성하지 않음 | `DxPreprocess`와 `DxInfer` 간 `preprocess-id` 불일치 | 두 엘리먼트가 동일한 `preprocess-id` 값을 공유하는지 확인 |
 | 파이프라인 데드락 또는 멈춤 | 처리 단계 사이에 `queue` 엘리먼트 누락 | 모든 처리 엘리먼트 쌍 사이에 `queue` 엘리먼트 추가 |
 | RTSP 스트림 프레임 드롭 | 소스 후 프레임 속도 제한 없음 | RTSP 소스 엘리먼트 직후에 `DxRate` 삽입 |
-| 런타임에 `model-path` 미발견 | `model-path` 속성에 상대 경로 사용 | 절대 경로 사용 (예: `/opt/deepx/models/yolo26-n_640x640.dxnn`) |
+| 런타임에 `model-path` 미발견 | 실행 위치 기준으로 해석된 상대 경로 | 절대 경로 사용 (예: `/opt/deepx/models/yolo26-n_640x640.dxnn`) |
 | `DxInfer` 플러그인 미등록 | 플러그인 미설치 또는 `GST_PLUGIN_PATH` 미설정 | `gst-inspect-1.0 dxinfer`로 확인; `GST_PLUGIN_PATH` 검사 |
 | 브로커 파이프라인이 빈 메시지 전송 | `DxMsgBroker` 전에 `DxMsgConv` 누락 | 브로커 엘리먼트 전에 `DxMsgConv`로 메타데이터 직렬화 추가 |

@@ -209,7 +209,9 @@ GST_END_TEST;
 static Suite *aggregator_sticky_emit_suite(void) {
     Suite *s = suite_create("aggregator_sticky_emit");
     TCase *tc = tcase_create("sticky_events");
+#ifndef _WIN32
     tcase_set_timeout(tc, 30.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, STICKY_dxgather_emits_sticky_events);
     tcase_add_test(tc, STICKY_dxinputselector_emits_sticky_events);

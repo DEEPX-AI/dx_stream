@@ -190,7 +190,9 @@ GST_END_TEST;
 static Suite *dxpostprocess_suite(void) {
     Suite *s = suite_create("dxpostprocess");
     TCase *tc = tcase_create("contract");
+#ifndef _WIN32
     tcase_set_timeout(tc, 20.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, CA1_factory_make);
     tcase_add_test(tc, CA2_property_defaults_and_set);

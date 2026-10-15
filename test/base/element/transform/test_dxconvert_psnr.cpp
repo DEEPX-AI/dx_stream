@@ -495,7 +495,9 @@ GST_END_TEST;
 static Suite *dxconvert_psnr_suite(void) {
     Suite *s = suite_create("dxconvert_psnr");
     TCase *tc = tcase_create("conversion_quality");
+#ifndef _WIN32
     tcase_set_timeout(tc, 30.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, CE_convert_rgb_to_bgr_swap);
     tcase_add_test(tc, CE_convert_i420_rgb_roundtrip);

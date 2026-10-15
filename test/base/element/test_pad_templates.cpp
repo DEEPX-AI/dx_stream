@@ -110,7 +110,9 @@ GST_END_TEST;
 static Suite *pad_templates_suite(void) {
     Suite *s = suite_create("pad_templates");
     TCase *tc = tcase_create("caps_any_forbidden");
+#ifndef _WIN32
     tcase_set_timeout(tc, 10.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, TPL_dxinfer_not_any);
     tcase_add_test(tc, TPL_dxrate_not_any);

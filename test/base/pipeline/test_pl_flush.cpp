@@ -202,7 +202,9 @@ GST_END_TEST;
 static Suite *pl_flush_suite(void) {
     Suite *s = suite_create("pl_flush");
     TCase *tc = tcase_create("flush_reset");
+#ifndef _WIN32
     tcase_set_timeout(tc, 30.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, PL_flush_dxrate_prevbuf_reset);
     tcase_add_test(tc, PL_flush_dxtracker_clear);

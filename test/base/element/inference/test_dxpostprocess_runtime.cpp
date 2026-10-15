@@ -153,7 +153,9 @@ GST_END_TEST;
 static Suite *dxpostprocess_runtime_suite(void) {
     Suite *s = suite_create("dxpostprocess_runtime");
     TCase *tc = tcase_create("runtime_edge");
+#ifndef _WIN32
     tcase_set_timeout(tc, 30.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, CE_postproc_no_tensors_primary);
     tcase_add_test(tc, CE_postproc_secondary_no_tensors);

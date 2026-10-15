@@ -197,7 +197,9 @@ GST_END_TEST;
 static Suite *pl_per_stream_eos_suite(void) {
     Suite *s = suite_create("pl_per_stream_eos");
     TCase *tc = tcase_create("eos_drain");
+#ifndef _WIN32
     tcase_set_timeout(tc, 30.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, PL_per_stream_eos_drain_order);
     tcase_add_test(tc, PL_per_stream_eos_no_cross_contamination);

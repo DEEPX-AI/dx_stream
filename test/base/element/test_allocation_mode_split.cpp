@@ -89,7 +89,9 @@ GST_END_TEST;
 static Suite *allocation_mode_split_suite(void) {
     Suite *s = suite_create("allocation_mode_split");
     TCase *tc = tcase_create("normal_mode");
+#ifndef _WIN32
     tcase_set_timeout(tc, 10.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, ALLOC_pre_normal_mode_no_dxframe_meta);
     tcase_add_test(tc, ALLOC_osd_normal_mode_no_dxframe_meta);

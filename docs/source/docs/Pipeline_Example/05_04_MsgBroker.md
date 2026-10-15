@@ -1,4 +1,4 @@
-The pipeline demonstrates how to process a local video file with the YOLOv7 model for object detection, convert the results into a structured message format (e.g., JSON), and publish them to a message broker such as MQTT or Kafka for downstream applications.
+The pipeline demonstrates how to process a local video file with the YOLOv5s model for object detection, convert the results into a structured message format (e.g., JSON), and publish them to a message broker such as MQTT or Kafka for downstream applications.
 
 ## Basic MsgBroker Pipeline Process
 
@@ -58,17 +58,17 @@ sudo systemctl enable mosquitto
 **2. Run DX-STREAM Pipeline (Server Side)**
 ```bash
 # Execute the broker pipeline on processing server
-# The pipeline uses YOLOv7 model for object detection and converts to JSON messages
-cd /path/to/dx_stream
+# The pipeline uses YOLOv5s model for object detection and converts to JSON messages
+cd /path/to/dx_stream/dx_stream
 ./pipelines/broker/run_dxmsgbroker_mqtt.sh
 
 # Or run manually with custom settings
 gst-launch-1.0 \
   urisourcebin uri=file:///path/to/your/video.mp4 ! decodebin ! \
-  dxpreprocess config-file-path=configs/Object_Detection/YoloV7/preprocess_config.json ! \
-  dxinfer config-file-path=configs/Object_Detection/YoloV7/inference_config.json ! \
-  dxpostprocess config-file-path=configs/Object_Detection/YoloV7/postprocess_config.json ! \
-  dxmsgconv library-file-path=/usr/lib/libdx_msgconvl.so config-file-path=configs/msgconv_config.json ! \
+  dxpreprocess config-file-path=configs/YoloV5S_PPU/preprocess_config.json ! \
+  dxinfer config-file-path=configs/YoloV5S_PPU/inference_config.json ! \
+  dxpostprocess config-file-path=configs/YoloV5S_PPU/postprocess_config.json ! \
+  dxmsgconv library-file-path=/usr/local/share/gstdxstream/lib/libdx_msgconvl.so config-file-path=configs/msgconv_config.json ! \
   dxmsgbroker broker-name=mqtt conn-info=localhost:1883 topic=test
 ```
 
@@ -144,16 +144,16 @@ An empty list is normal if no topics have been created yet.
 **2. Run DX-STREAM Pipeline (Server Side)**
 ```bash
 # Execute the broker pipeline on processing server  
-cd /path/to/dx_stream
+cd /path/to/dx_stream/dx_stream
 ./pipelines/broker/run_dxmsgbroker_kafka.sh
 
 # Or run manually with custom settings
 gst-launch-1.0 \
   urisourcebin uri=file:///path/to/your/video.mp4 ! decodebin ! \
-  dxpreprocess config-file-path=configs/Object_Detection/YoloV7/preprocess_config.json ! \
-  dxinfer config-file-path=configs/Object_Detection/YoloV7/inference_config.json ! \
-  dxpostprocess config-file-path=configs/Object_Detection/YoloV7/postprocess_config.json ! \
-  dxmsgconv library-file-path=/usr/lib/libdx_msgconvl.so config-file-path=configs/msgconv_config.json ! \
+  dxpreprocess config-file-path=configs/YoloV5S_PPU/preprocess_config.json ! \
+  dxinfer config-file-path=configs/YoloV5S_PPU/inference_config.json ! \
+  dxpostprocess config-file-path=configs/YoloV5S_PPU/postprocess_config.json ! \
+  dxmsgconv library-file-path=/usr/local/share/gstdxstream/lib/libdx_msgconvl.so config-file-path=configs/msgconv_config.json ! \
   dxmsgbroker broker-name=kafka conn-info=localhost:9092 topic=test
 ```
 
@@ -248,7 +248,7 @@ Custom video (optional):
 
 !!! warning "Kafka: start consumer before pipeline"
 
-    Kafka does not retain messages for consumers that connect after publish.
+    The C++ consumer (`kafka_consume_example.exe`) starts reading from the latest offset, so it does not receive messages published before it connected. The Python consumer reads from the beginning.
     Start the consumer first, then run the pipeline:
 
     ```cmd
@@ -289,7 +289,7 @@ python install\share\gstdxstream\bin\kafka_consume_example.py -n localhost -p 90
 **Client Machine:**  
 
 - Consumer Application (Python/C++)  
-- Only needs client library (paho-mqtt/kafka-python)  
+- Only needs client library (paho-mqtt/confluent-kafka)  
 - No broker service needed  
 
 **Connection:**  
@@ -300,7 +300,7 @@ python install\share\gstdxstream\bin\kafka_consume_example.py -n localhost -p 90
 
 - **Server**: DX-STREAM + Message Broker Service (MQTT/Kafka)  
 
-- **Client**: Only consumer application + client library (paho-mqtt/kafka-python)  
+- **Client**: Only consumer application + client library (paho-mqtt/confluent-kafka)  
 
 !!! note "NOTE"  
 
@@ -312,7 +312,7 @@ The broker pipelines use the following key properties:
 
 **DxMsgConv Element:**
 
-- `config-file-path`: Path to configuration file containing message format properties (optional)
+- `config-file-path`: Path to the JSON configuration file for the element's properties (`library-file-path`, `message-interval`, `include-frame`) (optional)
 
 - `library-file-path`: Path to custom message converter library (**required**)
 
@@ -454,9 +454,9 @@ tls_keyfile = /etc/mosquitto/certs/client.key
 
 ```
     gst-launch-1.0 -e urisourcebin uri=file://$INPUT_VIDEO_PATH ! decodebin ! \
-                    dxpreprocess config-file-path=$SRC_DIR/configs/Object_Detection/YoloV7/preprocess_config.json ! queue ! \
-                    dxinfer config-file-path=$SRC_DIR/configs/Object_Detection/YoloV7/inference_config.json ! queue ! \
-                    dxpostprocess config-file-path=$SRC_DIR/configs/Object_Detection/YoloV7/postprocess_config.json ! queue ! \
+                    dxpreprocess config-file-path=$SRC_DIR/configs/YoloV5S_PPU/preprocess_config.json ! queue ! \
+                    dxinfer config-file-path=$SRC_DIR/configs/YoloV5S_PPU/inference_config.json ! queue ! \
+                    dxpostprocess config-file-path=$SRC_DIR/configs/YoloV5S_PPU/postprocess_config.json ! queue ! \
                     dxmsgconv config-file-path=$SRC_DIR/configs/msgconv_config.json ! queue ! \
                     dxmsgbroker broker-name=mqtt conn-info=localhost:8883 topic=test config=$SRC_DIR/configs/broker_mqtt.cfg
 ```
@@ -476,7 +476,7 @@ Follow the [librdkafka SSL guide](https://github.com/confluentinc/librdkafka/wik
 ```properties
 # SSL Configuration
 ssl.protocol=TLS
-ssl.enabled.protocols=TLSv1.2,TLSv1.1,TLSv1
+ssl.enabled.protocols=TLSv1.2,TLSv1.3
 ssl.keystore.type=JKS
 ssl.keystore.location=/path/to/kafka.server.keystore.jks
 ssl.keystore.password=server_keystore_password
