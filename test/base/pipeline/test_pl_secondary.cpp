@@ -1,7 +1,7 @@
 // PL-A2 — Secondary inference flow verification
 // primary detection -> tee -> (classify + face detection) -> gather
 // Validates: IoU > 0.5 for both detection box and face box
-// SKIP: model files, NPU, or postprocess libraries not available
+// Missing required models, NPU, or postprocess libraries fail the test.
 
 #include <gst/check/gstcheck.h>
 #include <gst/gst.h>
@@ -41,7 +41,7 @@ static void link_src_to_gather(GstElement *element, GstElement *gather) {
 }
 
 GST_START_TEST(PL_A2_secondary_iou_validation) {
-    DXTEST_SKIP_IF(!can_run_secondary(),
+    fail_if(!can_run_secondary(),
                    "secondary models/NPU/postprocess not available");
 
     std::string image = resolve_resource_path("images/test.jpg");
@@ -210,7 +210,7 @@ GST_START_TEST(PL_A2_secondary_iou_validation) {
 GST_END_TEST;
 
 GST_START_TEST(PL_A2_secondary_eos) {
-    DXTEST_SKIP_IF(!can_run_secondary(),
+    fail_if(!can_run_secondary(),
                    "secondary models/NPU/postprocess not available");
 
     std::string image = resolve_resource_path("images/test.jpg");

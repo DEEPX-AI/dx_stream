@@ -5,7 +5,7 @@
 #   ./run_test.sh base/metadata/test_dxframemeta.cpp   # C++ test
 #   ./run_test.sh pydxs                                 # Python binding test
 #
-# Exit code: 0=PASS, 1=FAIL
+# Exit code: 0=PASS, 1=FAIL, 2=ENV ERROR, 77=optional SKIP
 
 set -u
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -29,11 +29,15 @@ TARGET="$1"
 if [ "$TARGET" = "pydxs" ]; then
     RUNNER="$SCRIPT_DIR/base/pydxs/run_pydxs_tests.sh"
     if [ ! -x "$RUNNER" ]; then
-        echo "[SKIP] pydxs (run_pydxs_tests.sh not found)"
-        exit 0
+        echo "[FAIL] pydxs (run_pydxs_tests.sh not found)"
+        exit 1
     fi
     echo "===== [PYDXS] base/pydxs"
     if "$RUNNER" > "$LOG_DIR/pydxs.log" 2>&1; then
+        if grep -q '^SKIP:' "$LOG_DIR/pydxs.log"; then
+            echo "[SKIP] pydxs contains optional checks (see $LOG_DIR/pydxs.log)"
+            exit 77
+        fi
         echo "[PASS] pydxs"
         exit 0
     else
@@ -95,14 +99,38 @@ if [ "${VALGRIND:-0}" = "1" ]; then
     # CK_FORK=no: keep check's whole suite in one process so valgrind sees it all.
     if CK_FORK=no valgrind --error-exitcode=99 --quiet --suppressions="$SCRIPT_DIR/valgrind.supp" \
             "$BIN" > "$LOG" 2>&1; then
-        exit 0
+        native_exit=0
     else
-        exit 1
+        native_exit=$?
+    fi
+else
+    if "$BIN" > "$LOG" 2>&1; then
+        native_exit=0
+    else
+        native_exit=$?
     fi
 fi
-
-if "$BIN" > "$LOG" 2>&1; then
-    exit 0
-else
+if [ "$native_exit" -ne 0 ]; then
+    echo "[FAIL] Process exited with code $native_exit." >> "$LOG"
     exit 1
 fi
+awk -v output="$LOG" '
+    { sub(/\r$/, "") }
+    /^[0-9]+%: Checks: [0-9]+, Failures: [0-9]+, Errors: [0-9]+$/ {
+        summaries++
+        if ($1 != "100%:" || $3 + 0 <= 0 || $5 + 0 != 0 || $7 + 0 != 0)
+            invalid = 1
+    }
+    /^[[:space:]]*\[SKIP\]/ { skipped++ }
+    END {
+        if (!summaries || invalid) {
+            print "[FAIL] Missing, empty or unsuccessful GstCheck summary." >> output
+            exit 1
+        }
+        if (skipped) {
+            print "[INFO] Suite contains skipped checks; not counted as PASS." >> output
+            exit 77
+        }
+    }
+' "$LOG"
+exit $?

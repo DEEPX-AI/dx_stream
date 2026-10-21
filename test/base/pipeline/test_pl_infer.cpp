@@ -1,7 +1,7 @@
 // PL-A — Inference full path verification (real model + result validation)
 // filesrc(test.jpg) → jpegdec → videoconvert → videoscale → capsfilter
 // → dxpreprocess → dxinfer → dxpostprocess → appsink
-// SKIP: model file or NPU not available
+// Missing required model or NPU resources fail the test.
 
 #include <gst/check/gstcheck.h>
 #include <gst/gst.h>
@@ -40,7 +40,7 @@ static bool can_run_infer() {
 }
 
 GST_START_TEST(PL_A_infer_produces_detections) {
-    DXTEST_SKIP_IF(!can_run_infer(), "model/NPU/postprocess not available");
+    fail_if(!can_run_infer(), "model/NPU/postprocess not available");
 
     std::string desc = infer_pipe_desc();
     GError *err = nullptr;
@@ -86,7 +86,7 @@ GST_START_TEST(PL_A_infer_produces_detections) {
 GST_END_TEST;
 
 GST_START_TEST(PL_A_infer_detection_fields) {
-    DXTEST_SKIP_IF(!can_run_infer(), "model/NPU/postprocess not available");
+    fail_if(!can_run_infer(), "model/NPU/postprocess not available");
 
     std::string desc = infer_pipe_desc();
     GError *err = nullptr;

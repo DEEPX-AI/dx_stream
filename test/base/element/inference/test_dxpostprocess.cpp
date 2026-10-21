@@ -90,7 +90,8 @@ GST_END_TEST;
 // Target: dxpostprocess_change_state L178-188 (dlsym fail → GST_ELEMENT_ERROR)
 // MUT: remove L179-188 → null func_ptr assigned → crash on call
 GST_START_TEST(CE_postproc_bad_function_error) {
-    if (!postproc_lib_available()) return;
+    fail_if(!postproc_lib_available(), "required postprocess library not found: %s",
+            POSTPROC_LIB_PATH().c_str());
     GstElement *e = gst_element_factory_make("dxpostprocess", nullptr);
     g_object_set(e, "library-file-path", POSTPROC_LIB_PATH().c_str(),
                  "function-name", "NonExistentFunction_XYZ", nullptr);
@@ -137,7 +138,8 @@ GST_END_TEST;
 // Target: gst_dxpostprocess_transform_ip L380-383 (frame_meta null → OK)
 // MUT: remove L380-383 → null deref on frame_meta → crash
 GST_START_TEST(CE_postproc_no_meta_passthrough) {
-    if (!postproc_lib_available()) return;
+    fail_if(!postproc_lib_available(), "required postprocess library not found: %s",
+            POSTPROC_LIB_PATH().c_str());
 
     GstElement *e = gst_element_factory_make("dxpostprocess", nullptr);
     g_object_set(e, "library-file-path", POSTPROC_LIB_PATH().c_str(),
@@ -167,7 +169,8 @@ GST_END_TEST;
 // MUT: remove L207 (_library_handle = nullptr) → second READY !_library_handle condition not met
 //      → function pointer invalid (dlclosed) → crash on subsequent call
 GST_START_TEST(CE_postproc_dlclose_reopen) {
-    if (!postproc_lib_available()) return;
+    fail_if(!postproc_lib_available(), "required postprocess library not found: %s",
+            POSTPROC_LIB_PATH().c_str());
     GstElement *e = gst_element_factory_make("dxpostprocess", nullptr);
     g_object_set(e, "library-file-path", POSTPROC_LIB_PATH().c_str(),
                  "function-name", "PostProcess", nullptr);
@@ -208,4 +211,3 @@ static Suite *dxpostprocess_suite(void) {
 }
 
 GST_CHECK_MAIN(dxpostprocess);
-

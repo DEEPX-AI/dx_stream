@@ -2,7 +2,7 @@
 # Usage:
 #   powershell -NoProfile -File windows\run_test.ps1 -Src base/metadata/test_foo.cpp
 #
-# Exit code: 0=PASS, 1=FAIL, 2=BUILD FAIL, 3=ENV ERROR
+# Exit code: 0=PASS, 1=FAIL, 2=BUILD FAIL, 3=ENV ERROR, 77=optional SKIP
 
 param(
     [Parameter(Mandatory=$true)]
@@ -180,8 +180,11 @@ $clArgs = @(
 ) + $includes + @("`"$srcPath`"", "/Fe:`"$binPath`"", "/link") + $libFlags
 
 $proc = Start-Process -FilePath $clExe -ArgumentList $clArgs `
-    -NoNewWindow -Wait -PassThru `
+    -NoNewWindow -PassThru `
     -RedirectStandardOutput $buildLog -RedirectStandardError "$buildLog.err"
+# Windows PowerShell 5.1 needs a cached handle to retain ExitCode after exit.
+$null = $proc.Handle
+$proc.WaitForExit()
 
 # Merge stderr into log
 if (Test-Path "$buildLog.err") {
@@ -189,6 +192,9 @@ if (Test-Path "$buildLog.err") {
     Remove-Item "$buildLog.err" -ErrorAction SilentlyContinue
 }
 
+if ($null -eq $proc.ExitCode) {
+    throw "Cannot read exit code for compiler process $($proc.Id)."
+}
 if ($proc.ExitCode -ne 0) {
     exit 2
 }
@@ -222,6 +228,7 @@ $TEST_TIMEOUT_SEC = 120
 
 $run = Start-Process -FilePath $binPath -NoNewWindow -PassThru `
     -RedirectStandardOutput $runLog -RedirectStandardError "$runLog.err"
+$null = $run.Handle
 
 $finished = $run.WaitForExit($TEST_TIMEOUT_SEC * 1000)
 if (-not $finished) {
@@ -243,18 +250,34 @@ if (Test-Path "$runLog.err") {
     Remove-Item "$runLog.err" -ErrorAction SilentlyContinue
 }
 
-$testFailed = $true
-if (Test-Path $runLog) {
-    $gstCheckSummary = Select-String -Path $runLog -Quiet -Pattern `
-        '^\d+%: Checks: \d+, Failures: \d+, Errors: \d+$'
-    $gstCheckFailure = Select-String -Path $runLog -Quiet -Pattern `
-        '^\d+%: Checks: \d+, Failures: [1-9]\d*, Errors: \d+$',
-        '^\d+%: Checks: \d+, Failures: \d+, Errors: [1-9]\d*$'
-    $testFailed = -not $gstCheckSummary -or $gstCheckFailure
+$nativeExitCode = $run.ExitCode
+if ($null -eq $nativeExitCode) {
+    throw "Cannot read exit code for test process $($run.Id)."
 }
-
-if ($testFailed) {
+if ($nativeExitCode -ne 0) {
+    Add-Content -LiteralPath $runLog -Value "[FAIL] Process exited with code $nativeExitCode."
     exit 1
 }
 
+$lines = @(Get-Content -LiteralPath $runLog)
+$summaries = @($lines | Select-String -Pattern `
+    '^(?<Percent>\d+)%: Checks: (?<Checks>\d+), Failures: (?<Failures>\d+), Errors: (?<Errors>\d+)$')
+$valid = $summaries.Count -gt 0
+foreach ($summary in $summaries) {
+    $groups = $summary.Matches[0].Groups
+    if ($groups['Percent'].Value -ne '100' -or
+        [int]$groups['Checks'].Value -le 0 -or
+        [int]$groups['Failures'].Value -ne 0 -or
+        [int]$groups['Errors'].Value -ne 0) {
+        $valid = $false
+    }
+}
+if (-not $valid) {
+    Add-Content -LiteralPath $runLog -Value "[FAIL] Missing, empty or unsuccessful GstCheck summary."
+    exit 1
+}
+if ($lines | Select-String -Pattern '^\s*\[SKIP\]') {
+    Add-Content -LiteralPath $runLog -Value "[INFO] Suite contains skipped checks; not counted as PASS."
+    exit 77
+}
 exit 0

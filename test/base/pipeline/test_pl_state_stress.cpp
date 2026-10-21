@@ -45,9 +45,9 @@ GST_START_TEST(PL_state_stress_tracker_10x) {
 GST_END_TEST;
 
 GST_START_TEST(PL_state_stress_infer_5x) {
-    DXTEST_SKIP_IF(!npu_available(), "NPU not available");
+    fail_if(!npu_available(), "NPU not available");
     std::string desc = build_infer_pipeline(YOLO_DEFAULT, "fakesink sync=false");
-    DXTEST_SKIP_IF(desc.empty(), "model/postprocess not available");
+    fail_if(desc.empty(), "model/postprocess not available");
     test_lifecycle_cycle(desc.c_str(), 5);
 }
 GST_END_TEST;

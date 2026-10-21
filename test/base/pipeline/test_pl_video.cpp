@@ -38,7 +38,7 @@ static std::string video_pipe_noapp() {
 
 GST_START_TEST(PL_video_decode_transform) {
     std::string desc = video_pipe_desc();
-    DXTEST_SKIP_IF(desc.empty(), "boat.mp4 not found");
+    fail_if(desc.empty(), "boat.mp4 not found");
 
     GError *err = nullptr;
     GstElement *pipe = gst_parse_launch(desc.c_str(), &err);
@@ -76,7 +76,7 @@ GST_END_TEST;
 
 GST_START_TEST(PL_video_lifecycle) {
     std::string desc = video_pipe_noapp();
-    DXTEST_SKIP_IF(desc.empty(), "boat.mp4 not found");
+    fail_if(desc.empty(), "boat.mp4 not found");
     test_lifecycle_cycle(desc.c_str(), 3);
 }
 GST_END_TEST;

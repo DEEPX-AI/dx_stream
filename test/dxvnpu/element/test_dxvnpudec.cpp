@@ -8,7 +8,7 @@ using namespace dxtest;
 
 static gboolean require_device() {
     if (g_strcmp0(g_getenv("DXVNPU_TEST_DEVICE"), "1") == 0) return TRUE;
-    g_test_skip("DXVNPU hardware test: set DXVNPU_TEST_DEVICE=1 on a configured device");
+    g_print("[SKIP] DXVNPU hardware test: set DXVNPU_TEST_DEVICE=1 on a configured device\n");
     return FALSE;
 }
 
@@ -16,10 +16,7 @@ static void decode_sample(const char *filename, const char *parser) {
     if (!require_device()) return;
 
     const std::string video = resolve_video_path(filename);
-    if (video.empty()) {
-        g_test_skip("DXVNPU sample video is not installed; run ./setup.sh");
-        return;
-    }
+    fail_if(video.empty(), "required DXVNPU sample video not found: %s; run setup", filename);
 
     GError *error = nullptr;
     gchar *launch = g_strdup_printf(

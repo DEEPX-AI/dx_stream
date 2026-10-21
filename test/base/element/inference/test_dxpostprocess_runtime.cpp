@@ -29,7 +29,7 @@ static gboolean lib_available() {
 // Target: gst_dxpostprocess_transform_ip L396 (iter == end → skip processing)
 // MUT: remove L396 check → undefined access on empty map → crash
 GST_START_TEST(CE_postproc_no_tensors_primary) {
-    DXTEST_SKIP_IF(!lib_available(), "postprocess library not found");
+    fail_if(!lib_available(), "required postprocess library not found: %s", POSTPROC_LIB_PATH().c_str());
 
     GstElement *e = gst_element_factory_make("dxpostprocess", nullptr);
     g_object_set(e, "library-file-path", POSTPROC_LIB_PATH().c_str(),
@@ -63,7 +63,7 @@ GST_END_TEST;
 // CE_postproc_secondary_no_tensors: secondary mode, objects without matching tensors → skip
 // Target: process_secondary_mode L348-353 (iter == end → continue, empty tensors → continue)
 GST_START_TEST(CE_postproc_secondary_no_tensors) {
-    DXTEST_SKIP_IF(!lib_available(), "postprocess library not found");
+    fail_if(!lib_available(), "required postprocess library not found: %s", POSTPROC_LIB_PATH().c_str());
 
     GstElement *e = gst_element_factory_make("dxpostprocess", nullptr);
     g_object_set(e, "library-file-path", POSTPROC_LIB_PATH().c_str(),
@@ -99,7 +99,7 @@ GST_END_TEST;
 // CE_postproc_wrong_infer_id: buffer has tensors for id=0 but element expects id=99 → skip
 // Target: gst_dxpostprocess_transform_ip L396 (find(99) → end)
 GST_START_TEST(CE_postproc_wrong_infer_id) {
-    DXTEST_SKIP_IF(!lib_available(), "postprocess library not found");
+    fail_if(!lib_available(), "required postprocess library not found: %s", POSTPROC_LIB_PATH().c_str());
 
     GstElement *e = gst_element_factory_make("dxpostprocess", nullptr);
     g_object_set(e, "library-file-path", POSTPROC_LIB_PATH().c_str(),
@@ -133,7 +133,7 @@ GST_END_TEST;
 // CE_postproc_dlclose_multiple: multiple READY→NULL→READY cycles → no leak
 // Target: dxpostprocess_change_state (dlopen/dlclose symmetry)
 GST_START_TEST(CE_postproc_dlclose_multiple) {
-    DXTEST_SKIP_IF(!lib_available(), "postprocess library not found");
+    fail_if(!lib_available(), "required postprocess library not found: %s", POSTPROC_LIB_PATH().c_str());
 
     GstElement *e = gst_element_factory_make("dxpostprocess", nullptr);
     g_object_set(e, "library-file-path", POSTPROC_LIB_PATH().c_str(),

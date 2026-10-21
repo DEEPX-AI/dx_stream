@@ -6,7 +6,7 @@
 //
 // Environment variables:
 //   DX_STREAM_ROOT    project root (auto-detected if unset)
-//   DX_NPU_AVAILABLE  set "0" to skip tests that require NPU
+//   DX_NPU_AVAILABLE  set "0" to report NPU unavailable (required NPU tests fail)
 
 #pragma once
 
@@ -55,9 +55,14 @@ inline std::string dx_stream_root() {
 
 inline std::string resolve_model_path(const char *name) {
     std::string root = dx_stream_root();
-    if (root.empty()) return "";
+    if (root.empty()) {
+        g_printerr("[RESOURCE] Cannot locate project root for model: %s\n", name);
+        return "";
+    }
     std::string p = root + "/dx_stream/samples/models/" + name;
-    return path_exists(p) ? p : "";
+    if (path_exists(p)) return p;
+    g_printerr("[RESOURCE] Model not found: %s\n", p.c_str());
+    return "";
 }
 
 inline std::string resolve_config_path(const char *name) {
@@ -69,16 +74,26 @@ inline std::string resolve_config_path(const char *name) {
 
 inline std::string resolve_resource_path(const char *rel) {
     std::string root = dx_stream_root();
-    if (root.empty()) return "";
+    if (root.empty()) {
+        g_printerr("[RESOURCE] Cannot locate project root for test resource: %s\n", rel);
+        return "";
+    }
     std::string p = root + "/test/resources/" + rel;
-    return path_exists(p) ? p : "";
+    if (path_exists(p)) return p;
+    g_printerr("[RESOURCE] Test resource not found: %s\n", p.c_str());
+    return "";
 }
 
 inline std::string resolve_video_path(const char *name) {
     std::string root = dx_stream_root();
-    if (root.empty()) return "";
+    if (root.empty()) {
+        g_printerr("[RESOURCE] Cannot locate project root for video: %s\n", name);
+        return "";
+    }
     std::string p = root + "/dx_stream/samples/videos/" + name;
-    return path_exists(p) ? p : "";
+    if (path_exists(p)) return p;
+    g_printerr("[RESOURCE] Video not found: %s\n", p.c_str());
+    return "";
 }
 
 // ---------------------------------------------------------------------------
@@ -105,12 +120,11 @@ inline std::string resolve_lib_path(const char *linux_name) {
 
 inline bool npu_available() {
     const char *env = g_getenv("DX_NPU_AVAILABLE");
-    if (env && g_strcmp0(env, "0") == 0) return false;
+    if (env && g_strcmp0(env, "0") == 0) {
+        g_printerr("[RESOURCE] NPU disabled by DX_NPU_AVAILABLE=0\n");
+        return false;
+    }
     return true;  // assume available by default
 }
-
-// Called in test code to print skip messages
-#define DXTEST_SKIP_IF(cond, reason) \
-    do { if (cond) { g_print("[SKIP] %s\n", reason); return; } } while (0)
 
 }  // namespace dxtest

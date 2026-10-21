@@ -180,7 +180,7 @@ GST_START_TEST(CE_infer_default_event_forwarded) {
     // downstream probe — model_available() alone doesn't guarantee the dxrt
     // backend can actually run (e.g. no NPU hardware), which silently keeps
     // the pipeline out of PLAYING and makes this fail for an unrelated reason.
-    DXTEST_SKIP_IF(!runtime_available(), "NPU runtime not available");
+    fail_if(!runtime_available(), "NPU runtime not available");
     std::string model = resolve_test_model();
 
     GstElement *pipe = make_infer_pipeline_appsrc(model, "fakesink");
@@ -218,7 +218,7 @@ GST_END_TEST;
 GST_START_TEST(CE_infer_wrapped_event_forwarded) {
     // Same rationale as CE_infer_default_event_forwarded above: this needs a
     // live PLAYING pipeline pushing data, not just a resolvable model path.
-    DXTEST_SKIP_IF(!runtime_available(), "NPU runtime not available");
+    fail_if(!runtime_available(), "NPU runtime not available");
     std::string model = resolve_test_model();
 
     GstElement *pipe = make_infer_pipeline_appsrc(model, "fakesink");
@@ -265,7 +265,7 @@ GST_END_TEST;
 // Uses appsrc pipeline in PAUSED to avoid actual inference.
 // ---------------------------------------------------------------------------
 GST_START_TEST(CE_infer_sink_query_allocation) {
-    if (!model_available()) return;
+    fail_if(!model_available(), "required yolov5-s_640x640_ppu.dxnn model not available");
     std::string model = resolve_test_model();
 
     GstElement *pipe = make_infer_pipeline_appsrc(model, "fakesink");
@@ -316,7 +316,7 @@ GST_END_TEST;
 // Uses appsrc pipeline in PAUSED to avoid actual inference.
 // ---------------------------------------------------------------------------
 GST_START_TEST(CE_infer_src_query_latency) {
-    if (!model_available()) return;
+    fail_if(!model_available(), "required yolov5-s_640x640_ppu.dxnn model not available");
     std::string model = resolve_test_model();
 
     GstElement *pipe = make_infer_pipeline_appsrc(model, "fakesink");
@@ -365,7 +365,7 @@ GST_END_TEST;
 // MUT: remove L545 → CAPS/POSITION/etc queries never reach upstream
 // ---------------------------------------------------------------------------
 GST_START_TEST(CE_infer_src_query_default_forwarded) {
-    if (!model_available()) return;
+    fail_if(!model_available(), "required yolov5-s_640x640_ppu.dxnn model not available");
     std::string model = resolve_test_model();
 
     GstElement *pipe = make_infer_pipeline_appsrc(model, "fakesink");
@@ -404,7 +404,7 @@ GST_END_TEST;
 // Requires: NPU runtime (data must flow for verification)
 // ---------------------------------------------------------------------------
 GST_START_TEST(CE_infer_src_event_qos_records_timediff) {
-    DXTEST_SKIP_IF(!runtime_available(), "NPU runtime not available");
+    fail_if(!runtime_available(), "NPU runtime not available");
     std::string model = resolve_test_model();
 
     GstElement *pipe = make_infer_pipeline_appsrc(model);
