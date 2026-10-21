@@ -88,10 +88,10 @@ GST_END_TEST;
 // Target: handle_ready_to_paused L276 (if !_secondary_mode → start push thread)
 // MUT: remove _secondary_mode check → thread created → crash on secondary_mode_infer
 GST_START_TEST(CE_infer_secondary_no_push_thread) {
-    DXTEST_SKIP_IF(!dxtest::npu_available(), "NPU not available");
+    fail_if(!dxtest::npu_available(), "NPU not available");
 
     std::string model = dxtest::resolve_model_path("yolov5-s_640x640_ppu.dxnn");
-    DXTEST_SKIP_IF(model.empty(), "model not found");
+    fail_if(model.empty(), "required yolov5-s_640x640_ppu.dxnn model not found");
 
     GstElement *e = gst_element_factory_make("dxinfer", nullptr);
     g_object_set(e,

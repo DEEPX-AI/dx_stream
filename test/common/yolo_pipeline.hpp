@@ -42,8 +42,10 @@ inline std::string pp_lib_name(const char *linux_name) {
 
 inline bool pp_lib_exists(const char *linux_name) {
     std::string dir = pp_lib_dir();
-    if (dir.empty()) return false;
-    return path_exists(dir + pp_lib_name(linux_name));
+    std::string path = dir + pp_lib_name(linux_name);
+    if (!dir.empty() && path_exists(path)) return true;
+    g_printerr("[RESOURCE] Postprocess library not found: %s\n", path.c_str());
+    return false;
 }
 
 struct YoloModel {
@@ -62,7 +64,7 @@ inline std::string build_infer_pipeline(const YoloModel &m,
     std::string dir = pp_lib_dir();
     std::string pp = dir + pp_lib_name(m.pp_lib);
 
-    if (model.empty() || image.empty() || !path_exists(pp))
+    if (model.empty() || image.empty() || !pp_lib_exists(m.pp_lib))
         return "";
 
     char buf[2048];
@@ -88,7 +90,7 @@ inline std::string build_infer_pipeline_with_interval(
     std::string dir = pp_lib_dir();
     std::string pp = dir + pp_lib_name(m.pp_lib);
 
-    if (model.empty() || image.empty() || !path_exists(pp))
+    if (model.empty() || image.empty() || !pp_lib_exists(m.pp_lib))
         return "";
 
     char buf[2048];
@@ -115,7 +117,7 @@ inline std::string build_infer_pipeline_with_roi(
     std::string dir = pp_lib_dir();
     std::string pp = dir + pp_lib_name(m.pp_lib);
 
-    if (model.empty() || image.empty() || !path_exists(pp))
+    if (model.empty() || image.empty() || !pp_lib_exists(m.pp_lib))
         return "";
 
     char buf[2048];
@@ -142,7 +144,7 @@ inline std::string build_multiframe_infer_pipeline(
     std::string dir = pp_lib_dir();
     std::string pp = dir + pp_lib_name(m.pp_lib);
 
-    if (model.empty() || image.empty() || !path_exists(pp))
+    if (model.empty() || image.empty() || !pp_lib_exists(m.pp_lib))
         return "";
 
     char buf[2048];
@@ -160,17 +162,17 @@ inline std::string build_multiframe_infer_pipeline(
     return std::string(buf);
 }
 
-// All 9 YOLO models from test_old
+// Model stems must match the filenames distributed by model_list.json.
 static const YoloModel YOLO_MODELS[] = {
-    {"YoloV5S_PPU", 640, "libpostprocess_ppu.so",           "YOLOV5S_PPU", 114},
-    {"yolo26n",     640, "libpostprocess_yolo26od.so",       "PostProcess",  114},
-    {"YoloV5S",     640, "libpostprocess_yolov5s_6.so",      "PostProcess",  0},
-    {"YoloV7",      640, "libpostprocess_yolov7.so",          "PostProcess",  0},
-    {"YoloV8N",     640, "libpostprocess_yolov8n.so",         "PostProcess",  0},
-    {"YoloV9S",     640, "libpostprocess_yolov9s.so",         "PostProcess",  0},
-    {"YOLOV11N",    640, "libpostprocess_yolov11.so",         "PostProcess",  0},
-    {"yolo26n-pose",640, "libpostprocess_yolo26pose.so",     "PostProcess",  0},
-    {"yolov8m_pose",640, "libpostprocess_yolov8m_pose.so",   "PostProcess",  0},
+    {"yolov5-s_640x640_ppu", 640, "libpostprocess_ppu.so",         "YOLOV5S_PPU", 114},
+    {"yolo26-n_640x640",     640, "libpostprocess_yolo26od.so",    "PostProcess", 114},
+    {"yolov5-s_640x640",     640, "libpostprocess_yolov5s_6.so",   "PostProcess", 0},
+    {"yolov7_640x640",       640, "libpostprocess_yolov7.so",      "PostProcess", 0},
+    {"yolov8-n_640x640",     640, "libpostprocess_yolov8n.so",     "PostProcess", 0},
+    {"yolov9-s_640x640",     640, "libpostprocess_yolov9s.so",     "PostProcess", 0},
+    {"yolo11-n_640x640",     640, "libpostprocess_yolov11.so",     "PostProcess", 0},
+    {"yolo26-n-pose_640x640",640, "libpostprocess_yolo26pose.so",  "PostProcess", 0},
+    {"yolov8-m-pose_640x640",640, "libpostprocess_yolov8m_pose.so","PostProcess", 0},
 };
 static const int YOLO_MODEL_COUNT = sizeof(YOLO_MODELS) / sizeof(YOLO_MODELS[0]);
 
@@ -192,12 +194,12 @@ struct SecondaryModel {
 };
 
 static const SecondaryModel CLASSIFY_MODEL = {
-    "EfficientNet_Lite0", 224, "libpostprocess_object_class.so",
+    "efficientnet-lite0_224x224", 224, "libpostprocess_object_class.so",
     "PostProcess", 0, 2, 2, -1
 };
 
 static const SecondaryModel FACE_MODEL = {
-    "SCRFD500M", 640, "libpostprocess_scrfd500m.so",
+    "scrfd-500m_640x640", 640, "libpostprocess_scrfd500m.so",
     "PostProcess", 114, 3, 3, 0
 };
 

@@ -13,7 +13,7 @@ using CreateKernel = dxt::IVideoTransformKernel* (*)();
 
 static std::unique_ptr<dxt::IVideoTransformKernel> create_kernel(void** library) {
     if (g_strcmp0(g_getenv("DXVNPU_TEST_DEVICE"), "1") != 0) {
-        g_test_skip("DXVNPU hardware test: set DXVNPU_TEST_DEVICE=1 on a configured device");
+        g_print("[SKIP] DXVNPU hardware test: set DXVNPU_TEST_DEVICE=1 on a configured device\n");
         return nullptr;
     }
 
@@ -179,7 +179,7 @@ GST_END_TEST;
 
 GST_START_TEST(CA5_letterbox_uses_vnpu_backend) {
     if (g_strcmp0(g_getenv("DXVNPU_TEST_DEVICE"), "1") != 0) {
-        g_test_skip("DXVNPU hardware test: set DXVNPU_TEST_DEVICE=1 on a configured device");
+        g_print("[SKIP] DXVNPU hardware test: set DXVNPU_TEST_DEVICE=1 on a configured device\n");
         return;
     }
 

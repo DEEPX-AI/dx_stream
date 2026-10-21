@@ -27,8 +27,8 @@ static std::string find_model() {
 // MUT: remove null-meta check → crash on frame_meta dereference
 GST_START_TEST(CE_infer_no_meta_drops_harness) {
     std::string model = find_model();
-    DXTEST_SKIP_IF(model.empty(), "no model available");
-    DXTEST_SKIP_IF(!npu_available(), "NPU not available");
+    fail_if(model.empty(), "required yolov5-s_640x640_ppu.dxnn model not available");
+    fail_if(!npu_available(), "NPU not available");
 
     GError *err = nullptr;
     gchar *desc = g_strdup_printf(
@@ -80,8 +80,8 @@ GST_END_TEST;
 // Target: handle_paused_to_ready L293-310 (push_running=FALSE, thread join)
 GST_START_TEST(CE_infer_multiple_state_cycles) {
     std::string model = find_model();
-    DXTEST_SKIP_IF(model.empty(), "no model available");
-    DXTEST_SKIP_IF(!npu_available(), "NPU not available");
+    fail_if(model.empty(), "required yolov5-s_640x640_ppu.dxnn model not available");
+    fail_if(!npu_available(), "NPU not available");
 
     GError *err = nullptr;
     gchar *desc = g_strdup_printf(
@@ -117,8 +117,8 @@ GST_END_TEST;
 // Target: gst_dxinfer_sink_event_eos, push_thread flush queue
 GST_START_TEST(CE_infer_eos_after_data) {
     std::string model = find_model();
-    DXTEST_SKIP_IF(model.empty(), "no model available");
-    DXTEST_SKIP_IF(!npu_available(), "NPU not available");
+    fail_if(model.empty(), "required yolov5-s_640x640_ppu.dxnn model not available");
+    fail_if(!npu_available(), "NPU not available");
 
     GError *err = nullptr;
     gchar *desc = g_strdup_printf(

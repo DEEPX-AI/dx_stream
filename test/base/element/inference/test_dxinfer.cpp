@@ -134,7 +134,7 @@ GST_END_TEST;
 // CE_infer_bad_config_path_uses_properties: config-file-path load failure is non-fatal
 // Target: handle_null_to_ready should validate model-path, not config load status
 GST_START_TEST(CE_infer_bad_config_path_uses_properties) {
-    if (!model_available()) return;
+    fail_if(!model_available(), "required yolov5-s_640x640_ppu.dxnn model not available");
     std::string model = resolve_test_model();
     GstElement *e = gst_element_factory_make("dxinfer", nullptr);
     g_object_set(e, "config-file-path", "/nonexistent/dxinfer.json",
@@ -150,7 +150,7 @@ GST_END_TEST;
 // Target: handle_paused_to_ready L293-310 (push_running=FALSE, thread join)
 // MUT: remove L305-307 (g_thread_join) → thread leak, use-after-free
 GST_START_TEST(CE_infer_thread_join) {
-    if (!model_available()) return;
+    fail_if(!model_available(), "required yolov5-s_640x640_ppu.dxnn model not available");
     std::string model = resolve_test_model();
     GstElement *e = gst_element_factory_make("dxinfer", nullptr);
     g_object_set(e, "model-path", model.c_str(), nullptr);
@@ -165,7 +165,7 @@ GST_END_TEST;
 // Target: gst_dxinfer_chain L928-932 (frame_meta == null → unref + return OK)
 // MUT: removing L928-932 → null deref at L936 → crash
 GST_START_TEST(CE_infer_no_meta_drops) {
-    if (!model_available()) return;
+    fail_if(!model_available(), "required yolov5-s_640x640_ppu.dxnn model not available");
     std::string model = resolve_test_model();
 
     GError *err = nullptr;
@@ -197,7 +197,7 @@ GST_END_TEST;
 // Target: primary_mode_infer L881-886 (allocate + Put) + push_thread L700-720 (Get)
 // MUT: remove L881-882 → _output_tensors empty → fail
 GST_START_TEST(CE_infer_output_tensors) {
-    if (!model_available()) return;
+    fail_if(!model_available(), "required yolov5-s_640x640_ppu.dxnn model not available");
     std::string model = resolve_test_model();
 
     GError *err = nullptr;

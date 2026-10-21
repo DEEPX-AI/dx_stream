@@ -10,7 +10,7 @@ using namespace dxtest;
 
 static gboolean require_device() {
     if (g_strcmp0(g_getenv("DXVNPU_TEST_DEVICE"), "1") == 0) return TRUE;
-    g_test_skip("DXVNPU hardware test: set DXVNPU_TEST_DEVICE=1 on a configured device");
+    g_print("[SKIP] DXVNPU hardware test: set DXVNPU_TEST_DEVICE=1 on a configured device\n");
     return FALSE;
 }
 

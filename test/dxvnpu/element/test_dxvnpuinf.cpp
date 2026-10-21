@@ -14,13 +14,14 @@ static std::string resolve_test_model() {
 
 static gboolean require_device() {
     if (g_strcmp0(g_getenv("DXVNPU_TEST_DEVICE"), "1") == 0) return TRUE;
-    g_test_skip("DXVNPU hardware test: set DXVNPU_TEST_DEVICE=1 on a configured device");
+    g_print("[SKIP] DXVNPU hardware test: set DXVNPU_TEST_DEVICE=1 on a configured device\n");
     return FALSE;
 }
 
 GST_START_TEST(CE_infer_dxvnpu_async_fifo) {
-    if (!require_device() || resolve_test_model().empty()) return;
+    if (!require_device()) return;
     std::string model = resolve_test_model();
+    fail_if(model.empty(), "required yolov5-s_640x640_ppu.dxnn model not available");
 
     GError *err = nullptr;
     gchar *launch = g_strdup_printf(

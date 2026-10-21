@@ -11,6 +11,7 @@ if %ERRORLEVEL% neq 0 exit /b 1
 
 set PASS=0
 set FAIL=0
+set SKIP=0
 
 echo ===== Test Group: element =====
 for /f "usebackq delims=" %%F in (`dir /b /s "%SCRIPT_DIR%\base\element\test_*.cpp" 2^>nul`) do (
@@ -19,19 +20,29 @@ for /f "usebackq delims=" %%F in (`dir /b /s "%SCRIPT_DIR%\base\element\test_*.c
     powershell -NoProfile -ExecutionPolicy Bypass ^
         -File "%SCRIPT_DIR%\windows\run_test.ps1" ^
         -Src "%%F" >nul 2>nul
-    if !ERRORLEVEL! equ 0 (
+    set "RESULT=!ERRORLEVEL!"
+    if !RESULT! equ 0 (
         echo   [PASS] !NAME!
         set /a PASS+=1
+    ) else if !RESULT! equ 77 (
+        echo   [SKIP] !NAME! ^(contains optional skipped checks^)
+        set /a SKIP+=1
     ) else (
         echo   [FAIL] !NAME!
         call :show_log "!NAME!"
         set /a FAIL+=1
     )
 )
-echo   ── summary: PASS=%PASS% FAIL=%FAIL% ──
+if %PASS% equ 0 if %FAIL% equ 0 if %SKIP% equ 0 (
+    echo   [FAIL] No element test sources found.
+    set FAIL=1
+)
+echo   ── summary: PASS=%PASS% FAIL=%FAIL% SKIP=%SKIP% ──
 echo.
 
-if %FAIL% equ 0 (exit /b 0) else (exit /b 1)
+if %FAIL% neq 0 exit /b 1
+if %SKIP% neq 0 exit /b 77
+exit /b 0
 
 :show_log
 for %%L in ("%SCRIPT_DIR%\_logs\%~1.log.build" "%SCRIPT_DIR%\_logs\%~1.log") do (

@@ -28,7 +28,7 @@ static bool demo_resources_available() {
 // PL_demo_single_infer: single-stream inference pipeline runs to EOS
 // Target: full chain (preprocess→infer→postprocess→osd) with real model + synthetic input
 GST_START_TEST(PL_demo_single_infer) {
-    DXTEST_SKIP_IF(!demo_resources_available(), "NPU/model/POSTLIB_PATH().c_str() not available");
+    fail_if(!demo_resources_available(), "NPU/model/postprocess library not available");
 
     std::string model = resolve_model_path(MODEL);
 
@@ -72,7 +72,7 @@ GST_END_TEST;
 // PL_demo_single_detections: inference pipeline produces frames with DXFrameMeta
 // Target: preprocess→infer→postprocess chain populates metadata on output buffers
 GST_START_TEST(PL_demo_single_detections) {
-    DXTEST_SKIP_IF(!demo_resources_available(), "NPU/model/POSTLIB_PATH().c_str() not available");
+    fail_if(!demo_resources_available(), "NPU/model/postprocess library not available");
 
     std::string model = resolve_model_path(MODEL);
 
@@ -122,12 +122,12 @@ GST_END_TEST;
 // PL_demo_with_tracker: inference + tracker pipeline runs without error
 // Target: dxtracker processes frames after postprocess
 GST_START_TEST(PL_demo_with_tracker) {
-    DXTEST_SKIP_IF(!demo_resources_available(), "NPU/model/POSTLIB_PATH().c_str() not available");
+    fail_if(!demo_resources_available(), "NPU/model/postprocess library not available");
 
     std::string root = dx_stream_root();
     std::string model = resolve_model_path(MODEL);
     std::string tracker_cfg = root + "/dx_stream/configs/tracker_config.json";
-    DXTEST_SKIP_IF(!path_exists(tracker_cfg), "tracker_config.json not found");
+    fail_if(!path_exists(tracker_cfg), "tracker_config.json not found: %s", tracker_cfg.c_str());
 
     gchar *desc = g_strdup_printf(
         "videotestsrc num-buffers=10 "
@@ -169,7 +169,7 @@ GST_END_TEST;
 
 // PL_demo_lifecycle: inference pipeline survives PLAYING→NULL×3
 GST_START_TEST(PL_demo_lifecycle) {
-    DXTEST_SKIP_IF(!demo_resources_available(), "NPU/model/POSTLIB_PATH().c_str() not available");
+    fail_if(!demo_resources_available(), "NPU/model/postprocess library not available");
 
     std::string model = resolve_model_path(MODEL);
 

@@ -2,7 +2,7 @@
 REM Full test suite runner (Windows)
 REM Calls each group bat sequentially. Stops on first group failure.
 REM Usage:  run_all.bat
-REM Exit code: 0=all PASS, 1=any FAIL
+REM Exit code: 0=no FAIL (optional SKIPs reported separately), 1=any FAIL
 
 setlocal EnableDelayedExpansion
 
@@ -19,11 +19,15 @@ echo =========================================
 echo.
 
 set FAILED_GROUPS=
+set SKIPPED_GROUPS=
 
 REM --- Core groups: stop on first failure ---
 for %%G in (metadata element pipeline) do (
     call "%SCRIPT_DIR%\run_%%G.bat"
-    if !ERRORLEVEL! neq 0 (
+    set "RESULT=!ERRORLEVEL!"
+    if !RESULT! equ 77 (
+        set "SKIPPED_GROUPS=!SKIPPED_GROUPS! %%G"
+    ) else if !RESULT! neq 0 (
         set "FAILED_GROUPS=!FAILED_GROUPS! %%G"
         echo.
         echo [STOP] %%G failed -- skipping remaining groups
@@ -33,17 +37,28 @@ for %%G in (metadata element pipeline) do (
 
 REM --- pydxs: run always, failure is noted but does not stop suite ---
 call "%SCRIPT_DIR%\run_pydxs.bat"
-if !ERRORLEVEL! neq 0 set "FAILED_GROUPS=!FAILED_GROUPS! pydxs"
+set "RESULT=!ERRORLEVEL!"
+if !RESULT! equ 77 (
+    set "SKIPPED_GROUPS=!SKIPPED_GROUPS! pydxs"
+) else if !RESULT! neq 0 set "FAILED_GROUPS=!FAILED_GROUPS! pydxs"
 
 REM --- vnpu: HW optional, skipped gracefully when hardware unavailable ---
 call "%SCRIPT_DIR%\run_vnpu.bat"
-if !ERRORLEVEL! neq 0 set "FAILED_GROUPS=!FAILED_GROUPS! vnpu"
+set "RESULT=!ERRORLEVEL!"
+if !RESULT! equ 77 (
+    set "SKIPPED_GROUPS=!SKIPPED_GROUPS! vnpu"
+) else if !RESULT! neq 0 set "FAILED_GROUPS=!FAILED_GROUPS! vnpu"
 
 :done
 echo.
 echo ============================================================
 if "!FAILED_GROUPS!"=="" (
-    echo   ALL UNIT TESTS PASSED SUCCESSFULLY!
+    if "!SKIPPED_GROUPS!"=="" (
+        echo   ALL UNIT TESTS PASSED SUCCESSFULLY!
+    ) else (
+        echo   COMPLETED WITH SKIPS -- NOT FULLY VALIDATED
+        echo   Groups containing skipped checks:!SKIPPED_GROUPS!
+    )
     echo ============================================================
     exit /b 0
 ) else (

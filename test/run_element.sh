@@ -1,16 +1,21 @@
 #!/usr/bin/env bash
 # element test suite
-set -u
+set -uo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=setup_env.sh
 source "$SCRIPT_DIR/setup_env.sh"
-PASS=0; FAIL=0
+PASS=0; FAIL=0; SKIP=0
 
 check_dxrt_available
 ensure_valgrind || true
 
 echo "===== Test Group: element ====="
+if ! sources=$(find "$SCRIPT_DIR/base/element" -name 'test_*.cpp' -type f | sort); then
+    echo "  [FAIL] Cannot enumerate element test sources"
+    exit 1
+fi
 while IFS= read -r src; do
+    [ -n "$src" ] || continue
     rel="${src#$SCRIPT_DIR/}"
     name="$(basename "$src" .cpp)"
 
@@ -44,6 +49,12 @@ while IFS= read -r src; do
             PASS=$((PASS+1))
         fi
     else
+        status=$?
+        if [ "$status" -eq 77 ]; then
+            echo "  [SKIP] $name (contains optional skipped checks)"
+            SKIP=$((SKIP+1))
+            continue
+        fi
         echo "  [FAIL] $name"
         for log in "$SCRIPT_DIR/_logs/$name.log.build" "$SCRIPT_DIR/_logs/$name.log"; do
             if [ -s "$log" ]; then
@@ -53,8 +64,14 @@ while IFS= read -r src; do
         done
         FAIL=$((FAIL+1))
     fi
-done < <(find "$SCRIPT_DIR/base/element" -name 'test_*.cpp' -type f | sort)
-echo "  ── summary: PASS=$PASS FAIL=$FAIL ──"
+done <<< "$sources"
+if [ "$((PASS+FAIL+SKIP))" -eq 0 ]; then
+    echo "  [FAIL] No element test sources found"
+    FAIL=1
+fi
+echo "  ── summary: PASS=$PASS FAIL=$FAIL SKIP=$SKIP ──"
 echo
 
-[ "$FAIL" -eq 0 ]
+[ "$FAIL" -eq 0 ] || exit 1
+[ "$SKIP" -eq 0 ] || exit 77
+exit 0

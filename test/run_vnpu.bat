@@ -1,7 +1,7 @@
 @echo off
 REM VNPU hardware test suite (Windows)
 REM Usage:  run_vnpu.bat
-REM Exit code: 0=all PASS or skipped, 1=any FAIL
+REM Exit code: 0=all PASS, 1=any FAIL, 77=optional SKIP
 setlocal EnableDelayedExpansion
 set "DXVNPU_TEST_DEVICE=1"
 
@@ -18,13 +18,14 @@ REM Check if dxvnpudec element is available
 gst-inspect-1.0 dxvnpudec >nul 2>nul
 if !errorlevel! neq 0 (
     echo   [SKIP] gst-inspect-1.0 dxvnpudec not found
-    echo   -- summary: PASS=0 FAIL=0 ^(skipped^) --
+    echo   -- summary: PASS=0 FAIL=0 SKIP=1 --
     echo.
-    exit /b 0
+    exit /b 77
 )
 
 set PASS=0
 set FAIL=0
+set SKIP=0
 
 for %%D in (element pipeline) do (
     if exist "%SCRIPT_DIR%\dxvnpu\%%D" (
@@ -33,9 +34,13 @@ for %%D in (element pipeline) do (
             powershell -NoProfile -ExecutionPolicy Bypass ^
                 -File "%SCRIPT_DIR%\windows\run_test.ps1" ^
                 -Src "%%F" >nul 2>nul
-            if !ERRORLEVEL! equ 0 (
+            set "RESULT=!ERRORLEVEL!"
+            if !RESULT! equ 0 (
                 echo   [PASS] !NAME!
                 set /a PASS+=1
+            ) else if !RESULT! equ 77 (
+                echo   [SKIP] !NAME! ^(contains optional skipped checks^)
+                set /a SKIP+=1
             ) else (
                 echo   [FAIL] !NAME!
                 call :show_log "!NAME!"
@@ -45,10 +50,16 @@ for %%D in (element pipeline) do (
     )
 )
 
-echo   -- summary: PASS=%PASS% FAIL=%FAIL% --
+if %PASS% equ 0 if %FAIL% equ 0 if %SKIP% equ 0 (
+    echo   [FAIL] No VNPU test sources found although the plugin is available.
+    set FAIL=1
+)
+echo   -- summary: PASS=%PASS% FAIL=%FAIL% SKIP=%SKIP% --
 echo.
 
-if %FAIL% equ 0 (exit /b 0) else (exit /b 1)
+if %FAIL% neq 0 exit /b 1
+if %SKIP% neq 0 exit /b 77
+exit /b 0
 
 :show_log
 for %%L in ("%SCRIPT_DIR%\_logs\%~1.log.build" "%SCRIPT_DIR%\_logs\%~1.log") do (
