@@ -126,7 +126,7 @@ setup_assets() {
     fi
     if [ $NEED_MODEL_SETUP -eq 1 ]; then
         print_colored " models directory or files missing. Running setup models script... ($MODEL_REAL_PATH)" "INFO"
-        ./setup_sample_models.sh $SETUP_MODEL_ARGS $FORCE_ARGS || { print_colored "Setup models script failed." "ERROR"; rm -rf $MODEL_PATH; exit 1; }
+        ./setup_sample_models.sh $SETUP_MODEL_ARGS $FORCE_ARGS || { print_colored "Setup models script failed." "ERROR"; rm -rf "$MODEL_PATH"; exit 1; }
     else
         print_colored " All model files found. ($MODEL_REAL_PATH)" "INFO"
     fi
