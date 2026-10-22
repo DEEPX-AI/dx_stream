@@ -1,6 +1,6 @@
 # RELEASE_NOTES
 
-## DX-STREAM v3.2.0 / 2026-10-16
+## DX-STREAM v3.2.0 / 2026-10-23
 
 ### 1. Changed
 - **Model List Update**: Updated the sample model list and download source to models compiled with DX-COM v2.5.0
