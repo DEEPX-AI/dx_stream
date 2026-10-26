@@ -23,7 +23,7 @@ if ! command -v jq >/dev/null 2>&1; then
     print_colored "jq installed successfully." "SUCCESS"
 fi
 
-BASE_URL="https://sdk.deepx.ai/modelzoo/dxnn"
+BASE_URL="https://sdk.deepx.ai/modelzoo/q-lite-dxnn"
 MODEL_LIST_JSON="$SCRIPT_DIR/model_list.json"
 OUTPUT_DIR="$SCRIPT_DIR/dx_stream/samples/models"
 SYMLINK_TARGET_PATH=""
@@ -102,6 +102,22 @@ else
     MODEL_FILES=("${ALL_MODEL_FILES[@]}")
 fi
 
+# Exit with the real cause (path/owner/mode) instead of a misleading download error
+ensure_writable_dir() {
+    local dir="$1"
+    if mkdir -p "$dir" && [ -w "$dir" ]; then
+        return 0
+    fi
+    local existing="$dir"
+    while [ ! -e "$existing" ] && [ "$existing" != "/" ]; do
+        existing=$(dirname "$existing")
+    done
+    print_colored "Cannot create or write to directory: $dir" "ERROR"
+    print_colored "Nearest existing path: $existing (owner: $(stat -c '%U:%G' "$existing" 2>/dev/null), mode: $(stat -c '%A' "$existing" 2>/dev/null))" "ERROR"
+    print_colored "Check the owner/permission of the path above (e.g. sudo chown -R \$(id -un): \"$existing\")" "HINT"
+    exit 1
+}
+
 print_colored "Model version: $MODEL_VERSION" "INFO"
 print_colored "Model files: ${MODEL_FILES[*]}" "INFO"
 print_colored "Download dir: $REAL_MODEL_DIR" "INFO"
@@ -111,7 +127,7 @@ if [ $FORCE -eq 1 ]; then
     print_colored "--force: removing $REAL_MODEL_DIR" "WARNING"
     rm -rf "$REAL_MODEL_DIR"
 fi
-mkdir -p "$REAL_MODEL_DIR"
+ensure_writable_dir "$REAL_MODEL_DIR"
 
 # Download each model file
 for model in "${MODEL_FILES[@]}"; do
@@ -122,7 +138,7 @@ for model in "${MODEL_FILES[@]}"; do
         continue
     fi
     print_colored "Downloading $model ..." "INFO"
-    curl -fSL -o "$dest" "$url"
+    curl -fSL --proto '=https' -o "$dest" "$url"
     if [ $? -ne 0 ]; then
         print_colored "Failed to download $url" "ERROR"
         rm -f "$dest"
@@ -156,7 +172,7 @@ fi
 
 # Ensure parent directory exists before creating symlink
 PARENT_DIR=$(dirname "$OUTPUT_DIR")
-mkdir -p "$PARENT_DIR"
+ensure_writable_dir "$PARENT_DIR"
 
 if [ $NEED_SYMLINK -eq 1 ]; then
     ln -s "$(readlink -f "$REAL_MODEL_DIR")" "$OUTPUT_DIR"

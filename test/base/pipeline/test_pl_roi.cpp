@@ -1,7 +1,7 @@
 // PL-A5 — ROI clipping verification
 // Primary: all detections must be inside ROI bounds
 // Secondary: face detections must be inside ROI bounds
-// SKIP: model/NPU/postprocess not available
+// Missing required model/NPU/postprocess resources fail the test.
 
 #include <gst/check/gstcheck.h>
 #include <gst/gst.h>
@@ -15,7 +15,7 @@
 using namespace dxtest;
 
 static const YoloModel ROI_MODEL = {
-    "yolo26n", 640, "libpostprocess_yolo26od.so", "PostProcess", 114
+    "yolo26-n_640x640", 640, "libpostprocess_yolo26od.so", "PostProcess", 114
 };
 
 static bool can_run_roi() {
@@ -30,7 +30,7 @@ static bool can_run_roi_secondary() {
 }
 
 GST_START_TEST(PL_A5_primary_roi_all_inside) {
-    DXTEST_SKIP_IF(!can_run_roi(),
+    fail_if(!can_run_roi(),
                    "yolo26n model/NPU/postprocess not available");
 
     std::string desc = build_infer_pipeline_with_roi(
@@ -92,7 +92,7 @@ GST_START_TEST(PL_A5_primary_roi_all_inside) {
 GST_END_TEST;
 
 GST_START_TEST(PL_A5_primary_roi_precision) {
-    DXTEST_SKIP_IF(!can_run_roi(),
+    fail_if(!can_run_roi(),
                    "yolo26n model/NPU/postprocess not available");
 
     std::string desc = build_infer_pipeline_with_roi(
@@ -148,7 +148,7 @@ GST_START_TEST(PL_A5_primary_roi_precision) {
 GST_END_TEST;
 
 GST_START_TEST(PL_A5_secondary_roi_faces_inside) {
-    DXTEST_SKIP_IF(!can_run_roi_secondary(),
+    fail_if(!can_run_roi_secondary(),
                    "yolo26n + SCRFD500M model/NPU/postprocess not available");
 
     std::string image = resolve_resource_path("images/test.jpg");
@@ -253,7 +253,9 @@ GST_END_TEST;
 static Suite *pl_roi_suite(void) {
     Suite *s = suite_create("pl_roi");
     TCase *tc = tcase_create("roi_clipping");
+#ifndef _WIN32
     tcase_set_timeout(tc, 60.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, PL_A5_primary_roi_all_inside);
     tcase_add_test(tc, PL_A5_primary_roi_precision);
@@ -262,4 +264,3 @@ static Suite *pl_roi_suite(void) {
 }
 
 GST_CHECK_MAIN(pl_roi);
-

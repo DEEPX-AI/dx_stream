@@ -3,14 +3,16 @@
 ## Overview
 
 dx_stream is a GStreamer-based video analytics framework for DEEPX NPU accelerators.
-It provides 13 custom GStreamer elements that compose into pipelines for real-time
-inference on video streams. All NPU inference is handled transparently through the
+It provides a core plugin plus optional hardware extensions that compose into pipelines
+for real-time inference on video streams. All NPU inference is handled transparently through the
 DxInfer element, while pre/post-processing, tracking, display, and message brokering
 are handled by dedicated elements.
+See the [element reference](../toolsets/dx-stream-elements.md) for the current
+element surface and properties.
 
 ## GStreamer Plugin Architecture
 
-All 13 elements are registered as a single GStreamer plugin (`gstdxstream`):
+Core elements are registered through the `gstdxstream` GStreamer plugin:
 
 ```
 gst-dxstream-plugin/
@@ -30,6 +32,15 @@ gst-dxstream-plugin/
     gst-dxscale.cpp            # DxScale element (video scaling)
     gst-dxconvert.cpp          # DxConvert element (color conversion)
 ```
+
+DX-H1 V-NPU support is an optional plugin built with `./build.sh --dxvnpu`. On
+Windows, `DEEPX_VNPU_DIR` must identify the V-NPU SDK installation. It registers
+`dxvnpudec` and `dxvnpuenc` for H.264/H.265 codec acceleration on standard
+raw-video caps; these codec elements remain outside the
+`application/x-dxvideoraw` multi-stream domain. Within the core pipeline domain,
+`dxinfer backend=dxvnpu` selects V-NPU inference, while `dxpreprocess`, `dxscale`,
+and `dxconvert` can use a VNPU transform kernel for image resize and conversion.
+Pipelines must retain their non-V-NPU fallback path because this hardware is optional.
 
 ### Element Categories
 

@@ -43,7 +43,7 @@ VIDEOCONVERT_PIPELINE="videoconvert"
 # fi
 
 for INPUT_VIDEO_PATH in "${INPUT_VIDEO_PATH_LIST[@]}"; do
-    gst-launch-1.0 urisourcebin uri=file://$INPUT_VIDEO_PATH ! decodebin ! \
+    gst-launch-1.0 urisourcebin uri=file://$INPUT_VIDEO_PATH ! decodebin ! queue max-size-buffers=1 ! \
                     dxpreprocess \
                         preprocess-id=1 \
                         keep-ratio=false \
@@ -54,11 +54,12 @@ for INPUT_VIDEO_PATH in "${INPUT_VIDEO_PATH_LIST[@]}"; do
                         preprocess-id=1 \
                         inference-id=1 \
                         model-path=$MODEL_PATH ! \
+                    queue max-size-buffers=1 ! \
                     dxpostprocess \
                         inference-id=1 \
                         library-file-path=/usr/local/share/gstdxstream/lib/libpostprocess_yolo26depth.so \
                         function-name=PostProcess ! \
                     queue max-size-buffers=1 ! \
-                    dxosd ! \
+                    dxosd ! queue max-size-buffers=1 ! \
                     $VIDEOCONVERT_PIPELINE ! fpsdisplaysink sync=false $VIDEO_SINK_ARGS
 done

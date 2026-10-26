@@ -34,10 +34,14 @@ if [ -z "$OBJ_DIR" ]; then
     exit 1
 fi
 
-# Create symlinks so geninfo can find metadata sources (../metadata/) when running gcov
+# Create symlinks so geninfo can find metadata sources (../metadata/) when running gcov.
+CREATED_LINKS=()
 for subdir in metadata general src; do
     LINK="$OBJ_DIR/../$subdir"
-    [ -e "$LINK" ] || ln -sf "$SRC_DIR/$subdir" "$LINK"
+    if [ ! -e "$LINK" ]; then
+        ln -sf "$SRC_DIR/$subdir" "$LINK"
+        CREATED_LINKS+=("$LINK")
+    fi
 done
 
 echo "===== [1/3] Clearing gcda files (removing previous run data)"
@@ -63,6 +67,9 @@ done
 
 # Clean up symlinks
 rm -f "$OBJ_DIR"/dd_metadata_*
+for link in "${CREATED_LINKS[@]:-}"; do
+    [ -L "$link" ] && rm -f "$link"
+done
 
 # Exclude external headers (keep source directory)
 # separate output path avoids lcov re-reading the file it's still writing (harmless but noisy "cannot read file" errors)

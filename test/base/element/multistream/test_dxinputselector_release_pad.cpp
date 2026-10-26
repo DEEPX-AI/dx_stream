@@ -142,7 +142,9 @@ GST_END_TEST;
 static Suite *inputsel_release_pad_suite(void) {
     Suite *s = suite_create("inputsel_release_pad");
     TCase *tc = tcase_create("release");
+#ifndef _WIN32
     tcase_set_timeout(tc, 15.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, CE_inputsel_release_pad_clears_stream_eos_sent);
     return s;

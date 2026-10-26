@@ -8,12 +8,18 @@
 
 - Ensures the output stream matches the target `framerate` by dropping or duplicating frames.  
 - The output buffer's timestamps are adjusted relative to the first input buffer's timestamp.  
+- A buffer with an invalid timestamp reuses the last known timestamp; if none exists, the buffer is dropped with a warning.  
+- Reverse playback (negative rate) is not supported and results in an error.  
 
 **Throttle QoS Event**  
 
 - If `throttle` is set to `true`, a Throttle QoS Event is sent upstream when frames are dropped.  
 - **DxInfer** can respond to this event by applying throttling, using the `throttling_delay` value.  
 - To enable this function properly, **DxRate must** be placed downstream of **DxInfer** in the pipeline.  
+
+**Latency Reporting**  
+
+- Adds one frame duration (`1/framerate`) to the latency reported in response to `LATENCY` queries.  
 
 **Framerate and Video Speed**  
 
@@ -50,7 +56,7 @@ GObject
 | **Name**       | **Description**                                                          | **Type**  | **Default Value** |
 |-----------------|--------------------------------------------------------------------------|-----------|--------------------|
 | `name`         | Sets the unique name of the DxRate element.                              | String    | `"dxrate0"`        |
-| `framerate`    | Sets the target framerate (FPS). This property must be configured.       | Unsigned Integer | `0`                |
+| `framerate`    | Sets the target framerate (FPS, range: 0-10000). This property must be configured.       | Unsigned Integer | `0`                |
 | `throttle`     | Determines whether to send Throttle QoS Events upstream on frame drops.  | Boolean   | `false`            |
 
 ### **Domain Mode Behavior**
@@ -62,6 +68,6 @@ GObject
 
 !!! note "NOTE" 
 
-    - The `framerate` property is mandatory and **must** be explicitly set for the element to function. Setting `framerate=0` results in a `GST_ELEMENT_ERROR` during caps negotiation.
+    - The `framerate` property is mandatory and **must** be explicitly set for the element to function. Setting `framerate=0` results in a `GST_ELEMENT_ERROR` when the element starts.
 
 ---

@@ -93,7 +93,9 @@ GST_END_TEST;
 static Suite *pl_latency_suite(void) {
     Suite *s = suite_create("pl_latency");
     TCase *tc = tcase_create("latency_query");
+#ifndef _WIN32
     tcase_set_timeout(tc, 30.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, PL_latency_dxrate_adds);
     tcase_add_test(tc, PL_latency_transform_passthrough);

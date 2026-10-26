@@ -23,6 +23,8 @@ DX-Stream is a GStreamer-based Vision AI application development tool that allow
 - [DxMsgBroker](./docs/source/docs/Elements/03_11_DxMsgBroker.md)
 - [DxScale](./docs/source/docs/Elements/03_12_DxScale.md)
 - [DxConvert](./docs/source/docs/Elements/03_13_DxConvert.md)
+- [DxVnpuDec](./docs/source/docs/Elements/03_14_DxVnpuDec.md)
+- [DxVnpuEnc](./docs/source/docs/Elements/03_15_DxVnpuEnc.md)
 
 [**4. Writing Your Own Application**](./docs/source/docs/04_Writing_Your_Own_Application.md)
 
@@ -51,4 +53,3 @@ DX-Stream is a GStreamer-based Vision AI application development tool that allow
 ## Third-Party Model License Notice
 
 Sample models included in DX-STREAM are provided for **evaluation and development purposes only** and are **not licensed for commercial deployment**. For commercial use, users must obtain appropriate licenses from the original model providers or use their own commercially licensed models. See [Third-Party Sample Model Licenses](./docs/source/docs/Appendix_Third_Party_Model_Licenses.md) for details.
-

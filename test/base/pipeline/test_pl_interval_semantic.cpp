@@ -3,7 +3,7 @@
 // check_primary_interval skips cnt < interval frames, then processes on cnt == interval.
 // Verifies the MEANING (inferred vs skipped), not just total count.
 // Uses imagefreeze to generate multiple frames from a single test image.
-// SKIP: model/NPU/postprocess not available
+// Missing required model/NPU/postprocess resources fail the test.
 
 #include <gst/check/gstcheck.h>
 #include <gst/gst.h>
@@ -17,7 +17,7 @@
 using namespace dxtest;
 
 static const YoloModel INTERVAL_MODEL = {
-    "yolo26n", 640, "libpostprocess_yolo26od.so", "PostProcess", 114
+    "yolo26-n_640x640", 640, "libpostprocess_yolo26od.so", "PostProcess", 114
 };
 
 static bool can_run_interval() {
@@ -26,7 +26,7 @@ static bool can_run_interval() {
 }
 
 GST_START_TEST(PL_A4_interval_infer_vs_skip) {
-    DXTEST_SKIP_IF(!can_run_interval(),
+    fail_if(!can_run_interval(),
                    "yolo26n model/NPU/postprocess not available");
 
     std::string desc =
@@ -40,7 +40,7 @@ GST_START_TEST(PL_A4_interval_infer_vs_skip) {
     if (err) g_error_free(err);
 
     GstBus *bus = gst_pipeline_get_bus(GST_PIPELINE(pipe));
-    gst_element_set_state(pipe, GST_STATE_PLAYING);
+    fail_if(gst_element_set_state(pipe, GST_STATE_PLAYING) == GST_STATE_CHANGE_FAILURE);
 
     GstElement *sink = gst_bin_get_by_name(GST_BIN(pipe), "sink");
     fail_unless(sink != nullptr);
@@ -48,6 +48,7 @@ GST_START_TEST(PL_A4_interval_infer_vs_skip) {
     int frame_idx = 0;
     int inferred_frames = 0;
     int skipped_frames = 0;
+    int detected_frames = 0;
 
     GstSample *s;
     while ((s = gst_app_sink_try_pull_sample(GST_APP_SINK(sink),
@@ -71,6 +72,7 @@ GST_START_TEST(PL_A4_interval_infer_vs_skip) {
                 fail_unless(r.precision > 0.1f,
                             "frame %d: precision %.3f must be > 0.1",
                             frame_idx, r.precision);
+                detected_frames++;
             }
             inferred_frames++;
         } else {
@@ -100,11 +102,12 @@ GST_START_TEST(PL_A4_interval_infer_vs_skip) {
     gst_element_set_state(pipe, GST_STATE_NULL);
     gst_object_unref(bus);
     gst_object_unref(pipe);
+    fail_unless_equals_int(detected_frames, inferred_frames);
 }
 GST_END_TEST;
 
 GST_START_TEST(PL_A4_interval_skip_ratio) {
-    DXTEST_SKIP_IF(!can_run_interval(),
+    fail_if(!can_run_interval(),
                    "yolo26n model/NPU/postprocess not available");
 
     std::string desc =
@@ -117,7 +120,7 @@ GST_START_TEST(PL_A4_interval_skip_ratio) {
     if (err) g_error_free(err);
 
     GstBus *bus = gst_pipeline_get_bus(GST_PIPELINE(pipe));
-    gst_element_set_state(pipe, GST_STATE_PLAYING);
+    fail_if(gst_element_set_state(pipe, GST_STATE_PLAYING) == GST_STATE_CHANGE_FAILURE);
 
     GstElement *sink = gst_bin_get_by_name(GST_BIN(pipe), "sink");
     fail_unless(sink != nullptr);
@@ -155,11 +158,12 @@ GST_START_TEST(PL_A4_interval_skip_ratio) {
     gst_element_set_state(pipe, GST_STATE_NULL);
     gst_object_unref(bus);
     gst_object_unref(pipe);
+    fail_unless(with_objects > 0, "must have inference detections");
 }
 GST_END_TEST;
 
 GST_START_TEST(PL_A4_interval_eos) {
-    DXTEST_SKIP_IF(!can_run_interval(),
+    fail_if(!can_run_interval(),
                    "yolo26n model/NPU/postprocess not available");
     std::string desc =
         build_multiframe_infer_pipeline(INTERVAL_MODEL, 12, 3,
@@ -172,7 +176,9 @@ GST_END_TEST;
 static Suite *pl_interval_semantic_suite(void) {
     Suite *s = suite_create("pl_interval_semantic");
     TCase *tc = tcase_create("interval_semantics");
+#ifndef _WIN32
     tcase_set_timeout(tc, 60.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, PL_A4_interval_infer_vs_skip);
     tcase_add_test(tc, PL_A4_interval_skip_ratio);

@@ -13,7 +13,7 @@
 #include <gst/gst.h>
 #include <gst/video/video.h>
 
-#ifdef HAVE_LIBRGA
+#if defined(HAVE_LIBRGA) || defined(HAVE_GLES)
 #include <gst/allocators/gstdmabuf.h>
 #endif
 
@@ -158,6 +158,32 @@ inline void fill_data_pointers(FrameDesc& desc, uint8_t* base) {
         desc.planes[i].data = base + desc.planes[i].offset;
 }
 
+#ifdef HAVE_GLES
+// Records the fd only when every memory maps 1:1 onto one dma-buf (buffer offset == fd offset), so the
+// vmeta/vinfo plane offsets are also valid fd offsets (e.g. libcamerasrc NV12/I420/RGB). memory_type stays
+// CPU_VIRTUAL: backends that switch to an fd path on DMA_BUF (RGA) keep their existing behaviour.
+inline void detect_contiguous_dmabuf(FrameDesc& desc, GstBuffer* buf) {
+    const guint n = gst_buffer_n_memory(buf);
+    if (n == 0)
+        return;
+    GstMemory* first = gst_buffer_peek_memory(buf, 0);
+    if (!gst_is_dmabuf_memory(first))
+        return;
+    const gint fd = gst_dmabuf_memory_get_fd(first);
+    gsize pos = 0;
+    for (guint i = 0; i < n; ++i) {
+        GstMemory* mem = gst_buffer_peek_memory(buf, i);
+        gsize offset = 0;
+        const gsize size = gst_memory_get_sizes(mem, &offset, nullptr);
+        if (!gst_is_dmabuf_memory(mem) || gst_dmabuf_memory_get_fd(mem) != fd || offset != pos)
+            return;
+        pos += size;
+    }
+    desc.dma_fd      = fd;
+    desc.dma_size    = pos;
+}
+#endif
+
 // Build FrameDesc layout from GstBuffer, with vmeta > vinfo > tight-packed priority.
 // Data pointers are left nullptr.
 inline void build_frame_layout(FrameDesc& desc, GstBuffer* buf,
@@ -253,6 +279,10 @@ inline void build_frame_layout(FrameDesc& desc, GstBuffer* buf,
             break;
         }
     }
+
+#ifdef HAVE_GLES
+    detect_contiguous_dmabuf(desc, buf);
+#endif
 }
 
 }  // namespace detail
@@ -289,7 +319,9 @@ public:
     }
 
     ~GstSrcFrame() {
-        if (mapped_)
+        for (int i = 0; i < num_mem_maps_; ++i)
+            gst_memory_unmap(mem_maps_[i].mem, &mem_maps_[i].info);
+        if (mapped_ && num_mem_maps_ == 0)
             gst_buffer_unmap(buf_, &map_);
     }
 
@@ -303,6 +335,11 @@ public:
 
 private:
     void do_map() {
+#ifdef HAVE_GLES
+        // Keeps the DMA-buf memories (gst_buffer_map would replace them with a merged system copy).
+        if (desc_.dma_fd >= 0 && gst_buffer_n_memory(buf_) > 1 && map_planes())
+            return;
+#endif
         map_ = GST_MAP_INFO_INIT;
         if (gst_buffer_map(buf_, &map_, GST_MAP_READ)) {
             mapped_ = true;
@@ -310,10 +347,66 @@ private:
         }
     }
 
+    // Maps only the memories backing each plane: gst_buffer_map() on a multi-memory buffer that is not a
+    // span (e.g. libcamerasrc NV12) merges it into a temporary copy of the whole frame.
+    bool map_planes() {
+        for (int p = 0; p < desc_.num_planes; ++p) {
+            guint idx = 0, len = 0;
+            gsize skip = 0;
+            if (!gst_buffer_find_memory(buf_, desc_.planes[p].offset, 1, &idx, &len, &skip)) {
+                unmap_planes();
+                return false;
+            }
+            GstMemory* mem = gst_buffer_peek_memory(buf_, idx);
+            const gsize plane_bytes = static_cast<gsize>(desc_.planes[p].stride) *
+                                      static_cast<gsize>(desc_.planes[p].height);
+            if (skip + plane_bytes > gst_memory_get_sizes(mem, nullptr, nullptr)) {
+                unmap_planes();
+                return false;
+            }
+            const GstMapInfo* info = map_memory(mem);
+            if (!info) {
+                unmap_planes();
+                return false;
+            }
+            desc_.planes[p].data = info->data + skip;
+        }
+        mapped_ = true;
+        return true;
+    }
+
+    const GstMapInfo* map_memory(GstMemory* mem) {
+        for (int i = 0; i < num_mem_maps_; ++i)
+            if (mem_maps_[i].mem == mem)
+                return &mem_maps_[i].info;
+        if (num_mem_maps_ == FrameDesc::MAX_PLANES)
+            return nullptr;
+        MemMap& m = mem_maps_[num_mem_maps_];
+        m.mem  = mem;
+        m.info = GST_MAP_INFO_INIT;
+        if (!gst_memory_map(mem, &m.info, GST_MAP_READ))
+            return nullptr;
+        ++num_mem_maps_;
+        return &m.info;
+    }
+
+    void unmap_planes() {
+        for (int i = 0; i < num_mem_maps_; ++i)
+            gst_memory_unmap(mem_maps_[i].mem, &mem_maps_[i].info);
+        num_mem_maps_ = 0;
+    }
+
+    struct MemMap {
+        GstMemory* mem = nullptr;
+        GstMapInfo info{};
+    };
+
     GstBuffer* buf_;
     GstMapInfo map_{};
     FrameDesc  desc_{};
     bool       mapped_ = false;
+    MemMap     mem_maps_[FrameDesc::MAX_PLANES];
+    int        num_mem_maps_ = 0;
 };
 
 // ===========================================================================
@@ -380,48 +473,25 @@ private:
 inline GstFlowReturn gst_copy_video_frame(GstBuffer* inbuf, GstBuffer* outbuf,
                                            const GstVideoInfo& src_info,
                                            const GstVideoInfo& dst_info) {
-    GstMapInfo pin = GST_MAP_INFO_INIT, pout = GST_MAP_INFO_INIT;
-    if (!gst_buffer_map(inbuf, &pin, GST_MAP_READ))
+    GstVideoInfo source_info = src_info;
+    GstVideoInfo destination_info = dst_info;
+    GstVideoFrame source_frame{};
+    GstVideoFrame destination_frame{};
+
+    if (!gst_video_frame_map(&source_frame, &source_info, inbuf, GST_MAP_READ))
         return GST_FLOW_ERROR;
-    if (!gst_buffer_map(outbuf, &pout, GST_MAP_WRITE)) {
-        gst_buffer_unmap(inbuf, &pin);
+    if (!gst_video_frame_map(&destination_frame, &destination_info, outbuf,
+                             GST_MAP_WRITE)) {
+        gst_video_frame_unmap(&source_frame);
         return GST_FLOW_ERROR;
     }
 
-    GstVideoFormat fmt = GST_VIDEO_INFO_FORMAT(&src_info);
-    int width  = GST_VIDEO_INFO_WIDTH(&src_info);
-    int height = GST_VIDEO_INFO_HEIGHT(&src_info);
+    gboolean copied = gst_video_frame_copy(&destination_frame, &source_frame);
+    gst_video_frame_unmap(&destination_frame);
+    gst_video_frame_unmap(&source_frame);
+    if (!copied)
+        return GST_FLOW_ERROR;
 
-    if (fmt == GST_VIDEO_FORMAT_NV12 || fmt == GST_VIDEO_FORMAT_I420) {
-        GstVideoMeta* vmeta = gst_buffer_get_video_meta(inbuf);
-        int n_planes = (fmt == GST_VIDEO_FORMAT_NV12) ? 2 : 3;
-
-        for (int p = 0; p < n_planes; ++p) {
-            int src_stride = vmeta ? static_cast<int>(vmeta->stride[p])
-                                   : GST_VIDEO_INFO_PLANE_STRIDE(&src_info, p);
-            size_t src_off = vmeta ? vmeta->offset[p]
-                                   : GST_VIDEO_INFO_PLANE_OFFSET(&src_info, p);
-            int dst_stride = GST_VIDEO_INFO_PLANE_STRIDE(&dst_info, p);
-            size_t dst_off = GST_VIDEO_INFO_PLANE_OFFSET(&dst_info, p);
-            int plane_h = (p == 0) ? height : height / 2;
-            int row_bytes;
-            if (fmt == GST_VIDEO_FORMAT_NV12)
-                row_bytes = (p == 0) ? width : width;
-            else
-                row_bytes = (p == 0) ? width : (width + 1) / 2;
-
-            for (int row = 0; row < plane_h; ++row) {
-                std::memcpy(pout.data + dst_off + row * dst_stride,
-                            pin.data  + src_off + row * src_stride,
-                            row_bytes);
-            }
-        }
-    } else {
-        std::memcpy(pout.data, pin.data, std::min(pin.size, pout.size));
-    }
-
-    gst_buffer_unmap(outbuf, &pout);
-    gst_buffer_unmap(inbuf, &pin);
     // Copy only timestamps and flags — GstBaseTransform handles meta copying
     gst_buffer_copy_into(outbuf, inbuf,
         static_cast<GstBufferCopyFlags>(GST_BUFFER_COPY_FLAGS | GST_BUFFER_COPY_TIMESTAMPS),

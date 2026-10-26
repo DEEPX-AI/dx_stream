@@ -787,6 +787,7 @@ static gboolean gst_dxpreprocess_start(GstBaseTransform *trans) {
 static gboolean gst_dxpreprocess_stop(GstBaseTransform *trans) {
     GstDxPreprocess *self = GST_DXPREPROCESS(trans);
     GST_INFO_OBJECT(self, "Preprocessor stopping");
+    self->_plugin.preprocessor.reset();
     return TRUE;
 }
 

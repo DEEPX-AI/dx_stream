@@ -7,7 +7,7 @@ applyTo: "test/**"
 Working on dx_stream test files.
 
 ## Required Context
-- `.deepx/skills/dx-validate.md`
+- `.deepx/skills/dx-agent-stream-validate/SKILL.md`
 - `.deepx/instructions/testing-patterns.md`
 
 ## Rules

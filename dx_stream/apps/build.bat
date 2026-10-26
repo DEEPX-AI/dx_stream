@@ -54,13 +54,8 @@ REM ---- Set up environment ----
 if exist "!VCPKG_INSTALLED!\lib" (
     set "PKG_CONFIG_PATH=!VCPKG_INSTALLED!\lib\pkgconfig"
 )
-if defined GSTREAMER_1_0_ROOT_MSVC_X86_64 (
-    set "PKG_CONFIG_PATH=%GSTREAMER_1_0_ROOT_MSVC_X86_64%\lib\pkgconfig;!PKG_CONFIG_PATH!"
-    set "PATH=%GSTREAMER_1_0_ROOT_MSVC_X86_64%\bin;%PATH%"
-) else if exist "C:\Program Files\gstreamer\1.0\msvc_x86_64" (
-    set "PKG_CONFIG_PATH=C:\Program Files\gstreamer\1.0\msvc_x86_64\lib\pkgconfig;!PKG_CONFIG_PATH!"
-    set "PATH=C:\Program Files\gstreamer\1.0\msvc_x86_64\bin;%PATH%"
-)
+call "%PROJECT_ROOT%\scripts\setup_gstreamer.bat" development
+if errorlevel 1 exit /b 1
 
 REM ---- Add gstdxstream uninstalled pkg-config ----
 set "PKG_CONFIG_PATH=%PLUGIN_BUILD%\meson-uninstalled;!PKG_CONFIG_PATH!"
@@ -78,10 +73,13 @@ if not defined DEEPX_SDK_DIR (
     echo [ERROR] DEEPX_SDK_DIR environment variable is not set.
     exit /b 1
 )
-if exist "!DEEPX_SDK_DIR!\lib\x64" (
+REM Newer SDK installers place dxrt.lib directly under lib\; older ones use lib\x64\.
+if exist "!DEEPX_SDK_DIR!\lib\dxrt.lib" (
+    set "LIB=!DEEPX_SDK_DIR!\lib;%LIB%"
+) else if exist "!DEEPX_SDK_DIR!\lib\x64\dxrt.lib" (
     set "LIB=!DEEPX_SDK_DIR!\lib\x64;%LIB%"
-    set "INCLUDE=!DEEPX_SDK_DIR!\include;%INCLUDE%"
 )
+set "INCLUDE=!DEEPX_SDK_DIR!\include;%INCLUDE%"
 
 REM ---- vcpkg paths ----
 if exist "!VCPKG_INSTALLED!\lib" (

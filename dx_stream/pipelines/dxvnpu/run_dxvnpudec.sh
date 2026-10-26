@@ -69,9 +69,8 @@ for ((i=0; i<CHANNELS; i++)); do
     xpos=$(( col_idx * STREAM_WIDTH ))
     ypos=$(( row_idx * STREAM_HEIGHT ))
 
-    PIPELINE+=" urisourcebin uri=file://${VIDEO} ! parsebin !"
-    PIPELINE+=" dxvnpudec output-format=NV12 output-width=${STREAM_WIDTH} output-height=${STREAM_HEIGHT} !"
-    PIPELINE+=" queue max-size-buffers=1 ! comp.sink_${i}"
+    PIPELINE+=" urisourcebin uri=file://${VIDEO} ! parsebin ! queue max-size-buffers=1 !"
+    PIPELINE+=" dxvnpudec ! queue max-size-buffers=1 ! comp.sink_${i}"
 
     COMPOSITOR_PROPS+=" sink_${i}::xpos=${xpos} sink_${i}::ypos=${ypos}"
 done

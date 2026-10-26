@@ -33,16 +33,17 @@ TYPE_ARG=""
 SONAR_MODE_ARG=""
 V3_MODE=""
 DXVNPU_MODE=""
+RKRGA_MODE=""
 CLEAN_MODE=""
 UNINSTALL_MODE=""
 PLUGIN_ONLY=""
 
 show_help() {
-  echo "Usage: $(basename "$0") [--prefix=PATH] [--clean] [--v3] [--dxvnpu] [--type=TYPE] [--sonar] [--plugin-only] [--uninstall] [--help]"
+  echo "Usage: $(basename "$0") [--prefix=PATH] [--clean] [--v3|--dxv3] [--dxvnpu] [--rkrga] [--type=TYPE] [--sonar] [--plugin-only] [--uninstall] [--help]"
   echo "Example 1: $0"
   echo "Example 2: $0 --prefix=/opt/dx-stream"
   echo "Example 3: $0 --clean"
-  echo "Example 4: $0 --v3"
+  echo "Example 4: $0 --dxv3"
   echo "Example 5: $0 --type=debug"
   echo "Example 6: $0 --type=Release"
   echo "Example 7: $0 --sonar"
@@ -55,8 +56,10 @@ show_help() {
   echo "                  Custom libs to PREFIX/share/gstdxstream/lib/"
   echo "                  Apps to PREFIX/share/gstdxstream/bin/"
   echo "  [--clean]       Remove previous build files before building & installing"
-  echo "  [--v3]          Build for DEEPX V3 Standalone Device (skip Host installation)."
-  echo "  [--dxvnpu]      Enable DXVNPU elements (VNPU decoder, encoder, pipeline, overlay)."
+  echo "  [--v3]          Legacy DX V3 standalone build mode (also enables the V3 backend)."
+  echo "  [--dxv3]        Alias for --v3; requires dxdsp."
+  echo "  [--dxvnpu]      Enable DX VNPU backend (requires dxvnpu)."
+  echo "  [--rkrga]       Enable RK RGA transform backend (requires librga)."
   echo "  [--plugin-only] Build only the GStreamer plugin (skip custom libs/apps/pydxs)."
   echo "  [--uninstall]   Remove installed files (use --prefix if installed to custom location)."
   echo "  [--type=TYPE]   Set build type: Debug/debug or Release/release (default: release)"
@@ -105,9 +108,9 @@ clean() {
     # Remove old installation files from previous major versions
     check_and_remove_old_files
     
-    # Remove GStreamer plugin (search in libdir/*/gstreamer-1.0)
-    echo "Searching for libgstdxstream.so..."
-    PLUGIN_FILES=$(find "${PREFIX}/lib" -name "libgstdxstream.so" -path "*/gstreamer-1.0/*" 2>/dev/null)
+    # Remove GStreamer plugins (search in libdir/*/gstreamer-1.0)
+    echo "Searching for DX-Stream plugins..."
+    PLUGIN_FILES=$(find "${PREFIX}/lib" -name "libgstdxstream*.so*" -path "*/gstreamer-1.0/*" 2>/dev/null)
     if [ -n "$PLUGIN_FILES" ]; then
         for TARGET_FILE in $PLUGIN_FILES; do
             echo "Removing $TARGET_FILE..."
@@ -182,19 +185,23 @@ check_and_remove_old_files() {
         OLD_FILES_LIST+=("/usr/local/include/dx_stream")
     fi
 
-    # Check old plugin in /usr/lib (with arch detection)
+    # Check old plugins in /usr/lib (with arch detection)
     for arch_dir in /usr/lib/*/gstreamer-1.0; do
-        if [ -f "${arch_dir}/libgstdxstream.so" ]; then
-            OLD_FILES_FOUND=true
-            OLD_FILES_LIST+=("${arch_dir}/libgstdxstream.so")
-        fi
+        for plugin in "${arch_dir}"/libgstdxstream*.so*; do
+            if [ -e "$plugin" ] || [ -L "$plugin" ]; then
+                OLD_FILES_FOUND=true
+                OLD_FILES_LIST+=("$plugin")
+            fi
+        done
     done
 
-    # Check old plugin in /usr/local/lib (including symlinks)
-    if [ -e "/usr/local/lib/libgstdxstream.so" ] || [ -L "/usr/local/lib/libgstdxstream.so" ]; then
-        OLD_FILES_FOUND=true
-        OLD_FILES_LIST+=("/usr/local/lib/libgstdxstream.so")
-    fi
+    # Check old plugins in /usr/local/lib (including symlinks)
+    for plugin in /usr/local/lib/libgstdxstream*.so*; do
+        if [ -e "$plugin" ] || [ -L "$plugin" ]; then
+            OLD_FILES_FOUND=true
+            OLD_FILES_LIST+=("$plugin")
+        fi
+    done
 
     # Check old share directory
     if [ -d "/usr/share/dx-stream" ]; then
@@ -252,15 +259,22 @@ build() {
     # Set V3 option
     V3_OPTION=""
     if [ "$V3_MODE" == "--v3" ]; then
-        V3_OPTION="-Dv3_flag=true"
-        echo "Building in V3 mode..."
+        V3_OPTION="-Dwith_dxv3=enabled"
+        echo "Building with DX V3 support..."
     fi
 
     # Set DXVNPU option
     DXVNPU_OPTION=""
     if [ "$DXVNPU_MODE" == "--dxvnpu" ]; then
-        DXVNPU_OPTION="-Ddxvnpu_flag=true"
+        DXVNPU_OPTION="-Dwith_dxvnpu=enabled"
         echo "Building with DXVNPU elements..."
+    fi
+
+    # Set RK RGA option
+    RKRGA_OPTION=""
+    if [ "$RKRGA_MODE" == "--rkrga" ]; then
+        RKRGA_OPTION="-Dwith_rkrga=enabled"
+        echo "Building with RK RGA support..."
     fi
 
     # Set coverage option
@@ -275,7 +289,7 @@ build() {
     echo "  PREFIX: ${PREFIX}"
     cd gst-dxstream-plugin
     fix_builddir_ownership "${BUILD_DIR}"
-    meson setup ${BUILD_DIR} --prefix=${PREFIX} --buildtype=${BUILD_TYPE} ${V3_OPTION} ${DXVNPU_OPTION} ${COVERAGE_OPTION}
+    meson setup ${BUILD_DIR} --prefix=${PREFIX} --buildtype=${BUILD_TYPE} ${V3_OPTION} ${DXVNPU_OPTION} ${RKRGA_OPTION} ${COVERAGE_OPTION}
     if [ $? -ne 0 ]; then
         echo -e "Error: meson setup failed"
         exit 1
@@ -655,8 +669,14 @@ for i in "$@"; do
         --v3)
             V3_MODE="--v3"
             ;;
+        --dxv3)
+            V3_MODE="--v3"
+            ;;
         --dxvnpu)
             DXVNPU_MODE="--dxvnpu"
+            ;;
+        --rkrga)
+            RKRGA_MODE="--rkrga"
             ;;
         --plugin-only)
             PLUGIN_ONLY="--plugin-only"

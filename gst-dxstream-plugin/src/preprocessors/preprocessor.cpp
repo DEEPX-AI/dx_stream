@@ -278,6 +278,87 @@ bool Preprocessor::process_object(GstBuffer *buf, DXFrameMeta *frame_meta, DXObj
     return ret;
 }
 
+// Same checks and tensors as process_object(), but the frame is mapped once and all ROIs go to the
+// kernel in one call (GPU backends submit them together; others loop per object).
+void Preprocessor::secondary_batch(GstBuffer *buf, DXFrameMeta *frame_meta, int preprocess_id) {
+    std::vector<DXObjectMeta*> objects;
+    for (size_t o = 0; o < frame_meta->_object_meta_list.size(); o++) {
+        DXObjectMeta *object_meta = frame_meta->_object_meta_list[o];
+        if (object_meta->_input_tensors.find(preprocess_id) !=
+            object_meta->_input_tensors.end()) {
+            GST_ERROR_OBJECT(element, "Preprocess ID %d already exists in the object meta. "
+                              "check your pipeline", preprocess_id);
+            continue;
+        }
+        if (check_object(frame_meta, object_meta)) {
+            objects.push_back(object_meta);
+        }
+    }
+    if (objects.empty() || !kernel_pool_) {
+        return;
+    }
+    cleanup_temp_buffers(frame_meta->_stream_id);
+
+    dxt::VideoFormat src_fmt = dxt::video_format_from_string(frame_meta->_format.c_str());
+    dxt::InputConfig input_cfg{src_fmt, frame_meta->_width, frame_meta->_height};
+    const GstVideoInfo* vinfo_ptr = nullptr;
+    auto it = element->_stream.info.find(frame_meta->_stream_id);
+    if (it != element->_stream.info.end() &&
+        GST_VIDEO_INFO_WIDTH(&it->second) == frame_meta->_width &&
+        GST_VIDEO_INFO_HEIGHT(&it->second) == frame_meta->_height) {
+        vinfo_ptr = &it->second;
+    }
+    dxt::GstSrcFrame src(buf, frame_meta->_width, frame_meta->_height, src_fmt, vinfo_ptr);
+    if (!src.ok()) {
+        GST_ERROR_OBJECT(element, "Preprocessor: failed to map GstBuffer");
+        return;
+    }
+
+    const auto dst_fmt = dxt::video_format_from_string(element->_preprocess.color_format);
+    const size_t mem_size = element->_preprocess.height * element->_preprocess.width * element->_preprocess.channel;
+    const size_t n = objects.size();
+    std::vector<dxs::DXTensors> tensors(n);
+    std::vector<dxt::FrameDesc> dsts(n);
+    std::vector<dxt::CropRect> crops(n);
+    auto ok = std::make_unique<bool[]>(n);
+    for (size_t i = 0; i < n; ++i) {
+        tensors[i].allocate(mem_size);
+        dxs::DXTensor t;
+        t._name = "input";
+        t._shape = {
+            static_cast<int64_t>(element->_preprocess.height),
+            static_cast<int64_t>(element->_preprocess.width),
+            static_cast<int64_t>(element->_preprocess.channel)
+        };
+        t._data = tensors[i].data_ptr();
+        t._elemSize = 1;
+        t._type = dxs::UINT8;
+        tensors[i]._tensors.push_back(t);
+
+        dsts[i] = dxt::make_output_frame_desc(static_cast<uint8_t*>(tensors[i].data_ptr()),
+                                              element->_preprocess.width,
+                                              element->_preprocess.height, dst_fmt);
+        const DXObjectMeta *object_meta = objects[i];
+        cv::Rect roi(
+            cv::Point(std::max(int(object_meta->_box[0]), 0),
+                      std::max(int(object_meta->_box[1]), 0)),
+            cv::Point(std::min(int(object_meta->_box[2]), frame_meta->_width),
+                      std::min(int(object_meta->_box[3]), frame_meta->_height)));
+        if (roi.width != 0 || roi.height != 0) {
+            crops[i] = { roi.x, roi.y, roi.width, roi.height, true };
+        }
+    }
+
+    kernel_pool_->transform_batch(input_cfg, src.desc(), crops.data(), dsts.data(),
+                                  static_cast<int>(n), ok.get(), frame_meta->_stream_id);
+
+    for (size_t i = 0; i < n; ++i) {
+        if (ok[i]) {
+            objects[i]->_input_tensors[preprocess_id] = std::move(tensors[i]);
+        }
+    }
+}
+
 bool Preprocessor::secondary_process(GstBuffer *buf) {
     if (check_primary_interval(buf)) {
         return true;
@@ -302,9 +383,13 @@ bool Preprocessor::secondary_process(GstBuffer *buf) {
     size_t objects_size = frame_meta->_object_meta_list.size();
     int preprocess_id = element->_preprocess.id;
 
-    for (size_t o = 0; o < objects_size; o++) {
-        DXObjectMeta *object_meta = frame_meta->_object_meta_list[o];
-        process_object(buf, frame_meta, object_meta, preprocess_id);
+    if (!element->_plugin.process_function) {
+        secondary_batch(buf, frame_meta, preprocess_id);
+    } else {
+        for (size_t o = 0; o < objects_size; o++) {
+            DXObjectMeta *object_meta = frame_meta->_object_meta_list[o];
+            process_object(buf, frame_meta, object_meta, preprocess_id);
+        }
     }
 
     if (element->_frame_ctrl.cnt[frame_meta->_stream_id] < element->_frame_ctrl.interval) {

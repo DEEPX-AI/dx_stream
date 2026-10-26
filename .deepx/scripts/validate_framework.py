@@ -349,6 +349,7 @@ def check_skill_structure(deepx_root: str, result: FrameworkValidation):
         "dx-swe-writing-plans",
         "dx-skill-router",
         "dx-harness-writing-skills",
+        "dx-harness-validate",
     }
 
     for skill_file in sorted(Path(skills_dir).glob("*/SKILL.md")):
@@ -429,6 +430,38 @@ def check_readme(deepx_root: str, result: FrameworkValidation):
 
 
 # ---------------------------------------------------------------------------
+# Category 9: No Broken Symlinks in docs/source/.deepx trees
+# ---------------------------------------------------------------------------
+
+def check_docs_symlinks(deepx_root: str, result: FrameworkValidation):
+    """No broken symlinks in the docs tree (root cause: dx_stream v3.1.2 shipped
+    docs/source/docs/RELEASE_NOTES.md as a symlink whose target was the literal
+    pymdownx.snippets directive)."""
+    # broken symlinks always land in filenames (os.walk classifies via
+    # is_dir(), which follows the link); dirnames kept as belt-and-braces
+    repo_root = os.path.dirname(os.path.abspath(deepx_root))
+    found_any = False
+    for sub in ("docs", "source", ".deepx"):
+        base = os.path.join(repo_root, sub)
+        if not os.path.isdir(base):
+            continue
+        for dirpath, dirnames, filenames in os.walk(base):
+            for name in dirnames + filenames:
+                p = os.path.join(dirpath, name)
+                if os.path.islink(p) and not os.path.exists(p):
+                    found_any = True
+                    rel = os.path.relpath(p, repo_root)
+                    result.add(
+                        "docs", f"symlink:{rel}", False,
+                        f"broken symlink -> {os.readlink(p)!r}; for a mkdocs "
+                        "snippet include the FILE CONTENT should be the "
+                        '--8<-- "..." line'
+                    )
+    if not found_any:
+        result.add("docs", "symlinks", True, "No broken symlinks found")
+
+
+# ---------------------------------------------------------------------------
 # Main validation runner
 # ---------------------------------------------------------------------------
 
@@ -449,6 +482,7 @@ def validate_framework(deepx_root: str) -> FrameworkValidation:
     check_skill_structure(deepx_root, result)
     check_knowledge_yaml(deepx_root, result)
     check_readme(deepx_root, result)
+    check_docs_symlinks(deepx_root, result)
 
     return result
 

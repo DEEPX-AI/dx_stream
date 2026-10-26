@@ -4,6 +4,7 @@ REM  DX-Stream Windows Setup Script
 REM  Downloads sample models and videos for running examples.
 REM  Usage:
 REM    setup.bat                       -> download all models + videos
+REM    setup.bat --model yolov5-s_640x640.dxnn  -> download single model only
 REM    setup.bat --model=yolov5-s_640x640.dxnn  -> download single model only
 REM    setup.bat --force               -> re-download even if exists
 REM ============================================================
@@ -17,7 +18,7 @@ set "MODEL_LIST=%PROJECT_ROOT%\model_list.json"
 set "MODEL_DIR=%PROJECT_ROOT%\dx_stream\samples\models"
 set "VIDEO_DIR=%PROJECT_ROOT%\dx_stream\samples\videos"
 set "DOWNLOAD_DIR=%PROJECT_ROOT%\download"
-set "BASE_URL=https://sdk.deepx.ai/modelzoo/dxnn"
+set "BASE_URL=https://sdk.deepx.ai/modelzoo/q-lite-dxnn"
 set "VIDEO_URL=https://sdk.deepx.ai/res/video/sample_videos.tar.gz"
 
 set "FORCE=0"
@@ -27,12 +28,25 @@ set "SINGLE_MODEL="
 if "%~1"=="" goto args_done
 if /I "%~1"=="--force" (set "FORCE=1" & shift & goto parse_args)
 if /I "%~1"=="--help" goto show_help
+if /I "%~1"=="--model" (
+    if "%~2"=="" goto missing_model
+    set "SINGLE_MODEL=%~2"
+    if "!SINGLE_MODEL:~0,2!"=="--" goto missing_model
+    shift
+    shift
+    goto parse_args
+)
 set "ARG=%~1"
-if "!ARG:~0,8!"=="--model=" (
+if /I "!ARG:~0,8!"=="--model=" (
     set "SINGLE_MODEL=!ARG:~8!"
+    if not defined SINGLE_MODEL goto missing_model
+    if "!SINGLE_MODEL:~0,2!"=="--" goto missing_model
     shift & goto parse_args
 )
 echo [ERROR] Unknown option: %~1
+exit /b 1
+:missing_model
+echo [ERROR] --model requires a non-empty model name.
 exit /b 1
 :args_done
 
@@ -136,7 +150,7 @@ echo    Models: %MODEL_DIR%
 echo    Videos: %VIDEO_DIR%
 echo ============================================================
 if !MODEL_FAIL! gtr 0 (
-    echo  WARNING: !MODEL_FAIL! model download(s) failed.
+    echo  WARNING: !MODEL_FAIL! model downloads failed.
 )
 endlocal & exit /b %MODEL_FAIL%
 
@@ -170,7 +184,8 @@ REM ============================================================
 :show_help
 echo Usage: setup.bat [OPTIONS]
 echo Options:
-echo   --model=^<name^>   Download only the specified model (must exist in model_list.json)
+echo   --model ^<name^>   Download only the specified model (must exist in model_list.json)
+echo                     Also supports --model=^<name^> and "--model=<name>".
 echo   --force           Force re-download even if files already exist
 echo   --help            Show this help message
 echo.

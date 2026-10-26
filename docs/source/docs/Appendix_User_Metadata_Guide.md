@@ -122,8 +122,9 @@ Frame Metadata Example
 ```cpp
 void add_scene_analytics_to_frame(DXFrameMeta *frame_meta, 
                                  gint object_count, 
-                                 const gchar *scene_type) {
-    // Acquire user metadata from pool
+                                 const gchar *scene_type,
+                                 guint64 processing_time_us) {
+    // Allocate user metadata
     DXUserMeta *user_meta = dx_acquire_user_meta_from_pool();
     
     // Create and populate your data
@@ -131,7 +132,7 @@ void add_scene_analytics_to_frame(DXFrameMeta *frame_meta,
     analytics->total_objects = object_count;
     analytics->scene_confidence = 0.89f;
     analytics->scene_type = g_strdup(scene_type);
-    analytics->processing_time_us = g_get_monotonic_time();
+    analytics->processing_time_us = processing_time_us;  // Elapsed time in microseconds
     
     // Set data with required functions
     gboolean success = dx_user_meta_set_data(user_meta,
@@ -142,10 +143,14 @@ void add_scene_analytics_to_frame(DXFrameMeta *frame_meta,
                                             scene_analytics_copy);   // Required copy
     
     if (success) {
-        // Attach to frame
-        dx_add_user_meta_to_frame(frame_meta, user_meta);
+        // Attach to frame; on failure, release_func frees the data
+        if (!dx_add_user_meta_to_frame(frame_meta, user_meta)) {
+            g_warning("Failed to attach user metadata to frame");
+            dx_release_user_meta(user_meta);
+        }
     } else {
         g_warning("Failed to set user metadata");
+        scene_analytics_free(analytics);  // set_data failed, so the data is still owned by the caller
         dx_release_user_meta(user_meta);
     }
 }
@@ -157,7 +162,7 @@ void add_custom_feature_to_object(DXObjectMeta *obj_meta,
                                  const gchar *algorithm_name,
                                  gfloat *features, 
                                  gint feature_count) {
-    // Acquire user metadata from pool
+    // Allocate user metadata
     DXUserMeta *user_meta = dx_acquire_user_meta_from_pool();
     
     // Create and populate feature data
@@ -177,18 +182,22 @@ void add_custom_feature_to_object(DXObjectMeta *obj_meta,
                                             custom_feature_copy);    // Required copy
     
     if (success) {
-        // Attach to object
-        dx_add_user_meta_to_obj(obj_meta, user_meta);
+        // Attach to object; on failure, release_func frees the data
+        if (!dx_add_user_meta_to_obj(obj_meta, user_meta)) {
+            g_warning("Failed to attach user metadata to object");
+            dx_release_user_meta(user_meta);
+        }
     } else {
         g_warning("Failed to set object user metadata");
+        custom_feature_free(feature_data);  // set_data failed, so the data is still owned by the caller
         dx_release_user_meta(user_meta);
     }
 }
 ```
 
-### Complete Example: Custom Analytics Element
+### Complete Example: Postprocess Function with Analytics Metadata
 
-Here's a complete example of a custom element that adds analytics metadata:
+Here's a complete example of a custom postprocess function that adds analytics metadata. In Primary Mode (`object_meta == nullptr`) the function is called once per frame, and in Secondary Mode it is called once per object, so the frame-level metadata is added only in Primary Mode:
 
 ```cpp
 // In your custom postprocess function
@@ -197,21 +206,30 @@ extern "C" void custom_analytics_postprocess(GstBuffer *buf,
                                             DXFrameMeta *frame_meta,
                                             DXObjectMeta *object_meta)
 {
-    // Add frame-level analytics
-    add_scene_analytics_to_frame(frame_meta, 
-                                frame_meta->_object_meta_list.size(),
-                                "indoor_scene");
-    
-    // Add custom features to each object
-    for (auto obj : frame_meta->_object_meta_list) {
-        
-        // Generate dummy features for demonstration
+    gint64 start_us = g_get_monotonic_time();
+
+    // Generate dummy features for demonstration
+    auto add_features = [](DXObjectMeta *obj) {
         gfloat features[128];
         for (gint i = 0; i < 128; i++) {
             features[i] = g_random_double_range(0.0, 1.0);
         }
-        
         add_custom_feature_to_object(obj, "custom_algorithm_v1", features, 128);
+    };
+
+    if (object_meta == nullptr) {
+        // Primary Mode: called once per frame
+        for (auto obj : frame_meta->_object_meta_list) {
+            add_features(obj);
+        }
+
+        add_scene_analytics_to_frame(frame_meta, 
+                                    frame_meta->_object_meta_list.size(),
+                                    "indoor_scene",
+                                    g_get_monotonic_time() - start_us);
+    } else {
+        // Secondary Mode: called once per object
+        add_features(object_meta);
     }
 }
 ```
@@ -236,7 +254,7 @@ void process_frame_metadata(DXFrameMeta *frame_meta) {
             g_print("  Objects: %d\n", analytics->total_objects);
             g_print("  Scene: %s (confidence: %.2f)\n", 
                    analytics->scene_type, analytics->scene_confidence);
-            g_print("  Processing time: %lu μs\n", analytics->processing_time_us);
+            g_print("  Processing time: %" G_GUINT64_FORMAT " μs\n", analytics->processing_time_us);
         }
     }
 }
@@ -276,7 +294,7 @@ void process_object_metadata(DXObjectMeta *obj_meta) {
 
 **Performance Considerations**  
 
-- **Pool allocation**: Use `dx_acquire_user_meta_from_pool()` for efficient memory allocation
+- **Allocation**: `dx_acquire_user_meta_from_pool()` allocates a new `DXUserMeta`; the name is historical and no pooling is performed, so avoid creating metadata unnecessarily
 - **Minimal data size**: Keep metadata structures compact for better performance
 - **Lazy evaluation**: Only compute expensive metadata when actually needed
 

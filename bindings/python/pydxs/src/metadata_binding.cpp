@@ -178,7 +178,11 @@ struct WritableBufferContext {
     explicit WritableBufferContext(size_t addr) : probe_info_address(addr) {}
 };
 
+#ifdef _WIN32
+PYBIND11_MODULE(_pydxs, m) {
+#else
 PYBIND11_MODULE(pydxs, m) {
+#endif
     m.doc() = R"pbdoc(
         pydxs: Python bindings for DX Stream Metadata
         ---------------------------------------------

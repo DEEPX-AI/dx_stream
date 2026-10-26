@@ -2,7 +2,7 @@
 # Usage:
 #   powershell -NoProfile -File windows\run_test.ps1 -Src base/metadata/test_foo.cpp
 #
-# Exit code: 0=PASS, 1=FAIL, 2=BUILD FAIL, 3=ENV ERROR
+# Exit code: 0=PASS, 1=FAIL, 2=BUILD FAIL, 3=ENV ERROR, 77=optional SKIP
 
 param(
     [Parameter(Mandatory=$true)]
@@ -32,20 +32,30 @@ if (-not $projectRoot) {
 $testDir = Join-Path $projectRoot "test"
 
 # ---- GStreamer root ----
-$gstDir = if ($env:GSTREAMER_1_0_ROOT_MSVC_X86_64) {
-    $env:GSTREAMER_1_0_ROOT_MSVC_X86_64.TrimEnd('\')
-} elseif (Test-Path "C:\Program Files\gstreamer\1.0\msvc_x86_64") {
+$gstDir = $null
+foreach ($candidate in @(
+    $env:GSTREAMER_1_0_ROOT_MSVC_X86_64,
+    $env:GSTREAMER_1_0_ROOT_X86_64,
     "C:\Program Files\gstreamer\1.0\msvc_x86_64"
-} else {
-    Write-Error "[FATAL] GStreamer MSVC not found. Install GStreamer or set GSTREAMER_1_0_ROOT_MSVC_X86_64."
+)) {
+    if ($candidate -and (Test-Path -LiteralPath "$candidate\lib\pkgconfig\gstreamer-1.0.pc")) {
+        $gstDir = $candidate.TrimEnd('\')
+        break
+    }
+}
+if (-not $gstDir) {
+    Write-Error "[FATAL] GStreamer development files not found. Set GSTREAMER_1_0_ROOT_MSVC_X86_64 or GSTREAMER_1_0_ROOT_X86_64."
     exit 3
 }
+$env:PATH = "$gstDir\bin;$env:PATH"
 
 $installDir = Join-Path $projectRoot "install"
+# vcpkg manifest deps (eigen3, opencv4, etc.) — same location build.bat uses
+$vcpkgPkgConfig = Join-Path $projectRoot "vcpkg_installed\x64-windows\lib\pkgconfig"
 
 # ---- pkg-config path ----
 $existingPkgPath = if ($env:PKG_CONFIG_PATH) { $env:PKG_CONFIG_PATH } else { "" }
-$env:PKG_CONFIG_PATH = "$installDir\lib\pkgconfig;$gstDir\lib\pkgconfig;$existingPkgPath"
+$env:PKG_CONFIG_PATH = "$installDir\lib\pkgconfig;$vcpkgPkgConfig;$gstDir\lib\pkgconfig;$existingPkgPath"
 
 # ---- check gstdxstream built ----
 $checkResult = & pkg-config --exists gstdxstream 2>&1
@@ -75,6 +85,15 @@ New-Item -ItemType Directory -Force $logDir | Out-Null
 $binPath  = Join-Path $binDir "$name.exe"
 $buildLog = Join-Path $logDir "$name.log.build"
 $runLog   = Join-Path $logDir "$name.log"
+
+# Remove any stale run log from a previous invocation up front. If this run's
+# build or execution fails before $runLog is (re)written below, run_element.bat's
+# show_log helper must not display a leftover PASS/FAIL log from an unrelated
+# earlier run — that previously made compile/link failures look like runtime
+# test failures (e.g. a stale "TAG event must be forwarded" failure printed
+# under a build that actually failed with LNK2019).
+Remove-Item $runLog, "$runLog.err" -ErrorAction SilentlyContinue
+
 
 # ---- pkg-config flag helpers ----
 function ConvertPkgConfigIncludes([string]$raw) {
@@ -120,6 +139,32 @@ $includes += "/I`"$projectRoot\gst-dxstream-plugin\src`""
 $includes += "/I`"$projectRoot\gst-dxstream-plugin\metadata`""
 $includes += "/I`"$projectRoot\gst-dxstream-plugin\general`""
 
+# ---- eigen3 (vcpkg) ----
+# Tracker.hpp does `#include <eigen3/Eigen/Dense>` (Linux system-package style,
+# where /usr/include/eigen3/Eigen/Dense resolves via the default /usr/include
+# search path). vcpkg's eigen3.pc Cflags is "-I<prefix>/include/eigen3" — meant
+# for code that does `#include <Eigen/Dense>` — so using it directly would look
+# for <prefix>/include/eigen3/eigen3/Eigen/Dense and fail. We need the PARENT
+# of that dir instead, so derive it from eigen3's pkg-config prefix.
+$eigenPrefix = (& pkg-config --variable=prefix eigen3 2>&1 | Out-String).Trim()
+if ($LASTEXITCODE -eq 0 -and $eigenPrefix) {
+    $includes += "/I`"$eigenPrefix/include`""
+} else {
+    Write-Error "[FATAL] eigen3 not found via pkg-config. Run 'build.bat' first (vcpkg_installed missing?)."
+    exit 3
+}
+
+# ---- dxvnpu SDK (optional — only present when built with build.bat --dxvnpu) ----
+# No .pc file is generated for this dependency (build.bat resolves it via a CMake
+# package, not pkg-config), so it must be located directly through the same
+# DEEPX_VNPU_DIR env var build.bat itself requires for --dxvnpu. Left out
+# entirely (not a fatal error) when unset, since most test groups don't need it —
+# only test/dxvnpu/**/*.cpp does, and those simply fail to compile with a clear
+# "cannot open include file" error if this SDK isn't installed/configured.
+if ($env:DEEPX_VNPU_DIR -and (Test-Path "$($env:DEEPX_VNPU_DIR)\include")) {
+    $includes += "/I`"$($env:DEEPX_VNPU_DIR)\include`""
+}
+
 # ---- cl.exe: must be in PATH (caller should have run vcvarsall or use x64 Dev Prompt) ----
 if (-not (Get-Command cl.exe -ErrorAction SilentlyContinue)) {
     Write-Error "[FATAL] cl.exe not found. Run from an 'x64 Native Tools Command Prompt' or ensure vcvarsall.bat x64 has been called."
@@ -135,8 +180,11 @@ $clArgs = @(
 ) + $includes + @("`"$srcPath`"", "/Fe:`"$binPath`"", "/link") + $libFlags
 
 $proc = Start-Process -FilePath $clExe -ArgumentList $clArgs `
-    -NoNewWindow -Wait -PassThru `
+    -NoNewWindow -PassThru `
     -RedirectStandardOutput $buildLog -RedirectStandardError "$buildLog.err"
+# Windows PowerShell 5.1 needs a cached handle to retain ExitCode after exit.
+$null = $proc.Handle
+$proc.WaitForExit()
 
 # Merge stderr into log
 if (Test-Path "$buildLog.err") {
@@ -144,6 +192,9 @@ if (Test-Path "$buildLog.err") {
     Remove-Item "$buildLog.err" -ErrorAction SilentlyContinue
 }
 
+if ($null -eq $proc.ExitCode) {
+    throw "Cannot read exit code for compiler process $($proc.Id)."
+}
 if ($proc.ExitCode -ne 0) {
     exit 2
 }
@@ -171,12 +222,13 @@ $env:PATH = "$installDir\lib\gstreamer-1.0;$installDir\bin;" +
             "$installDir\share\gstdxstream\bin;" +
             "$gstDir\bin;$env:PATH"
 
-# Timeout: 120 s per test (some tests like dxmsgbroker have 30s internal TC timeouts
-# and run multiple TCs; 60s was too short)
+# Windows suites omit tcase_set_timeout(): no-fork libcheck builds may exit(2).
+# This watchdog limits the whole executable, including all its test cases.
 $TEST_TIMEOUT_SEC = 120
 
 $run = Start-Process -FilePath $binPath -NoNewWindow -PassThru `
     -RedirectStandardOutput $runLog -RedirectStandardError "$runLog.err"
+$null = $run.Handle
 
 $finished = $run.WaitForExit($TEST_TIMEOUT_SEC * 1000)
 if (-not $finished) {
@@ -198,4 +250,34 @@ if (Test-Path "$runLog.err") {
     Remove-Item "$runLog.err" -ErrorAction SilentlyContinue
 }
 
-exit $run.ExitCode
+$nativeExitCode = $run.ExitCode
+if ($null -eq $nativeExitCode) {
+    throw "Cannot read exit code for test process $($run.Id)."
+}
+if ($nativeExitCode -ne 0) {
+    Add-Content -LiteralPath $runLog -Value "[FAIL] Process exited with code $nativeExitCode."
+    exit 1
+}
+
+$lines = @(Get-Content -LiteralPath $runLog)
+$summaries = @($lines | Select-String -Pattern `
+    '^(?<Percent>\d+)%: Checks: (?<Checks>\d+), Failures: (?<Failures>\d+), Errors: (?<Errors>\d+)$')
+$valid = $summaries.Count -gt 0
+foreach ($summary in $summaries) {
+    $groups = $summary.Matches[0].Groups
+    if ($groups['Percent'].Value -ne '100' -or
+        [int]$groups['Checks'].Value -le 0 -or
+        [int]$groups['Failures'].Value -ne 0 -or
+        [int]$groups['Errors'].Value -ne 0) {
+        $valid = $false
+    }
+}
+if (-not $valid) {
+    Add-Content -LiteralPath $runLog -Value "[FAIL] Missing, empty or unsuccessful GstCheck summary."
+    exit 1
+}
+if ($lines | Select-String -Pattern '^\s*\[SKIP\]') {
+    Add-Content -LiteralPath $runLog -Value "[INFO] Suite contains skipped checks; not counted as PASS."
+    exit 77
+}
+exit 0

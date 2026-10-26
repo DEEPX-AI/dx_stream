@@ -1,4 +1,4 @@
-The pipeline demonstrates how to process a local video file with the YOLOv7 model for object detection, convert the results into a structured message format (e.g., JSON), and publish them to a message broker such as MQTT or Kafka for downstream applications.
+The pipeline demonstrates how to process a local video file with the YOLOv5s model for object detection, convert the results into a structured message format (e.g., JSON), and publish them to a message broker such as MQTT or Kafka for downstream applications.
 
 ## Basic MsgBroker Pipeline Process
 
@@ -58,17 +58,17 @@ sudo systemctl enable mosquitto
 **2. Run DX-STREAM Pipeline (Server Side)**
 ```bash
 # Execute the broker pipeline on processing server
-# The pipeline uses YOLOv7 model for object detection and converts to JSON messages
-cd /path/to/dx_stream
+# The pipeline uses YOLOv5s model for object detection and converts to JSON messages
+cd /path/to/dx_stream/dx_stream
 ./pipelines/broker/run_dxmsgbroker_mqtt.sh
 
 # Or run manually with custom settings
 gst-launch-1.0 \
   urisourcebin uri=file:///path/to/your/video.mp4 ! decodebin ! \
-  dxpreprocess config-file-path=configs/Object_Detection/YoloV7/preprocess_config.json ! \
-  dxinfer config-file-path=configs/Object_Detection/YoloV7/inference_config.json ! \
-  dxpostprocess config-file-path=configs/Object_Detection/YoloV7/postprocess_config.json ! \
-  dxmsgconv library-file-path=/usr/lib/libdx_msgconvl.so config-file-path=configs/msgconv_config.json ! \
+  dxpreprocess config-file-path=configs/YoloV5S_PPU/preprocess_config.json ! \
+  dxinfer config-file-path=configs/YoloV5S_PPU/inference_config.json ! \
+  dxpostprocess config-file-path=configs/YoloV5S_PPU/postprocess_config.json ! \
+  dxmsgconv library-file-path=/usr/local/share/gstdxstream/lib/libdx_msgconvl.so config-file-path=configs/msgconv_config.json ! \
   dxmsgbroker broker-name=mqtt conn-info=localhost:1883 topic=test
 ```
 
@@ -87,17 +87,49 @@ mqtt_sub_example -n <server_ip> -t test -p 1883
 #### Kafka Demo  
 
 **1. Server Setup (Processing Server with Message Broker)**
-```bash
-# Install Java and Kafka
-sudo apt install default-jdk
-wget https://downloads.apache.org/kafka/3.9.2/kafka_2.13-3.9.2.tgz
-tar -xzf kafka_2.13-3.9.2.tgz
-cd kafka_2.13-3.9.2
 
-# Start Zookeeper and Kafka server
-bin/zookeeper-server-start.sh config/zookeeper.properties & \
-bin/kafka-server-start.sh config/server.properties &
+This example uses Kafka **4.3.1** in **KRaft mode** for a single-node demo.
+Kafka **4.0+** no longer supports ZooKeeper and requires **Java 17 or later** to run the broker.
+
+```bash
+# Install Java 17 explicitly (default-jdk may install Java 11)
+sudo apt update
+sudo apt install openjdk-17-jdk
+java -version
+
+# Download and extract Kafka (skip if already installed)
+wget https://downloads.apache.org/kafka/4.3.1/kafka_2.13-4.3.1.tgz
+tar -xzf kafka_2.13-4.3.1.tgz
+cd kafka_2.13-4.3.1
+
+# Initialize KRaft storage (first time only)
+KAFKA_CLUSTER_ID=$(bin/kafka-storage.sh random-uuid)
+bin/kafka-storage.sh format -t "$KAFKA_CLUSTER_ID" -c config/server.properties --standalone
+
+# Start the broker in the foreground; use another terminal for the pipeline
+bin/kafka-server-start.sh config/server.properties
 ```
+
+!!! note "Java version"
+
+    Confirm that `java -version` reports Java **17 or later** before running Kafka.
+    If it still reports Java 11, select Java 17 with `sudo update-alternatives --config java`.
+    If `JAVA_HOME` is set, it must also point to a Java 17+ installation, because Kafka uses it instead of the default `java`.
+
+!!! warning "Initialize storage only once"
+
+    Run all Kafka commands from the extracted Kafka root directory, not its `bin/` directory.
+    If storage is already initialized, skip UUID generation and formatting; restart using only `bin/kafka-server-start.sh config/server.properties`.
+    Do not delete existing data or reformat storage to resolve an initialization error.
+    The default `log.dirs` is `/tmp/kraft-combined-logs`; for persistent use, change it to a durable directory before the first format.
+
+After the broker starts, verify connectivity from another terminal in the Kafka root directory:
+
+```bash
+bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
+```
+
+An empty list is normal if no topics have been created yet.
 
 !!! note "NOTE"
 
@@ -112,23 +144,24 @@ bin/kafka-server-start.sh config/server.properties &
 **2. Run DX-STREAM Pipeline (Server Side)**
 ```bash
 # Execute the broker pipeline on processing server  
-cd /path/to/dx_stream
+cd /path/to/dx_stream/dx_stream
 ./pipelines/broker/run_dxmsgbroker_kafka.sh
 
 # Or run manually with custom settings
 gst-launch-1.0 \
   urisourcebin uri=file:///path/to/your/video.mp4 ! decodebin ! \
-  dxpreprocess config-file-path=configs/Object_Detection/YoloV7/preprocess_config.json ! \
-  dxinfer config-file-path=configs/Object_Detection/YoloV7/inference_config.json ! \
-  dxpostprocess config-file-path=configs/Object_Detection/YoloV7/postprocess_config.json ! \
-  dxmsgconv library-file-path=/usr/lib/libdx_msgconvl.so config-file-path=configs/msgconv_config.json ! \
+  dxpreprocess config-file-path=configs/YoloV5S_PPU/preprocess_config.json ! \
+  dxinfer config-file-path=configs/YoloV5S_PPU/inference_config.json ! \
+  dxpostprocess config-file-path=configs/YoloV5S_PPU/postprocess_config.json ! \
+  dxmsgconv library-file-path=/usr/local/share/gstdxstream/lib/libdx_msgconvl.so config-file-path=configs/msgconv_config.json ! \
   dxmsgbroker broker-name=kafka conn-info=localhost:9092 topic=test
 ```
 
 **3. Client Application (Any Machine - Consumer Only)**
 ```bash
 # Install Python Kafka client library (client machine only needs this)
-pip install kafka-python
+python3 -m pip install --upgrade pip
+python3 -m pip install confluent-kafka
 
 # Run the Kafka client to receive messages from server
 python3 /usr/local/share/gstdxstream/bin/kafka_consume_example.py -n <server_ip> -p 9092 -t test
@@ -166,9 +199,9 @@ Or start as a Windows service via Services panel (`services.msc`).
 
 **Kafka**
 
-Kafka 4.3.0+ uses **KRaft mode** (no Zookeeper required).
+Kafka 4.0+ uses **KRaft mode** (ZooKeeper is no longer supported) and requires **Java 17 or later** to run the broker.
 
-- (1) Download JDK from [adoptium.net](https://adoptium.net/) (MSI installer recommended) and install.  
+- (1) Download JDK **17 or later** from [adoptium.net](https://adoptium.net/) (MSI installer recommended) and install. Confirm with `java -version`; if `JAVA_HOME` is set, it must point to the same supported JDK.
 
 - (2) Download Kafka binary from [kafka.apache.org/downloads](https://kafka.apache.org/downloads) and extract to a **short path** (e.g., `C:\kafka`).
 
@@ -178,7 +211,7 @@ Kafka 4.3.0+ uses **KRaft mode** (no Zookeeper required).
     
     Always extract to a short path like `C:\kafka`.  
 
-- (3) Initialize and start (run once from `C:\kafka`):  
+- (3) Initialize storage once, then start the broker from `C:\kafka`. On subsequent starts, run only the broker start command:
 
 ```cmd
 cd C:\kafka
@@ -215,7 +248,7 @@ Custom video (optional):
 
 !!! warning "Kafka: start consumer before pipeline"
 
-    Kafka does not retain messages for consumers that connect after publish.
+    The C++ consumer (`kafka_consume_example.exe`) starts reading from the latest offset, so it does not receive messages published before it connected. The Python consumer reads from the beginning.
     Start the consumer first, then run the pipeline:
 
     ```cmd
@@ -256,7 +289,7 @@ python install\share\gstdxstream\bin\kafka_consume_example.py -n localhost -p 90
 **Client Machine:**  
 
 - Consumer Application (Python/C++)  
-- Only needs client library (paho-mqtt/kafka-python)  
+- Only needs client library (paho-mqtt/confluent-kafka)  
 - No broker service needed  
 
 **Connection:**  
@@ -267,7 +300,7 @@ python install\share\gstdxstream\bin\kafka_consume_example.py -n localhost -p 90
 
 - **Server**: DX-STREAM + Message Broker Service (MQTT/Kafka)  
 
-- **Client**: Only consumer application + client library (paho-mqtt/kafka-python)  
+- **Client**: Only consumer application + client library (paho-mqtt/confluent-kafka)  
 
 !!! note "NOTE"  
 
@@ -279,7 +312,7 @@ The broker pipelines use the following key properties:
 
 **DxMsgConv Element:**
 
-- `config-file-path`: Path to configuration file containing message format properties (optional)
+- `config-file-path`: Path to the JSON configuration file for the element's properties (`library-file-path`, `message-interval`, `include-frame`) (optional)
 
 - `library-file-path`: Path to custom message converter library (**required**)
 
@@ -421,9 +454,9 @@ tls_keyfile = /etc/mosquitto/certs/client.key
 
 ```
     gst-launch-1.0 -e urisourcebin uri=file://$INPUT_VIDEO_PATH ! decodebin ! \
-                    dxpreprocess config-file-path=$SRC_DIR/configs/Object_Detection/YoloV7/preprocess_config.json ! queue ! \
-                    dxinfer config-file-path=$SRC_DIR/configs/Object_Detection/YoloV7/inference_config.json ! queue ! \
-                    dxpostprocess config-file-path=$SRC_DIR/configs/Object_Detection/YoloV7/postprocess_config.json ! queue ! \
+                    dxpreprocess config-file-path=$SRC_DIR/configs/YoloV5S_PPU/preprocess_config.json ! queue ! \
+                    dxinfer config-file-path=$SRC_DIR/configs/YoloV5S_PPU/inference_config.json ! queue ! \
+                    dxpostprocess config-file-path=$SRC_DIR/configs/YoloV5S_PPU/postprocess_config.json ! queue ! \
                     dxmsgconv config-file-path=$SRC_DIR/configs/msgconv_config.json ! queue ! \
                     dxmsgbroker broker-name=mqtt conn-info=localhost:8883 topic=test config=$SRC_DIR/configs/broker_mqtt.cfg
 ```
@@ -443,7 +476,7 @@ Follow the [librdkafka SSL guide](https://github.com/confluentinc/librdkafka/wik
 ```properties
 # SSL Configuration
 ssl.protocol=TLS
-ssl.enabled.protocols=TLSv1.2,TLSv1.1,TLSv1
+ssl.enabled.protocols=TLSv1.2,TLSv1.3
 ssl.keystore.type=JKS
 ssl.keystore.location=/path/to/kafka.server.keystore.jks
 ssl.keystore.password=server_keystore_password

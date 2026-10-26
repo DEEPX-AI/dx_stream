@@ -117,13 +117,13 @@ GST_START_TEST(PL_event_chain_ordering) {
 GST_END_TEST;
 
 GST_START_TEST(PL_event_chain_infer_pipeline) {
-    DXTEST_SKIP_IF(!npu_available(), "NPU not available");
+    fail_if(!npu_available(), "NPU not available");
     std::string model = resolve_model_path("yolov5-s_640x640_ppu.dxnn");
-    DXTEST_SKIP_IF(model.empty(), "model not found");
+    fail_if(model.empty(), "model not found");
     std::string pp = dxtest::resolve_lib_path("libpostprocess_ppu.so");
-    DXTEST_SKIP_IF(!path_exists(pp), "postprocess lib not found");
+    fail_if(!path_exists(pp), "postprocess lib not found: %s", pp.c_str());
     std::string image = resolve_resource_path("images/test.jpg");
-    DXTEST_SKIP_IF(image.empty(), "test image not found");
+    fail_if(image.empty(), "test image not found");
 
     char buf[2048];
     snprintf(buf, sizeof(buf),
@@ -184,7 +184,9 @@ GST_END_TEST;
 static Suite *pl_event_chain_suite(void) {
     Suite *s = suite_create("pl_event_chain");
     TCase *tc = tcase_create("event_propagation");
+#ifndef _WIN32
     tcase_set_timeout(tc, 60.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, PL_event_chain_stream_start);
     tcase_add_test(tc, PL_event_chain_ordering);

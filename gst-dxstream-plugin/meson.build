@@ -22,7 +22,10 @@ cc = meson.get_compiler('cpp')
 
 extra_deps = []
 
-v3_flag = get_option('v3_flag')
+with_dxv3 = get_option('with_dxv3')
+with_dxvnpu = get_option('with_dxvnpu')
+with_rkrga = get_option('with_rkrga')
+with_gles = get_option('with_gles')
 
 gstreamer_dep = dependency(
     'gstreamer-1.0', version : '>=1.16.3',
@@ -53,37 +56,45 @@ if dxrt_dep_maybe.found()
   dxrt_flag = true
 endif
 
-if v3_flag == true
-  message('Building in V3 mode (with dxdsp)')
-  extra_deps += cc.find_library('dxdsp')
-else
-  extra_deps += dependency('libmosquitto')
-  extra_deps += dependency('rdkafka')
+dxdsp_dep = cc.find_library('dxdsp', required: with_dxv3)
+dxdsp_enabled = dxdsp_dep.found()
+if dxdsp_enabled
+  message('Found dxdsp library, building DX V3 hardware backend plugin.')
+endif
+extra_deps += dependency('libmosquitto')
+extra_deps += dependency('rdkafka')
+
+# gstreamer-allocators is a standard GStreamer dep (no extra hardware lib
+# required) — always available so core can detect DMA-buf memory generically,
+# independent of whether the RGA hardware backend is present.
+extra_deps += dependency('gstreamer-allocators-1.0', version: '>=1.0', required: true)
+
+dxvnpu_dep = dependency('dxvnpu', required: with_dxvnpu)
+dxvnpu_enabled = dxvnpu_dep.found()
+if dxvnpu_enabled
+  message('Found dxvnpu library, building DX VNPU hardware backend plugin.')
 endif
 
-librga_flag = false
-librga_dep_maybe = dependency('librga', required: false)
-if librga_dep_maybe.found()
-    message('Found librga library, adding to dependencies.')
-    librga_dep = librga_dep_maybe
-    extra_deps += librga_dep
-    libdrm_dep = dependency('libdrm', required: true)
-    gst_allocators_dep = dependency('gstreamer-allocators-1.0', version: '>=1.0', required: true)
-    extra_deps += gst_allocators_dep
-    librga_flag = true
+librga_dep = dependency('librga', required: with_rkrga)
+librga_enabled = librga_dep.found()
+if librga_enabled
+  message('Found librga library, building RGA hardware backend plugin.')
 endif
 
-dxvnpu_flag = false
-if get_option('dxvnpu_flag') == true
-    dxvnpu_dep = dependency('dxvnpu', required: true)
-    message('DXVNPU mode enabled, adding VNPU elements.')
-    extra_deps += dxvnpu_dep
-    extra_deps += dependency('threads')
-    dxvnpu_flag = true
+# auto only builds GLES on ARM SoCs (validated on Raspberry Pi 5); other hosts need -Dwith_gles=enabled.
+gles_enabled = false
+if with_gles.enabled() or (with_gles.auto() and arch in ['aarch64', 'arm'])
+  egl_dep = dependency('egl', required: with_gles)
+  glesv2_dep = dependency('glesv2', required: with_gles)
+  gbm_dep = dependency('gbm', required: false)
+  gles_enabled = egl_dep.found() and glesv2_dep.found() and not is_windows
+endif
+if gles_enabled
+  message('Found EGL/GLESv2, building OpenGL ES hardware backend plugin.')
 endif
 
-if not dxrt_flag and not dxvnpu_flag
-  error('At least one inference backend (dxrt or dxvnpu) is required')
+if not dxrt_flag
+  error('dxrt backend (libdxrt) is required to build the core plugin')
 endif
 
 include_dirs = [
@@ -96,9 +107,7 @@ include_dirs = [
     include_directories('src/infer_backend')
 ]
 
-if v3_flag == false
-  include_dirs += include_directories('src/brokers')
-endif
+include_dirs += include_directories('src/brokers')
 
 install_headers = [
   './general/dxcommon.hpp',
@@ -107,11 +116,25 @@ install_headers = [
   './metadata/gst-dxusermeta.hpp',
 ]
 
-if v3_flag == false
-  install_headers += './metadata/gst-dxmsgmeta.hpp'
-endif
+install_headers += './metadata/gst-dxmsgmeta.hpp'
 
 # Install headers to includedir/gstdxstream
 install_headers(install_headers, install_dir: get_option('includedir') / 'gstdxstream')
 
 subdir('src')
+
+if dxvnpu_enabled
+  subdir('src-vnpu')
+endif
+
+if librga_enabled
+  subdir('src-rga')
+endif
+
+if gles_enabled
+  subdir('src-gles')
+endif
+
+if dxdsp_enabled
+  subdir('src-v3')
+endif

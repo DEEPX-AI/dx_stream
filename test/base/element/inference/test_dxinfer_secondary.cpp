@@ -11,13 +11,6 @@
 
 #include <glib/gstdio.h>
 #include <cstring>
-#ifdef _WIN32
-#include <io.h>
-#define write _write
-#define close _close
-#else
-#include <unistd.h>
-#endif
 
 using namespace dxtest;
 
@@ -57,14 +50,16 @@ GST_START_TEST(CE_infer_secondary_config_json) {
         "  \"inference_id\": 2,\n"
         "  \"secondary_mode\": true\n"
         "}\n";
-    gsize len = strlen(json);
-    gsize written = 0;
-    while (written < len) {
-        gssize n = write(fd, json + written, len - written);
-        fail_unless(n > 0, "write to temp file failed");
-        written += (gsize)n;
-    }
-    close(fd);
+    // See test_config_override.cpp write_temp_json() for why raw fd +
+    // write()/close() is unsafe on Windows (UCRT abort, c0000409) — use
+    // g_close() + g_file_set_contents() instead.
+    GError *err = nullptr;
+    fail_unless(g_close(fd, &err), "g_close failed: %s", err ? err->message : "(no error set)");
+    g_clear_error(&err);
+
+    gboolean ok = g_file_set_contents(path, json, (gssize)strlen(json), &err);
+    fail_unless(ok, "g_file_set_contents failed: %s", err ? err->message : "(no error set)");
+    g_clear_error(&err);
 
     g_object_set(e, "config-file-path", path, nullptr);
 
@@ -93,10 +88,10 @@ GST_END_TEST;
 // Target: handle_ready_to_paused L276 (if !_secondary_mode → start push thread)
 // MUT: remove _secondary_mode check → thread created → crash on secondary_mode_infer
 GST_START_TEST(CE_infer_secondary_no_push_thread) {
-    DXTEST_SKIP_IF(!dxtest::npu_available(), "NPU not available");
+    fail_if(!dxtest::npu_available(), "NPU not available");
 
     std::string model = dxtest::resolve_model_path("yolov5-s_640x640_ppu.dxnn");
-    DXTEST_SKIP_IF(model.empty(), "model not found");
+    fail_if(model.empty(), "required yolov5-s_640x640_ppu.dxnn model not found");
 
     GstElement *e = gst_element_factory_make("dxinfer", nullptr);
     g_object_set(e,
@@ -121,7 +116,9 @@ GST_END_TEST;
 static Suite *dxinfer_secondary_suite(void) {
     Suite *s = suite_create("dxinfer_secondary");
     TCase *tc = tcase_create("secondary_mode");
+#ifndef _WIN32
     tcase_set_timeout(tc, 30.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, CE_infer_secondary_property);
     tcase_add_test(tc, CE_infer_secondary_config_json);

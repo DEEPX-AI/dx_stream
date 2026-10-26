@@ -74,15 +74,12 @@ if not errorlevel 1 (
 )
 
 REM ---- GStreamer MSVC ----
-set "GST_FOUND=0"
-if defined GSTREAMER_1_0_ROOT_MSVC_X86_64 (
-    if exist "%GSTREAMER_1_0_ROOT_MSVC_X86_64%\bin\gst-inspect-1.0.exe" set "GST_FOUND=1"
-)
-if "!GST_FOUND!"=="0" (
-    if exist "C:\Program Files\gstreamer\1.0\msvc_x86_64\bin\gst-inspect-1.0.exe" set "GST_FOUND=1"
-)
-if "!GST_FOUND!"=="1" (
-    echo   [OK] GStreamer MSVC x86_64
+call "%PROJECT_ROOT%\scripts\setup_gstreamer.bat" runtime
+if not errorlevel 1 (
+    powershell -NoProfile -ExecutionPolicy Bypass ^
+        -File "%PROJECT_ROOT%\scripts\check_gstreamer_version.ps1" ^
+        -GStreamerRoot "!GST_ROOT!"
+    if errorlevel 1 set "FAIL=1"
 ) else (
     echo   [MISSING] GStreamer MSVC x86_64 [Runtime + Development]
     echo            Download: https://gstreamer.freedesktop.org/download/
@@ -90,9 +87,21 @@ if "!GST_FOUND!"=="1" (
     set "FAIL=1"
 )
 
+REM ---- pkg-config ----
+pkg-config --version >nul 2>nul
+if not errorlevel 1 (
+    echo   [OK] pkg-config
+) else (
+    echo   [MISSING] pkg-config ^(not found or failed to run^)
+    echo            Download: https://github.com/pkgconf/pkgconf/releases
+    echo            Install the pkgconf x64 MSI and add its install directory to PATH.
+    echo            Open a new terminal, verify "pkg-config --version", and re-run.
+    set "FAIL=1"
+)
+
 echo.
 if "!FAIL!"=="1" (
-    echo [ERROR] Missing prerequisites. Install the items above and re-run.
+    echo [ERROR] Missing or incompatible prerequisites. Resolve the items above and re-run.
     exit /b 1
 )
 echo [Phase 1] All prerequisites OK.
@@ -224,22 +233,25 @@ if not defined DEEPX_SDK_DIR (
     exit /b 1
 )
 set "DXRT_SDK_DIR=%DEEPX_SDK_DIR%"
-if not exist "%DXRT_SDK_DIR%\lib\x64\dxrt.lib" (
-    echo   [ERROR] dxrt.lib not found at %DXRT_SDK_DIR%\lib\x64
+REM Newer SDK installers place dxrt.lib directly under lib\; older ones use lib\x64\.
+set "DXRT_LIB_DIR=%DXRT_SDK_DIR%\lib"
+if not exist "%DXRT_LIB_DIR%\dxrt.lib" set "DXRT_LIB_DIR=%DXRT_SDK_DIR%\lib\x64"
+if not exist "%DXRT_LIB_DIR%\dxrt.lib" (
+    echo   [ERROR] dxrt.lib not found at %DXRT_SDK_DIR%\lib or %DXRT_SDK_DIR%\lib\x64
     echo           Check that DEEPX_SDK_DIR points to the correct SDK directory.
     exit /b 1
 )
-echo   [OK] dxrt sdk: %DXRT_SDK_DIR%
+echo   [OK] dxrt sdk: %DXRT_SDK_DIR% (lib: %DXRT_LIB_DIR%)
 
 REM ---- dxvnpu (optional) ----
-if defined DXVNPU_DIR (
-    if exist "%DXVNPU_DIR%\lib\dxvnpu.lib" (
-        echo   [OK] dxvnpu: %DXVNPU_DIR%
+if defined DEEPX_VNPU_DIR (
+    if exist "%DEEPX_VNPU_DIR%\lib\cmake\dxvnpu\dxvnpuConfig.cmake" (
+        echo   [OK] dxvnpu: %DEEPX_VNPU_DIR%
     ) else (
-        echo   [WARN] DXVNPU_DIR is set but dxvnpu.lib not found at %DXVNPU_DIR%\lib
+        echo   [WARN] DEEPX_VNPU_DIR is set but dxvnpu CMake package was not found
     )
 ) else (
-    echo   [INFO] DXVNPU_DIR not set [optional]. Set it for VNPU element builds.
+    echo   [INFO] DEEPX_VNPU_DIR not set [optional]. Install the VNPU SDK for VNPU element builds.
 )
 
 echo.
@@ -247,7 +259,7 @@ echo ============================================================
 echo  Installation complete.
 echo  Next step: run build.bat to compile DX-Stream.
 echo ============================================================
-endlocal
+endlocal & set "PATH=%PATH%"
 exit /b 0
 
 :CheckVcpkgDeps

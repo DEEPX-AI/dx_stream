@@ -51,7 +51,7 @@ static gboolean infer_contract_downstream_query(GstPad *pad, GstObject *parent,
 }
 
 GST_START_TEST(CONTRACT_infer_sink_query_forwards_unknown) {
-    DXTEST_SKIP_IF(!model_available(), "model not available");
+    fail_if(!model_available(), "required yolov5-s_640x640_ppu.dxnn model not available");
     std::string model = resolve_test_model();
 
     GError *err = nullptr;
@@ -104,7 +104,7 @@ GST_END_TEST;
 // support it — violating the element's contract as a video processor.
 // ---------------------------------------------------------------------------
 GST_START_TEST(CONTRACT_infer_accept_caps_rejects_invalid) {
-    DXTEST_SKIP_IF(!model_available(), "model not available");
+    fail_if(!model_available(), "required yolov5-s_640x640_ppu.dxnn model not available");
     std::string model = resolve_test_model();
 
     GError *err = nullptr;
@@ -181,7 +181,7 @@ GST_END_TEST;
 // threads or hang.
 // ---------------------------------------------------------------------------
 GST_START_TEST(CONTRACT_infer_state_cycle_thread_join) {
-    DXTEST_SKIP_IF(!model_available(), "model not available");
+    fail_if(!model_available(), "required yolov5-s_640x640_ppu.dxnn model not available");
     std::string model = resolve_test_model();
 
     GError *err = nullptr;
@@ -229,7 +229,7 @@ GST_END_TEST;
 // This test verifies the mechanism is in place (initial state).
 // ---------------------------------------------------------------------------
 GST_START_TEST(CONTRACT_infer_latency_adds_avg) {
-    DXTEST_SKIP_IF(!model_available(), "model not available");
+    fail_if(!model_available(), "required yolov5-s_640x640_ppu.dxnn model not available");
     std::string model = resolve_test_model();
 
     GError *err = nullptr;
@@ -272,7 +272,9 @@ GST_END_TEST;
 static Suite *dxinfer_contract_suite(void) {
     Suite *s = suite_create("dxinfer_contract");
     TCase *tc = tcase_create("element_contract");
+#ifndef _WIN32
     tcase_set_timeout(tc, 60.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, CONTRACT_infer_sink_query_forwards_unknown);
     tcase_add_test(tc, CONTRACT_infer_accept_caps_rejects_invalid);

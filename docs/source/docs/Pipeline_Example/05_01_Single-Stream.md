@@ -20,7 +20,7 @@ The pipeline in the figure is defined in
 
 **Element Descriptions**  
 
-- **`urisourcebin`**: Specifies the input video file. The `uri` property **must** be set to the file path of the video you wish to process.  
+- **`urisourcebin`**: Specifies the input video file. The `uri` property **must** be set to the URI of the video you wish to process (e.g., `file:///path/to/video.mp4`).  
 - **`decodebin`**: Decodes the input video stream.  
 - **`dxpreprocess`**: Applies pre-processing according to the configuration file specified in the `config-file-path`.  
 - **`dxinfer`**: Runs inference using the YOLOv5s model. The model configuration file path is specified in `config-file-path`.  
@@ -43,7 +43,7 @@ Update the `config-file-path` property in the `dxpreprocess`, `dxinfer`, and `dx
 
 **Pipeline Behavior**  
 
-This pipeline runs synchronously because it does **not** include `queue` elements.  Each element waits for the previous one to finish processing before continuing.  This simplifies data flow but may affect performance on multi-core systems.  
+This pipeline runs asynchronously because a `queue max-size-buffers=1` element is placed between the processing elements.  Each section runs in its own thread, so the elements can process different frames in parallel.  The `queue` elements also help prevent pipeline deadlocks.  
 
 **Sink Element Options**  
 
@@ -62,7 +62,7 @@ You can replace `fpsdisplaysink` with other display options.
 
 **Buffer Handling**  
 
-- In this example, `fpsdisplaysink` is set with `sync=false`, which means no frames are -dropped—all frames are displayed as-is.  
+- In this example, `fpsdisplaysink` is set with `sync=false`, which means no frames are dropped—all frames are displayed as-is.  
 - If you want to sync playback with the original video frame rate or reduce latency, set `sync=true`.  
 
 ---

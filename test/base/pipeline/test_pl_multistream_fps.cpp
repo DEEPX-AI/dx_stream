@@ -221,7 +221,9 @@ GST_END_TEST;
 static Suite *pl_multistream_fps_suite(void) {
     Suite *s = suite_create("pl_multistream_fps");
     TCase *tc = tcase_create("heterogeneous_fps");
+#ifndef _WIN32
     tcase_set_timeout(tc, 30.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, PL_multistream_2_routing);
     tcase_add_test(tc, PL_multistream_3_heterogeneous);

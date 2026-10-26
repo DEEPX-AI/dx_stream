@@ -10,7 +10,7 @@ download_model_if_missing() {
     local model_path="$SRC_DIR/samples/models/$model_name"
     if [ ! -f "$model_path" ]; then
         echo "[INFO] $model_name not found in samples/models. Downloading..."
-        (cd "$SRC_DIR"/.. && ./setup.sh --model="$MODEL_NAME")
+        (cd "$SRC_DIR"/.. && ./setup.sh --model="$model_name")
         if [ ! -f "$model_path" ]; then
             echo "[ERROR] Failed to download $model_name"
             exit 1
@@ -18,7 +18,7 @@ download_model_if_missing() {
     fi
 }
 
-for model in "yolov5-s_640x640_ppu.dxnn" "efficientnet-lite0_256x256.dxnn" "scrfd-500m_640x640.dxnn"; do
+for model in "yolov5-s_640x640_ppu.dxnn" "efficientnet-lite0_224x224.dxnn" "scrfd-500m_640x640.dxnn"; do
     download_model_if_missing "$model"
 done
 
@@ -50,13 +50,13 @@ VIDEOCONVERT_PIPELINE="videoconvert"
 
 
 for INPUT_VIDEO_PATH in "${INPUT_VIDEO_PATH_LIST[@]}"; do
-    gst-launch-1.0 urisourcebin uri=file://$INPUT_VIDEO_PATH ! decodebin ! \
-                    dxpreprocess config-file-path=$SRC_DIR/configs/YoloV5S_PPU/preprocess_config.json ! queue ! \
-                    dxinfer config-file-path=$SRC_DIR/configs/YoloV5S_PPU/inference_config.json ! queue ! \
-                    dxpostprocess config-file-path=$SRC_DIR/configs/YoloV5S_PPU/postprocess_config.json ! queue ! \
-                    dxtracker config-file-path=$SRC_DIR/configs/tracker_config.json ! queue ! \
+    gst-launch-1.0 urisourcebin uri=file://$INPUT_VIDEO_PATH ! decodebin ! queue max-size-buffers=1 ! \
+                    dxpreprocess config-file-path=$SRC_DIR/configs/YoloV5S_PPU/preprocess_config.json ! queue max-size-buffers=1 ! \
+                    dxinfer config-file-path=$SRC_DIR/configs/YoloV5S_PPU/inference_config.json ! queue max-size-buffers=1 ! \
+                    dxpostprocess config-file-path=$SRC_DIR/configs/YoloV5S_PPU/postprocess_config.json ! queue max-size-buffers=1 ! \
+                    dxtracker config-file-path=$SRC_DIR/configs/tracker_config.json ! queue max-size-buffers=1 ! \
                     tee name=t \
-                    t. ! queue ! \
+                    t. ! queue max-size-buffers=1 ! \
                     dxpreprocess \
                         preprocess-id=2 \
                         resize-width=224 \
@@ -71,7 +71,7 @@ for INPUT_VIDEO_PATH in "${INPUT_VIDEO_PATH_LIST[@]}"; do
                         preprocess-id=2 \
                         inference-id=2 \
                         secondary-mode=true \
-                        model-path=$SRC_DIR/samples/models/efficientnet-lite0_256x256.dxnn ! \
+                        model-path=$SRC_DIR/samples/models/efficientnet-lite0_224x224.dxnn ! \
                     queue max-size-buffers=1 ! \
                     dxpostprocess \
                         inference-id=2 \
@@ -80,7 +80,7 @@ for INPUT_VIDEO_PATH in "${INPUT_VIDEO_PATH_LIST[@]}"; do
                         function-name=PostProcess ! \
                     queue max-size-buffers=1 ! \
                     gather.sink_0 \
-                    t. ! queue ! \
+                    t. ! queue max-size-buffers=1 ! \
                     dxpreprocess \
                         preprocess-id=3 \
                         resize-width=640 \

@@ -48,8 +48,8 @@ if [ "$CHANNELS" -eq 1 ]; then
     echo "============================================"
 
     gst-launch-1.0 -v \
-        urisourcebin uri=file://${VIDEO} ! parsebin ! \
-        dxvnpudec output-format=NV12 ! \
+        urisourcebin uri=file://${VIDEO} ! parsebin ! queue max-size-buffers=1 ! \
+        dxvnpudec ! queue max-size-buffers=1 ! \
         dxvnpuenc codec=${CODEC} bitrate=${BITRATE} ! \
         filesink location=${OUTPUT_FILE}
 else
@@ -61,7 +61,7 @@ else
         if [ -n "$PIPELINE" ]; then
             PIPELINE+=" "
         fi
-        PIPELINE+="urisourcebin uri=file://${VIDEO} ! parsebin ! dxvnpudec output-format=NV12 ! dxvnpuenc codec=${CODEC} bitrate=${BITRATE} ! fakesink sync=false"
+        PIPELINE+="urisourcebin uri=file://${VIDEO} ! parsebin ! queue max-size-buffers=1 ! dxvnpudec ! queue max-size-buffers=1 ! dxvnpuenc codec=${CODEC} bitrate=${BITRATE} ! fakesink sync=false"
     done
     echo "============================================"
 

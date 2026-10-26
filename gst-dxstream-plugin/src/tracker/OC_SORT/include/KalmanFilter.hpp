@@ -77,14 +77,23 @@ class KalmanFilterNew {
     // there will always be a copy of x,P after update() is called
     Eigen::VectorXf x_post;
     Eigen::MatrixXf P_post;
-    // keeps all observations. When there is a 'z', it is directly pushed back.
+    // Observation history. update() appends one entry per call (an empty vector
+    // when there was no observation).
+    //
+    // Only the tail is kept. Upstream accumulates forever, which is harmless on a
+    // 30-60 second MOT clip but not in a 24/7 pipeline, where one immortal track
+    // adds an entry every frame. Only unfreeze() reads the contents, and it needs
+    // just the last two non-null observations and the index distance between them
+    // (`time_gap`). Both live at the tail, and the distance survives trimming.
     std::vector<Eigen::VectorXf> history_obs;
+    // Total number of pushes into `history_obs`. Never decreases. Freeze/unfreeze
+    // bookkeeping uses differences of this instead of the vector's length, which
+    // would go quietly wrong as soon as the front is trimmed.
+    std::size_t total_pushes = 0;
     // The following is newly added by ocsort.
     // Used to mark the tracking state (whether there is still a target matching
     // this trajectory), default value is false.
     bool observed = false;
-    std::vector<Eigen::VectorXf>
-        new_history; // Used to create a virtual trajectory.
 
     struct Data {
         Eigen::VectorXf x;
@@ -105,7 +114,26 @@ class KalmanFilterNew {
         Eigen::MatrixXf P_prior;
         Eigen::VectorXf x_post;
         Eigen::MatrixXf P_post;
-        std::vector<Eigen::VectorXf> history_obs;
+        // Cumulative push count at the moment of the freeze. Upstream copies the
+        // list shallowly here (list(self.history_obs), kalmanfilter.py:407 — the
+        // elements are shared, only pointers are copied). Translated literally to
+        // C++ that deep-copies n Eigen vectors, and a flickering track pays it
+        // again at every gap (measured: per-frame cost grew 3.18x with track age
+        // at a 4-frame flicker period). Between freeze and unfreeze history_obs is
+        // only appended to (the push_back in KalmanFilterNew::update is the only
+        // change), so the snapshot is exactly a prefix — remembering the count is
+        // enough and copies nothing.
+        //
+        // The count is used rather than the vector's length because the history is
+        // now trimmed at the front, so a length means something different at
+        // different times. unfreeze() only needs the difference — how many entries
+        // were appended after the freeze — and that is unaffected by trimming.
+        //
+        // A 0 here does not distinguish "nothing at freeze time" from "no freeze
+        // happened", and does not need to (review note, e5ae47d): validity comes
+        // from IsInitialized below, which unfreeze() checks first and returns on.
+        // Reaching this value at all means a freeze preceded it.
+        std::size_t pushes_at_freeze = 0;
         bool observed = false;
         // The following is to determine whether the data has been saved due to
         // freezing.

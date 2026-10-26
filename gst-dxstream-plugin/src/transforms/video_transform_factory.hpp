@@ -1,5 +1,6 @@
 #pragma once
 
+#include "dxcommon.hpp"
 #include "video_transform_kernel.hpp"
 
 #include <memory>
@@ -14,17 +15,17 @@ namespace dxt {
 // Selects the best available backend at runtime:
 //   Priority: V3 DSP  >  VNPU  >  RGA  >  libyuv
 //
-// Backend availability is determined by compile-time defines:
-//   DEEPX_V3    — V3 DSP backend
-//   HAVE_DXVNPU — VNPU hardware backend
-//   HAVE_LIBRGA — RGA hardware backend
-//   (always)    — libyuv software backend (fallback)
+// Hardware backends are discovered from sibling plugins at runtime.
+// libyuv is always available as the software fallback.
 //
 // Factory validates each backend via capabilities() before calling init().
 // If init() fails, it falls through to the next candidate automatically.
 // ---------------------------------------------------------------------------
 
-class VideoTransformFactory {
+// DX_API: called directly (not just via GStreamer registry) by white-box
+// tests under test/dxvnpu — same cross-DLL export requirement as
+// TransformKernelBase (see that header for the full rationale).
+class DX_API VideoTransformFactory {
 public:
     // Auto-select best available backend.
     // src_format: source pixel format hint for backend selection.
@@ -45,7 +46,7 @@ public:
         const FrameDesc&    dst_template,
         const TransformOps& ops);
 
-    // Return names of backends compiled into this build.
+    // Return names of installed hardware backends plus libyuv.
     static std::vector<std::string> available_backends();
 
 private:

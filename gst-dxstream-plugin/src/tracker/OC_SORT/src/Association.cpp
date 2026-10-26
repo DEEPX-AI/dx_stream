@@ -104,16 +104,23 @@ Eigen::MatrixXf giou_batch(const Eigen::MatrixXf &bboxes1,
 
     Eigen::MatrixXf wc = xxc2 - xxc1;
     Eigen::MatrixXf hc = yyc2 - yyc1;
-    if ((wc.array() > 0).all() && (hc.array() > 0).all())
+
+    // Upstream has `assert((wc > 0).all() and (hc > 0).all())` here
+    // (association.py). That is a precondition check, not a branch. The port
+    // turned it into an inverted if, so the normal path — where the condition
+    // holds — returned plain IoU instead of GIoU. For valid boxes xxc2 > xxc1 is
+    // always true, so this function was an IoU function despite its name.
+    // Degenerate boxes would divide by zero, so fall back to IoU rather than
+    // assert: aborting is not an option inside a GStreamer pipeline.
+    if (!((wc.array() > 0).all() && (hc.array() > 0).all()))
         return iou;
-    else {
-        Eigen::MatrixXf area_enclose = wc.array() * hc.array();
-        Eigen::MatrixXf giou =
-            iou.array() -
-            (area_enclose.array() - wh.array()) / area_enclose.array();
-        giou = (giou.array() + 1) / 2.0;
-        return giou;
-    }
+
+    Eigen::MatrixXf area_enclose = wc.array() * hc.array();
+    // Subtract the union (`Sum` above). The port subtracted the intersection.
+    Eigen::MatrixXf giou =
+        iou.array() - (area_enclose.array() - Sum.array()) / area_enclose.array();
+    giou = (giou.array() + 1) / 2.0;
+    return giou;
 }
 
 void collectSimpleMatches(
@@ -190,8 +197,20 @@ associate(Eigen::MatrixXf detections, Eigen::MatrixXf trackers,
 
     Eigen::MatrixXf iou_matrix = iou_batch(detections, trackers);
 
+    // Detection confidence. Upstream reads `detections[:,-1]` from a 5-column
+    // [x1,y1,x2,y2,score] array (association.py `associate`). Rows here carry two
+    // extra columns so the element can map results back to the original object
+    // meta — [x1,y1,x2,y2,conf,label,input_idx] — but the index was shifted by
+    // one (-1 to -2) instead of two. It therefore read the label, and since
+    // `angle_diff_cost = valid_mask * diff_angle * vdc_weight * scores`, a label
+    // of 0 zeroed the whole term. That is `person`, so observation-centric
+    // momentum has been off in every deployment since the first release commit.
+    //
+    // Every other access uses absolute indices (OCSort.cpp: col(4)=conf,
+    // (_,5)=cls, (_,6)=input_idx). This was the only relative one, which is how
+    // it drifted when columns were added. Made absolute to match.
     Eigen::MatrixXf scores =
-        detections.col(detections.cols() - 2).replicate(1, trackers.rows());
+        detections.col(4).replicate(1, trackers.rows());
 
     Eigen::Matrix<bool, Eigen::Dynamic, Eigen::Dynamic> valid_mask_ =
         valid_mask.transpose().replicate(1, X.cols());

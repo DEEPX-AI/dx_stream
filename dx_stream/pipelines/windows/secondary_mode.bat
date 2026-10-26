@@ -12,11 +12,8 @@ set "GST_PLUGIN_PATH=%DXSTREAM_ROOT%\install\lib\gstreamer-1.0"
 set "GST_REGISTRY=%DXSTREAM_ROOT%\install\gst-registry.bin"
 set "PATH=%DXSTREAM_ROOT%\install\bin;%DXSTREAM_ROOT%\install\share\gstdxstream\lib;%DXSTREAM_ROOT%\install\share\gstdxstream\bin;%DXSTREAM_ROOT%\install\lib\gstreamer-1.0;%PATH%"
 
-if defined GSTREAMER_1_0_ROOT_MSVC_X86_64 (
-    set "PATH=%GSTREAMER_1_0_ROOT_MSVC_X86_64%\bin;%PATH%"
-) else if exist "C:\Program Files\gstreamer\1.0\msvc_x86_64\bin" (
-    set "PATH=C:\Program Files\gstreamer\1.0\msvc_x86_64\bin;%PATH%"
-)
+call "%DXSTREAM_ROOT%\scripts\setup_gstreamer.bat" runtime
+if errorlevel 1 exit /b 1
 
 if not exist "%DXSTREAM_ROOT%\install\bin\gstdxstream.dll" (
     echo [ERROR] DX-Stream plugin not found at "%DXSTREAM_ROOT%\install\bin\gstdxstream.dll".
@@ -31,7 +28,7 @@ set "LIB_DIR=%BASE_FWD%/install/share/gstdxstream/lib"
 set "CONFIG_DIR=%BASE_FWD%/dx_stream/configs"
 
 set "MODEL_PRIMARY=%MODEL_DIR%/yolov5-s_640x640_ppu.dxnn"
-set "MODEL_CLASS=%MODEL_DIR%/efficientnet-lite0_256x256.dxnn"
+set "MODEL_CLASS=%MODEL_DIR%/efficientnet-lite0_224x224.dxnn"
 set "MODEL_FACE=%MODEL_DIR%/scrfd-500m_640x640.dxnn"
 set "LIB_PRIMARY=%LIB_DIR%/postprocess_ppu.dll"
 set "LIB_CLASS=%LIB_DIR%/postprocess_object_class.dll"
@@ -53,16 +50,17 @@ echo ============================================================
 gst-launch-1.0 ^
     urisourcebin uri="file:///%VIDEO%" ^
     ! decodebin ^
+    ! queue max-size-buffers=1 ^
     ! dxpreprocess preprocess-id=1 resize-width=640 resize-height=640 keep-ratio=true pad-value=114 interval=0 ^
-    ! queue ^
+    ! queue max-size-buffers=1 ^
     ! dxinfer preprocess-id=1 inference-id=1 model-path="%MODEL_PRIMARY%" ^
-    ! queue ^
+    ! queue max-size-buffers=1 ^
     ! dxpostprocess inference-id=1 library-file-path="%LIB_PRIMARY%" function-name=YOLOV5S_PPU ^
-    ! queue ^
+    ! queue max-size-buffers=1 ^
     ! dxtracker config-file-path="%TRACKER_CONFIG%" ^
-    ! queue ^
+    ! queue max-size-buffers=1 ^
     ! tee name=t ^
-    t. ! queue ^
+    t. ! queue max-size-buffers=1 ^
     ! dxpreprocess preprocess-id=2 resize-width=224 resize-height=224 secondary-mode=true interval=5 min-object-width=50 min-object-height=50 keep-ratio=false ^
     ! queue max-size-buffers=1 ^
     ! dxinfer preprocess-id=2 inference-id=2 secondary-mode=true model-path="%MODEL_CLASS%" ^
@@ -70,7 +68,7 @@ gst-launch-1.0 ^
     ! dxpostprocess inference-id=2 secondary-mode=true library-file-path="%LIB_CLASS%" function-name=PostProcess ^
     ! queue max-size-buffers=1 ^
     ! gather.sink_0 ^
-    t. ! queue ^
+    t. ! queue max-size-buffers=1 ^
     ! dxpreprocess preprocess-id=3 resize-width=640 resize-height=640 keep-ratio=true pad-value=114 secondary-mode=true target-class-id=0 min-object-width=50 min-object-height=50 interval=5 ^
     ! queue max-size-buffers=1 ^
     ! dxinfer preprocess-id=3 inference-id=3 secondary-mode=true model-path="%MODEL_FACE%" ^
@@ -79,9 +77,9 @@ gst-launch-1.0 ^
     ! queue max-size-buffers=1 ^
     ! gather.sink_1 ^
     dxgather name=gather ^
-    ! queue ^
+    ! queue max-size-buffers=1 ^
     ! dxosd ^
-    ! queue ^
+    ! queue max-size-buffers=1 ^
     ! videoconvert ^
     ! fpsdisplaysink sync=false
 

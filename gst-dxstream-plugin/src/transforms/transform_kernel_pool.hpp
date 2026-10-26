@@ -59,10 +59,8 @@ struct InputConfigHash {
 
 class TransformKernelPool {
 public:
-    TransformKernelPool(const FrameDesc& dst_template, const TransformOps& ops,
-                        bool require_dynamic_input = false)
-        : dst_template_(dst_template), ops_(ops),
-          require_dynamic_input_(require_dynamic_input) {}
+    TransformKernelPool(const FrameDesc& dst_template, const TransformOps& ops)
+        : dst_template_(dst_template), ops_(ops) {}
 
     ~TransformKernelPool() = default;
 
@@ -153,6 +151,35 @@ public:
         return fb->transform(src, dst, slot_id, dynamic);
     }
 
+    // Batched secondary transform; items the backend rejects fall back to libyuv one by one.
+    void transform_batch(const InputConfig& input,
+                         const FrameDesc& src, const CropRect* crops,
+                         FrameDesc* dsts, int count, bool* ok,
+                         int slot_id = 0) {
+        for (int i = 0; i < count; ++i)
+            ok[i] = false;
+        auto* kernel = get(input);
+        if (!kernel || count <= 0)
+            return;
+
+        kernel->transform_batch(src, crops, dsts, count, ok, slot_id);
+        // libyuv cannot retry its own failures, and needs CPU pointers (fd-only frames stay failed).
+        if (std::string(kernel->backend_name()) == "libyuv" ||
+            (src.memory_type == MemoryType::DMA_BUF && !src.luma_data()))
+            return;
+
+        for (int i = 0; i < count; ++i) {
+            if (ok[i])
+                continue;
+            auto* fb = get_fallback();
+            if (!fb)
+                return;
+            DynamicOps dyn;
+            dyn.crop_override = &crops[i];
+            ok[i] = fb->transform(src, dsts[i], slot_id, &dyn).success;
+        }
+    }
+
 private:
     FrameDesc    dst_template_;
     TransformOps ops_;
@@ -164,8 +191,6 @@ private:
 
     bool determined_ = false;
     bool use_pool_   = false;
-    bool require_dynamic_input_ = false;
-
     // Libyuv fallback kernel — lazily created, single instance
     std::unique_ptr<IVideoTransformKernel> fallback_kernel_;
 
@@ -185,29 +210,6 @@ private:
         }
 
         const auto& caps = kernel->capabilities();
-
-        // If dynamic input is required (e.g., secondary mode preprocessing),
-        // reject fixed-input backends and try next
-        if (require_dynamic_input_ && !caps.supports_dynamic_input_size) {
-            GST_INFO("TransformKernelPool: backend '%s' rejected "
-                     "(requires dynamic input support), trying next",
-                     caps.name);
-            kernel.reset();
-            // Retry without the rejected backend — use libyuv directly
-            kernel = VideoTransformFactory::create_backend(
-                "libyuv", dst_template_, ops_);
-            if (!kernel) {
-                determined_ = true;
-                return;
-            }
-            const auto& fallback_caps = kernel->capabilities();
-            GST_INFO("TransformKernelPool: using fallback backend '%s' (single mode)",
-                     fallback_caps.name);
-            single_kernel_ = std::move(kernel);
-            use_pool_ = false;
-            determined_ = true;
-            return;
-        }
 
         use_pool_ = !caps.supports_dynamic_input_size;
         determined_ = true;

@@ -47,6 +47,7 @@ function help() {
     echo "  5. OpenCV 4.2.0+ (skippable with --wo-opencv)"
     echo "  6. Communication libraries"
     echo "  7. libyuv library"
+    echo "  8. gstreamer1.0-libcamera (Raspberry Pi only, for the camera demos)"
 }
 
 # Main dependency installation function using modular scripts
@@ -109,6 +110,11 @@ function install_dx_stream_dep() {
     echo "📺 Step 7/7: libyuv Library"
     source "$SETUP_SCRIPTS_DIR/07_libyuv.sh" || exit 1
     setup_libyuv || exit 1
+
+    # Raspberry Pi camera support (optional, never fails the installation)
+    echo "📷 Raspberry Pi Camera Support"
+    source "$SETUP_SCRIPTS_DIR/08_rpi_camera.sh" || exit 1
+    setup_rpi_camera
 
     echo "✅ All DX-Stream dependencies installed successfully!"
 }

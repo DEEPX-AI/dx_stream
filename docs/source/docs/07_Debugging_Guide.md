@@ -15,13 +15,13 @@ The `GST_DEBUG` variable accepts numeric levels from 0 to 7:
 | **Level** | **Name**    | **Description**                                                                 |
 |-----------|-------------|---------------------------------------------------------------------------------|
 | 0         | NONE        | No debug output                                                                 |
-| 1         | ERROR       | Fatal errors that prevent normal operation                                       |
-| 2         | WARNING     | Non-fatal issues that may affect behavior                                        |
-| 3         | FIXME       | Fixme messages (rarely used in DX-STREAM)                                        |
-| 4         | INFO        | Informational messages about state changes and major operations                  |
-| 5         | DEBUG       | Detailed operational information useful for troubleshooting                      |
-| 6         | LOG         | Per-buffer trace — every frame/buffer processed logs at this level               |
-| 7         | TRACE       | Internal algorithm details (e.g., inference queue state, tensor contents)         |
+| 1         | ERROR       | Fatal errors that prevent normal operation                                      |
+| 2         | WARNING     | Non-fatal issues that may affect behavior                                       |
+| 3         | FIXME       | Fixme messages (rarely used in DX-STREAM)                                       |
+| 4         | INFO        | Informational messages about state changes and major operations                 |
+| 5         | DEBUG       | Detailed operational information useful for troubleshooting                     |
+| 6         | LOG         | Per-buffer trace — every frame/buffer processed logs at this level              |
+| 7         | TRACE       | Internal algorithm details (e.g., inference queue state, tensor contents)       |
 
 ### Basic Usage
 
@@ -266,8 +266,6 @@ $ GST_DEBUG=dxrate:4 ./your_app 2>&1 | grep "throttle"
 $ GST_DEBUG=dxgather:4,dxinputselector:4,dxoutputselector:4 ./your_app
 ```
 
----
-
 ### DxScale, DxConvert
 
 **Debug Categories:** `dxscale`, `dxconvert`
@@ -458,9 +456,9 @@ $ GST_DEBUG=2,dxinfer:4,dxtracker:4 GST_DEBUG_FILE=/tmp/debug.log ./your_app
 
 ### Production Deployment
 
-(1) **Set global level to WARNING** (`:2`) or ERROR (`:1`)
-(2) **Disable unnecessary element logging** to reduce overhead
-(3) **Use log rotation** if file logging is enabled
+(1) **Set global level to WARNING** (`:2`) or ERROR (`:1`)  
+(2) **Disable unnecessary element logging** to reduce overhead  
+(3) **Use log rotation** if file logging is enabled  
 (4) **Monitor ERROR and WARNING** messages for operational issues
 
 ```bash
@@ -469,8 +467,8 @@ $ GST_DEBUG=1 ./your_app 2>&1 | tee -a /var/log/dxstream.log
 
 ### Performance Testing
 
-(1) **Minimize debug output** during benchmarking
-(2) **Use selective logging** for targeted profiling
+(1) **Minimize debug output** during benchmarking  
+(2) **Use selective logging** for targeted profiling  
 (3) **Capture timing information** for latency analysis
 
 ```bash

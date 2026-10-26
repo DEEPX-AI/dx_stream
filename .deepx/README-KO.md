@@ -64,7 +64,7 @@ bash ../../.deepx/tools/scripts/run_all.sh generate    # suite 전체 (5개 repo
   instructions/
     architecture.md                      # dx_stream v2.3.0 아키텍처 개요
     coding-standards.md                  # 파이프라인 구성 규칙 및 컨벤션
-    gstreamer-pipeline.md                # 13 element + 파이프라인 패턴
+    gstreamer-pipeline.md                # 현재 element 레퍼런스 + 파이프라인 패턴
     testing-patterns.md                  # GStreamer 디버그 및 테스트 패턴
     agent-protocols.md                   # 11개 agent 간 프로토콜
     orchestration.md                     # 5-phase 파이프라인 라이프사이클
@@ -84,10 +84,10 @@ bash ../../.deepx/tools/scripts/run_all.sh generate    # suite 전체 (5개 repo
     dx-agent-verify/
       SKILL.md                           # Process skill
   toolsets/
-    dx-stream-elements.md                # 전체 13-element property 레퍼런스
+    dx-stream-elements.md                # 현재 element property 레퍼런스
     dx-stream-metadata.md                # pydxs metadata API 레퍼런스
     dx-engine-api.md                     # DX-RT inference engine 레퍼런스
-    model-registry.md                    # model_list.json 레퍼런스 (14개 모델)
+    model-registry.md                    # model_list.json 레퍼런스
   memory/
     MEMORY.md                            # Memory 인덱스
     common_pitfalls.md                   # 알려진 10개 pitfall [DX_STREAM] + [UNIVERSAL]
@@ -124,7 +124,7 @@ bash ../../.deepx/tools/scripts/run_all.sh generate    # suite 전체 (5개 repo
 - **OpenCode** — `AGENTS.md` + `.opencode/agents/`, `opencode.json`
 - **Codex CLI** — `AGENTS.md` + `.codex/skills/dx-codex-identity/SKILL.md` (자동 identity), 그리고 `.deepx/skills/*/SKILL.md` 직접 참조
 
-## 13 GStreamer Elements
+## 지원되는 GStreamer 요소
 
 | Element | 카테고리 | 용도 |
 |---------|----------|---------|
@@ -141,6 +141,14 @@ bash ../../.deepx/tools/scripts/run_all.sh generate    # suite 전체 (5개 repo
 | `DxMsgBroker` | Messaging | JSON을 Kafka 또는 MQTT에 publish |
 | `DxScale` | Transform | 비디오 프레임 resize |
 | `DxConvert` | Transform | 색공간 변환 |
+| `DxVnpuDec` | 선택적 Codec | DX-H1 V-NPU H.264/H.265 hardware 디코딩 (`dxvnpudec`, `--dxvnpu`) |
+| `DxVnpuEnc` | 선택적 Codec | DX-H1 V-NPU H.264/H.265 hardware 인코딩 (`dxvnpuenc`, `--dxvnpu`) |
+
+> **Note:** `dxvnpudec`와 `dxvnpuenc`는 optional DX-H1 V-NPU codec element이며,
+> `application/x-dxvideoraw` multi-stream domain 밖의 standard raw-video path에 둔다.
+`./build.sh --dxvnpu`로 빌드하고 Windows에서는 `DEEPX_VNPU_DIR`를 설정한다.
+현재 element surface는 고정 element 수가 아니라 `toolsets/dx-stream-elements.md`와
+runtime `gst-inspect-1.0`을 source of truth로 사용한다.
 
 ## 5 Pipeline Categories
 
@@ -200,3 +208,7 @@ bash ../../.deepx/tools/scripts/run_all.sh generate
 
 `memory/`에 지속 지식이 있습니다. 작업 시작 시 읽고, 새 패턴을 학습하거나
 pitfall을 발견할 때 업데이트하십시오. Memory 인덱스는 `memory/MEMORY.md`를 참조하십시오.
+
+## CI Drift Gate
+
+이 repo는 `subrepo-gate` CI job(`.github/workflows/dx-agent-dev-subrepo-gate-{ghes,cloud}.yml`)으로 검사됩니다. 실행 내용, 로컬 재현, red일 때 수정 방법: [`docs/ci-subrepo-gate-KO.md`](docs/ci-subrepo-gate-KO.md).

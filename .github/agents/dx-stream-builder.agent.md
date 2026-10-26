@@ -29,6 +29,10 @@ handoffs:
   agent: dx-model-manager
   prompt: Download or query models from model_list.json.
   send: false
+- label: Validate Pipeline
+  agent: dx-validator
+  prompt: Validate dx_stream pipelines and framework configuration.
+  send: false
 ---
 
 <!-- AUTO-GENERATED from .deepx/ — DO NOT EDIT DIRECTLY -->
@@ -68,7 +72,7 @@ round start.
 Before classifying or routing any task:
 
 1. Read `.github/copilot-instructions.md` for this level's global context (MANDATORY)
-2. Read `.github/memory/common_pitfalls.md` (always)
+2. Read `.deepx/memory/common_pitfalls.md` (always)
 3. Read `.github/skills/dx-agent-stream-build-pipeline/SKILL.md` (if building pipeline)
 
 ## Step 0: Prerequisites Check
@@ -317,7 +321,8 @@ Before presenting the final report to the user, the agent MUST:
 ## Scope Boundaries
 
 This router handles dx_stream GStreamer pipelines ONLY:
-- 13 GStreamer elements: DxPreprocess, DxInfer, DxPostprocess, DxTracker, DxOsd, DxGather, DxInputSelector, DxOutputSelector, DxRate, DxMsgConv, DxMsgBroker, DxScale, DxConvert
+- GStreamer elements: consult `toolsets/dx-stream-elements.md` and
+  `gst-inspect-1.0` for the current supported element surface.
 - Shell script wrappers (run_*.sh) and Python pipeline scripts
 - Custom postprocess C++ libraries
 - pydxs Python bindings for metadata access

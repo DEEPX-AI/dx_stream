@@ -1,6 +1,6 @@
 // PL-A1 — Multi-model inference quality verification
 // Runs each of the 9 YOLO models against test.jpg GT with IoU precision > 0.1
-// SKIP: model file, NPU, or postprocess library not available
+// Missing required model, NPU, or postprocess resources fail the test.
 
 #include <gst/check/gstcheck.h>
 #include <gst/gst.h>
@@ -77,63 +77,63 @@ static void run_model_precision_test(const YoloModel &m) {
 // --- Per-model TCs ---
 
 GST_START_TEST(PL_A1_YoloV5S_PPU_precision) {
-    DXTEST_SKIP_IF(!can_run_model(YOLO_MODELS[0]),
+    fail_if(!can_run_model(YOLO_MODELS[0]),
                    "YoloV5S_PPU model/NPU/postprocess not available");
     run_model_precision_test(YOLO_MODELS[0]);
 }
 GST_END_TEST;
 
 GST_START_TEST(PL_A1_yolo26n_precision) {
-    DXTEST_SKIP_IF(!can_run_model(YOLO_MODELS[1]),
+    fail_if(!can_run_model(YOLO_MODELS[1]),
                    "yolo26n model/NPU/postprocess not available");
     run_model_precision_test(YOLO_MODELS[1]);
 }
 GST_END_TEST;
 
 GST_START_TEST(PL_A1_YoloV5S_precision) {
-    DXTEST_SKIP_IF(!can_run_model(YOLO_MODELS[2]),
+    fail_if(!can_run_model(YOLO_MODELS[2]),
                    "YoloV5S model/NPU/postprocess not available");
     run_model_precision_test(YOLO_MODELS[2]);
 }
 GST_END_TEST;
 
 GST_START_TEST(PL_A1_YoloV7_precision) {
-    DXTEST_SKIP_IF(!can_run_model(YOLO_MODELS[3]),
+    fail_if(!can_run_model(YOLO_MODELS[3]),
                    "YoloV7 model/NPU/postprocess not available");
     run_model_precision_test(YOLO_MODELS[3]);
 }
 GST_END_TEST;
 
 GST_START_TEST(PL_A1_YoloV8N_precision) {
-    DXTEST_SKIP_IF(!can_run_model(YOLO_MODELS[4]),
+    fail_if(!can_run_model(YOLO_MODELS[4]),
                    "YoloV8N model/NPU/postprocess not available");
     run_model_precision_test(YOLO_MODELS[4]);
 }
 GST_END_TEST;
 
 GST_START_TEST(PL_A1_YoloV9S_precision) {
-    DXTEST_SKIP_IF(!can_run_model(YOLO_MODELS[5]),
+    fail_if(!can_run_model(YOLO_MODELS[5]),
                    "YoloV9S model/NPU/postprocess not available");
     run_model_precision_test(YOLO_MODELS[5]);
 }
 GST_END_TEST;
 
 GST_START_TEST(PL_A1_YOLOV11N_precision) {
-    DXTEST_SKIP_IF(!can_run_model(YOLO_MODELS[6]),
+    fail_if(!can_run_model(YOLO_MODELS[6]),
                    "YOLOV11N model/NPU/postprocess not available");
     run_model_precision_test(YOLO_MODELS[6]);
 }
 GST_END_TEST;
 
 GST_START_TEST(PL_A1_yolo26n_pose_precision) {
-    DXTEST_SKIP_IF(!can_run_model(YOLO_MODELS[7]),
+    fail_if(!can_run_model(YOLO_MODELS[7]),
                    "yolo26n-pose model/NPU/postprocess not available");
     run_model_precision_test(YOLO_MODELS[7]);
 }
 GST_END_TEST;
 
 GST_START_TEST(PL_A1_yolov8m_pose_precision) {
-    DXTEST_SKIP_IF(!can_run_model(YOLO_MODELS[8]),
+    fail_if(!can_run_model(YOLO_MODELS[8]),
                    "yolov8m_pose model/NPU/postprocess not available");
     run_model_precision_test(YOLO_MODELS[8]);
 }
@@ -142,7 +142,9 @@ GST_END_TEST;
 static Suite *pl_infer_models_suite(void) {
     Suite *s = suite_create("pl_infer_models");
     TCase *tc = tcase_create("multi_model_precision");
+#ifndef _WIN32
     tcase_set_timeout(tc, 120.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, PL_A1_YoloV5S_PPU_precision);
     tcase_add_test(tc, PL_A1_yolo26n_precision);

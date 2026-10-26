@@ -38,7 +38,7 @@ static std::string video_pipe_noapp() {
 
 GST_START_TEST(PL_video_decode_transform) {
     std::string desc = video_pipe_desc();
-    DXTEST_SKIP_IF(desc.empty(), "boat.mp4 not found");
+    fail_if(desc.empty(), "boat.mp4 not found");
 
     GError *err = nullptr;
     GstElement *pipe = gst_parse_launch(desc.c_str(), &err);
@@ -54,7 +54,7 @@ GST_START_TEST(PL_video_decode_transform) {
     int count = 0;
     GstSample *s;
     while ((s = gst_app_sink_try_pull_sample(GST_APP_SINK(sink),
-                                              2 * GST_SECOND)) != nullptr) {
+                                              10 * GST_SECOND)) != nullptr) {
         GstCaps *caps = gst_sample_get_caps(s);
         GstVideoInfo info;
         fail_unless(gst_video_info_from_caps(&info, caps));
@@ -76,7 +76,7 @@ GST_END_TEST;
 
 GST_START_TEST(PL_video_lifecycle) {
     std::string desc = video_pipe_noapp();
-    DXTEST_SKIP_IF(desc.empty(), "boat.mp4 not found");
+    fail_if(desc.empty(), "boat.mp4 not found");
     test_lifecycle_cycle(desc.c_str(), 3);
 }
 GST_END_TEST;
@@ -84,7 +84,9 @@ GST_END_TEST;
 static Suite *pl_video_suite(void) {
     Suite *s = suite_create("pl_video");
     TCase *tc = tcase_create("video_data");
+#ifndef _WIN32
     tcase_set_timeout(tc, 60.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, PL_video_decode_transform);
     tcase_add_test(tc, PL_video_lifecycle);

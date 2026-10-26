@@ -305,7 +305,18 @@ void track(GstDxTracker *self, DXFrameMeta *frame_meta) {
                 ("Unknown tracker algorithm: %s", self->_tracker_name), (NULL));
             return;
         }
-        tracker->init(self->_params);
+        // init() runs inside a GStreamer chain function. Parsing no longer throws
+        // (OCSort::init falls back to defaults), but another tracker might. Catch
+        // it here so the failure is named and the pipeline keeps running; the
+        // outer handler reports it as an unnamed exception and stops the flow.
+        try {
+            tracker->init(self->_params);
+        } catch (const std::exception &e) {
+            GST_ELEMENT_ERROR(self, LIBRARY, INIT,
+                ("Tracker '%s' failed to initialise: %s",
+                 self->_tracker_name, e.what()), (NULL));
+            return;
+        }
         self->_trackers[frame_meta->_stream_id] = std::move(tracker);
     }
 

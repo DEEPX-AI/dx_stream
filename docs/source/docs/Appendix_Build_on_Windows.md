@@ -1,6 +1,6 @@
-# Building DX-Stream on Windows
+# Building DX-STREAM on Windows
 
-This guide covers building the DX-Stream GStreamer plugin on Windows (MSVC x64).
+This guide covers building the DX-STREAM GStreamer plugin on Windows (MSVC x64).
 
 The Windows build produces `gstdxstream.dll`, the same GStreamer plugin that Linux builds as `libgstdxstream.so`.
 
@@ -40,8 +40,9 @@ The following must be installed manually before running `install.bat`.
 | 1 | Visual Studio 2022 | C++ compiler (MSVC) | [visualstudio.microsoft.com](https://visualstudio.microsoft.com/) |
 | 2 | Git for Windows | Source control, vcpkg | [git-scm.com](https://git-scm.com/download/win) |
 | 3 | Python 3.9+ | Meson build system host | [python.org](https://www.python.org/downloads/) |
-| 4 | GStreamer MSVC x86_64 | Multimedia framework | [gstreamer.freedesktop.org](https://gstreamer.freedesktop.org/download/) |
-| 5 | DEEPX SDK | NPU runtime (dxrt) | DEEPX SDK installer |
+| 4 | GStreamer MSVC x86_64 1.16.3+ | Multimedia framework | [gstreamer.freedesktop.org](https://gstreamer.freedesktop.org/download/) |
+| 5 | pkg-config (if not included with GStreamer) | Build dependency discovery | [pkgconf releases](https://github.com/pkgconf/pkgconf/releases) |
+| 6 | DEEPX SDK | NPU runtime (dxrt) | DEEPX SDK installer |
 
 **Visual Studio 2022**  
 
@@ -57,15 +58,39 @@ Download the official installer. Check **"Add Python to PATH"** during installat
 
 **GStreamer**  
 
+The minimum supported version is **1.16.3**; newer versions are allowed without
+an upper-version limit. Versions **1.16.3** and **1.28.4** have been verified on
+Windows; this validation history is separate from the minimum-version policy.
+
 Download and install **both** packages from the official site:
 - **Runtime** (MSVC 64-bit)
 - **Development** (MSVC 64-bit)
+
+`install.bat` queries the selected SDK's `bin\gst-inspect-1.0.exe --version`
+and displays its path and version. It stops before dependency installation if
+the version is below 1.16.3, the query fails or exceeds 10 seconds, or its output
+cannot be parsed. Errors include the minimum version and download link.
+`build.bat` uses Meson's existing `gstreamer-1.0 >=1.16.3` dependency constraint
+to validate the development SDK; no duplicate build-script check is needed.
+Install matching Runtime and Development versions.
 
 Default install path: `C:\Program Files\gstreamer\1.0\msvc_x86_64`
 
 !!! warning "IMPORTANT"
 
     The Development package is required for headers and `.pc` files.
+
+**pkg-config**
+
+After checking GStreamer, `install.bat` adds its detected `bin` directory to PATH
+and checks that `pkg-config --version` succeeds. If GStreamer provides a working
+`pkg-config`, no separate installation is needed.
+
+Otherwise, download and install the x64 MSI from
+[pkgconf releases](https://github.com/pkgconf/pkgconf/releases). Ensure its
+installation directory is on PATH, open a new terminal, and verify
+`pkg-config --version` before running `install.bat` again.
+The script only checks this prerequisite; it does not download or install pkgconf.
 
 **DEEPX SDK**  
 
@@ -77,13 +102,39 @@ Expected directory structure (set up by the installer)
 ```
 %DEEPX_SDK_DIR%\
     include\
-    lib\x64\dxrt.lib
+    lib\dxrt.lib        (or lib\x64\dxrt.lib on older SDK versions)
     bin\dxrt.dll
 ```
 
 ### Environment Variables Configuration
 
 Most environment variables are configured automatically — no manual `set` commands are needed.
+
+**GStreamer root (configured by the GStreamer installer)**
+
+Windows build, demo, pipeline, and test scripts check
+`GSTREAMER_1_0_ROOT_MSVC_X86_64` first,
+then the legacy `GSTREAMER_1_0_ROOT_X86_64` variable, and finally the default
+`C:\Program Files\gstreamer\1.0\msvc_x86_64` directory.
+Candidates must contain `bin\gst-launch-1.0.exe` and `bin\gst-inspect-1.0.exe`
+for runtime checks or
+`lib\pkgconfig\gstreamer-1.0.pc` for build checks; invalid candidates are skipped.
+Batch entrypoints share `scripts\setup_gstreamer.bat` so they also work in a
+fresh terminal without inheriting the environment from a previous build.
+The selected root supplies PATH; development checks also set PKG_CONFIG_PATH.
+After installing or changing GStreamer, open a new terminal to pick up its
+environment variables.
+
+For manual `gst-inspect-1.0` or `gst-launch-1.0` commands in CMD, configure the
+current terminal from the project root first:
+```cmd
+call scripts\setup_gstreamer.bat runtime
+```
+Build, demo, and pipeline batch scripts perform this setup automatically.
+
+The build copies required vcpkg runtime DLLs, including OpenSSL 3 DLLs used by
+`mosquitto.dll`, into `install\bin`. GStreamer's bundled OpenSSL version may
+differ, so it is not a substitute for those dependencies.
 
 **DEEPX_SDK_DIR (auto-configured by DEEPX SDK installer)**  
 
@@ -93,6 +144,16 @@ If for any reason the variable is missing, set it manually.
 ```cmd
 set DEEPX_SDK_DIR=C:\Program Files\DEEPX\DX_SDK_<version>
 ```
+
+**DEEPX_VNPU_DIR (auto-configured by the DX-H1 V-NPU SDK installer)**
+
+Build with `--dxvnpu` requires the SDK CMake package at:
+```
+%DEEPX_VNPU_DIR%\lib\cmake\dxvnpu\dxvnpuConfig.cmake
+```
+
+The installer also provides the VNPU runtime DLL directory. `build.bat` and
+`run_demo.bat` add `%DEEPX_VNPU_DIR%\bin` to their process `PATH`.
 
 ---
 
@@ -107,12 +168,16 @@ install.bat
 
 This automatically:  
 
-- Step 1. Verifies all prerequisites are present  
+- Step 1. Verifies prerequisites, checking `pkg-config` immediately after GStreamer
 - Step 2. Installs `meson` and `ninja` via pip  
 - Step 3. Clones and bootstraps vcpkg (if not present)  
 - Step 4. Installs C++ libraries via vcpkg: eigen3, opencv4, libyuv, mosquitto, librdkafka  
 - Step 5. Generates `opencv4.pc` (required for meson to find OpenCV)  
 - Step 6. Validates DEEPX_SDK_DIR path  
+
+On success, the script updates the calling CMD's PATH with the detected GStreamer
+`bin` directory. If `pkg-config` is missing or cannot run, prerequisite checking
+fails with manual installation instructions before any automatic installation.
 
 ### Air-Gapped Network (No Internet)
 
@@ -150,6 +215,11 @@ Output: `gst-dxstream-plugin\builddir\src\gstdxstream.dll`
 ```cmd
 build.bat --clean              :: Remove builddir and rebuild from scratch
 build.bat --type=debug         :: Debug build (symbols, no optimization)
+build.bat --dxv3               :: Enable DX V3 transform backend (requires dxdsp; --v3 is an alias)
+build.bat --dxvnpu             :: Enable DXVNPU backend (requires DEEPX_VNPU_DIR)
+build.bat --rkrga              :: Enable RK RGA transform backend (requires librga)
+build.bat --plugin-only        :: Build only the plugin (skip custom libraries, apps, pydxs)
+build.bat --uninstall          :: Remove install directory and registered environment variables
 build.bat --clean --type=debug :: Combine options
 ```
 
@@ -180,9 +250,6 @@ Builds `mqtt_sub_example`, `kafka_consume_example`, `usermeta_app`.
 
 Output executables are in each subdirectory's `builddir/`.
 
-
-Demo Assets (Models & Videos)
-
 !!! note "NOTE"
 
     Both scripts require the main plugin to be built first — they resolve `dependency('gstdxstream')` via the auto-generated `gstdxstream-uninstalled.pc` in the plugin builddir.  
@@ -206,7 +273,7 @@ For air-gapped environments, manually place model files (`.dxnn`) in `dx_stream\
 
 ```cmd
 run_demo.bat                    :: Interactive demo menu
-run_demo.bat --internal-rtsp    :: Use internal RTSP server for demo 9
+run_demo.bat --internal-rtsp    :: Use internal RTSP server for demo 8
 ```
 
 The demo menu matches the Linux `run_demo.sh` layout:
@@ -216,15 +283,13 @@ The demo menu matches the Linux `run_demo.sh` layout:
 | 0 | Object Detection | YOLO26n |
 | 1 | Object Detection | YoloV5S PPU |
 | 2 | Face Detection | YOLOv5s_Face |
-| 3 | Face Detection | SCRFD500M PPU |
-| 4 | Pose Estimation | YOLO26n_Pose |
-| 5 | Pose Estimation | YOLOV5Pose PPU |
-| 6 | Instance Segmentation | YOLO26n-Seg |
-| 7 | Multi-Object Tracking | YoloV5S + OC_SORT |
-| 8 | Multi-Stream (4ch) | Compositor Grid |
-| 9 | Multi-Channel (RTSP) | dxinputselector |
-| - | Secondary Mode | Multi-Model Cascade |
-| = | Depth Estimation | YOLO26n_Depth |
+| 3 | Pose Estimation | YOLO26n_Pose |
+| 4 | Instance Segmentation | YOLO26n-Seg |
+| 5 | Depth Estimation | YOLO26n_Depth |
+| 6 | Multi-Object Tracking | YoloV5S + OC_SORT |
+| 7 | Multi-Stream (4ch) | Compositor Grid |
+| 8 | Multi-Channel (RTSP) | dxinputselector |
+| 9 | Secondary Mode | Multi-Model Cascade |
 
 Pipeline scripts are located in `dx_stream\pipelines\windows\`. Each script is self-contained and can be run independently if `DXSTREAM_ROOT` is set:
 
@@ -255,7 +320,7 @@ The target machine must have:
 
 ### Source Build Deployment Routine
 
-DX-Stream on Windows uses source-build distribution. Clone the repository, build, and run on the target machine:
+DX-STREAM on Windows uses source-build distribution. Clone the repository, build, and run on the target machine:
 
 ```cmd
 git clone <repo-url>
@@ -272,16 +337,19 @@ run_demo.bat
 
 `build.bat` automatically:  
 
-- Builds the plugin, custom libraries, and apps  
+- Builds the plugin, custom libraries, apps, and Python bindings (pydxs)  
 - Collects all DLLs into `install\bin\`  
-- Registers `GST_PLUGIN_PATH` and user `Path` entries  
+- Prepends this checkout's entries to User `GST_PLUGIN_PATH` and `Path`, preserving unrelated entries
 
 ### Required Environment Variables & Verification
 
-The following are set automatically by `build.bat`:  
+`build.bat` merges the following entries into the persistent User environment.
+Existing entries for other plugins, SDKs, and checkouts are retained; repeated
+builds do not duplicate this checkout's entries. The commands below illustrate
+the resulting search paths, not commands to overwrite your persistent variables:
 
 ```cmd
-set GST_PLUGIN_PATH=%PROJECT_ROOT%\install\lib\gstreamer-1.0
+set GST_PLUGIN_PATH=%PROJECT_ROOT%\install\lib\gstreamer-1.0;%GST_PLUGIN_PATH%
 set PATH=%PROJECT_ROOT%\install\bin;%PROJECT_ROOT%\install\share\gstdxstream\lib;%PROJECT_ROOT%\install\share\gstdxstream\bin;%PROJECT_ROOT%\install\lib\gstreamer-1.0;%PATH%
 ```
 
@@ -298,7 +366,26 @@ After building, open a new `cmd.exe` and run:
 gst-inspect-1.0 dxpreprocess
 ```
 
-If this prints element details, DX-Stream is correctly installed.  
+If this prints element details, DX-STREAM is correctly installed.  
+
+### Uninstall
+
+```cmd
+build.bat --uninstall
+```
+
+This removes this checkout's install directory, build directories, dedicated
+`venv-dx_stream`, and Python packaging artifacts. Only this checkout's entries
+are removed from User `GST_PLUGIN_PATH` and `Path`; other checkouts, shared SDK
+variables, and Machine environment variables are left unchanged.
+
+Exit code `0` means cleanup completed. If files remain locked or environment
+updates fail, the command reports an error and returns `1`, rather than reporting
+success. Close applications using DX-Stream, check the reported permissions or
+environment error, and retry. Repeated uninstall is safe when artifacts and
+entries are already absent. Restart your terminal or IDE after environment changes.
+Environment registration failures also cause `build.bat` to return `1`, even if
+the build artifacts were installed successfully.
 
 ### Critical DLL Naming Constraints 
 
@@ -337,8 +424,8 @@ The build system already handles this — `soversion` is only applied on Linux w
 | Distribution | Source build | Source build |
 | Demo launcher | `run_demo.sh` | `run_demo.bat` |
 | Pipeline scripts | `dx_stream/pipelines/` (shell scripts) | `dx_stream/pipelines/windows/` (batch files) |
-| Apps / custom_library | `build.sh` (meson install) | `build.bat` (meson compile only) |
-| Python bindings (pydxs) | Built | Not included |
+| Apps / custom_library | `build.sh` (meson install) | `build.bat` (meson install to `install\share\gstdxstream\`); standalone `custom_library\build.bat` and `apps\build.bat` compile only |
+| Python bindings (pydxs) | Built with rpath | Built with Windows DLL loader |
 
 ### Troubleshooting and Diagnostics 
 

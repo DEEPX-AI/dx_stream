@@ -55,9 +55,22 @@ bash -c 'source run_<app>.sh --dry-run 2>/dev/null; [ -d "$SRC_DIR/samples" ]' \
 grep -q 'x264enc' pipeline.py run_<app>.sh 2>/dev/null \
   && { grep -q 'tune=zerolatency' pipeline.py run_<app>.sh 2>/dev/null \
        || echo "FAIL: x264enc found without tune=zerolatency — pipeline will deadlock"; }
+
+# 7. DX-H1 V-NPU optional capability (only for V-NPU-targeted pipelines)
+if grep -qE 'dxvnpu(dec|enc)|backend=dxvnpu' pipeline.py run_<app>.sh 2>/dev/null; then
+  gst-inspect-1.0 dxvnpudec > /dev/null 2>&1 || echo "FAIL: dxvnpudec unavailable; build with --dxvnpu"
+  gst-inspect-1.0 dxvnpuenc > /dev/null 2>&1 || echo "FAIL: dxvnpuenc unavailable; build with --dxvnpu"
+fi
 ```
 
 ### Level 2: Property Validation
+
+For V-NPU-targeted pipelines, verify `dxinfer backend=dxvnpu` only after the
+optional plugin is installed. `dxvnpudec` and `dxvnpuenc` must remain in
+standard raw-video codec branches, outside the `application/x-dxvideoraw`
+multi-stream domain. For image operations, validate that pipelines using a
+VNPU transform kernel through `dxpreprocess`, `dxscale`, or `dxconvert` still
+negotiate and run when the optional kernel is unavailable.
 
 Check pipeline element properties against known valid values:
 

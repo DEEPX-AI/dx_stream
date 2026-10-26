@@ -35,9 +35,9 @@ User Request
 
 | Skill | Description |
 |-------|-------------|
-| `dx-swe-brainstorm` | Brainstorm and plan before any pipeline generation |
-| `dx-swe-tdd` | Test-driven development — validate each file immediately after creation |
-| `dx-swe-verify` | Verify before claiming completion — evidence before assertions |
+| `dx-agent-brainstorm` | Brainstorm and plan before any pipeline generation |
+| `dx-agent-tdd` | Test-driven development — validate each file immediately after creation |
+| `dx-agent-verify` | Verify before claiming completion — evidence before assertions |
 | `dx-swe-writing-plans` | Write implementation plans from specs or requirements |
 | `dx-swe-executing-plans` | Execute a written implementation plan with review checkpoints |
 | `dx-swe-debugging` | Systematic debugging — diagnose before proposing fixes |
@@ -56,6 +56,13 @@ User Request
 | `dx-agent-stream-model-management` | Download and configure `.dxnn` models for target NPU architecture |
 | `dx-agent-stream-validate` | Run pipeline validation checks (syntax, properties, element order) |
 
+#### DEEPX Harness (Internal)
+
+| Skill | Description |
+|-------|-------------|
+| `dx-harness-validate` | Validate the integrity of `.deepx/` (internal harness development) |
+| `dx-harness-writing-skills` | Create, edit, and verify skills before deployment (internal harness development) |
+
 ---
 
 ## Supported AI Tools
@@ -66,9 +73,9 @@ the knowledge base through its own configuration.
 | Tool | Config Files | Agents Available |
 |---|---|---|
 | **Claude Code** | `CLAUDE.md` | All 4 agents via context routing |
-| **GitHub Copilot** | `.github/copilot-instructions.md`, 4 agents in `.github/agents/`, 16 skills in `.github/skills/`, 2 instructions in `.github/instructions/` | `@dx-stream-builder`, `@dx-pipeline-builder`, `@dx-model-manager`, `@dx-validator` |
-| **Cursor** | `.cursor/rules/dx-stream.mdc` (always), `dx-model-manager.mdc`, `dx-pipeline-builder.mdc`, `dx-stream-builder.mdc`, `dx-validator.mdc`, `stream-pipelines.mdc`, `tests.mdc`, 16 `skill-*.mdc` files (23 total) | Free-form with auto-applied rules |
-| **OpenCode** | `AGENTS.md`, `opencode.json`, 4 agents in `.opencode/agents/`, 16 skills in `.deepx/skills/` | `@dx-stream-builder` or `/dx-agent-stream-build-pipeline` |
+| **GitHub Copilot** | `.github/copilot-instructions.md`, 4 agents in `.github/agents/`, 17 skills in `.github/skills/`, 2 instructions in `.github/instructions/` | `@dx-stream-builder`, `@dx-pipeline-builder`, `@dx-model-manager`, `@dx-validator` |
+| **Cursor** | `.cursor/rules/dx-stream.mdc` (always), `dx-model-manager.mdc`, `dx-pipeline-builder.mdc`, `dx-stream-builder.mdc`, `dx-validator.mdc`, `stream-pipelines.mdc`, `tests.mdc`, 17 `skill-*.mdc` files (24 total) | Free-form with auto-applied rules |
+| **OpenCode** | `AGENTS.md`, `opencode.json`, 4 agents in `.opencode/agents/`, 17 skills in `.deepx/skills/` | `@dx-stream-builder` or `/dx-agent-stream-build-pipeline` |
 
 ### Copilot File-Specific Instructions
 
@@ -83,9 +90,9 @@ the knowledge base through its own configuration.
 
 | Slash Command | Description |
 |---|---|
-| `/dx-swe-brainstorm` | Brainstorm and plan before pipeline generation |
-| `/dx-swe-tdd` | Test-driven development with incremental validation |
-| `/dx-swe-verify` | Verify completion with evidence before assertions |
+| `/dx-agent-brainstorm` | Brainstorm and plan before pipeline generation |
+| `/dx-agent-tdd` | Test-driven development with incremental validation |
+| `/dx-agent-verify` | Verify completion with evidence before assertions |
 | `/dx-swe-writing-plans` | Write implementation plans from specs |
 | `/dx-swe-executing-plans` | Execute a written implementation plan |
 | `/dx-swe-debugging` | Systematic debugging before proposing fixes |
@@ -103,6 +110,13 @@ the knowledge base through its own configuration.
 | `/dx-agent-stream-build-mqtt-kafka` | Build an MQTT/Kafka broker pipeline |
 | `/dx-agent-stream-model-management` | Download and configure .dxnn models |
 | `/dx-agent-stream-validate` | Run pipeline validation checks |
+
+**DEEPX Harness (Internal)**
+
+| Slash Command | Description |
+|---|---|
+| `/dx-harness-validate` | Validate the integrity of `.deepx/` |
+| `/dx-harness-writing-skills` | Create, edit, and verify skills before deployment |
 
 ### Platform File Loading Reference
 
@@ -131,7 +145,7 @@ Each AI coding agent auto-loads different configuration files at the dx_stream l
 
 | Skill | File |
 |-------|------|
-| `/dx-swe-brainstorm` | `.deepx/skills/dx-swe-brainstorm/SKILL.md` |
+| `/dx-agent-brainstorm` | `.deepx/skills/dx-agent-brainstorm/SKILL.md` |
 | `/dx-agent-stream-build-mqtt-kafka` | `.deepx/skills/dx-agent-stream-build-mqtt-kafka/SKILL.md` |
 | `/dx-agent-stream-build-pipeline` | `.deepx/skills/dx-agent-stream-build-pipeline/SKILL.md` |
 | `/dx-swe-parallel-agents` | `.deepx/skills/dx-swe-parallel-agents/SKILL.md` |
@@ -142,10 +156,12 @@ Each AI coding agent auto-loads different configuration files at the dx_stream l
 | `/dx-skill-router` | `.deepx/skills/dx-skill-router/SKILL.md` |
 | `/dx-swe-subagent-dev` | `.deepx/skills/dx-swe-subagent-dev/SKILL.md` |
 | `/dx-swe-debugging` | `.deepx/skills/dx-swe-debugging/SKILL.md` |
-| `/dx-swe-tdd` | `.deepx/skills/dx-swe-tdd/SKILL.md` |
+| `/dx-agent-tdd` | `.deepx/skills/dx-agent-tdd/SKILL.md` |
 | `/dx-agent-stream-validate` | `.deepx/skills/dx-agent-stream-validate/SKILL.md` |
-| `/dx-swe-verify` | `.deepx/skills/dx-swe-verify/SKILL.md` |
+| `/dx-agent-verify` | `.deepx/skills/dx-agent-verify/SKILL.md` |
 | `/dx-swe-writing-plans` | `.deepx/skills/dx-swe-writing-plans/SKILL.md` |
+| `/dx-harness-validate` | `.deepx/skills/dx-harness-validate/SKILL.md` |
+| `/dx-harness-writing-skills` | `.deepx/skills/dx-harness-writing-skills/SKILL.md` |
 
 #### Shared Knowledge Base (`.deepx/`)
 
@@ -157,7 +173,7 @@ generated files directly — update `.deepx/` and regenerate.
 | Directory | Files | Description |
 |-----------|-------|-------------|
 | `.deepx/agents/` | 4 files (`dx-stream-builder.md`, `dx-pipeline-builder.md`, `dx-model-manager.md`, `dx-validator.md`) | Authoritative agent definitions |
-| `.deepx/skills/` | 16 directories (one per skill, each containing `SKILL.md`) | Detailed skill workflows |
+| `.deepx/skills/` | 17 directories (one per skill, each containing `SKILL.md`) | Detailed skill workflows |
 | `.deepx/toolsets/` | 4 files | GStreamer elements and API references |
 | `.deepx/instructions/` | 6 files | Coding standards and workflow rules |
 | `.deepx/memory/` | 4 files | Persistent knowledge — pitfalls and session memory |
@@ -178,7 +194,7 @@ generated files directly — update `.deepx/` and regenerate.
 
 #### GitHub Copilot Skills (`.github/skills/`)
 
-16 skill directories (inline copies generated by `dx-agent-gen`), one per skill matching `.deepx/skills/`.
+17 skill directories (inline copies generated by `dx-agent-gen`), one per skill matching `.deepx/skills/`.
 
 ---
 
@@ -194,7 +210,7 @@ dx-agent-gen generate --repo dx-runtime/dx_stream
 This generates:
 - `.claude/agents/` — Claude Code agent files
 - `.github/agents/`, `.github/skills/`, `.github/instructions/` — GitHub Copilot files
-- `.cursor/rules/` — Cursor rule files (23 total)
+- `.cursor/rules/` — Cursor rule files (24 total)
 - `.opencode/agents/` — OpenCode agent files
 - `CLAUDE.md`, `AGENTS.md`, `opencode.json` — Platform entry points
 
@@ -215,7 +231,7 @@ This generates:
 | Tool | How to Use |
 |---|---|
 | **Claude Code** | Type the prompt directly. `CLAUDE.md` routes to `dx-agent-stream-build-pipeline` skill. Asks about RTSP URL, display preferences, and tracker type, then generates the pipeline with DxRate → DxPreprocess → DxInfer → DxTracker → DxOsd chain. |
-| **GitHub Copilot** |`.github/copilot-instructions.md`, 4 agents in `.github/agents/`, 15 skills in `.github/skills/`, 2 instructions in `.github/instructions/` | `@dx-stream-builder`, `@dx-pipeline-builder`, `@dx-model-manager`, `@dx-validator` |
+| **GitHub Copilot** | `@dx-stream-builder` followed by the prompt. Classifies as "single-model + tracking", hands off to `dx-pipeline-builder`, runs `dx-validator`. |
 | **Cursor** | Type the prompt directly. `dx-stream.mdc` (always loaded) provides the 13-element catalog. `stream-pipelines.mdc` activates for pipeline files. |
 | **OpenCode** | `@dx-stream-builder` followed by the prompt, or `/dx-agent-stream-build-pipeline` skill directly. |
 
@@ -279,7 +295,7 @@ This generates:
 | **Cursor** | Type the prompt directly. `stream-pipelines.mdc` activates for generated pipeline files. |
 | **OpenCode** | `@dx-stream-builder` followed by the prompt, or `/dx-agent-stream-build-pipeline` skill directly. |
 
-### Scenario 7: Build a Multi-Stream Parallel Pipeline
+### Scenario 6: Build a Multi-Stream Parallel Pipeline
 
 **Prompt:**
 
@@ -294,7 +310,7 @@ This generates:
 | **Cursor** | Type the prompt directly. |
 | **OpenCode** | `@dx-stream-builder` followed by the prompt, or `/dx-agent-stream-build-pipeline` skill directly. |
 
-### Scenario 8: Build a Segmentation Pipeline
+### Scenario 7: Build a Segmentation Pipeline
 
 **Prompt:**
 
@@ -378,9 +394,9 @@ dx_stream provides 13 custom GStreamer elements for NPU-accelerated pipelines.
 | `DxTracker` | Multi-object tracking (assign persistent IDs across frames) |
 | `DxOsd` | Draw bounding boxes, labels, and overlays on frames |
 | `DxGather` | N-to-1 merge — collect buffers from multiple branches |
-| `DxInputSelector` | N-to-1 round-robin input selection |
+| `DxInputSelector` | N-to-1 merge — combine frames from multiple streams in PTS order |
 | `DxOutputSelector` | 1-to-N demux — route buffers to one of N output pads |
-| `DxRate` | Limit frame rate (essential for RTSP sources) |
+| `DxRate` | Limit frame rate (recommended for variable-rate sources such as RTSP) |
 | `DxMsgConv` | Serialize detection metadata to JSON |
 | `DxMsgBroker` | Publish serialized messages to MQTT or Kafka |
 | `DxScale` | Resize frames to a target resolution |
@@ -394,9 +410,9 @@ Agents enforce these rules when generating and validating pipelines:
 
 1. **`preprocess-id` matching** — `DxPreprocess` and `DxInfer` must share the same `preprocess-id` value. A mismatch causes silent inference failures.
 2. **Queue placement** — Insert a `queue` element between every processing stage to prevent pipeline deadlocks.
-3. **`DxRate` for RTSP** — Always insert `DxRate` immediately after RTSP sources to prevent frame flooding and buffer overruns.
+3. **`DxRate` for RTSP** — Agents insert `DxRate` immediately after RTSP sources to prevent frame flooding and buffer overruns from variable-rate sources.
 4. **`DxMsgConv` before `DxMsgBroker`** — Always serialize metadata with `DxMsgConv` before publishing with `DxMsgBroker`.
-5. **Absolute model paths** — The `model-path` property on `DxInfer` must be an absolute filesystem path. Relative paths cause runtime errors.
+5. **Absolute model paths** — The `model-path` property on `DxInfer` must resolve to an absolute filesystem path (for example, derived from `$SRC_DIR`). A relative path depends on the working directory and can fail at runtime.
 
 ---
 
@@ -450,6 +466,6 @@ Rules:
 | Inference produces no detections | `preprocess-id` mismatch between `DxPreprocess` and `DxInfer` | Ensure both elements share the same `preprocess-id` value |
 | Pipeline deadlocks or stalls | Missing `queue` elements between processing stages | Add a `queue` element between every pair of processing elements |
 | RTSP stream drops frames | No frame rate limiting after source | Insert `DxRate` immediately after the RTSP source element |
-| `model-path` not found at runtime | Relative path used for `model-path` property | Use an absolute path (e.g., `/opt/deepx/models/yolo26-n_640x640.dxnn`) |
+| `model-path` not found at runtime | Relative path resolved against a different working directory | Use an absolute path (e.g., `/opt/deepx/models/yolo26-n_640x640.dxnn`) |
 | `DxInfer` plugin not registered | Plugin not installed or `GST_PLUGIN_PATH` not set | Run `gst-inspect-1.0 dxinfer` to verify; check `GST_PLUGIN_PATH` |
 | Broker pipeline sends empty messages | `DxMsgConv` missing before `DxMsgBroker` | Add `DxMsgConv` to serialize metadata before the broker element |

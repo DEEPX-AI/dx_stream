@@ -294,7 +294,8 @@ Before presenting the final report to the user, the agent MUST:
 ## Scope Boundaries
 
 This router handles dx_stream GStreamer pipelines ONLY:
-- 13 GStreamer elements: DxPreprocess, DxInfer, DxPostprocess, DxTracker, DxOsd, DxGather, DxInputSelector, DxOutputSelector, DxRate, DxMsgConv, DxMsgBroker, DxScale, DxConvert
+- GStreamer elements: consult `toolsets/dx-stream-elements.md` and
+  `gst-inspect-1.0` for the current supported element surface.
 - Shell script wrappers (run_*.sh) and Python pipeline scripts
 - Custom postprocess C++ libraries
 - pydxs Python bindings for metadata access

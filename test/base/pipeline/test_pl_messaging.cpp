@@ -1,7 +1,7 @@
 // PL-H — dxmsgconv message conversion verification
 // identity(probe) → dxmsgconv(libdx_msgconvl.so) → appsink
 // DxMsgMeta payload attachment + message-interval behavior verification
-// SKIP: when msgconv library is not present
+// Missing required msgconv library fails the test.
 
 #include <gst/check/gstcheck.h>
 #include <gst/gst.h>
@@ -43,7 +43,7 @@ static std::string msgconv_pipe(int num_buffers, int interval = 1) {
 }
 
 GST_START_TEST(PL_H_msgconv_attaches_payload) {
-    DXTEST_SKIP_IF(!path_exists(MSGCONV_LIB), "msgconv library not found");
+    fail_if(!path_exists(MSGCONV_LIB), "msgconv library not found: %s", MSGCONV_LIB);
 
     std::string desc = msgconv_pipe(5);
     GError *err = nullptr;
@@ -89,7 +89,7 @@ GST_START_TEST(PL_H_msgconv_attaches_payload) {
 GST_END_TEST;
 
 GST_START_TEST(PL_H_msgconv_interval) {
-    DXTEST_SKIP_IF(!path_exists(MSGCONV_LIB), "msgconv library not found");
+    fail_if(!path_exists(MSGCONV_LIB), "msgconv library not found: %s", MSGCONV_LIB);
 
     std::string desc = msgconv_pipe(12, 3);
     GError *err = nullptr;
@@ -152,13 +152,13 @@ static std::string msgconv_pipe_noapp(int num_buffers) {
 }
 
 GST_START_TEST(PL_H_msgconv_eos) {
-    DXTEST_SKIP_IF(!path_exists(MSGCONV_LIB), "msgconv library not found");
+    fail_if(!path_exists(MSGCONV_LIB), "msgconv library not found: %s", MSGCONV_LIB);
     test_eos_propagation(msgconv_pipe_noapp(5).c_str());
 }
 GST_END_TEST;
 
 GST_START_TEST(PL_H_msgconv_lifecycle) {
-    DXTEST_SKIP_IF(!path_exists(MSGCONV_LIB), "msgconv library not found");
+    fail_if(!path_exists(MSGCONV_LIB), "msgconv library not found: %s", MSGCONV_LIB);
     test_lifecycle_cycle(msgconv_pipe_noapp(3).c_str(), 3);
 }
 GST_END_TEST;
@@ -166,7 +166,9 @@ GST_END_TEST;
 static Suite *pl_messaging_suite(void) {
     Suite *s = suite_create("pl_messaging");
     TCase *tc = tcase_create("msgconv");
+#ifndef _WIN32
     tcase_set_timeout(tc, 30.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, PL_H_msgconv_attaches_payload);
     tcase_add_test(tc, PL_H_msgconv_interval);

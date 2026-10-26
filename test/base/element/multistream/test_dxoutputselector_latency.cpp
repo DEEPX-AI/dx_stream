@@ -61,7 +61,9 @@ GST_END_TEST;
 static Suite *dxoutputselector_latency_suite(void) {
     Suite *s = suite_create("dxoutputselector_latency");
     TCase *tc = tcase_create("contract");
+#ifndef _WIN32
     tcase_set_timeout(tc, 10.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, LAT_dxoutputselector_adds_self_time);
     return s;

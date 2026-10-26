@@ -121,7 +121,9 @@ GST_END_TEST;
 static Suite *dxrate_reverse_suite(void) {
     Suite *s = suite_create("dxrate_reverse");
     TCase *tc = tcase_create("edge_cases");
+#ifndef _WIN32
     tcase_set_timeout(tc, 20.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, CE_rate_reverse_segment);
     tcase_add_test(tc, CE_rate_null_pts_first);

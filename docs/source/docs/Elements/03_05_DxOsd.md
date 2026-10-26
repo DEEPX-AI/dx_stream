@@ -8,7 +8,7 @@ It uses object metadata (Object Meta) passed from upstream elements, such as DxP
 - Draws bounding boxes on video frames  
 - Displays class labels and confidence scores  
 - Colors boxes by track ID or class  
-- Supports segmentation maps, human pose, and facial landmarks  
+- Supports segmentation maps, depth maps, oriented bounding boxes (OBB), human pose, and facial landmarks  
 
 ### **Hierarchy**
 
@@ -27,13 +27,13 @@ GObject
 
 | **Property** | **Value** |
 |---|---|
-| Format | `video/x-raw, format=(string){ RGB, BGR, NV12, I420 }; application/x-dxvideoraw` |
+| Format | `video/x-raw, format=(string){ RGB, BGR, NV12, I420 }, width=(int)[1, 16384], height=(int)[1, 16384], framerate=(fraction)[0/1, 16384/1]; application/x-dxvideoraw` |
 
 **Src (output)**
 
 | **Property** | **Value** |
 |---|---|
-| Format | `video/x-raw, format=(string){ RGB, BGR, NV12, I420 }; application/x-dxvideoraw` |
+| Format | `video/x-raw, format=(string){ RGB, BGR, NV12, I420 }, width=(int)[1, 16384], height=(int)[1, 16384], framerate=(fraction)[0/1, 16384/1]; application/x-dxvideoraw` |
 
 ### **Domain Mode Behavior**
 
@@ -53,7 +53,7 @@ GObject
 
     - DXOSD supports RGB, BGR, NV12, and I420 input formats. The output format matches the input format (passthrough — no format conversion is applied).
     - In DXOSD's output buffers, the `DXFrameMeta` metadata is preserved and passed to downstream elements.
-    - Visualizations include bounding boxes, class names, confidence scores, and additional data like segmentation maps, poses, or face landmarks, depending on available metadata.  
+    - Visualizations include bounding boxes, class names, confidence scores, and additional data like segmentation maps, depth maps, oriented bounding boxes, poses, or face landmarks, depending on available metadata.  
 
 !!! note "Multi-Stream Support"
 

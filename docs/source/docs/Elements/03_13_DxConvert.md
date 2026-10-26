@@ -1,5 +1,5 @@
 **DxConvert** is an element that converts video frames between different color formats.  
-**DxConvert** uses the `VideoTransformFactory` to automatically select the best available hardware-accelerated backend. The selection priority is: V3 DSP > RGA > libyuv (software fallback).  
+**DxConvert** uses the `VideoTransformFactory` to automatically select the best available hardware-accelerated backend. The selection priority is: V3 DSP > VNPU > RGA > libyuv (software fallback).
 
 ### **Key Features**
 
@@ -15,9 +15,10 @@
 **Automatic Backend Selection**  
 
 - The `VideoTransformFactory` selects the best available backend automatically:
-  1. **V3 DSP** – DEEPX V3 device DSP (when built with `--v3`)
-  2. **RGA** – Rockchip Raster Graphic Accelerator (auto-detected)
-  3. **libyuv** – Software fallback (always available)  
+  1. **V3 DSP** – DEEPX V3 device DSP (when the V3 sibling plugin is installed)
+  2. **VNPU** – DEEPX VNPU hardware backend (when the VNPU sibling plugin is installed)
+  3. **RGA** – Rockchip Raster Graphic Accelerator (when the RGA sibling plugin is installed)
+  4. **libyuv** – Software fallback (always available)
 
 ### **Hierarchy**
 
@@ -61,14 +62,14 @@ gst-launch-1.0 \
   autovideosink
 ```
 
-Convert I420 to BGR before inference:
+Convert I420 to RGB before inference:
 
 ```bash
 gst-launch-1.0 \
   filesrc location=input.mp4 ! decodebin ! \
   video/x-raw,format=I420 ! \
   dxconvert ! \
-  video/x-raw,format=BGR ! \
+  video/x-raw,format=RGB ! \
   dxpreprocess preprocess-id=1 ... ! \
   dxinfer ...
 ```
@@ -89,7 +90,7 @@ gst-launch-1.0 \
 
     - `dxconvert` does **not** perform scaling. Input and output resolutions must match.
     - For video scaling, use **DxScale**.
-    - Hardware acceleration is available for NV12→RGB and NV12→BGR on RGA. Other combinations use the libyuv software backend.
+    - Which conversions are hardware-accelerated depends on the platform and the installed backends. Combinations that no hardware backend supports use the libyuv software backend.
 
 !!! warning "DxInputSelector Placement"
 

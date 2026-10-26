@@ -30,7 +30,7 @@ gst-inspect-1.0 dxinfer
 # List all dx_stream elements
 gst-inspect-1.0 | grep dxstream
 
-# Expected: 13 elements listed under 'dxstream' plugin
+# Expected: current dxstream elements listed under 'dxstream' plugin
 # dxstream: dxpreprocess
 # dxstream: dxinfer
 # dxstream: dxpostprocess

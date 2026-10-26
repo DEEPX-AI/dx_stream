@@ -1,4 +1,4 @@
-This chapter describes the installation of **DX-STREAM** in both source-based and Docker-based environments.
+This chapter describes the installation of **DX-STREAM** through a standalone source build or the DX-AllSuite integrated build.
 
 ## System Requirements
 
@@ -9,8 +9,8 @@ This section describes the hardware and software requirements for running **DX-S
 - **CPU:** amd64(x86_64), aarch64(arm64)  
 - **RAM:** 8GB RAM (16GB RAM or higher is recommended)  
 - **Storage:** 4GB or higher available disk space  
-- **OS:** Ubuntu 20.04 / 22.04 / 24.04 / 26.04 (x64)  
-          Debian 12 / Debian 13 (x64)  
+- **OS:** Ubuntu 20.04 / 22.04 / 24.04 / 26.04 (x64, arm64)  
+          Debian 12 / Debian 13 (x64, arm64)  
 - **DX-RT version 3.0.0 or higher must be installed**  
 - The system **must** support connection to an **M1 M.2** module with the M.2 interface on the host PC. 
 
@@ -19,6 +19,10 @@ This section describes the hardware and software requirements for running **DX-S
 !!! note "NOTE"
 
     The **NPU Device Driver** and **DX-RT** must be installed. For detailed instructions on installing NPU Device Driver and DX-RT, refer to **DX-RT User Manual**.
+
+!!! note "NOTE"
+
+    For building and running DX-STREAM on Windows, see [Build on Windows](Appendix_Build_on_Windows.md).
 
 ---
 
@@ -74,7 +78,7 @@ $ ./install.sh --help
     - GStreamer 1.16.3 or higher  
     - OpenCV 4.2.0 or higher  
 
-####  **Step 3.** Build **DX-STREAM** and Set Up the Environment
+#### **Step 3.** Build **DX-STREAM** and Set Up the Environment
 
 **(1) Build & Installation**  
 
@@ -101,11 +105,17 @@ $ ./build.sh --type=debug
 # Clean previous build files before building
 $ ./build.sh --clean
 
-# Build for DEEPX V3 Standalone Device
-$ ./build.sh --v3
+# Enable the optional DEEPX V3 backend
+$ ./build.sh --dxv3
+
+# Enable the optional DEEPX VNPU backend
+$ ./build.sh --dxvnpu
+
+# Force-enable the RK RGA backend (built automatically when librga is installed)
+$ ./build.sh --rkrga
 
 # Combine flags
-$ ./build.sh --v3 --type=debug
+$ ./build.sh --dxv3 --type=debug
 
 # Uninstall DX-STREAM
 $ ./build.sh --uninstall
@@ -121,7 +131,7 @@ $ ./build.sh --help
 
 By default, DX-STREAM is installed to `/usr/local` with the following structure:
 
-- Plugin: `/usr/local/lib/<arch>/gstreamer-1.0/libgstdxstream.so`
+- Plugin: `/usr/local/lib/<arch>-linux-gnu/gstreamer-1.0/libgstdxstream.so`
 - Headers: `/usr/local/include/gstdxstream/`
 - Custom libraries: `/usr/local/share/gstdxstream/lib/`
 - Applications: `/usr/local/share/gstdxstream/bin/`
@@ -129,9 +139,13 @@ By default, DX-STREAM is installed to `/usr/local` with the following structure:
 
 You can change the installation location using `--prefix` option. When using a custom prefix, all paths will be adjusted accordingly.
 
+!!! note "NOTE"
+
+    `<arch>-linux-gnu` is `x86_64-linux-gnu` on amd64 and `aarch64-linux-gnu` on arm64. Replace it with the directory name for your system in the commands below.
+
 **(2) How to Apply Environment**  
 
-The build script **automatically adds** required environment variables to your `~/.bashrc` during installation. After installation completes, choose one of the following to apply the changes :  
+The build script **automatically adds** required environment variables to your `~/.bashrc` during installation. After installation completes, apply the changes with Step A or Step B, then verify with Step C:  
 
 Step A. **Open a new terminal**: The changes will be applied automatically in any new session.  
 
@@ -167,7 +181,7 @@ Step C. **Check recognition**: Check if the plugin is correctly recognized by GS
     - `PKG_CONFIG_PATH` - For building projects that depend on gstdxstream  
     - `GST_PLUGIN_PATH` - For GStreamer plugin discovery  
     - `LD_LIBRARY_PATH` - For runtime library loading  
-    - `PATH` - For DX-Stream executables
+    - `PATH` - For DX-STREAM executables
     
     **For immediate use** in the current terminal (before opening a new one):  
     ```bash
@@ -177,8 +191,8 @@ Step C. **Check recognition**: Check if the plugin is correctly recognized by GS
     Or set them manually for the current session:
     ```bash
     $ export PKG_CONFIG_PATH="/path/to/install/lib/pkgconfig:${PKG_CONFIG_PATH}"
-    $ export GST_PLUGIN_PATH="/path/to/install/lib/x86_64-linux-gnu/gstreamer-1.0:${GST_PLUGIN_PATH}"
-    $ export LD_LIBRARY_PATH="/path/to/install/lib/x86_64-linux-gnu/gstreamer-1.0:/path/to/install/share/gstdxstream/lib:${LD_LIBRARY_PATH}"
+    $ export GST_PLUGIN_PATH="/path/to/install/lib/<arch>-linux-gnu/gstreamer-1.0:${GST_PLUGIN_PATH}"
+    $ export LD_LIBRARY_PATH="/path/to/install/lib/<arch>-linux-gnu/gstreamer-1.0:/path/to/install/share/gstdxstream/lib:${LD_LIBRARY_PATH}"
     $ export PATH="/path/to/install/share/gstdxstream/bin:${PATH}"
     ```
 
@@ -191,7 +205,7 @@ Each variable serves a different purpose during build-time and runtime:
 | `PKG_CONFIG_PATH` | Lets pkg-config find `.pc` files | **Build-time** (when compiling against gstdxstream) |
 | `GST_PLUGIN_PATH` | Tells GStreamer where plugins are | **Runtime** (when running pipelines) |
 | `LD_LIBRARY_PATH` | Dynamic linker finds `.so` files | **Runtime** (when loading shared libraries) |
-| `PATH` | Executable lookup | **Runtime** (when running DX-Stream apps) |
+| `PATH` | Executable lookup | **Runtime** (when running DX-STREAM apps) |
 
 !!! note "Best Practice"
     
@@ -222,10 +236,10 @@ You should see the plugin details including available elements (dxpreprocess, dx
     - (2) **Verify plugin file exists:**
        ```bash
        # For standard installation
-       $ ls -la /usr/local/lib/x86_64-linux-gnu/gstreamer-1.0/libgstdxstream.so
+       $ ls -la /usr/local/lib/<arch>-linux-gnu/gstreamer-1.0/libgstdxstream.so
        
        # For custom installation
-       $ ls -la /path/to/install/lib/x86_64-linux-gnu/gstreamer-1.0/libgstdxstream.so
+       $ ls -la /path/to/install/lib/<arch>-linux-gnu/gstreamer-1.0/libgstdxstream.so
        ```
 
     - (3) **For custom prefix installations**, check environment variables:
@@ -236,7 +250,7 @@ You should see the plugin details including available elements (dxpreprocess, dx
 
     - (4) **Set GST_PLUGIN_PATH manually** (temporary):
        ```bash
-       $ export GST_PLUGIN_PATH="/usr/local/lib/x86_64-linux-gnu/gstreamer-1.0:${GST_PLUGIN_PATH}"
+       $ export GST_PLUGIN_PATH="/usr/local/lib/<arch>-linux-gnu/gstreamer-1.0:${GST_PLUGIN_PATH}"
        $ gst-inspect-1.0 dxstream
        ```
 
@@ -248,24 +262,30 @@ To remove DX-STREAM from your system:
 # Uninstall from default location (/usr/local)
 $ ./uninstall.sh
 
-# Or use build.sh
+# Or remove only the installed files with build.sh (does not clean ~/.bashrc)
 $ ./build.sh --uninstall
 
 # Uninstall from custom location
 $ ./build.sh --uninstall --prefix=/opt/dx-stream
 ```
 
-The uninstall process automatically removes:  
+`./build.sh --uninstall` automatically removes:  
 
 - GStreamer plugin (`libgstdxstream.so`)
 - Header files (`include/gstdxstream/`)
 - Custom libraries and applications (`share/gstdxstream/`)
 - pkg-config file (`gstdxstream.pc`)
-- **Environment variables from `~/.bashrc`** (automatic cleanup)
+- Build directory and pydxs build cache
+
+`./uninstall.sh` runs `./build.sh --uninstall` and additionally:  
+
+- **Removes the environment variables from `~/.bashrc`** (automatic cleanup)
+- Uninstalls the `pydxs` Python package from the current Python environment
+- Deletes the sample models and videos downloaded by `./setup.sh` (run `./setup.sh` again to download them)
 
 !!! note "Automatic Cleanup"
 
-    The uninstall script **automatically removes** DX-STREAM environment variables from your `~/.bashrc`. After uninstalling:
+    Only `./uninstall.sh` automatically removes DX-STREAM environment variables from your `~/.bashrc`. After uninstalling:
     
     - (1) Open a new terminal, or
     - (2) Reload your shell:
@@ -308,15 +328,13 @@ When the script is executed, you'll be prompted to select a demo from the follow
 0: Object Detection (YOLO26n)
 1: Object Detection (YOLOv5s with PPU)
 2: Face Detection (YOLOv5s_Face)
-3: Face Detection (SCRFD500M with PPU)
-4: Pose Estimation (YOLO26n_Pose)
-5: Pose Estimation (YOLOV5Pose with PPU)
-6: Instance Segmentation (YOLO26n_Seg)
-7: Multi-Object Tracking
-8: Multi-Channel Object Detection
-9: Multi-Channel Object Detection (RTSP)
--: secondary mode
-=: Depth Estimation (YOLO26n_Depth)
+3: Pose Estimation (YOLO26n_Pose)
+4: Instance Segmentation (YOLO26n_Seg)
+5: Depth Estimation (YOLO26n_Depth)
+6: Multi-Object Tracking
+7: Multi-Channel Object Detection
+8: Multi-Channel Object Detection (RTSP)
+9: Secondary Mode (Multi-Model Cascade)
 which AI demo do you want to run:(timeout:10s, default:0)
 ```
 
@@ -329,6 +347,8 @@ If **no** input is provided within 10 seconds, the default option (`0: Object De
     Options with "PPU" suffix utilize **Post-Processing Unit (PPU)** acceleration, which performs model post-processing operations (such as bounding box decoding and score thresholding) directly on the NPU hardware instead of the CPU. This approach significantly improves inference performance by reducing CPU overhead.  
 
     Each demo corresponds to a specific pipeline described in **Chapter. Pipeline Example**.
+
+    On Raspberry Pi, if `gstreamer1.0-libcamera` and a CSI camera are available, additional camera demos are listed: `c` (Object Detection), `p` (Pose Estimation), `s` (Instance Segmentation), and `d` (Depth Estimation).
 
 !!! warning "Third-Party Model License Notice"
 

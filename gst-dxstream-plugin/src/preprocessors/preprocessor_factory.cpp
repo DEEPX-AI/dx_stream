@@ -23,9 +23,7 @@ std::shared_ptr<Preprocessor> PreprocessorFactory::create_preprocessor(GstDxPrep
     ops.padding.pad_b     = element->_preprocess.pad_value;
     ops.interp            = dxt::InterpMethod::BILINEAR;
 
-    auto pool = std::make_unique<dxt::TransformKernelPool>(
-        dst_template, ops,
-        /*require_dynamic_input=*/static_cast<bool>(element->_object_filter.secondary_mode));
+    auto pool = std::make_unique<dxt::TransformKernelPool>(dst_template, ops);
     GST_DEBUG("PreprocessorFactory: kernel pool created");
 
     return std::make_shared<Preprocessor>(element, std::move(pool));

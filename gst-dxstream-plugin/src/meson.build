@@ -8,20 +8,13 @@ common_args = [
 ]
 
 # Add feature flags
-if librga_flag
-  common_args += '-DHAVE_LIBRGA'
-endif
-
-if v3_flag
-  common_args += '-DDEEPX_V3'
-endif
-
-if dxvnpu_flag
-  common_args += '-DHAVE_DXVNPU'
-endif
-
 if dxrt_flag
   common_args += '-DHAVE_DXRT'
+endif
+
+# Core only needs the flag (per-plane DMA-buf mapping); EGL/GLES are linked by src-gles.
+if gles_enabled
+  common_args += '-DHAVE_GLES'
 endif
 
 sources = [
@@ -66,37 +59,14 @@ if dxrt_flag
   sources += ['infer_backend/dxrt_backend.cpp']
 endif
 
-if v3_flag
-  sources += [
-    'transforms/v3_dsp_transform_kernel.cpp'
-  ]
-elif librga_flag
-  sources += [
-    'transforms/rga_transform_kernel.cpp'
-  ]
-endif
 
-
-if v3_flag == false
-  sources += [
-    'gst-dxmsgconv.cpp',
-    'gst-dxmsgbroker.cpp',
-    'brokers/dx_msgbrokerl_mqtt.cpp',
-    'brokers/dx_msgbrokerl_kafka.cpp',
-    './../metadata/gst-dxmsgmeta.cpp',
-  ]
-endif
-
-if dxvnpu_flag
-  sources += [
-    'gst-dxvnpudec.cpp',
-    'gst-dxvnpuenc.cpp',
-    'gst-dxvnpupipeline.cpp',
-    'gst-dxvnpuoverlay.cpp',
-    'transforms/vnpu_transform_kernel.cpp',
-    'infer_backend/dxvnpu_backend.cpp',
-  ]
-endif
+sources += [
+  'gst-dxmsgconv.cpp',
+  'gst-dxmsgbroker.cpp',
+  'brokers/dx_msgbrokerl_mqtt.cpp',
+  'brokers/dx_msgbrokerl_kafka.cpp',
+  './../metadata/gst-dxmsgmeta.cpp',
+]
 
 # Install to GStreamer plugin directory under libdir
 gst_plugin_dir = get_option('libdir') / 'gstreamer-1.0'
@@ -117,10 +87,13 @@ if host_machine.system() == 'windows'
     kwargs: gstdxstream_kwargs,
   )
 else
+  # $ORIGIN lets dlopen("libgstdxstream-vnpu.so") find its sibling plugin
+  # installed in the same directory, without hardcoding the install prefix.
   gstdxstream = shared_library('gstdxstream',
     sources,
     version: project_version,
     soversion: '0',
+    install_rpath: '$ORIGIN',
     kwargs: gstdxstream_kwargs,
   )
 endif

@@ -103,8 +103,8 @@ for the exact prompt template).
 
 Read these files before composing:
 1. `.github/skills/dx-agent-stream-build-pipeline/SKILL.md` — Pipeline templates and patterns
-2. `.github/toolsets/dx-stream-elements.md` — Element properties reference
-3. `.github/memory/common_pitfalls.md` — Avoid known issues
+2. `.deepx/toolsets/dx-stream-elements.md` — Element properties reference
+3. `.deepx/memory/common_pitfalls.md` — Avoid known issues
 
 ## Phase 3: Build
 

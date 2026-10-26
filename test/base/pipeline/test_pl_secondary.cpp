@@ -1,7 +1,7 @@
 // PL-A2 — Secondary inference flow verification
 // primary detection -> tee -> (classify + face detection) -> gather
 // Validates: IoU > 0.5 for both detection box and face box
-// SKIP: model files, NPU, or postprocess libraries not available
+// Missing required models, NPU, or postprocess libraries fail the test.
 
 #include <gst/check/gstcheck.h>
 #include <gst/gst.h>
@@ -18,7 +18,7 @@ static bool can_run_secondary() {
     if (!npu_available()) return false;
 
     std::string primary_model = resolve_model_path("yolov5-s_640x640_ppu.dxnn");
-    std::string classify_model = resolve_model_path("efficientnet-lite0_256x256.dxnn");
+    std::string classify_model = resolve_model_path("efficientnet-lite0_224x224.dxnn");
     std::string face_model = resolve_model_path("scrfd-500m_640x640.dxnn");
     if (primary_model.empty() || classify_model.empty() || face_model.empty())
         return false;
@@ -41,12 +41,12 @@ static void link_src_to_gather(GstElement *element, GstElement *gather) {
 }
 
 GST_START_TEST(PL_A2_secondary_iou_validation) {
-    DXTEST_SKIP_IF(!can_run_secondary(),
+    fail_if(!can_run_secondary(),
                    "secondary models/NPU/postprocess not available");
 
     std::string image = resolve_resource_path("images/test.jpg");
     std::string primary_model = resolve_model_path("yolov5-s_640x640_ppu.dxnn");
-    std::string cls_model = resolve_model_path("efficientnet-lite0_256x256.dxnn");
+    std::string cls_model = resolve_model_path("efficientnet-lite0_224x224.dxnn");
     std::string face_model = resolve_model_path("scrfd-500m_640x640.dxnn");
     std::string pp_primary = dxtest::resolve_lib_path("libpostprocess_ppu.so");
     std::string pp_cls = dxtest::resolve_lib_path("libpostprocess_object_class.so");
@@ -210,12 +210,12 @@ GST_START_TEST(PL_A2_secondary_iou_validation) {
 GST_END_TEST;
 
 GST_START_TEST(PL_A2_secondary_eos) {
-    DXTEST_SKIP_IF(!can_run_secondary(),
+    fail_if(!can_run_secondary(),
                    "secondary models/NPU/postprocess not available");
 
     std::string image = resolve_resource_path("images/test.jpg");
     std::string primary_model = resolve_model_path("yolov5-s_640x640_ppu.dxnn");
-    std::string cls_model = resolve_model_path("efficientnet-lite0_256x256.dxnn");
+    std::string cls_model = resolve_model_path("efficientnet-lite0_224x224.dxnn");
     std::string face_model = resolve_model_path("scrfd-500m_640x640.dxnn");
     std::string pp_primary = dxtest::resolve_lib_path("libpostprocess_ppu.so");
     std::string pp_cls = dxtest::resolve_lib_path("libpostprocess_object_class.so");
@@ -324,7 +324,9 @@ GST_END_TEST;
 static Suite *pl_secondary_suite(void) {
     Suite *s = suite_create("pl_secondary");
     TCase *tc = tcase_create("secondary_inference");
+#ifndef _WIN32
     tcase_set_timeout(tc, 120.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, PL_A2_secondary_iou_validation);
     tcase_add_test(tc, PL_A2_secondary_eos);
@@ -332,4 +334,3 @@ static Suite *pl_secondary_suite(void) {
 }
 
 GST_CHECK_MAIN(pl_secondary);
-

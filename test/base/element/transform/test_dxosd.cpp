@@ -227,7 +227,9 @@ GST_END_TEST;
 static Suite *dxosd_suite(void) {
     Suite *s = suite_create("dxosd");
     TCase *tc = tcase_create("contract");
+#ifndef _WIN32
     tcase_set_timeout(tc, 20.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, CA1_factory_make);
     tcase_add_test(tc, CB3_full_cycle);

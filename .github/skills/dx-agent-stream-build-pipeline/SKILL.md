@@ -173,6 +173,10 @@ Before starting the build workflow, verify:
    - If venv exists but `pydxs` not importable → `source venv-dx_stream/bin/activate && pip install -e .`
    - **IMPORTANT**: The README.md template MUST document this venv activation step
      so users know to activate it before running `pipeline.py` (see pitfall #15)
+5. **DX-H1 V-NPU (optional)**: Build V-NPU support with `./build.sh --dxvnpu`.
+   On Windows, `DEEPX_VNPU_DIR` must identify the installed V-NPU SDK. Confirm
+   optional codec registration with `gst-inspect-1.0 dxvnpudec` and
+   `gst-inspect-1.0 dxvnpuenc` before generating a hardware-codec pipeline.
 
 ## Prerequisites
 
@@ -181,6 +185,16 @@ Before starting the build workflow, verify:
 - Model file downloaded (`./setup.sh --model="<model>.dxnn"`)
 
 ## Quick Reference
+
+### DX-H1 V-NPU Usage
+
+- Use `dxvnpudec` and `dxvnpuenc` only in standard raw-video codec branches; they
+  are outside the `application/x-dxvideoraw` multi-stream domain.
+- Set `dxinfer backend=dxvnpu` only for a V-NPU-specific inference deployment.
+  Use `backend=auto` when the pipeline must retain fallback behavior.
+- `dxpreprocess`, `dxscale`, and `dxconvert` may use a VNPU transform kernel for
+  image resize and color conversion. Do not make that optional acceleration a
+  pipeline requirement.
 
 ### Supported Models (14)
 

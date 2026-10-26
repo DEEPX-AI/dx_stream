@@ -1,4 +1,6 @@
-﻿#include "../include/OCSort.hpp"
+﻿#include <string>
+#include <stdexcept>
+#include "../include/OCSort.hpp"
 #include "../include/lapjv.hpp"
 #include "../../common/include/TrackerFactory.hpp"
 #include "iomanip"
@@ -18,6 +20,29 @@ std::ostream &operator<<(std::ostream &os, const std::vector<Matrix> &v) {
     return os;
 }
 
+namespace {
+/** Parse an int without throwing. Returns the default on failure. */
+int parse_int_or(const std::string &s, int dflt) {
+    try {
+        size_t pos = 0;
+        const int v = std::stoi(s, &pos);
+        return pos == 0 ? dflt : v;
+    } catch (const std::exception &) {
+        return dflt;
+    }
+}
+/** Parse a float without throwing. Returns the default on failure. */
+float parse_float_or(const std::string &s, float dflt) {
+    try {
+        size_t pos = 0;
+        const float v = std::stof(s, &pos);
+        return pos == 0 ? dflt : v;
+    } catch (const std::exception &) {
+        return dflt;
+    }
+}
+} // namespace
+
 void OCSort::init(const std::map<std::string, std::string, std::less<>> &params) {
 
     // Helper lambda function to retrieve value or use default
@@ -27,18 +52,32 @@ void OCSort::init(const std::map<std::string, std::string, std::less<>> &params)
         return (it != params.end()) ? it->second : default_value;
     };
 
-    max_age = std::stoi(get_param("max_age", "30"));
-    min_hits = std::stoi(get_param("min_hits", "3"));
-    iou_threshold = std::stof(get_param("iou_threshold", "0.3"));
+    // Parsing never throws. It used to call std::stoi / std::stof directly, so a
+    // single unreadable value in tracker_config.json — "max_age": "abc", or an
+    // empty string — threw out of init(). The element caught it and turned every
+    // frame into GST_FLOW_ERROR, and since the tracker was never constructed the
+    // next frame did the same: the pipeline stopped and stayed stopped. These
+    // are numeric tuning knobs in a file edited by hand, so an unreadable value
+    // falls back to the documented default instead.
+    max_age = parse_int_or(get_param("max_age", "30"), 30);
+    min_hits = parse_int_or(get_param("min_hits", "3"), 3);
+    iou_threshold = parse_float_or(get_param("iou_threshold", "0.3"), 0.3f);
     trackers.clear();
     frame_count = 0;
-    det_thresh = std::stof(get_param("det_thresh", "0.5"));
-    delta_t = std::stoi(get_param("delta_t", "3"));
+    det_thresh = parse_float_or(get_param("det_thresh", "0.5"), 0.5f);
+    delta_t = parse_int_or(get_param("delta_t", "3"), 3);
+
+    // Clamp a negative delta_t to 0. Upstream uses range(delta_t), where every
+    // value <= 0 already means "look back at nothing", so this changes no
+    // behaviour; it only keeps a negative out of the index arithmetic here
+    // (KalmanBoxTracker::update derives its trim bound from this value).
+    if (delta_t < 0)
+        delta_t = 0;
 
     std::string asso_func_key = get_param("asso_func", "iou");
     asso_func = (asso_func_key == "giou") ? giou_batch : iou_batch;
 
-    inertia = std::stof(get_param("inertia", "0.2"));
+    inertia = parse_float_or(get_param("inertia", "0.2"), 0.2f);
     use_byte = (get_param("use_byte", "false") == "true");
     id_count = 0;
 }
@@ -138,6 +177,36 @@ void OCSort::PrepareTrackDataForAssociation(
     Eigen::MatrixXf &out_predicted_bbox_states, Eigen::MatrixXf &out_velocities,
     Eigen::MatrixXf &out_last_observed_bboxes,
     Eigen::MatrixXf &out_k_previous_observations_matrix) {
+    // Keep upstream's order: predict all, drop NaN trackers, then build the
+    // matrix from what is left (ocsort.py: `if np.any(np.isnan(pos)):
+    // to_del.append(t)` followed by
+    //  `for t in reversed(to_del): self.trackers.pop(t)`).
+    //
+    // NaN is reachable. convert_x_to_bbox computes w = sqrt(x(2)*x(3)) and
+    // h = x(2)/w, and nothing constrains the sign of s (area) or r (ratio) in the
+    // state, so s can drift negative while a track coasts without observations.
+    // The guard in predict() only zeroes s's velocity when x(6)+x(2) <= 0; it
+    // does not bound s itself. A NaN then spreads into the IoU comparisons and
+    // the assignment costs, and the port kept such a track until max_age — every
+    // association decision in between is affected.
+    std::vector<size_t> nan_indices;
+    std::vector<Eigen::RowVectorXf> positions;
+    positions.reserve(this->trackers.size());
+    for (size_t i = 0; i < this->trackers.size(); ++i) {
+        Eigen::RowVectorXf pos = this->trackers[i]->predict();
+        if (!pos.allFinite())
+            nan_indices.push_back(i);
+        positions.push_back(std::move(pos));
+    }
+    if (!nan_indices.empty()) {
+        for (auto it = nan_indices.rbegin(); it != nan_indices.rend(); ++it) {
+            this->trackers.erase(this->trackers.begin() +
+                                 static_cast<std::ptrdiff_t>(*it));
+            positions.erase(positions.begin() +
+                            static_cast<std::ptrdiff_t>(*it));
+        }
+    }
+
     size_t num_trackers = this->trackers.size();
     out_predicted_bbox_states.resize(num_trackers, 5);
     out_velocities.resize(num_trackers, 2);
@@ -145,7 +214,7 @@ void OCSort::PrepareTrackDataForAssociation(
     out_k_previous_observations_matrix.resize(num_trackers, 5);
 
     for (size_t i = 0; i < num_trackers; ++i) {
-        Eigen::RowVectorXf pos = this->trackers[i]->predict();
+        const Eigen::RowVectorXf &pos = positions[i];
         out_predicted_bbox_states.row(i) << pos(0), pos(1), pos(2), pos(3), 0;
         out_velocities.row(i) = this->trackers[i]->get_velocity();
         out_last_observed_bboxes.row(i) = this->trackers[i]->get_last_observation();
@@ -254,8 +323,10 @@ void OCSort::PerformByteAssociation(
     if (u_trks_predictions.rows() == 0)
         return;
 
+    // Upstream calls self.asso_func here (ocsort.py). The port hardcoded
+    // giou_batch, so the asso_func setting was assigned and never used.
     Eigen::MatrixXf iou_values =
-        giou_batch(low_conf_dets.leftCols(4), u_trks_predictions.leftCols(4));
+        this->asso_func(low_conf_dets.leftCols(4), u_trks_predictions.leftCols(4));
     if (iou_values.rows() == 0 || iou_values.cols() == 0 ||
         iou_values.maxCoeff() <= this->iou_threshold)
         return;
@@ -306,9 +377,10 @@ void OCSort::PerformIOUReAssociation(
         current_unmatched_trks_last_boxes_subset.rows() == 0)
         return;
 
+    // Use asso_func, as upstream does (see the PerformByteAssociation comment).
     Eigen::MatrixXf iou_values =
-        giou_batch(current_unmatched_dets_subset.leftCols(4),
-                   current_unmatched_trks_last_boxes_subset.leftCols(4));
+        this->asso_func(current_unmatched_dets_subset.leftCols(4),
+                        current_unmatched_trks_last_boxes_subset.leftCols(4));
     if (iou_values.rows() == 0 || iou_values.cols() == 0 ||
         iou_values.maxCoeff() <= this->iou_threshold)
         return;
@@ -389,9 +461,12 @@ std::vector<Eigen::RowVectorXf> OCSort::GenerateOutputAndCleanup() {
              (this->frame_count <= this->min_hits))) {
 
             Eigen::Matrix<float, 1, 4> d_bbox_coords;
+            // Upstream tests trk.last_observation.sum() < 0 (ocsort.py). Checking
+            // only the first element could disagree for values other than the
+            // initial sentinel, so use the sum.
             bool has_valid_last_obs =
                 (tracker->get_last_observation().size() >= 4 &&
-                 tracker->get_last_observation()(0) >= 0.0f);
+                 tracker->get_last_observation().sum() >= 0.0f);
 
             if (!has_valid_last_obs) {
                 d_bbox_coords = tracker->get_state();

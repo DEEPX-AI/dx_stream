@@ -59,7 +59,9 @@ GST_END_TEST;
 static Suite *pl_event_suite(void) {
     Suite *s = suite_create("pl_event");
     TCase *tc = tcase_create("lifecycle");
+#ifndef _WIN32
     tcase_set_timeout(tc, 60.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, PL_lifecycle_play_null_cycle);
     tcase_add_test(tc, PL_eos_propagation);

@@ -1,6 +1,7 @@
 #ifndef GST_DXINFER_H
 #define GST_DXINFER_H
 
+#include "dxcommon.hpp"
 #include "./../metadata/gst-dxframemeta.hpp"
 #include "./../metadata/gst-dxobjectmeta.hpp"
 #include "infer_backend/infer_backend_factory.hpp"
@@ -17,7 +18,22 @@
 G_BEGIN_DECLS
 
 #define GST_TYPE_DXINFER (gst_dxinfer_get_type())
+// G_DECLARE_FINAL_TYPE's own gst_dxinfer_get_type() declaration carries no
+// Windows export annotation, so it is not visible in the DLL's import lib —
+// any translation unit outside the plugin that uses the GST_DXINFER() cast
+// macro (e.g. white-box tests including this private header) fails to link
+// with LNK2019. Pre-declaring it DX_API here fixes the export/import linkage;
+// the macro's subsequent plain redeclaration is intentionally inconsistent
+// (MSVC keeps the first declaration's linkage), hence the pragma below.
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4273) // inconsistent dll linkage (see comment above)
+#endif
+DX_API GType gst_dxinfer_get_type(void);
 G_DECLARE_FINAL_TYPE(GstDxInfer, gst_dxinfer, GST, DXINFER, GstElement)
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 struct GstDxInferPushEntry {
     bool submitted;
@@ -30,6 +46,7 @@ struct GstDxInferPushEntry {
 struct GstDxInferPushContext {
     GThread *push_thread;
     std::atomic<gboolean> push_running;
+    std::atomic<gboolean> worker_failed;
     std::queue<GstDxInferPushEntry> push_queue;
     std::mutex push_lock;
     std::condition_variable cv;

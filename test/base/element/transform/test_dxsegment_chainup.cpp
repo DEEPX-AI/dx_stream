@@ -173,7 +173,9 @@ GST_END_TEST;
 static Suite *segment_chainup_suite(void) {
     Suite *s = suite_create("segment_chainup");
     TCase *tc = tcase_create("base_transform");
+#ifndef _WIN32
     tcase_set_timeout(tc, 30.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, SEG_dxrate_chainup);
     tcase_add_test(tc, SEG_dxconvert_chainup);

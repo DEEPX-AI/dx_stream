@@ -1,0 +1,9 @@
+# Third-party false positives only; never suppress anything reached from libgstdxstream.
+
+# Ubuntu 22.04 (GStreamer 1.20): libcheck punpack()'s legal memmove is reported as __memcpy_chk (SDKREQ-373).
+{
+   gstcheck_srunner_memcpy_overlap
+   Memcheck:Overlap
+   fun:__memcpy_chk
+   obj:*/libgstcheck-1.0.so*
+}

@@ -1,40 +1,42 @@
 # RELEASE_NOTES
 
-## DX-Stream v3.1.2 / 2026-08-14
+## DX-STREAM v3.2.0 / 2026-10-23
 
 ### 1. Changed
+- **Model List Update**: Updated the sample model list and download source to models compiled with DX-COM v2.5.0
+    - Removed retired SCRFD500M PPU face-detection and YOLOv5Pose PPU pose-estimation demos, including their Linux/Windows pipeline launchers (update any scripts that call the removed demos)
+    - Replaced the retired EfficientNet-Lite0 256x256 model with the supported 224x224 model in Linux/Windows secondary pipelines and regression tests
+- **Transform backends**: Moved V3 DSP and RGA kernels to optional hardware backend plugins (`gstdxstream-v3`, `gstdxstream-rga`); the core retains the software path and loads installed hardware backends when available
+    - To keep V3 DSP acceleration, build with `./build.sh --dxv3`; RGA is built automatically when `librga` is installed (or force it with `./build.sh --rkrga`)
+    - Without the backend plugin, the software (libyuv) path is used
 
 ### 2. Fixed
-- Added self-configuring GST_PLUGIN_PATH for Windows pipeline scripts
-- Corrected minor errors across the documents
+- **OC-SORT reliability**: Fixed observation history retention, assignment and association/GIoU handling, momentum weighting, invalid/unmatched predictions, and invalid tracker-config recovery
+- **Documentation**: Corrected errors, typos, and missing details
 
 ### 3. Added
-- Added a demo pipeline for YOLO26 depth estimation
-- Added depth metadata support to DXFrameMeta and depth-map rendering to dxosd
+- **OpenGL ES transform backend**: Added the optional `gstdxstream-gles` backend plugin
+    - Runs crop, resize, letterbox and color conversion on EGL/GLES 3.0 GPUs with zero-copy DMA-BUF import
+    - Secondary preprocessing batches each frame's objects into one GPU submission
+    - Built automatically on ARM hosts (validated on Raspberry Pi 5) when EGL/GLESv2 are installed; other hosts need `-Dwith_gles=enabled`
+- **New demo pipelines**: `run_demo.sh` now supports the following new examples
+    - Added a YOLO26 depth-estimation pipeline with `DXFrameMeta` depth metadata and `dxosd` depth-map rendering
+    - Added Raspberry Pi camera pipelines using `libcamerasrc` for YOLO26 detection, pose, segmentation, and depth
+- **DX-H1 V-NPU support**: Added hardware-accelerated decode, encode, transform, preprocessing, and inference through `dxvnpudec`, `dxvnpuenc`, and `dxinfer`
+    - Build with `./build.sh --dxvnpu` (requires the DX-H1 V-NPU SDK)
 
 ---
 
-## DX-Stream v3.1.1 / 2026-07-27
-
-### 1. Changed
-
-### 2. Fixed
-- Fixed typos and added missing details in documentation
-
-### 3. Added
-
----
-
-## DX-Stream v3.1.0 / 2026-06-25
+## DX-STREAM v3.1.0 / 2026-07-22
 
 ### 1. Changed
 - **Multi-Stream Domain**: Introduced `application/x-dxvideoraw` domain caps for unified multi-stream processing — a single chain can now process streams with different resolutions and formats
     - Per-stream sticky events (STREAM_START / CAPS / SEGMENT / EOS) are preserved across the domain so each stream keeps an independent timeline
     - `dxinputselector` and `dxoutputselector` act as explicit domain boundaries; single-stream processing elements can be placed directly in multi-stream pipelines without modification
 - **Base class migration**: `dxinputselector` and `dxgather` migrated to `GstAggregator` for standard N:1 multiplexing; `dxvnpuoverlay` migrated to `GstBaseSink` for proper render/preroll lifecycle
-- **TransformKernelPool**: Introduced automatic src-format-based kernel selection with libyuv fallback; migrated dxscale, dxconvert, dxpreprocess, dxmsgconv to use unified kernel pool
-- **InferBackend abstraction**: Refactored dxinfer to use Put/Get async pattern with backend property (auto/dxrt/dxvnpu) replacing direct dxrt dependency
-- **Model List Update**: Updated the model list to include models compiled with DX-COM v2.4.0.
+- **TransformKernelPool**: Introduced automatic src-format-based kernel selection with libyuv fallback; migrated `dxscale`, `dxconvert`, `dxpreprocess`, `dxmsgconv` to use unified kernel pool
+- **InferBackend abstraction**: Refactored `dxinfer` to use Put/Get async pattern with backend property (auto/dxrt/dxvnpu) replacing direct dxrt dependency
+- **Model List Update**: Updated the model list to include models compiled with DX-COM v2.4.0
 
 ### 2. Fixed
 - **LATENCY reporting**: All processing elements now correctly account for their own processing time in LATENCY queries, stabilizing synchronization and QoS behavior in pipelines that include live sources
@@ -45,50 +47,52 @@
 
 ### 3. Added
 - **Windows Build and Runtime Environment**: Full Windows MSVC support including dependency check, build, demo launcher, test suite, Python binding (pydxs), and build guide documentation
-- **DEEPX Agent-Driven Development(dx-agent-dev, Beta)**: Describe a pipeline in natural language and an AI agent assembles the GStreamer graph from DEEPX elements, wiring NPU inference into real-time video/stream pipelines end to end.
+- **DEEPX Agent-Driven Development (dx-agent-dev, Beta)**: Describe a pipeline in natural language and an AI agent assembles the GStreamer graph from DEEPX elements, wiring NPU inference into real-time video/stream pipelines end to end
 - **Test Suite**: Reorganized test infrastructure under `test/base/{element,metadata,pipeline}/` with 73 new test binaries covering element contracts, domain boundaries, end-to-end pipelines, metadata, and pydxs scenarios
-- **DxMsgConv**: Add `include-frame` property for base64 JPEG frame encoding with Kafka/MQTT consumer display support
+- **DxMsgConv**: Added `include-frame` property for base64 JPEG frame encoding with Kafka/MQTT consumer display support
 
 ---
 
-## DX-Stream v3.0.1 / 2026-04-21
+## DX-STREAM v3.0.1 / 2026-05-06
 
 ### 1. Changed
 - None
+
 ### 2. Fixed
-- Fixed Typos in User Manual
+- Fixed typos in User Manual
 - Fixed uninstall not removing apps build directories and pydxs build cache
+
 ### 3. Added
 - Third-party sample model license notice documentation
 
 ---
 
-## DX-Stream v3.0.0 / 2026-04-01
+## DX-STREAM v3.0.0 / 2026-04-10
 
 ### 1. Changed
 - **Model Download**: Switched to `dx-modelzoo`-managed models with updated demo lineup **(Breaking)**
     - Per-model download via `model_list.json` + `setup_sample_models.sh` (`jq` required)
-    - Demo model upgrades: YOLOv5s → YOLOv26n, YOLOV5Pose → YOLOv26n_Pose, DeepLabV3+MobileNetV2 → YOLOv26n_Seg (not available in modelzoo; replaced)
-    - Models not in dx-modelzoo (manually uploaded to S3, accuracy not measured): SCRFD500M PPU, YOLOV5Pose PPU
+    - Demo model upgrades: YOLOv5s → YOLOv26n, YOLOv5Pose → YOLOv26n_Pose, DeepLabV3+MobileNetV2 → YOLOv26n_Seg (not available in modelzoo; replaced)
+    - Models not in dx-modelzoo (manually uploaded to S3, accuracy not measured): SCRFD500M PPU, YOLOv5Pose PPU
 - **Installation**: Removed `/etc/profile.d/gstdxstream.sh` (no longer requires sudo); env vars now written directly to `~/.bashrc` **(Breaking)** (old profile.d-based setup no longer used)
 - **C++ Standard**: Updated to C++14 (using declarations, enum classes) **(Breaking)**
 - **Preprocessing Architecture**: Introduced `IVideoTransformKernel` abstraction (RGA / libyuv / V3 DSP) with `VideoTransformFactory` for auto backend selection
-- **DXOSD**: Removed unnecessary color conversion, resize, and intermediate memory allocation; added YUV in-place overlay rendering
+- **DxOsd**: Removed unnecessary color conversion, resize, and intermediate memory allocation; added YUV in-place overlay rendering
 - **Dependency**: Added `gstreamer1.0-dev` build dependency; install prefix default `/usr/local`
 
 ### 2. Fixed
-- NV12 CPU input stride/offset now uses GstVideoInfo instead of RGA heuristic (dxconvert/dxscale)
-- DMA-Buffer zero-copy support in RGA preprocessor and DXOSD with proper stride calculation
+- NV12 CPU input stride/offset now uses GstVideoInfo instead of RGA heuristic (`dxconvert`/`dxscale`)
+- DMA-Buffer zero-copy support in RGA preprocessor and `dxosd` with proper stride calculation
 - Orange Pi 5 Plus (RK3588 / Debian 12) display corruption via automatic I420 conversion
 - RGA preprocessing build errors on Rockchip SoC
-- SW rendering buffer management: stream-specific caching for multi-stream scenarios
+- Software rendering buffer management: stream-specific caching for multi-stream scenarios
 - Memory management with smart pointers and improved tensor handling
 - Meson install failure in Python venv environment (PYTHONPATH handling and build directory standardization)
 
 ### 3. Added
-- **DxScale**: New GstBaseTransform element for HW-accelerated scaling (NV12/I420/RGB/BGR)
+- **DxScale**: New GstBaseTransform element for hardware-accelerated scaling (NV12/I420/RGB/BGR)
 - **DxConvert**: New GstBaseTransform element for color format conversion (full 4×4 format matrix)
-- RGA HW-accelerated format conversion/scaling (NV12↔RGB↔BGR) with automatic SW fallback
+- RGA hardware-accelerated format conversion/scaling (NV12↔RGB↔BGR) with automatic software fallback
 - V3 DSP preprocessor with OSD v3 RGB buffer drawing for DEEPX V3 SoC
 - YOLOv26 examples
 - Auto-detection and cleanup of old installation files from previous major versions
@@ -96,20 +100,26 @@
 
 ---
 
-## DX-Stream v2.2.1 / 2026-02-28
+## DX-STREAM v2.2.1 / 2026-02-26
 
 ### 1. Changed
-- Updated sample models version from dx_com v2.2.0 to v2.2.1
+- Updated sample models version from DX-COM v2.2.0 to v2.2.1
+
+### 2. Fixed
+- None
+
+### 3. Added
+- None
 
 ---
 
-## DX-Stream v2.2.0 / 2025-12-30
+## DX-STREAM v2.2.0 / 2026-01-16
 
 ### 1. Changed
-- Modified gst-dxpreprocess to automatically deep copy buffers when ref_count > 1 (e.g., after tee element)
-- **Metadata Architecture**: Separated existing gst-dxmeta.cpp/hpp into individual metadata files (frame, object, user metadata) and enhanced structures with user metadata lists and count fields
+- Modified `gst-dxpreprocess` to automatically deep copy buffers when `ref_count > 1` (e.g., after tee element)
+- **Metadata Architecture**: Separated existing `gst-dxmeta.cpp`/`hpp` into individual metadata files (frame, object, user metadata) and enhanced structures with user metadata lists and count fields
 - **Test Framework**: Refactored metadata handling in test files to use dx_get_frame_meta for improved performance and added test plugin installation step in unit test workflow
-- docs: update OS requirements in installation guide for debian
+- Updated OS requirements in the installation guide for Debian
 
 ### 2. Fixed
 - Fixed race condition and segfaults in secondary inference mode when multiple streams access shared buffer metadata
@@ -117,41 +127,41 @@
 - **Error Handling**: Enhanced error handling for compilation failures in test scripts
 
 ### 3. Added
-- Added prepare_output_buffer() override to detect and copy shared buffers
-- Added `pydxs` Python binding module for DX-STREAM metadata.
-- Python bindings for `DXFrameMeta`, `DXObjectMeta`, `DXUserMeta`, and related value types.
-- Helper APIs to acquire and attach `DXObjectMeta` to frames and to manage user metadata from Python.
-- A `writable_buffer` context manager to safely ensure buffer writability and create/retrieve `DXFrameMeta` inside GStreamer pad probes.
-- A new Python sample app `usermeta_app.py` demonstrating creation, attachment, and reading of frame/object/user metadata using `pydxs`.
+- Added `prepare_output_buffer()` override to detect and copy shared buffers
+- Added `pydxs` Python binding module for DX-STREAM metadata
+- Python bindings for `DXFrameMeta`, `DXObjectMeta`, `DXUserMeta`, and related value types
+- Helper APIs to acquire and attach `DXObjectMeta` to frames and to manage user metadata from Python
+- A `writable_buffer` context manager to safely ensure buffer writability and create/retrieve `DXFrameMeta` inside GStreamer pad probes
+- A new Python sample app `usermeta_app.py` demonstrating creation, attachment, and reading of frame/object/user metadata using `pydxs`
 - **User Metadata Interface**: New API allowing developers to attach custom metadata to frames and objects
 - **Management Functions**: Comprehensive metadata structures and management functions (create, copy, release)
-- **Test Suite**: Dedicated user metadata test suite (test_usermeta.cpp) with validation framework
+- **Test Suite**: Dedicated user metadata test suite (`test_usermeta.cpp`) with validation framework
 - **Documentation**: User Metadata Guide documentation and README updates
 
 ---
 
-## DX-Stream v2.1.0 / 2025-11-28
+## DX-STREAM v2.1.0 / 2025-11-28
 
 ### 1. Changed
-- **Model Configuration**: Updated default YOLOv5 from YOLOV5S_3 to YOLOV5S_4 with models-2_1_0.tar.gz
+- **Model Configuration**: Updated default YOLOv5 from YOLOV5S_3 to YOLOV5S_4 with `models-2_1_0.tar.gz`
 - **Video Sink Settings**: Disabled synchronization in secondary mode for improved performance
 - **Demo Scripts**: Simplified video input paths in message broker demos
 - **Message Conversion**: Simplified message conversion configuration and improved JSON payload structure
 - **Buffer Processing**: Enhanced preprocessing and postprocessing to use direct buffer manipulation for better performance
 - **Configuration**: Streamlined msgconv configuration by removing unnecessary sections
-- Modified event handling logic in 'dxpreprocess', 'dxinfer', 'dxoutputselector' and 'dxosd' to align with updates to 'dxinputselector'.
-- feat: enhance dependency installation for Debian 12
+- Modified event handling logic in `dxpreprocess`, `dxinfer`, `dxoutputselector` and `dxosd` to align with updates to `dxinputselector`
+- Enhanced dependency installation for Debian 12
     - Smart version checking for meson (apt/backports/pip fallback)
-    - Handle libdrm version conflicts without breaking HW acceleration
+    - Handle libdrm version conflicts without breaking hardware acceleration
 - Updated secondary mode pipeline for SCRFD500M_PPU_SECOND
 
 ### 2. Fixed
 - **Setup Scripts**: Improved error handling and prevented excessive download retry attempts
-- **Shutdown Flow**: Improved shutdown signal processing in dx-infer element
+- **Shutdown Flow**: Improved shutdown signal processing in `dxinfer` element
 - **Memory Management**: Better buffer handling in preprocessing and postprocessing pipelines
 - **Registry Handling**: Fixed GStreamer registry cache issues with GstShark integration
-- Fixed an event processing timing issue in 'dxinputselector' that caused compositor pipeline freezes.
-- fix: add detection and installation of Rockchip-specific dependencies (librga-dev)
+- Fixed an event processing timing issue in `dxinputselector` that caused compositor pipeline freezes
+- Added detection and installation of Rockchip-specific dependencies (librga-dev)
 - Updated MQTT configuration to include connection timeout and state management
 
 ### 3. Added
@@ -162,8 +172,8 @@
     - Automatic verification and cleanup of corrupted archives
     - Prevents infinite retry loops that could cause hour-long hangs
 - Installation Guide for Orange Pi 5 Plus
-- Performance Analysis Tools: Added GstShark integration for comprehensive pipeline performance evaluation
-    - Automated installation script 'install_gstshark.sh' for easy setup
+- **Performance Analysis Tools**: Added GstShark integration for comprehensive pipeline performance evaluation
+    - Automated installation script `install_gstshark.sh` for easy setup
     - Complete performance evaluation documentation with sample commands
     - Support for CPU usage, processing time, frame rate, and bitrate analysis
 - **Preprocessing Features**: Added preprocess skip functionality for conditional processing
@@ -171,41 +181,44 @@
 
 ---
 
-## DX-Stream v2.0.0 / 2025-08-28
+## DX-STREAM v2.0.0 / 2025-09-08
 
 ### 1. Changed
-- Code Examples: The PostProcess examples have been separated and implemented on a per-model basis for clarity.
-- DX-RT v3.0.0 Compatibility: This version has been updated to ensure full compatibility with DX-RT v3.0.0.
-- Model Support: Inference is now restricted to models (DXNN v7) produced by DX-COM v2.0.0 and later versions.
-- Modified dx-gather event handling logic.
-- Removed unnecessary print statements.
-- feat: enhance build script and update installation documentation
-  - Added OS and architecture checks in the build script
-  - Updated CPU and OS specifications in the installation documentation for clarity
+- **Code Examples**: The PostProcess examples have been separated and implemented on a per-model basis for clarity
+- **DX-RT v3.0.0 Compatibility**: This version has been updated to ensure full compatibility with DX-RT v3.0.0
+- **Model Support**: Inference is now restricted to models (DXNN v7) produced by DX-COM v2.0.0 and later versions
+- Modified `dxgather` event handling logic
+- Removed unnecessary print statements
+- Enhanced build script and updated installation documentation
+    - Added OS and architecture checks in the build script
+    - Updated CPU and OS specifications in the installation documentation for clarity
 
 ### 2. Fixed
-- Bug Fix: Addressed and alleviated a processing delay issue within the dx-inputselector.
-- Corrected a post-processing logic error in the SCRFD model when in secondary inference mode.
-- Fixed a bug in dx_rt that occurred when processing multi-tail models.
-- feat: improve error handling for setup scripts
-- feat: add support for X11 video sink on Ubuntu 18.04 across multiple scripts
-  - Force X11 video sink on Ubuntu 18.04
-  - Improved compatibility across OS versions
-  - Updated multiple pipeline scripts
-  - Added OS version check for Ubuntu 18.04
+- Addressed and alleviated a processing delay issue within the `dxinputselector`
+- Corrected a post-processing logic error in the SCRFD model when in secondary inference mode
+- Fixed a bug in `dx_rt` that occurred when processing multi-tail models
+- Improved error handling for setup scripts
+- Added support for X11 video sink on Ubuntu 18.04 across multiple scripts
+    - Force X11 video sink on Ubuntu 18.04
+    - Improved compatibility across OS versions
+    - Updated multiple pipeline scripts
+    - Added OS version check for Ubuntu 18.04
 
 ### 3. Added
-- feat: add uninstall script and enhance color utility functions
-  - Introduced a new uninstall.sh script for cleaning up project files and directories
+- Added an uninstall script and enhanced color utility functions
+    - Introduced a new `uninstall.sh` script for cleaning up project files and directories
 
 ---
 
-## DX-Stream v1.7.0 / 2025-07-16
+## DX-STREAM v1.7.0 / 2025-07-23
 
 ### 1. Changed
-- dxinfer : Improved the buffer queue management mechanism. Instead of locking inputs based on queue size within the push thread, the system now adds a req_id to the buffer and utilizes a wait function for more efficient processing.
-- feat: auto run setup script when a file not found error occurs during example execution
-- chore: apply colors and handle errors in scripts
+- `dxinfer`: Improved the buffer queue management mechanism. Instead of locking inputs based on queue size within the push thread, the system now adds a `req_id` to the buffer and utilizes a wait function for more efficient processing
+- Setup script now runs automatically when a file-not-found error occurs during example execution
+- Applied colors and error handling in scripts
+
 ### 2. Fixed
-- dxpreprocess, dxosd: Resolved a video corruption issue that occurred in some streams. The problem was traced to incorrect stride and offset calculations from GstVideoMeta. The calculation now correctly uses GstVideoInfo included in the caps, ensuring stable video rendering.
+- `dxpreprocess`, `dxosd`: Resolved a video corruption issue that occurred in some streams. The problem was traced to incorrect stride and offset calculations from GstVideoMeta. The calculation now correctly uses GstVideoInfo included in the caps, ensuring stable video rendering
+
 ### 3. Added
+- None

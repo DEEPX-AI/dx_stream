@@ -124,7 +124,9 @@ GST_END_TEST;
 static Suite *dxrate_qos_suite(void) {
     Suite *s = suite_create("dxrate_qos");
     TCase *tc = tcase_create("qos_throttle");
+#ifndef _WIN32
     tcase_set_timeout(tc, 20.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, CE_rate_qos_throttle_sent);
     tcase_add_test(tc, CE_rate_qos_throttle_disabled);

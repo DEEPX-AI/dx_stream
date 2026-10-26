@@ -3,7 +3,7 @@
 - **Input tensors:** **DxInfer** receives preprocessed input tensors from **DxPreprocess** and performs inference using a specified AI model.  
 - **Output tensors:** Each output tensor is assigned an ID using the `inference-id` property, allowing downstream elements such as **DxPostprocess** to retrieve the correct output.  
 - **Model configuration:** The AI model used for inference must be specified using the `model-path` property, which points to a compiled `.dxnn` file.
-- **Backend:** **DxInfer** performs inference using the `dxrt` backend, selectable via the `backend` property.
+- **Backend:** **DxInfer** performs inference using the `dxrt` or `dxvnpu` backend, selectable via the `backend` property.
 
 ### **Key Features**
 
@@ -26,8 +26,9 @@ When **DxRate** sends a Throttle QoS Event, **DxInfer** drops incoming frames un
 **Backend Selection**  
 DxInfer selects the inference backend via the `backend` property:
 
-- **auto** (default): Automatically selects the available backend (`dxrt`).
+- **auto** (default): Automatically selects the available backend (`dxrt` or `dxvnpu`).
 - **dxrt**: Uses the DEEPX Runtime (DX-RT) backend.
+- **dxvnpu**: Uses the DEEPX VNPU backend (requires the VNPU sibling plugin, built with `--dxvnpu`).
 
 **JSON Configuration**  
 All properties can be configured through a JSON file using the `config-file-path` property. This enables reusable, clean, and scalable configuration of inference behavior. 
@@ -66,6 +67,7 @@ GObject
 ### **Latency Reporting**
 
 `DxInfer` adds its measured inference time (the moving average `avg_latency` of recent inference calls) as the element's own latency contribution when responding to `LATENCY` queries. Downstream sinks therefore see a realistic pipeline latency that includes inference cost.
+
 ### **Properties**
 
 | **Name**           | **Description**                                                                                      | **Type**  | **Default Value** |
@@ -77,7 +79,7 @@ GObject
 | `inference-id`     | Key under which inference output tensors are stored in `DXFrameMeta`/`DXObjectMeta` (the downstream **DxPostprocess** retrieves them by this ID).     | Unsigned Integer | `0`                |
 | `secondary-mode`   | Determines whether to operate in primary mode or secondary mode.                                     | Boolean   | `false`            |
 | `use-ort`          | Determines whether to use ONNX Runtime (ORT) for inference.                                          | Boolean   | `true`             |
-| `backend`          | Selects the inference backend: `auto` or `dxrt`.                                                     | Enum      | `auto`             |
+| `backend`          | Selects the inference backend: `auto`, `dxrt`, or `dxvnpu`.                                                     | Enum      | `auto`             |
 
 
 ### **Example JSON Configuration**
@@ -86,7 +88,7 @@ GObject
 {
     "preprocess_id": 1,
     "inference_id": 1,
-    "model_path" : "./dx_stream/samples/models/YOLOV5S_1.dxnn",
+    "model_path" : "./dx_stream/samples/models/yolov5-s_640x640_ppu.dxnn",
     "backend": "auto"
 }
 ```

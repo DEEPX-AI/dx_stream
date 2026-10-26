@@ -4,11 +4,12 @@ import sys
 import subprocess
 from setuptools import setup, Extension
 from setuptools.command.build_ext import build_ext
+from setuptools.command.build_py import build_py
 
 IS_WINDOWS = sys.platform == 'win32'
 
 # Get project root from environment
-project_root = os.environ.get('PROJECT_ROOT', os.path.abspath('../../..'))
+project_root = os.path.abspath(os.environ.get('PROJECT_ROOT', '../../..'))
 install_dir = os.path.join(project_root, 'install')
 
 # Constants
@@ -38,15 +39,15 @@ def get_pkg_config(package, option):
 
 def _get_gstreamer_root_win():
     """Find GStreamer MSVC installation root on Windows."""
-    root = os.environ.get('GSTREAMER_1_0_ROOT_MSVC_X86_64', '')
-    if root and os.path.isdir(root):
-        return root
     for candidate in [
+        os.environ.get('GSTREAMER_1_0_ROOT_MSVC_X86_64', ''),
+        os.environ.get('GSTREAMER_1_0_ROOT_X86_64', ''),
         r'C:\Program Files\gstreamer\1.0\msvc_x86_64',
         r'C:\gstreamer\1.0\msvc_x86_64',
     ]:
-        if os.path.isdir(candidate):
-            return candidate
+        candidate = candidate.strip().strip('"')
+        if candidate and os.path.isdir(candidate):
+            return os.path.abspath(candidate)
     return ''
 
 gst_includes = get_pkg_config(GSTREAMER_PACKAGE, '--cflags-only-I')
@@ -97,6 +98,11 @@ else:
 
 class BuildExt(build_ext):
     def build_extensions(self):
+        if IS_WINDOWS:
+            # Incremental builds must not put the former bare module in the new wheel.
+            legacy_module = os.path.join(self.build_lib, self.get_ext_filename('pydxs'))
+            if os.path.isfile(legacy_module):
+                os.remove(legacy_module)
         for ext in self.extensions:
             if self.compiler.compiler_type == 'msvc':
                 ext.extra_compile_args.extend(['/std:c++14', '/EHsc'])
@@ -105,6 +111,34 @@ class BuildExt(build_ext):
                 if sys.platform == 'darwin':
                     ext.extra_compile_args.append('-stdlib=libc++')
         build_ext.build_extensions(self)
+
+
+class BuildPy(build_py):
+    def run(self):
+        build_py.run(self)
+        if IS_WINDOWS:
+            paths = {
+                'install_prefix': install_dir,
+                'gstreamer_root': _get_gstreamer_root_win(),
+                'deepx_sdk_dir': os.environ.get('DEEPX_SDK_DIR', ''),
+                'deepx_vnpu_dir': (
+                    os.environ.get('DEEPX_VNPU_DIR', '')
+                    if os.environ.get('DXVNPU_RUNTIME_DIR') else ''
+                ),
+            }
+            path = os.path.join(self.build_lib, 'pydxs', '_runtime_paths.py')
+            with open(path, 'w', encoding='utf-8') as runtime_paths:
+                runtime_paths.write(
+                    '# Generated from the SDK and install paths selected at build time.\n'
+                    'RUNTIME_PATHS = ' + repr(paths) + '\n'
+                )
+
+    def get_outputs(self, include_bytecode=1):
+        outputs = build_py.get_outputs(self, include_bytecode)
+        if IS_WINDOWS:
+            outputs.append(os.path.join(self.build_lib, 'pydxs', '_runtime_paths.py'))
+        return outputs
+
 
 # Get pybind11 include paths
 try:
@@ -118,7 +152,7 @@ except ImportError:
 
 ext_modules = [
     Extension(
-        'pydxs',
+        'pydxs._pydxs' if IS_WINDOWS else 'pydxs',
         sources=['src/metadata_binding.cpp'],
         include_dirs=[
             os.path.join(project_root, 'gst-dxstream-plugin', 'metadata'),
@@ -136,8 +170,10 @@ setup(
     version='0.1.0',
     author='DeepX',
     description='Python bindings for DX Stream',
+    packages=['pydxs'] if IS_WINDOWS else [],
+    package_dir={'pydxs': 'src/pydxs'} if IS_WINDOWS else {},
     ext_modules=ext_modules,
-    cmdclass={'build_ext': BuildExt},
+    cmdclass={'build_ext': BuildExt, 'build_py': BuildPy},
     zip_safe=False,
     python_requires='>=3.6',
 )

@@ -80,7 +80,9 @@ GST_END_TEST;
 static Suite *dxosd_flush_stop_suite(void) {
     Suite *s = suite_create("dxosd_flush_stop");
     TCase *tc = tcase_create("flush");
+#ifndef _WIN32
     tcase_set_timeout(tc, 30.0);
+#endif
     suite_add_tcase(s, tc);
     tcase_add_test(tc, CE_osd_flush_stop_clears_stream_info);
     return s;

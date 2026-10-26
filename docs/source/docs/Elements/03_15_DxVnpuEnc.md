@@ -64,6 +64,7 @@ GObject
 |---|---|---|---|---|
 | `codec` | Video codec for encoding. | Enum (h264, h265) | `h264` | - |
 | `bitrate` | Target encoding bitrate in kbps. | Unsigned Integer | `4096` | `1 – 100000` |
+| `device-id` | VNPU device index. `-1` selects automatically. | Integer | `-1` | `-1 – 127` |
 
 ### **Usage Example**
 
@@ -82,7 +83,7 @@ Transcode H.265 to H.264:
 ```bash
 gst-launch-1.0 \
   filesrc location=input.h265 ! h265parse ! \
-  dxvnpudec output-format=NV12 ! \
+  dxvnpudec ! \
   dxvnpuenc codec=h264 bitrate=4096 ! \
   h264parse ! filesink location=output.h264
 ```

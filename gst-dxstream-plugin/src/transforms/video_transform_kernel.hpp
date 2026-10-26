@@ -60,7 +60,7 @@ struct FrameDesc {
     PlaneDesc planes[MAX_PLANES];
     int       num_planes = 0;
 
-    // DMA-BUF specific (valid when memory_type == DMA_BUF)
+    // DMA-BUF specific (valid when memory_type == DMA_BUF; also set as an fd hint on CPU-mapped dma-buf frames)
     int    dma_fd   = -1;
     size_t dma_size = 0;
 
@@ -182,6 +182,21 @@ public:
                                       FrameDesc&        dst,
                                       int               slot_id = 0,
                                       const DynamicOps* dynamic  = nullptr) = 0;
+
+    // Secondary mode: one source frame, many ROIs (dsts[i] <- crops[i], ok[i] = success).
+    // Backends with per-submission cost (GPU) override this to process all crops at once.
+    virtual void transform_batch(const FrameDesc& src,
+                                 const CropRect*  crops,
+                                 FrameDesc*       dsts,
+                                 int              count,
+                                 bool*            ok,
+                                 int              slot_id = 0) {
+        for (int i = 0; i < count; ++i) {
+            DynamicOps dyn;
+            dyn.crop_override = &crops[i];
+            ok[i] = transform(src, dsts[i], slot_id, &dyn).success;
+        }
+    }
 };
 
 // ---------------------------------------------------------------------------
