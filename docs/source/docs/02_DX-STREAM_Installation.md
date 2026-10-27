@@ -11,7 +11,7 @@ This section describes the hardware and software requirements for running **DX-S
 - **Storage:** 4GB or higher available disk space  
 - **OS:** Ubuntu 20.04 / 22.04 / 24.04 / 26.04 (x64, arm64)  
           Debian 12 / Debian 13 (x64, arm64)  
-- **DX-RT version 3.0.0 or higher must be installed**  
+- **DX-RT version 3.5.0 or higher must be installed**
 - The system **must** support connection to an **M1 M.2** module with the M.2 interface on the host PC. 
 
 <img src="./../resources/02_DX-M1_M.2_LPDDR5x2_PCP.png" alt="DX-M1 M.2 Module" width="700">

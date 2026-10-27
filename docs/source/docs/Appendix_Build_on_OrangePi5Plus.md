@@ -168,24 +168,23 @@ dxcli -s
 
 **Expected Output**:
 ```
-DXRT v3.0.0
+DXRT <dxrt-version>
 =======================================================
  * Device 0: M1, Accelerator type
 ---------------------   Version   ---------------------
- * RT Driver version   : v1.7.1
- * PCIe Driver version : v1.4.1
+ * RT Driver version   : <rt-driver-version>
+ * PCIe Driver version : <pcie-driver-version>
 -------------------------------------------------------
- * FW version          : v2.1.4
+ * FW version          : <firmware-version>
 --------------------- Device Info ---------------------
  * Memory : LPDDR5 6000 MHz, 3.92GiB
  * Board  : M.2, Rev 1.5
  * Chip Offset : 0
- * PCIe   : Gen3 X4 [01:00:00]
+ * PCIe   : Gen3 X4 [<bus>:<device>:<function>]
 
 NPU 0: voltage 750 mV, clock 1000 MHz, temperature 40'C
 NPU 1: voltage 750 mV, clock 1000 MHz, temperature 40'C
 NPU 2: voltage 750 mV, clock 1000 MHz, temperature 40'C
-dvfs Disabled
 =======================================================
 ```
 
