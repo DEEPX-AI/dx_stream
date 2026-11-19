@@ -7,16 +7,6 @@ source "${DX_STREAM_PATH}/scripts/color_env.sh"
 source "${DX_STREAM_PATH}/scripts/common_util.sh"
 source "${DX_STREAM_PATH}/scripts/rpi_camera_util.sh"
 
-INTERNAL_RTSP_ARG=""
-
-for arg in "$@"; do
-    case "$arg" in
-        --internal-rtsp)
-            INTERNAL_RTSP_ARG="--internal-rtsp"
-            ;;
-    esac
-done
-
 pushd $DX_STREAM_PATH
 
 print_colored "DX_STREAM_PATH: $DX_STREAM_PATH" "INFO"
@@ -118,7 +108,7 @@ case $select in
     5)$WRC/dx_stream/pipelines/single_network/depth_estimation/run_yolo26n-depth.sh;;
     6)$WRC/dx_stream/pipelines/tracking/run_multi_object_tracker.sh;;
     7)$WRC/dx_stream/pipelines/multi_stream/run_multi_stream.sh;;
-    8)$WRC/dx_stream/pipelines/rtsp/run_RTSP.sh $INTERNAL_RTSP_ARG;;
+    8)$WRC/dx_stream/pipelines/rtsp/run_RTSP.sh "$@";;
     9)$WRC/dx_stream/pipelines/secondary_mode/run_secondary_mode.sh;;
     *)$WRC/dx_stream/pipelines/single_network/object_detection/run_yolo26n.sh;;
 esac

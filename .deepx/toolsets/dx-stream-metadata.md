@@ -1,6 +1,6 @@
 # dx_stream Metadata Reference (pydxs)
 
-> **SDK Source of Truth**: `docs/source/docs/04_Writing_Your_Own_Application.md`, `docs/source/docs/Appendix_User_Metadata_Guide.md`
+> **SDK Source of Truth**: [Writing Your Own Application](https://developer.deepx.ai/tech-docs/DXNN-SDK/DX-STREAM/Writing_Your_Own_Application/), [User Metadata Guide](https://developer.deepx.ai/tech-docs/DXNN-SDK/DX-STREAM/Appendix_User_Metadata_Guide/)
 
 ## Overview
 

@@ -1,7 +1,7 @@
 @echo off
 REM ============================================================
 REM  DX-Stream Demo Menu (Windows - Source Build)
-REM  Usage:  run_demo.bat [--internal-rtsp]
+REM  Usage:  run_demo.bat [--rtsp-url "URL" ...]   (arguments are passed to demo 8, RTSP)
 REM  Prerequisites:  Run 'build.bat' first.
 REM ============================================================
 
@@ -13,9 +13,12 @@ if "%PROJECT_ROOT:~-1%"=="\" set "PROJECT_ROOT=%PROJECT_ROOT:~0,-1%"
 set "INSTALL_DIR=%PROJECT_ROOT%\install"
 set "PIPELINES_DIR=%PROJECT_ROOT%\dx_stream\pipelines\windows"
 
-REM ---- Parse arguments ----
-set "INTERNAL_RTSP="
-if "%~1"=="--internal-rtsp" set "INTERNAL_RTSP=--internal-rtsp"
+REM "call" expands '%' in forwarded arguments again, which corrupts URLs such as "p%40ss".
+echo(%*| findstr /c:"%%" >nul && (
+    echo [ERROR] Arguments containing '%%' cannot be passed through run_demo.bat. 1>&2
+    echo         Run "%PIPELINES_DIR%\rtsp.bat" directly with the same arguments. 1>&2
+    exit /b 1
+)
 
 REM ---- Verify build ----
 if not exist "%INSTALL_DIR%\bin\gstdxstream.dll" (
@@ -87,7 +90,7 @@ if "%SELECT%"=="4" call "%PIPELINES_DIR%\segmentation_yolo26n_seg.bat"
 if "%SELECT%"=="5" call "%PIPELINES_DIR%\depth_estimation_yolo26n.bat"
 if "%SELECT%"=="6" call "%PIPELINES_DIR%\multi_object_tracker.bat"
 if "%SELECT%"=="7" call "%PIPELINES_DIR%\multi_stream.bat"
-if "%SELECT%"=="8" call "%PIPELINES_DIR%\rtsp.bat" %INTERNAL_RTSP%
+if "%SELECT%"=="8" call "%PIPELINES_DIR%\rtsp.bat" %*
 if "%SELECT%"=="9" call "%PIPELINES_DIR%\secondary_mode.bat"
 
 echo.

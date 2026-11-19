@@ -1,5 +1,18 @@
 # RELEASE_NOTES
 
+## DX-STREAM v3.2.1 / 2026-11-19
+
+### 1. Changed
+- RTSP example now runs with user-provided RTSP URLs (`--rtsp-url`).
+
+### 2. Fixed
+- None
+
+### 3. Added
+- None
+
+---
+
 ## DX-STREAM v3.2.0 / 2026-10-23
 
 ### 1. Changed

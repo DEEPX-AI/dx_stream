@@ -2,6 +2,71 @@
 setlocal
 title DX-Stream Multi-Channel Object Detection (RTSP)
 
+rem Delayed expansion stays off so '!' in the pipeline and URLs is kept as-is.
+set "SCRIPT_NAME=%~nx0"
+set "SRC="
+set "OUT="
+set "COMP="
+set /a CH=0
+
+:parse
+if "%~1"=="" goto parsed
+if "%~1"=="-h" goto help
+if "%~1"=="--help" goto help
+if not "%~1"=="--rtsp-url" (
+    echo [ERROR] Unknown option or argument: "%~1" 1>&2
+    goto usage_error
+)
+set "URL=%~2"
+if not defined URL (
+    echo [ERROR] --rtsp-url requires a value 1>&2
+    goto usage_error
+)
+rem URLs are not printed because they may contain credentials.
+if not "%URL: =%"=="%URL%" (
+    echo [ERROR] RTSP URL must not contain whitespace 1>&2
+    goto usage_error
+)
+if "%URL:~0,7%"=="rtsp://" goto url_ok
+if "%URL:~0,8%"=="rtsps://" goto url_ok
+echo [ERROR] RTSP URL must start with rtsp:// or rtsps:// 1>&2
+goto usage_error
+:url_ok
+set SRC=%SRC% urisourcebin uri="%URL%" ! queue max-size-buffers=2 ! decodebin ! queue max-size-buffers=2 ! in.sink_%CH%
+set /a CH+=1
+shift /1
+shift /1
+goto parse
+
+:help
+call :usage
+exit /b 0
+
+:usage_error
+call :usage 1>&2
+exit /b 1
+
+:usage
+echo Usage: %SCRIPT_NAME% --rtsp-url URL [--rtsp-url URL ...]
+echo.
+echo Multi-channel object detection (YOLOv5s PPU) on RTSP streams.
+echo One channel is created per --rtsp-url, in the given order.
+echo.
+echo Options:
+echo   --rtsp-url URL   RTSP stream URL (rtsp:// or rtsps://). Repeat for more channels.
+echo                    Wrap each URL in double quotes.
+echo   -h, --help       Show this help and exit.
+echo.
+echo Example:
+echo   %SCRIPT_NAME% --rtsp-url "rtsp://127.0.0.1:8554/stream1" --rtsp-url "rtsp://127.0.0.1:8554/stream2"
+exit /b 0
+
+:parsed
+if %CH% EQU 0 (
+    echo [ERROR] At least one --rtsp-url is required 1>&2
+    goto usage_error
+)
+
 if not defined DXSTREAM_ROOT (
     pushd "%~dp0..\..\..\"
     set "DXSTREAM_ROOT=%CD%"
@@ -28,48 +93,49 @@ set "LIB_DIR=%BASE_FWD%/install/share/gstdxstream/lib"
 set "MODEL=%MODEL_DIR%/yolov5-s_640x640_ppu.dxnn"
 set "LIB=%LIB_DIR%/postprocess_ppu.dll"
 
-set "USE_INTERNAL=0"
-if "%~1"=="--internal-rtsp" set "USE_INTERNAL=1"
-
-if "%USE_INTERNAL%"=="1" (
-    set "RTSP0=rtsp://192.168.30.100:8554/stream2"
-    set "RTSP1=rtsp://192.168.30.100:8554/stream3"
-    set "RTSP2=rtsp://192.168.30.100:8554/stream4"
-    set "RTSP3=rtsp://192.168.30.100:8554/stream5"
-) else (
-    set "RTSP0=rtsp://210.99.70.120:1935/live/cctv002.stream"
-    set "RTSP1=rtsp://210.99.70.120:1935/live/cctv003.stream"
-    set "RTSP2=rtsp://210.99.70.120:1935/live/cctv004.stream"
-    set "RTSP3=rtsp://210.99.70.120:1935/live/cctv005.stream"
+set /a COLS=1
+:grid
+set /a SQ=COLS*COLS
+if %SQ% LSS %CH% (
+    set /a COLS+=1
+    goto grid
 )
+set /a ROWS=(CH+COLS-1)/COLS
+set /a SW=1280/COLS
+set /a SH=720/ROWS
 
+set /a I=0
+:layout
+if %I% GEQ %CH% goto launch
+set /a X=(I%%COLS)*SW
+set /a Y=(I/COLS)*SH
+echo   Adding pipeline: [channel=%I%]
+set OUT=%OUT% out.src_%I% ! queue max-size-buffers=2 ! dxscale width=%SW% height=%SH% ! queue max-size-buffers=2 ! comp.sink_%I%
+set COMP=%COMP% sink_%I%::xpos=%X% sink_%I%::ypos=%Y%
+set /a I+=1
+goto layout
+
+:launch
 echo ============================================================
 echo  DX-Stream Multi-Channel Object Detection (RTSP)
 echo ============================================================
-echo  Output : 1280x720 (2x2 grid, 640x360 each)
-echo  Stream0: %RTSP0%
-echo  Stream1: %RTSP1%
-echo  Stream2: %RTSP2%
-echo  Stream3: %RTSP3%
+echo  Channels: %CH%  Grid: %ROWS% rows x %COLS% columns
+echo  Output  : 1280x720 (%SW%x%SH% each)
 echo ============================================================
+echo [WARN] If the pipeline cannot keep up with the RTSP source rate, frames may be dropped.
 
-gst-launch-1.0 -e ^
-    urisourcebin uri="%RTSP0%" ! queue max-size-buffers=2 ! decodebin ! queue max-size-buffers=2 ! in.sink_0 ^
-    urisourcebin uri="%RTSP1%" ! queue max-size-buffers=2 ! decodebin ! queue max-size-buffers=2 ! in.sink_1 ^
-    urisourcebin uri="%RTSP2%" ! queue max-size-buffers=2 ! decodebin ! queue max-size-buffers=2 ! in.sink_2 ^
-    urisourcebin uri="%RTSP3%" ! queue max-size-buffers=2 ! decodebin ! queue max-size-buffers=2 ! in.sink_3 ^
+REM -q hides progress messages, which would print URL credentials; errors are still reported.
+gst-launch-1.0 -q -e %SRC% ^
     dxinputselector name=in ^
     ! dxpreprocess preprocess-id=1 resize-width=640 resize-height=640 keep-ratio=true pad-value=114 ! queue max-size-buffers=2 ^
     ! dxinfer preprocess-id=1 inference-id=1 model-path="%MODEL%" ! queue max-size-buffers=2 ^
     ! dxpostprocess inference-id=1 library-file-path="%LIB%" function-name=YOLOV5S_PPU ! queue max-size-buffers=2 ^
     ! dxosd ^
     ! dxoutputselector name=out ^
-    out.src_0 ! queue max-size-buffers=2 ! dxscale width=640 height=360 ! queue max-size-buffers=2 ! comp.sink_0 ^
-    out.src_1 ! queue max-size-buffers=2 ! dxscale width=640 height=360 ! queue max-size-buffers=2 ! comp.sink_1 ^
-    out.src_2 ! queue max-size-buffers=2 ! dxscale width=640 height=360 ! queue max-size-buffers=2 ! comp.sink_2 ^
-    out.src_3 ! queue max-size-buffers=2 ! dxscale width=640 height=360 ! queue max-size-buffers=2 ! comp.sink_3 ^
-    compositor name=comp sink_0::xpos=0 sink_0::ypos=0 sink_1::xpos=640 sink_1::ypos=0 sink_2::xpos=0 sink_2::ypos=360 sink_3::xpos=640 sink_3::ypos=360 ^
+    %OUT% ^
+    compositor name=comp %COMP% ^
     ! videoconvert ^
     ! fpsdisplaysink sync=false
+set "RC=%ERRORLEVEL%"
 
-endlocal
+endlocal & exit /b %RC%

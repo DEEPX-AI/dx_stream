@@ -307,7 +307,7 @@ build() {
     if [ $? -ne 0 ]; then
         echo -e "Error: meson install failed"
         echo -e "Hint: Run 'which -a meson' to check if multiple meson versions are installed."
-        echo -e "      If so, keep only one and remove the rest. (See: docs/source/docs/06_Troubleshooting_and_FAQ.md)"
+        echo -e "      If so, keep only one and remove the rest. (See: https://developer.deepx.ai/tech-docs/DXNN-SDK/DX-STREAM/Troubleshooting_and_FAQ/)"
         exit 1
     fi
     
