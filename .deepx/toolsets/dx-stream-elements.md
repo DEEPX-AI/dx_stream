@@ -1,6 +1,6 @@
 # dx_stream GStreamer Elements Reference
 
-> **SDK Source of Truth**: `docs/source/docs/Elements/`, `gst-inspect-1.0 dx*`
+> **SDK Source of Truth**: [DX-STREAM Tech Docs — Elements](https://developer.deepx.ai/tech-docs/DXNN-SDK/DX-STREAM/03_01_DxPreprocess/), `gst-inspect-1.0 dx*`
 
 > Primary API reference for the currently supported dx_stream GStreamer elements.
 > Use this as the definitive source for element properties, pads, and usage patterns.

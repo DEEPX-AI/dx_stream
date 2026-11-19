@@ -118,4 +118,4 @@ Received payload 85432 bytes | seqId: 1 | objects: 3 | frameData: yes
 ```
 
 > Use `localhost` as `<broker_host>` for local testing.
-> For SSL/TLS configuration, refer to the [MsgBroker Pipeline documentation](../../docs/source/docs/Pipeline_Example/05_04_MsgBroker.md).
+> For SSL/TLS configuration, refer to the [MsgBroker Pipeline documentation](https://developer.deepx.ai/tech-docs/DXNN-SDK/DX-STREAM/05_04_MsgBroker/).
