@@ -49,6 +49,8 @@ nav:
       - DxMsgBroker: docs/Elements/03_11_DxMsgBroker.md
       - DxScale: docs/Elements/03_12_DxScale.md
       - DxConvert: docs/Elements/03_13_DxConvert.md
+      - DxVnpuDec: docs/Elements/03_14_DxVnpuDec.md
+      - DxVnpuEnc: docs/Elements/03_15_DxVnpuEnc.md
   - Writing Your Own Application: docs/04_Writing_Your_Own_Application.md
   - Pipeline Example:
       - Single Stream Pipeline: docs/Pipeline_Example/05_01_Single-Stream.md

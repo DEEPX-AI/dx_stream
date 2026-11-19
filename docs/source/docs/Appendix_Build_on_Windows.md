@@ -273,7 +273,7 @@ For air-gapped environments, manually place model files (`.dxnn`) in `dx_stream\
 
 ```cmd
 run_demo.bat                    :: Interactive demo menu
-run_demo.bat --internal-rtsp    :: Use internal RTSP server for demo 8
+run_demo.bat --rtsp-url "rtsp://127.0.0.1:8554/stream1"    :: RTSP URL(s) for demo 8 (repeat --rtsp-url for more channels)
 ```
 
 The demo menu matches the Linux `run_demo.sh` layout:
@@ -296,7 +296,7 @@ Pipeline scripts are located in `dx_stream\pipelines\windows\`. Each script is s
 ```cmd
 set DXSTREAM_ROOT=C:\path\to\dx_stream
 dx_stream\pipelines\windows\object_detection_yolo26n.bat
-dx_stream\pipelines\windows\rtsp.bat --internal-rtsp
+dx_stream\pipelines\windows\rtsp.bat --rtsp-url "rtsp://127.0.0.1:8554/stream1" --rtsp-url "rtsp://127.0.0.1:8554/stream2"
 ```
 
 **Full Build + Demo Workflow**  

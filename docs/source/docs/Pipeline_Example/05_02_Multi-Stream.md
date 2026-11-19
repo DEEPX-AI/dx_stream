@@ -19,6 +19,21 @@ The selected buffer passes through a single inference pipeline for processing, a
 The pipeline in the figure is defined in 
 `dx_stream/pipelines/multi_stream/run_multi_stream_selector.sh` and can be used as a reference for execution.  
 
+### **RTSP Input**  
+
+`dx_stream/pipelines/rtsp/run_RTSP.sh` (Windows: `dx_stream\pipelines\windows\rtsp.bat`) runs the selector-based pipeline on RTSP streams. One channel is created per `--rtsp-url`, in the given order, and the output grid is sized to the number of channels.  
+
+```
+$ ./dx_stream/pipelines/rtsp/run_RTSP.sh --rtsp-url rtsp://127.0.0.1:8554/stream1 --rtsp-url rtsp://127.0.0.1:8554/stream2
+```
+
+- At least one `--rtsp-url` is required. Only `rtsp://` and `rtsps://` URLs without whitespace are accepted. `-h`/`--help` prints the usage.
+- Missing or invalid arguments print the usage and exit with code `1`, before any model download.
+- Credentials can be embedded in the URL (`rtsp://user:password@host:port/path`). The script does not print the URLs. On Windows, wrap each URL in double quotes.
+- If any stream cannot be opened or fails to authenticate, GStreamer reports the error and the whole pipeline stops with a non-zero exit code. The script does not reconnect; restart it after fixing the stream.
+- RTSP sources are live and do not wait for the pipeline. If the pipeline (mainly NPU inference, shared by all channels) cannot keep up with the source frame rate, frames may be dropped and latency may grow. Adding channels lowers the throughput available to each channel.
+- On Windows, `run_demo.bat` (demo 8) rejects arguments containing `%` (for example a percent-encoded password such as `p%40ss`), because `call` would expand them again. Run `rtsp.bat` directly in that case.
+
 ### **Explanation**  
 
 **Element Descriptions**  

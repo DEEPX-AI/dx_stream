@@ -161,7 +161,7 @@ fi
 
 ## 📊 Compatibility
 
-- **Ubuntu**: 18.04, 20.04, 22.04, 24.04
+- **Ubuntu**: 18.04, 20.04, 22.04, 24.04, 26.04
 - **Architecture**: x86_64, aarch64
 - **Shell**: bash 4.0+
 

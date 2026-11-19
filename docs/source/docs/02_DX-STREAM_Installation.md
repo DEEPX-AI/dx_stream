@@ -342,6 +342,11 @@ Enter the number corresponding to the desired demo to run it.
 
 If **no** input is provided within 10 seconds, the default option (`0: Object Detection (YOLO26n)`) will be executed automatically.
 
+Demo `8` requires the RTSP stream URL(s). Pass them to `run_demo.sh`; they are forwarded to `run_RTSP.sh`.
+```
+$ ./run_demo.sh --rtsp-url rtsp://127.0.0.1:8554/stream1 --rtsp-url rtsp://127.0.0.1:8554/stream2
+```
+
 !!! note "NOTE" 
 
     Options with "PPU" suffix utilize **Post-Processing Unit (PPU)** acceleration, which performs model post-processing operations (such as bounding box decoding and score thresholding) directly on the NPU hardware instead of the CPU. This approach significantly improves inference performance by reducing CPU overhead.  
